@@ -1,0 +1,20 @@
+<launch>
+  <param name="use_sim_time" value="true" /> #be sure to run --clock
+
+  # CERBERUS - Frame Connector - Only needed if localization manager is not running
+  <!-- <node pkg="tf" type="static_transform_publisher" name="map_corrected_tf" respawn="true" args="0 0 0 0 0 0 map camera_init_CORRECTED 10"/>
+  <node pkg="tf" type="static_transform_publisher" name="corrected_init_tf" respawn="true" args="0 0 0 1.570796327 0 1.570796327 camera_init_CORRECTED camera_init 10 "/> -->
+  # CERBERUS - Frame Connector
+
+  <!-- Input topics remap -->
+  <arg name="pointcloud_topic_name" default="/os_cloud_node/points" /> #/point_cloud_filter/lidar/point_cloud_filtered
+  <arg name="imu_topic_name" default="/m545_imu_cabin" />
+
+  <!-- Node -->
+  <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">
+    <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
+    <remap from="/imu_topic" to="$(arg imu_topic_name)" />
+    <remap from="/pointcloud_topic" to="$(arg pointcloud_topic_name)" />
+  </node>
+
+</launch>
