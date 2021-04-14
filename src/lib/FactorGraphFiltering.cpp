@@ -16,21 +16,54 @@ using std::sin;
 using std::sqrt;
 
 FactorGraphFiltering::FactorGraphFiltering(float scanPeriod)
- {
-  // initialize tf messages
-  _odometryTrans.frame_id_ = "map_init";
-  _odometryTrans.child_frame_id_ = "fg_odom";
-  _fgFrameId = "fg";
+{
+  ROS_INFO("FactorGraphFiltering instance created.");
 }
 
+// setup ----------------------------------------------------------------------------------------
 bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
-  // fetch laser odometry params
+  
+  // Variables for parameter fetching
   double dParam;
   float fParam;
   int iParam;
   bool bParam;
   std::string sParam;
 
+  // Set frames
+  /// LiDAR frame
+  if (privateNode.getParam("lidarFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);
+    setLidarFrame(sParam);
+  } else {
+    ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
+  }
+  /// IMU
+  if (privateNode.getParam("imuFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU frame for preintegrator and tf: " << sParam);
+    setImuFrame(sParam);
+    _odometryTrans.frame_id_ = sParam;
+  } else
+    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
+  /// Odom
+  if (privateNode.getParam("odomFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - Odom frame set to: " << sParam);
+    setOdomFrame(sParam);
+    _odometryTrans.child_frame_id_ = sParam;
+  } else {
+    ROS_WARN("FactorGraphFiltering - Odom frame not set");
+  }
+
+
+  // Timing
+  if (privateNode.getParam("imuTimeOffset", dParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU time offset[s]: " << dParam);
+    setImuTimeOffset(dParam);
+  }
+  if (privateNode.getParam("imuRate", dParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
+    _imuBuffer.setImuRate(dParam);
+  }
   if (privateNode.getParam("ioRatio", iParam)) {
     if (iParam < 1) {
       ROS_ERROR("Invalid ioRatio parameter: %d (expected > 0)", iParam);
@@ -41,31 +74,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     }
   }
 
-  //CUSTOMIZATION
-  //Set LiDAR frame
-  if (privateNode.getParam("lidarFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);
-    setLidarFrame(sParam);
-  } else {
-    ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
-  }
-
-  //IMU Preintegrator
-  if (privateNode.getParam("imuFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU frame for preintegrator: " << sParam);
-    setImuFrame(sParam);
-  } else
-    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
-
-  /** Graph Parameters **/
-  if (privateNode.getParam("imuTimeOffset", dParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU time offset[s]: " << dParam);
-    setImuTimeOffset(dParam);
-  }
-  if (privateNode.getParam("imuRate", dParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
-    _imuBuffer.setImuRate(dParam);
-  }
+  // Factor Graph
   if (privateNode.getParam("accNoiseDensity", dParam))
     _graphMgr.setAccNoiseDensity(dParam);
   if (privateNode.getParam("accBiasRandomWalk", dParam))
@@ -78,7 +87,6 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     _graphMgr.setGyrBiasRandomWalk(dParam);
   if (privateNode.getParam("gyrBiasPrior", dParam))
     _graphMgr.setGyrBiasPrior(dParam);
-  //Factor Graph
   if (privateNode.getParam("smootherLag", dParam))
     _graphMgr.setSmootherLag(dParam);
   if (privateNode.getParam("additonalIterations", iParam))
@@ -107,12 +115,13 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     _graphMgr._params.setEnablePartialRelinearizationCheck(bParam);
   if (privateNode.getParam("enableDetailedResults", bParam))
     _graphMgr._params.setEnableDetailedResults(bParam);
-  //Pose between factor noise
   std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  //roll,pitch,yaw,x,y,z
   if (privateNode.getParam("poseBetweenNoise", poseNoise)){
     _graphMgr.setPoseNoise(poseNoise);
   }
-  //Zero Motion Factor
+
+  // Motion parameters
+  /// Zero Motion Factor
   if (privateNode.getParam("zeroMotionDetection", bParam)) {
     setZeroMotionDetection(bParam);
     if (bParam)
@@ -120,40 +129,62 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     else
       ROS_INFO_STREAM("FactorGraphFiltering - Zero Motion Detection DISABLED");
   }
-  /** Graph Parameters **/
-  //Verbose Ouput
+
+  // Verbosity
   iParam = 0;
   if (privateNode.getParam("Verbosity", iParam)) {
     ROS_INFO("Set loamVerbosity: %d", iParam);
     setVerboseLevel(iParam);
   } else
     setVerboseLevel(0);
-  //CUSTOMIZATION
 
-  // advertise odometry topic
+  // Publishers
+  /// advertise odometry topic
   _pubOdometry = node.advertise<nav_msgs::Odometry>("/laser_odom_to_init", 5);
-
-  // subscribe to IMU topic
-  _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 400, &FactorGraphFiltering::imuCallback, this, ros::TransportHints().tcpNoDelay());
-
-  //CUSTOMIZATION
   _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/laser_odom_imu_bias", 20);
-  //CUSTOMIZATION
+
+  // Subscribers
+  /// subscribe to remapped IMU topic
+  _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this, ros::TransportHints().tcpNoDelay());
+  ROS_INFO("Initialized IMU subscriber.");
+  /// subscribe to remapped LiDAR odometry topic
+  _subLidarOdometry = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback, this, ros::TransportHints().tcpNoDelay());
+  ROS_INFO("Initialized LiDAR Odometry subscriber.");
+
   return true;
 }
 
+// imuCallback ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr) {
+  //ROS_INFO("Reading IMU message.");
   //Add to buffer
   _imuBuffer.addToIMUBuffer(imu_ptr->header.stamp.toSec(),
                             imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z,
                             imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
 }
+// lidarOdometryCallback ----------------------------------------------------------------------------------------
+void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odometry_ptr) {
+  //ROS_INFO("Reading lidar odometry message.");
+  //Add to buffer
+  _lidarOdometryBuffer.addToLidarOdometryBuffer();
 
+  // Publish to tf
+  _odometryTrans.stamp_ = lidar_odometry_ptr->header.stamp;
+  tf::Quaternion tfQuaternion;
+  tf::quaternionMsgToTF(lidar_odometry_ptr->pose.pose.orientation, tfQuaternion);
+  _odometryTrans.setRotation(tfQuaternion);
+  _odometryTrans.setOrigin(tf::Vector3(lidar_odometry_ptr->pose.pose.position.x, lidar_odometry_ptr->pose.pose.position.y, lidar_odometry_ptr->pose.pose.position.z));
+  _tfBroadcaster.sendTransform(_odometryTrans);
+  ROS_INFO("TF broadcasted.");
+}
+
+// process ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::process() {
   ROS_INFO("Processing...");
   //publishResult();
 }
 
+// publish result ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::publishResult() {
   // publish odometry transformations
   geometry_msgs::Quaternion geoQuat = tf::createQuaternionMsgFromRollPitchYaw(transformSum().rot_z.rad(),
@@ -192,15 +223,6 @@ void FactorGraphFiltering::publishResult() {
     imuBiasMsg.angular_velocity.z = graphIMUBias().angular_velocity.z;
     _pubLaserImuBias.publish(imuBiasMsg);
   }
-
-  // publish cloud results according to the input output ratio
-  /*
-  if (_ioRatio < 2 || frameCount() % _ioRatio == 1) {
-    publishCloudMsg(_pubLaserCloudCornerLast, *lastCornerCloud(), _timeSurfPointsLessFlat, _cameraFrameId);  //smk: becuase of _ioRatio=2 this is 5Hz
-    publishCloudMsg(_pubLaserCloudSurfLast, *lastSurfaceCloud(), _timeSurfPointsLessFlat, _cameraFrameId);
-    transformToEnd(laserCloud());  // transform full resolution cloud to sweep end before sending it ///smk: velodyne_cloud_2 is transformed and sent out as /velodyne_cloud_3
-    publishCloudMsg(_pubLaserCloudFullRes, *laserCloud(), _timeSurfPointsLessFlat, _cameraFrameId);
-  }*/
 }
 
 }  // end namespace fg_filtering

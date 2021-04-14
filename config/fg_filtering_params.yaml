@@ -3,7 +3,9 @@ Verbosity: 5                         #Debug Output, 0-disable, higher for more v
 scanPeriod: 0.1                          #Expected scan period for input pointcloud in seconds. Used of Distortion correction
 ioRatio: 2                               #Ratio of publish rate of LaserOdometry w.r.t input PCL rate. LO is calculated for each PCL but published at slower rate to Mapping, default 2
 
-#External Prior/Transform Input     
+#External Prior/Transform Input
+mapFrame: map_fg
+odomFrame: odom_fg
 lidarFrame: os_lidar                     #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
 imuFrame: IMU_CABIN_link                 #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
 gnssFrame: _

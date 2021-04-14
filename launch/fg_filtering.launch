@@ -7,14 +7,15 @@
   # CERBERUS - Frame Connector
 
   <!-- Input topics remap -->
-  <arg name="pointcloud_topic_name" default="/os_cloud_node/points" /> #/point_cloud_filter/lidar/point_cloud_filtered
+  <!--arg name="lidar_odometry_topic_name" default="/loam_transform_CORRECTED" /-->
+  <arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
-    <remap from="/pointcloud_topic" to="$(arg pointcloud_topic_name)" />
+    <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
   </node>
 
 </launch>
