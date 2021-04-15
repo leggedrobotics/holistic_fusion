@@ -8,7 +8,8 @@
 
   <!-- Input topics remap -->
   <!--arg name="lidar_odometry_topic_name" default="/loam_transform_CORRECTED" /-->
-  <arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" />
+  <!--arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" /-->
+  <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
 
   <!-- Node -->

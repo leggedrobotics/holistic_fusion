@@ -7,6 +7,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 // ROS msgs
 #include <message_filters/subscriber.h>
@@ -36,10 +37,13 @@ class FactorGraphFiltering {
 
   // Setup ------------------------
   /// Helper functions
-  void setOdomFrame(const std::string& s) { _odomFrame = s; }
+  //// Frames
   void setMapFrame(const std::string& s) { _mapFrame = s; }
-  void setLidarFrame(const std::string& s) { _lidarFrame = s; }
+  void setOdomFrame(const std::string& s) { _odomFrame = s; }
+  void setBaseLinkFrame(const std::string& s) { _baseLinkFrame = s; }
   void setImuFrame(const std::string& s) { _imuFrame = s; }
+  void setLidarFrame(const std::string& s) { _lidarFrame = s; }
+  //// Timing and Motions
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setZeroMotionDetection(const bool b) { _zeroMotionDetection = b; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
@@ -60,23 +64,14 @@ class FactorGraphFiltering {
  private:
 
   // Publish the current result via the respective topics.
-  void publishResult();
+  void publishOdometryAndTF();
   // IMU buffer
   loam::ImuManager _imuBuffer;
   // LiDAR Odometry buffer
-  fg_filtering::LidarOdometryManager _lidarOdometryBuffer;
+  // fg_filtering::LidarOdometryManager _lidarOdometryBuffer;
 
   // Factor graph
   loam::GraphManager _graphMgr;
-  // IMU Rotation
-  void pluginIMURotation(const loam::Angle& bcx, const loam::Angle& bcy, const loam::Angle& bcz,
-                         const loam::Angle& blx, const loam::Angle& bly, const loam::Angle& blz,
-                         const loam::Angle& alx, const loam::Angle& aly, const loam::Angle& alz,
-                         loam::Angle& acx, loam::Angle& acy, loam::Angle& acz);
-
-  void accumulateRotation(loam::Angle cx, loam::Angle cy, loam::Angle cz,
-                          loam::Angle lx, loam::Angle ly, loam::Angle lz,
-                          loam::Angle& ox, loam::Angle& oy, loam::Angle& oz);
 
   bool updateFactorGraph();
 
@@ -86,7 +81,15 @@ class FactorGraphFiltering {
   // Transformations
   Eigen::Matrix4d _T_LB = Eigen::Matrix4d::Identity(); // IMU to LiDAR expressed in IMU frame, Read as Transforms LiDAR into IMU
   Eigen::Matrix4d _T_BL = Eigen::Matrix4d::Identity(); // LiDAR to IMU expressed in LiDAR frame, Read as Transforms IMU into LiDAR
-  tf::StampedTransform _odometryTrans;  // odometry transformation
+  /// Transformation from compslam
+  tf::StampedTransform _tfT_OdomCompslam;
+  tf::StampedTransform _tfT_OdomLidar;
+  /// Output of factor graph
+  tf::StampedTransform _tfT_OdomImu;  // odometry transformation
+  /// Transform of interest for state estimation
+  tf::StampedTransform _tfT_OdomBase;
+  /// Known transform from robot kinematic --> look up in tf-tree
+  tf::StampedTransform _tfT_ImuBase;
 
   // Twists
   loam::Twist _transform;     // optimized pose transformation //smk: also used as motion prior, also adjusted by IMU or VIO(if needed)
@@ -97,10 +100,11 @@ class FactorGraphFiltering {
   ros::Time _timeUpdate;
 
   // Frames -----------
-  std::string _odomFrame = "";
   std::string _mapFrame = "";
-  std::string _lidarFrame = "";
+  std::string _odomFrame = "";
+  std::string _baseLinkFrame = "";
   std::string _imuFrame = "";   
+  std::string _lidarFrame = "";
 
   // Publishers -------------
   ros::Publisher _pubOdometry;         // laser odometry publisher
@@ -111,6 +115,7 @@ class FactorGraphFiltering {
   ros::Subscriber _subImuTrans; // IMU transformation information message subscriber
   ros::Subscriber _subImu; /// IMU subscriber
   ros::Subscriber _subLidarOdometry; // LiDAR Odometry subscriber
+  tf::TransformListener _tfListener;
 
   // Messages
   sensor_msgs::Imu _imuBiasMsg; // IMU bias publishing ROS message

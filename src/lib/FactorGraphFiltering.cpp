@@ -31,6 +31,29 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   std::string sParam;
 
   // Set frames
+  /// Odom
+  if (privateNode.getParam("odomFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - Odom frame set to: " << sParam);
+    setOdomFrame(sParam);
+    _tfT_OdomImu.frame_id_ = sParam;
+    _tfT_OdomBase.frame_id_ = sParam;
+  } else {
+    ROS_WARN("FactorGraphFiltering - Odom frame not set");
+  }
+  /// base_link
+  if (privateNode.getParam("baseLinkFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - base_link frame: " << sParam);
+    setBaseLinkFrame(sParam);
+    _tfT_OdomBase.child_frame_id_ = sParam;
+  } else
+    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
+  /// IMU
+  if (privateNode.getParam("imuFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU frame for preintegrator and tf: " << sParam);
+    setImuFrame(sParam);
+    _tfT_OdomImu.child_frame_id_ = sParam;
+  } else
+    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
   /// LiDAR frame
   if (privateNode.getParam("lidarFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);
@@ -38,22 +61,6 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   } else {
     ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
   }
-  /// IMU
-  if (privateNode.getParam("imuFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU frame for preintegrator and tf: " << sParam);
-    setImuFrame(sParam);
-    _odometryTrans.frame_id_ = sParam;
-  } else
-    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
-  /// Odom
-  if (privateNode.getParam("odomFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - Odom frame set to: " << sParam);
-    setOdomFrame(sParam);
-    _odometryTrans.child_frame_id_ = sParam;
-  } else {
-    ROS_WARN("FactorGraphFiltering - Odom frame not set");
-  }
-
 
   // Timing
   if (privateNode.getParam("imuTimeOffset", dParam)) {
@@ -140,8 +147,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Publishers
   /// advertise odometry topic
-  _pubOdometry = node.advertise<nav_msgs::Odometry>("/laser_odom_to_init", 5);
-  _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/laser_odom_imu_bias", 20);
+  _pubOdometry = privateNode.advertise<nav_msgs::Odometry>("/transform_odom_base", 5);
+  _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/fg_imu_bias", 20);
 
   // Subscribers
   /// subscribe to remapped IMU topic
@@ -163,19 +170,27 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
                             imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
 }
 // lidarOdometryCallback ----------------------------------------------------------------------------------------
-void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odometry_ptr) {
-  //ROS_INFO("Reading lidar odometry message.");
-  //Add to buffer
-  _lidarOdometryBuffer.addToLidarOdometryBuffer();
-
-  // Publish to tf
-  _odometryTrans.stamp_ = lidar_odometry_ptr->header.stamp;
+void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  // Temporary Variables
   tf::Quaternion tfQuaternion;
-  tf::quaternionMsgToTF(lidar_odometry_ptr->pose.pose.orientation, tfQuaternion);
-  _odometryTrans.setRotation(tfQuaternion);
-  _odometryTrans.setOrigin(tf::Vector3(lidar_odometry_ptr->pose.pose.position.x, lidar_odometry_ptr->pose.pose.position.y, lidar_odometry_ptr->pose.pose.position.z));
-  _tfBroadcaster.sendTransform(_odometryTrans);
-  ROS_INFO("TF broadcasted.");
+  tf::StampedTransform tfT_LidarImu;
+  tf::quaternionMsgToTF(odomLidarPtr->pose.pose.orientation, tfQuaternion);
+  tf::Vector3 tfOrigin = tf::Vector3(odomLidarPtr->pose.pose.position.x, odomLidarPtr->pose.pose.position.y, odomLidarPtr->pose.pose.position.z);
+  
+  // Write current factor graph prediction to tf-Transformation
+  /// MUTEX!
+  _tfT_OdomCompslam.setRotation(tfQuaternion);
+  _tfT_OdomCompslam.setOrigin(tfOrigin);
+  _tfT_OdomLidar.setData(_tfT_OdomCompslam);
+  _tfListener.lookupTransform(_lidarFrame, _imuFrame, ros::Time(0), tfT_LidarImu);
+  _tfT_OdomImu.setData(_tfT_OdomLidar*tfT_LidarImu);
+  _tfT_OdomImu.stamp_ = odomLidarPtr->header.stamp;
+
+  // Add delta pose for Odom->Imu to graph
+  // here the code will follow
+
+  // Publish the prediction
+  publishOdometryAndTF();
 }
 
 // process ----------------------------------------------------------------------------------------
@@ -185,36 +200,33 @@ void FactorGraphFiltering::process() {
 }
 
 // publish result ----------------------------------------------------------------------------------------
-void FactorGraphFiltering::publishResult() {
-  // publish odometry transformations
-  geometry_msgs::Quaternion geoQuat = tf::createQuaternionMsgFromRollPitchYaw(transformSum().rot_z.rad(),
-                                                                              -transformSum().rot_x.rad(),
-                                                                              -transformSum().rot_y.rad());
+void FactorGraphFiltering::publishOdometryAndTF() {
+  // Acquire MUTEX! for _tfT_OdomIMU, s.t. all transformations correspond to same time
 
-  // initialize odometry and odometry tf messages
-  nav_msgs::OdometryPtr odometryMsgPtr(new nav_msgs::Odometry);
-  odometryMsgPtr->header.frame_id = _odometryTrans.frame_id_;
-  odometryMsgPtr->child_frame_id = _odometryTrans.child_frame_id_;
-  odometryMsgPtr->header.stamp = _timeUpdate;
-  odometryMsgPtr->pose.pose.orientation.x = -geoQuat.y;
-  odometryMsgPtr->pose.pose.orientation.y = -geoQuat.z;
-  odometryMsgPtr->pose.pose.orientation.z = geoQuat.x;
-  odometryMsgPtr->pose.pose.orientation.w = geoQuat.w;
-  odometryMsgPtr->pose.pose.position.x = transformSum().pos.x();
-  odometryMsgPtr->pose.pose.position.y = transformSum().pos.y();
-  odometryMsgPtr->pose.pose.position.z = transformSum().pos.z();
-  _pubOdometry.publish(odometryMsgPtr);
+  
+  // Get odom-->base_link transformation from odom-->imu
+  //ROS_INFO_STREAM("Current ROS time: " << ros::Time::now());
+  //ROS_INFO_STREAM("Current lidar odometry timestamp: " << _tfT_OdomImu.stamp_);
+  _tfListener.lookupTransform(_imuFrame, _baseLinkFrame, ros::Time(0), _tfT_ImuBase); //_tfT_OdomImu.stamp_, _tfT_ImuBase);
+  _tfT_OdomBase.setData(_tfT_OdomImu*_tfT_ImuBase);
+  _tfT_OdomBase.stamp_ = _tfT_OdomImu.stamp_;
 
-  _odometryTrans.stamp_ = _timeUpdate;
-  _odometryTrans.setRotation(tf::Quaternion(-geoQuat.y, -geoQuat.z, geoQuat.x, geoQuat.w));
-  _odometryTrans.setOrigin(tf::Vector3(transformSum().pos.x(), transformSum().pos.y(), transformSum().pos.z()));
-  _tfBroadcaster.sendTransform(_odometryTrans);
+  // Publish to Tf tree
+  _tfBroadcaster.sendTransform(_tfT_OdomBase);
+  //ROS_INFO("TF broadcasted.");
+
+  nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
+  odomBaseMsgPtr->header.frame_id = _tfT_OdomBase.frame_id_;
+  odomBaseMsgPtr->child_frame_id = _tfT_OdomBase.child_frame_id_;
+  odomBaseMsgPtr->header.stamp = _tfT_OdomBase.stamp_;
+  tf::poseTFToMsg(_tfT_OdomBase, odomBaseMsgPtr->pose.pose);
+  _pubOdometry.publish(odomBaseMsgPtr);
 
   //IMU Bias
   if (_pubLaserImuBias.getNumSubscribers() > 0) {
     sensor_msgs::Imu imuBiasMsg;
     imuBiasMsg.header.frame_id = "/fg_odometry_imu";
-    imuBiasMsg.header.stamp = _timeUpdate;
+    imuBiasMsg.header.stamp = _tfT_OdomImu.stamp_;
     imuBiasMsg.linear_acceleration.x = graphIMUBias().linear_acceleration.x;
     imuBiasMsg.linear_acceleration.y = graphIMUBias().linear_acceleration.y;
     imuBiasMsg.linear_acceleration.z = graphIMUBias().linear_acceleration.z;

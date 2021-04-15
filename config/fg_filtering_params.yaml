@@ -4,8 +4,9 @@ scanPeriod: 0.1                          #Expected scan period for input pointcl
 ioRatio: 2                               #Ratio of publish rate of LaserOdometry w.r.t input PCL rate. LO is calculated for each PCL but published at slower rate to Mapping, default 2
 
 #External Prior/Transform Input
-mapFrame: map_fg
-odomFrame: odom_fg
+mapFrame: map
+odomFrame: odom
+baseLinkFrame: BASE
 lidarFrame: os_lidar                     #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
 imuFrame: IMU_CABIN_link                 #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
 gnssFrame: _
