@@ -1,14 +1,17 @@
 #ifndef LOAM_LASERODOMETRY_H
 #define LOAM_LASERODOMETRY_H
 
+// CPP
+#include <thread>
+
 // ROS
 #include <nav_msgs/Odometry.h>
 #include <ros/node_handle.h>
-#include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 // ROS msgs
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/exact_time.h>
@@ -16,14 +19,13 @@
 
 // loam
 #include "loam/Angle.h"
-#include "loam/Twist.h"
 #include "loam/GraphManager.hpp"
 #include "loam/ImuManager.hpp"
+#include "loam/Twist.h"
 
 // Local
-#include "math_utils.h"
 #include "LidarOdometryManager.hpp"
-
+#include "math_utils.h"
 
 namespace fg_filtering {
 
@@ -62,81 +64,94 @@ class FactorGraphFiltering {
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
 
  private:
-
-  // Publish the current result via the respective topics.
+  // Functions -------------
+  /// Publish the current result via the respective topics.
   void publishOdometryAndTF();
-  // IMU buffer
-  loam::ImuManager _imuBuffer;
-  // LiDAR Odometry buffer
-  // fg_filtering::LidarOdometryManager _lidarOdometryBuffer;
-
-  // Factor graph
-  loam::GraphManager _graphMgr;
-
+  /// Write IMU to grah
+  void writeImuToGraph();
+  /// Updating the factor graph
   bool updateFactorGraph();
 
-  //Flags --------------
-  bool _systemInited;     // initialization flag
-  
-  // Transformations
-  Eigen::Matrix4d _T_LB = Eigen::Matrix4d::Identity(); // IMU to LiDAR expressed in IMU frame, Read as Transforms LiDAR into IMU
-  Eigen::Matrix4d _T_BL = Eigen::Matrix4d::Identity(); // LiDAR to IMU expressed in LiDAR frame, Read as Transforms IMU into LiDAR
-  /// Transformation from compslam
+  // Threads
+  /// Thread 1: Callback for compslam odometry
+  /// thread 2: Callback for IMU data
+  /// Thread 3: Callback for GNSS
+  std::thread _publishOdometryAndTFThread;  // Thread 4: publishes the estimate at exactly 100 Hz
+  std::thread _writeImuToGraphThread;       // Thread 5: writes the IMU constraints to the graph
+
+  // Member variables -------------
+  /// IMU buffer
+  loam::ImuManager _imuBuffer;
+
+  /// Factor graph
+  loam::GraphManager _graphMgr;
+
+  /// Flags
+  bool _systemInited = false;  // initialization flag
+
+  /// Transformations
+  Eigen::Matrix4d _T_LB =
+      Eigen::Matrix4d::Identity();  // IMU to LiDAR expressed in IMU frame, Read as Transforms LiDAR into IMU
+  Eigen::Matrix4d _T_BL =
+      Eigen::Matrix4d::Identity();  // LiDAR to IMU expressed in LiDAR frame, Read as Transforms IMU into LiDAR
+  //// Transformation from compslam
   tf::StampedTransform _tfT_OdomCompslam;
   tf::StampedTransform _tfT_OdomLidar;
-  /// Output of factor graph
+  //// Output of factor graph
   tf::StampedTransform _tfT_OdomImu;  // odometry transformation
-  /// Transform of interest for state estimation
+  //// Transform of interest for state estimation
   tf::StampedTransform _tfT_OdomBase;
-  /// Known transform from robot kinematic --> look up in tf-tree
+  //// Known transform from robot kinematic --> look up in tf-tree
   tf::StampedTransform _tfT_ImuBase;
 
-  // Twists
-  loam::Twist _transform;     // optimized pose transformation //smk: also used as motion prior, also adjusted by IMU or VIO(if needed)
+  /// Twists
+  loam::Twist _transform;     // optimized pose transformation //smk: also used as motion prior, also adjusted by IMU or
+                              // VIO(if needed)
   loam::Twist _transformSum;  // accumulated optimized pose transformation
 
-  // ROS related
-  ros::Time _timeImuTrans;               // time of current IMU transformation information
+  /// ROS related
+  ros::Time _timeImuTrans;  // time of current IMU transformation information
   ros::Time _timeUpdate;
 
-  // Frames -----------
+  /// Frames
   std::string _mapFrame = "";
   std::string _odomFrame = "";
   std::string _baseLinkFrame = "";
-  std::string _imuFrame = "";   
+  std::string _imuFrame = "";
   std::string _lidarFrame = "";
 
-  // Publishers -------------
-  ros::Publisher _pubOdometry;         // laser odometry publisher
+  /// Publishers
+  ros::Publisher _pubOdometry;              // laser odometry publisher
   ros::Publisher _pubLaserImuBias;          // laser odometry imu bias publisher
   tf::TransformBroadcaster _tfBroadcaster;  // laser odometry transform broadcaster
 
-  // Subscribers -------------
-  ros::Subscriber _subImuTrans; // IMU transformation information message subscriber
-  ros::Subscriber _subImu; /// IMU subscriber
-  ros::Subscriber _subLidarOdometry; // LiDAR Odometry subscriber
+  /// Subscribers
+  ros::Subscriber _subImuTrans;       // IMU transformation information message subscriber
+  ros::Subscriber _subImu;            /// IMU subscriber
+  ros::Subscriber _subLidarOdometry;  // LiDAR Odometry subscriber
   tf::TransformListener _tfListener;
 
-  // Messages
-  sensor_msgs::Imu _imuBiasMsg; // IMU bias publishing ROS message
-  
-  // Motion Parameters
-  bool _gravityAttitudeInit = false;                    // Flag if attitude from gravity were initialized
-  tf::Transform _gravityAttitude;                       // Attitude from initial gravity alignment
-  bool _zeroMotionDetection = false;                    // Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)
-  
-  // Timing
-  double _imuTimeOffset = 0.0; // Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
-  float _scanPeriod; // time per scan
+  /// Messages
+  sensor_msgs::Imu _imuBiasMsg;  // IMU bias publishing ROS message
+
+  /// Motion Parameters
+  bool _gravityAttitudeInit = false;  // Flag if attitude from gravity were initialized
+  tf::Transform _gravityAttitude;     // Attitude from initial gravity alignment
+  bool _zeroMotionDetection = false;  // Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)
+
+  /// Timing
+  double _imuTimeOffset =
+      0.0;  // Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
+  float _scanPeriod;  // time per scan
   uint16_t _ioRatio;  // ratio of input to output frames
 
-  // Counter
-  long _frameCount; // number of processed frames
+  /// Counter
+  long _frameCount;  // number of processed frames
 
-  // Verbose
+  /// Verbose
   int _verboseLevel = 0;
 };
 
 }  // end namespace fg_filtering
 
-#endif  //LOAM_LASERODOMETRY_H
+#endif  // LOAM_LASERODOMETRY_H

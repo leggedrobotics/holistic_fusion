@@ -4,7 +4,6 @@
 
 #include "fg_filtering/common.h"
 
-
 namespace fg_filtering {
 
 using std::asin;
@@ -15,14 +14,10 @@ using std::pow;
 using std::sin;
 using std::sqrt;
 
-FactorGraphFiltering::FactorGraphFiltering(float scanPeriod)
-{
-  ROS_INFO("FactorGraphFiltering instance created.");
-}
+FactorGraphFiltering::FactorGraphFiltering(float scanPeriod) { ROS_INFO("FactorGraphFiltering instance created."); }
 
 // setup ----------------------------------------------------------------------------------------
 bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
-  
   // Variables for parameter fetching
   double dParam;
   float fParam;
@@ -82,48 +77,29 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   }
 
   // Factor Graph
-  if (privateNode.getParam("accNoiseDensity", dParam))
-    _graphMgr.setAccNoiseDensity(dParam);
-  if (privateNode.getParam("accBiasRandomWalk", dParam))
-    _graphMgr.setAccBiasRandomWalk(dParam);
-  if (privateNode.getParam("accBiasPrior", dParam))
-    _graphMgr.setAccBiasPrior(dParam);
-  if (privateNode.getParam("gyrNoiseDensity", dParam))
-    _graphMgr.setGyroNoiseDensity(dParam);
-  if (privateNode.getParam("gyrBiasRandomWalk", dParam))
-    _graphMgr.setGyrBiasRandomWalk(dParam);
-  if (privateNode.getParam("gyrBiasPrior", dParam))
-    _graphMgr.setGyrBiasPrior(dParam);
-  if (privateNode.getParam("smootherLag", dParam))
-    _graphMgr.setSmootherLag(dParam);
-  if (privateNode.getParam("additonalIterations", iParam))
-    _graphMgr.setIterations(iParam);
-  if (privateNode.getParam("positionReLinTh", dParam))
-    _graphMgr.setPositionReLinTh(dParam);
-  if (privateNode.getParam("rotationReLinTh", dParam))
-    _graphMgr.setRotationReLinTh(dParam);
-  if (privateNode.getParam("velocityReLinTh", dParam))
-    _graphMgr.setVelocityReLinTh(dParam);
-  if (privateNode.getParam("accBiasReLinTh", dParam))
-    _graphMgr.setAccBiasReLinTh(dParam);
-  if (privateNode.getParam("gyrBiasReLinTh", dParam))
-    _graphMgr.setGyrBiasReLinTh(dParam);
-  if (privateNode.getParam("relinearizeSkip", iParam))
-    _graphMgr._params.setRelinearizeSkip(iParam);
-  if (privateNode.getParam("enableRelinearization", bParam))
-    _graphMgr._params.setEnableRelinearization(bParam);
-  if (privateNode.getParam("evaluateNonlinearError", bParam))
-    _graphMgr._params.setEvaluateNonlinearError(bParam);
-  if (privateNode.getParam("cacheLinearizedFactors", bParam))
-    _graphMgr._params.setCacheLinearizedFactors(bParam);
-  if (privateNode.getParam("findUnusedFactorSlots", bParam))
-    _graphMgr._params.findUnusedFactorSlots = bParam;
+  if (privateNode.getParam("accNoiseDensity", dParam)) _graphMgr.setAccNoiseDensity(dParam);
+  if (privateNode.getParam("accBiasRandomWalk", dParam)) _graphMgr.setAccBiasRandomWalk(dParam);
+  if (privateNode.getParam("accBiasPrior", dParam)) _graphMgr.setAccBiasPrior(dParam);
+  if (privateNode.getParam("gyrNoiseDensity", dParam)) _graphMgr.setGyroNoiseDensity(dParam);
+  if (privateNode.getParam("gyrBiasRandomWalk", dParam)) _graphMgr.setGyrBiasRandomWalk(dParam);
+  if (privateNode.getParam("gyrBiasPrior", dParam)) _graphMgr.setGyrBiasPrior(dParam);
+  if (privateNode.getParam("smootherLag", dParam)) _graphMgr.setSmootherLag(dParam);
+  if (privateNode.getParam("additonalIterations", iParam)) _graphMgr.setIterations(iParam);
+  if (privateNode.getParam("positionReLinTh", dParam)) _graphMgr.setPositionReLinTh(dParam);
+  if (privateNode.getParam("rotationReLinTh", dParam)) _graphMgr.setRotationReLinTh(dParam);
+  if (privateNode.getParam("velocityReLinTh", dParam)) _graphMgr.setVelocityReLinTh(dParam);
+  if (privateNode.getParam("accBiasReLinTh", dParam)) _graphMgr.setAccBiasReLinTh(dParam);
+  if (privateNode.getParam("gyrBiasReLinTh", dParam)) _graphMgr.setGyrBiasReLinTh(dParam);
+  if (privateNode.getParam("relinearizeSkip", iParam)) _graphMgr._params.setRelinearizeSkip(iParam);
+  if (privateNode.getParam("enableRelinearization", bParam)) _graphMgr._params.setEnableRelinearization(bParam);
+  if (privateNode.getParam("evaluateNonlinearError", bParam)) _graphMgr._params.setEvaluateNonlinearError(bParam);
+  if (privateNode.getParam("cacheLinearizedFactors", bParam)) _graphMgr._params.setCacheLinearizedFactors(bParam);
+  if (privateNode.getParam("findUnusedFactorSlots", bParam)) _graphMgr._params.findUnusedFactorSlots = bParam;
   if (privateNode.getParam("enablePartialRelinearizationCheck", bParam))
     _graphMgr._params.setEnablePartialRelinearizationCheck(bParam);
-  if (privateNode.getParam("enableDetailedResults", bParam))
-    _graphMgr._params.setEnableDetailedResults(bParam);
-  std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  //roll,pitch,yaw,x,y,z
-  if (privateNode.getParam("poseBetweenNoise", poseNoise)){
+  if (privateNode.getParam("enableDetailedResults", bParam)) _graphMgr._params.setEnableDetailedResults(bParam);
+  std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  // roll,pitch,yaw,x,y,z
+  if (privateNode.getParam("poseBetweenNoise", poseNoise)) {
     _graphMgr.setPoseNoise(poseNoise);
   }
 
@@ -132,7 +108,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   if (privateNode.getParam("zeroMotionDetection", bParam)) {
     setZeroMotionDetection(bParam);
     if (bParam)
-      ROS_INFO_STREAM("FactorGraphFiltering - Zero Motion Detection ENABLED - Zero Velocity and Zero Delta Pose Factors will be added");
+      ROS_INFO_STREAM(
+          "FactorGraphFiltering - Zero Motion Detection ENABLED - Zero Velocity and Zero Delta Pose Factors will be "
+          "added");
     else
       ROS_INFO_STREAM("FactorGraphFiltering - Zero Motion Detection DISABLED");
   }
@@ -152,22 +130,29 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Subscribers
   /// subscribe to remapped IMU topic
-  _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this, ros::TransportHints().tcpNoDelay());
+  _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this,
+                                             ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized IMU subscriber.");
   /// subscribe to remapped LiDAR odometry topic
-  _subLidarOdometry = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback, this, ros::TransportHints().tcpNoDelay());
+  _subLidarOdometry =
+      node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback,
+                                         this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
+
+  // Initialize helper threads
+  _publishOdometryAndTFThread = std::thread(&FactorGraphFiltering::publishOdometryAndTF, this);
+  _writeImuToGraphThread = std::thread(&FactorGraphFiltering::writeImuToGraph, this);
 
   return true;
 }
 
 // imuCallback ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr) {
-  //ROS_INFO("Reading IMU message.");
-  //Add to buffer
-  _imuBuffer.addToIMUBuffer(imu_ptr->header.stamp.toSec(),
-                            imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z,
-                            imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
+  // ROS_INFO("Reading IMU message.");
+  // Add to buffer
+  _imuBuffer.addToIMUBuffer(imu_ptr->header.stamp.toSec(), imu_ptr->linear_acceleration.x,
+                            imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z, imu_ptr->angular_velocity.x,
+                            imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
 }
 // lidarOdometryCallback ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
@@ -175,65 +160,93 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   tf::Quaternion tfQuaternion;
   tf::StampedTransform tfT_LidarImu;
   tf::quaternionMsgToTF(odomLidarPtr->pose.pose.orientation, tfQuaternion);
-  tf::Vector3 tfOrigin = tf::Vector3(odomLidarPtr->pose.pose.position.x, odomLidarPtr->pose.pose.position.y, odomLidarPtr->pose.pose.position.z);
-  
-  // Write current factor graph prediction to tf-Transformation
-  /// MUTEX!
+  tf::Vector3 tfOrigin = tf::Vector3(odomLidarPtr->pose.pose.position.x, odomLidarPtr->pose.pose.position.y,
+                                     odomLidarPtr->pose.pose.position.z);
+
+  // Convert compslam prediction to tf-Transformation
+  /// Mutex for correct timing
   _tfT_OdomCompslam.setRotation(tfQuaternion);
   _tfT_OdomCompslam.setOrigin(tfOrigin);
   _tfT_OdomLidar.setData(_tfT_OdomCompslam);
   _tfListener.lookupTransform(_lidarFrame, _imuFrame, ros::Time(0), tfT_LidarImu);
-  _tfT_OdomImu.setData(_tfT_OdomLidar*tfT_LidarImu);
+  _tfT_OdomImu.setData(_tfT_OdomLidar * tfT_LidarImu);
   _tfT_OdomImu.stamp_ = odomLidarPtr->header.stamp;
 
   // Add delta pose for Odom->Imu to graph
-  // here the code will follow
+  // --------------here the code will follow
+  /// Mutex for factor graph
 
-  // Publish the prediction
-  publishOdometryAndTF();
+  if (!_systemInited) {
+    ROS_INFO("System fully set up and initialized.");
+  }
+  _systemInited = true;
 }
 
 // process ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::process() {
   ROS_INFO("Processing...");
-  //publishResult();
+  // publishResult();
 }
 
 // publish result ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::publishOdometryAndTF() {
-  // Acquire MUTEX! for _tfT_OdomIMU, s.t. all transformations correspond to same time
+  ROS_INFO("Thread for publishing the odometry is initialized.");
+  // Timing
+  std::chrono::time_point<std::chrono::system_clock> startLoopTime;
+  std::chrono::time_point<std::chrono::system_clock> endLoopTime;
+  // Last time stamp
+  ros::Time currentStamp;
+  ros::Time lastStamp;
+  while (ros::ok()) {
+    // Starting time of the iteration
+    startLoopTime = std::chrono::system_clock::now();
+    currentStamp = _tfT_OdomImu.stamp_;
+    if (_systemInited && currentStamp != lastStamp) {
 
-  
-  // Get odom-->base_link transformation from odom-->imu
-  //ROS_INFO_STREAM("Current ROS time: " << ros::Time::now());
-  //ROS_INFO_STREAM("Current lidar odometry timestamp: " << _tfT_OdomImu.stamp_);
-  _tfListener.lookupTransform(_imuFrame, _baseLinkFrame, ros::Time(0), _tfT_ImuBase); //_tfT_OdomImu.stamp_, _tfT_ImuBase);
-  _tfT_OdomBase.setData(_tfT_OdomImu*_tfT_ImuBase);
-  _tfT_OdomBase.stamp_ = _tfT_OdomImu.stamp_;
+      // Acquire MUTEX! for _tfT_OdomIMU, s.t. all transformations correspond to same time
 
-  // Publish to Tf tree
-  _tfBroadcaster.sendTransform(_tfT_OdomBase);
-  //ROS_INFO("TF broadcasted.");
+      // Get odom-->base_link transformation from odom-->imu
+      _tfListener.lookupTransform(_imuFrame, _baseLinkFrame, ros::Time(0),
+                                  _tfT_ImuBase);  //_tfT_OdomImu.stamp_, _tfT_ImuBase);
+      _tfT_OdomBase.setData(_tfT_OdomImu * _tfT_ImuBase);
+      _tfT_OdomBase.stamp_ = _tfT_OdomImu.stamp_;
 
-  nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
-  odomBaseMsgPtr->header.frame_id = _tfT_OdomBase.frame_id_;
-  odomBaseMsgPtr->child_frame_id = _tfT_OdomBase.child_frame_id_;
-  odomBaseMsgPtr->header.stamp = _tfT_OdomBase.stamp_;
-  tf::poseTFToMsg(_tfT_OdomBase, odomBaseMsgPtr->pose.pose);
-  _pubOdometry.publish(odomBaseMsgPtr);
+      // Publish to Tf tree
+      _tfBroadcaster.sendTransform(_tfT_OdomBase);
+      // ROS_INFO("TF broadcasted.");
 
-  //IMU Bias
-  if (_pubLaserImuBias.getNumSubscribers() > 0) {
-    sensor_msgs::Imu imuBiasMsg;
-    imuBiasMsg.header.frame_id = "/fg_odometry_imu";
-    imuBiasMsg.header.stamp = _tfT_OdomImu.stamp_;
-    imuBiasMsg.linear_acceleration.x = graphIMUBias().linear_acceleration.x;
-    imuBiasMsg.linear_acceleration.y = graphIMUBias().linear_acceleration.y;
-    imuBiasMsg.linear_acceleration.z = graphIMUBias().linear_acceleration.z;
-    imuBiasMsg.angular_velocity.x = graphIMUBias().angular_velocity.x;
-    imuBiasMsg.angular_velocity.y = graphIMUBias().angular_velocity.y;
-    imuBiasMsg.angular_velocity.z = graphIMUBias().angular_velocity.z;
-    _pubLaserImuBias.publish(imuBiasMsg);
+      nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
+      odomBaseMsgPtr->header.frame_id = _tfT_OdomBase.frame_id_;
+      odomBaseMsgPtr->child_frame_id = _tfT_OdomBase.child_frame_id_;
+      odomBaseMsgPtr->header.stamp = _tfT_OdomBase.stamp_;
+      tf::poseTFToMsg(_tfT_OdomBase, odomBaseMsgPtr->pose.pose);
+      _pubOdometry.publish(odomBaseMsgPtr);
+
+      // IMU Bias
+      if (_pubLaserImuBias.getNumSubscribers() > 0) {
+        sensor_msgs::Imu imuBiasMsg;
+        imuBiasMsg.header.frame_id = "/fg_odometry_imu";
+        imuBiasMsg.header.stamp = _tfT_OdomImu.stamp_;
+        imuBiasMsg.linear_acceleration.x = graphIMUBias().linear_acceleration.x;
+        imuBiasMsg.linear_acceleration.y = graphIMUBias().linear_acceleration.y;
+        imuBiasMsg.linear_acceleration.z = graphIMUBias().linear_acceleration.z;
+        imuBiasMsg.angular_velocity.x = graphIMUBias().angular_velocity.x;
+        imuBiasMsg.angular_velocity.y = graphIMUBias().angular_velocity.y;
+        imuBiasMsg.angular_velocity.z = graphIMUBias().angular_velocity.z;
+        _pubLaserImuBias.publish(imuBiasMsg);
+      }
+    }
+    lastStamp = currentStamp;
+    // Time to exactly 100 Hz
+    endLoopTime = std::chrono::system_clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10) - (endLoopTime - startLoopTime));
+  }
+}
+
+void FactorGraphFiltering::writeImuToGraph() {
+  ROS_INFO("Thread for adding IMU factors is initialized.");
+  while (ros::ok()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 
