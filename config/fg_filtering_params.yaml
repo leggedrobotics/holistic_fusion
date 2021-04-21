@@ -14,7 +14,7 @@ gnssFrame: _
 #Factor Graph
 lidarRate: 10                 
 imuRate: 100                             #Rate of IMU input (Hz)
-imuTimeOffset: -0.6 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
+imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
 accNoiseDensity: 1.3e-04                 #Continuous-time "Covariance" of accelerometer
 accBiasRandomWalk: 1.0e-06               #Continuous-time "Covariance" describing accelerometer bias random walk
 accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias

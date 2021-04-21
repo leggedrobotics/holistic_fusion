@@ -2,6 +2,8 @@
 #define LOAM_LASERODOMETRY_H
 
 // CPP
+#include <mutex>
+#include <string_view>
 #include <thread>
 
 // ROS
@@ -22,10 +24,11 @@
 #include "loam/GraphManager.hpp"
 #include "loam/ImuManager.hpp"
 #include "loam/Twist.h"
+#include "loam/math_utils.h"
 
 // Local
 #include "LidarOdometryManager.hpp"
-#include "math_utils.h"
+//#include "math_utils.h"
 
 namespace fg_filtering {
 
@@ -63,12 +66,18 @@ class FactorGraphFiltering {
   /// LiDAR Odometry Callback
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
 
+  void print_map(loam::IMUMap m) {
+    for (auto const& pair : m) {
+      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
+    }
+  }
+
  private:
   // Functions -------------
   /// Publish the current result via the respective topics.
   void publishOdometryAndTF();
   /// Write IMU to grah
-  void writeImuToGraph();
+  void writeToGraph();
   /// Updating the factor graph
   bool updateFactorGraph();
 
@@ -77,7 +86,12 @@ class FactorGraphFiltering {
   /// thread 2: Callback for IMU data
   /// Thread 3: Callback for GNSS
   std::thread _publishOdometryAndTFThread;  // Thread 4: publishes the estimate at exactly 100 Hz
-  std::thread _writeImuToGraphThread;       // Thread 5: writes the IMU constraints to the graph
+  std::thread _writeToGraphThread;          // Thread 5: writes the IMU constraints to the graph
+
+  // Mutex
+  // std::mutex _factorGraphMutex;
+  std::mutex _lidarDeltaPoseMutex;
+  std::mutex _imuMeasurementMutex;
 
   // Member variables -------------
   /// IMU buffer
@@ -88,21 +102,35 @@ class FactorGraphFiltering {
 
   /// Flags
   bool _systemInited = false;  // initialization flag
+  bool _imuAligned = false;
+  bool _graphInited = false;
+  bool _firstScanCallback = true;
+
+  /// Times
+  ros::Time _lastImuTime;
+  ros::Time _lastLidarTime;
+  ros::Time _currentImuTime;
+  ros::Time _currentLidarTime;
+
+  /// Graph keys
+  gtsam::Key _currentImuKey;
+  gtsam::Key _currentLidarKey;
 
   /// Transformations
-  Eigen::Matrix4d _T_LB =
-      Eigen::Matrix4d::Identity();  // IMU to LiDAR expressed in IMU frame, Read as Transforms LiDAR into IMU
-  Eigen::Matrix4d _T_BL =
-      Eigen::Matrix4d::Identity();  // LiDAR to IMU expressed in LiDAR frame, Read as Transforms IMU into LiDAR
-  //// Transformation from compslam
-  tf::StampedTransform _tfT_OdomCompslam;
-  tf::StampedTransform _tfT_OdomLidar;
+  tf::StampedTransform _tf_T_OI_CompslamLast;
   //// Output of factor graph
-  tf::StampedTransform _tfT_OdomImu;  // odometry transformation
+  tf::StampedTransform _tf_T_OI;  // odometry transformation
   //// Transform of interest for state estimation
-  tf::StampedTransform _tfT_OdomBase;
-  //// Known transform from robot kinematic --> look up in tf-tree
-  tf::StampedTransform _tfT_ImuBase;
+  tf::StampedTransform _tf_T_OB;
+  //// IMU init
+  gtsam::Rot3 _zeroYawIMUattitude;
+
+  /// Measurements
+  //// IMU measurement, can then be found in the IMU buffer
+  bool _newImuMeasurement = false;
+  //// LiDAR Delta Pose
+  gtsam::Pose3 _lidarDeltaPose;
+  bool _newLidarDeltaPose = false;
 
   /// Twists
   loam::Twist _transform;     // optimized pose transformation //smk: also used as motion prior, also adjusted by IMU or
