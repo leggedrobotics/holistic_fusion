@@ -54,6 +54,13 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   } else {
     ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
   }
+  /// Cabin frame
+  if (privateNode.getParam("cabinFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - cabin frame: " << sParam);
+    setCabinFrame(sParam);
+  } else {
+    ROS_WARN("FactorGraphFiltering - cabin frame not set");
+  }
 
   // Timing
   if (privateNode.getParam("imuTimeOffset", dParam)) {
@@ -209,22 +216,26 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
     // Add delta pose for Odom->Imu to graph
     else if (!_firstScanCallback) {
       // Determine delta pose from compslam
-      Eigen::Matrix4d T_last, T_last_inv, T_current, T_rel;
-      T_last.block<3, 1>(0, 3) =
-          Eigen::Vector3d(_tf_T_OI_CompslamLast.getOrigin().x(), _tf_T_OI_CompslamLast.getOrigin().y(),
-                          _tf_T_OI_CompslamLast.getOrigin().z());
-      T_last.block<3, 3>(0, 0) =
+      Eigen::Matrix4d T_OI_last = Eigen::MatrixXd::Identity(4, 4);
+      Eigen::Matrix4d T_OI_current = Eigen::MatrixXd::Identity(4, 4);
+      Eigen::Matrix4d T_OI_last_inv = Eigen::MatrixXd::Identity(4, 4);
+      Eigen::Matrix4d T_rel = Eigen::MatrixXd::Identity(4, 4);
+      T_OI_last.block<4, 1>(0, 3) =
+          Eigen::Vector4d(_tf_T_OI_CompslamLast.getOrigin().x(), _tf_T_OI_CompslamLast.getOrigin().y(),
+                          _tf_T_OI_CompslamLast.getOrigin().z(), 1.0);
+      T_OI_last.block<3, 3>(0, 0) =
           Eigen::Quaterniond(_tf_T_OI_CompslamLast.getRotation().w(), _tf_T_OI_CompslamLast.getRotation().x(),
                              _tf_T_OI_CompslamLast.getRotation().y(), _tf_T_OI_CompslamLast.getRotation().z())
               .toRotationMatrix();
-      T_current.block<3, 1>(0, 3) = Eigen::Vector3d(tf_T_OI_Compslam.getOrigin().x(), tf_T_OI_Compslam.getOrigin().y(),
-                                                    tf_T_OI_Compslam.getOrigin().z());
-      T_current.block<3, 3>(0, 0) =
+      T_OI_current.block<4, 1>(0, 3) = Eigen::Vector4d(
+          tf_T_OI_Compslam.getOrigin().x(), tf_T_OI_Compslam.getOrigin().y(), tf_T_OI_Compslam.getOrigin().z(), 1.0);
+      T_OI_current.block<3, 3>(0, 0) =
           Eigen::Quaterniond(tf_T_OI_Compslam.getRotation().w(), tf_T_OI_Compslam.getRotation().x(),
                              tf_T_OI_Compslam.getRotation().y(), tf_T_OI_Compslam.getRotation().z())
               .toRotationMatrix();
-      loam::invertHomogenousMatrix(T_last, T_last_inv);
-      T_rel = T_last_inv * T_current;
+      // loam::invertHomogenousMatrix(T_OI_last, T_IO_last);
+      loam::invertHomogenousMatrix(T_OI_last, T_OI_last_inv);
+      T_rel = T_OI_last_inv * T_OI_current;
 
       // Write to delta pose --> mutex such that time and delta pose always correspond to each other
       std::lock_guard<std::mutex>* lockPtr = new std::lock_guard<std::mutex>(_lidarDeltaPoseMutex);
@@ -238,7 +249,6 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
       delete lockPtr;
 
       // Preliminary until output comes from graph
-      // Important
       //_tf_T_OI = tf_T_OI_Compslam;
     }
   }
@@ -252,6 +262,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
 
 // write to graph ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::writeToGraph() {
+  int numLidarFactors = 0;
   ROS_INFO("Thread for adding IMU factors is initialized.");
   while (ros::ok()) {
     // If imu not yet aligned, try to align it until this works
@@ -266,6 +277,7 @@ void FactorGraphFiltering::writeToGraph() {
         // IMU initialized
         _imuAligned = true;
         ROS_WARN_STREAM("Attitude of IMU is initialized. Determined Gravity Magnitude: " << g);
+        std::cout << "IMU attitude: " << _zeroYawIMUattitude << std::endl;
       }
       // Wait a bit for topics to be published
       else {
@@ -277,12 +289,8 @@ void FactorGraphFiltering::writeToGraph() {
       // Always first add new Imu measurement
       // Write to delta pose --> mutex such that time and delta pose always correspond to each other
       std::lock_guard<std::mutex>* imuLockPtr = new std::lock_guard<std::mutex>(_imuMeasurementMutex);
-      // std::cout << "Delay of LiDAR measurement[s]: " << _currentImuTime.toSec() - _currentLidarTime.toSec()
-      //          << std::endl;
       gtsam::Key lastImuKey = _currentImuKey;
       _currentImuKey = _graphMgr.newStateKey();
-      std::cout << "Lidar key: " << _currentLidarKey << ", last IMU key: " << lastImuKey
-                << ", current IMU key: " << _currentImuKey << std::endl;
 
       // Write to key buffer
       _imuBuffer.addToKeyBuffer(_currentImuTime.toSec(), _currentImuKey);
@@ -309,15 +317,17 @@ void FactorGraphFiltering::writeToGraph() {
         loam::IMUMapItr lidarMapItr;
         _imuBuffer.getClosestIMUBufferIteratorToTime(_currentLidarTime.toSec(), lidarMapItr);
         std::cout << "Found time stamp is: " << lidarMapItr->first << std::endl;
-        gtsam::Key closestLidarKey; 
+        gtsam::Key closestLidarKey;
         _imuBuffer.getCorrespondingGtsamKey(lidarMapItr->first, closestLidarKey);
 
         // Create new key
         gtsam::Key lastLidarKey = _currentLidarKey;
         _currentLidarKey = closestLidarKey;
 
-        std::cout << "Last LiDAR Key: " << lastLidarKey << ", ";
-        std::cout << "Current LiDAR Key: " << _currentLidarKey << std::endl;
+        std::cout << "Last IMU key: " << lastImuKey << ", current IMU key: " << _currentImuKey << std::endl;
+        std::cout << "Adding the " << ++numLidarFactors << "th LiDAR factor. "
+                  << "Last LiDAR Key: " << lastLidarKey << ", current LiDAR Key: " << _currentLidarKey << std::endl;
+        std::cout << "Delta Pose: " << _lidarDeltaPose << std::endl;
 
         // Write the lidar odom delta to the graph
         _graphMgr.addPoseBetweenFactor(lastLidarKey, _currentLidarKey, _lidarDeltaPose);
@@ -328,15 +338,26 @@ void FactorGraphFiltering::writeToGraph() {
       }
 
       // Update graph
-      _graphMgr.updateGraphAndState(_currentImuTime.toSec(), _currentImuKey);
+      /// Add constraints in the beginning before the first update
+      //if (numLidarFactors > 3) {
+       _graphMgr.updateGraphAndState(_currentImuTime.toSec(), _currentImuKey);
+      //}
       _newImuMeasurement = false;
       delete imuLockPtr;
       // Write output to corresponding member variable for advertisement
-      gtsam::Pose3 navState = _graphMgr._state.navState().pose();
-      Eigen::Quaterniond quat = navState.rotation().toQuaternion();
-      _tf_T_OI.setRotation(tf::Quaternion(quat.x(), quat.y(), quat.z(), quat.w()));
-      _tf_T_OI.setOrigin(tf::Vector3(navState.x(), navState.y(), navState.z()));
+      gtsam::Pose3 navState_OC = _graphMgr._state.navState().pose();
+
+      // Transform relative transformation in IMU frame to T_OI --> use cabin frame because aligned with robot
+      // orientation
+      tf::StampedTransform tf_T_CI;
+      _tfListener.lookupTransform(_cabinFrame, _imuFrame, _currentImuTime, tf_T_CI);
+      tf::StampedTransform tf_T_OC;
+      Eigen::Quaterniond quat_OC = navState_OC.rotation().toQuaternion();
+      tf_T_OC.setRotation(tf::Quaternion(quat_OC.x(), quat_OC.y(), quat_OC.z(), quat_OC.w()));
+      tf_T_OC.setOrigin(tf::Vector3(navState_OC.x(), navState_OC.y(), navState_OC.z()));
+      _tf_T_OI.setData(tf_T_OC * tf_T_CI);
       _tf_T_OI.stamp_ = _currentImuTime;
+
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
@@ -389,12 +410,12 @@ void FactorGraphFiltering::publishOdometryAndTF() {
         sensor_msgs::Imu imuBiasMsg;
         imuBiasMsg.header.frame_id = "/fg_odometry_imu";
         imuBiasMsg.header.stamp = _tf_T_OI.stamp_;
-        imuBiasMsg.linear_acceleration.x = graphIMUBias().linear_acceleration.x;
-        imuBiasMsg.linear_acceleration.y = graphIMUBias().linear_acceleration.y;
-        imuBiasMsg.linear_acceleration.z = graphIMUBias().linear_acceleration.z;
-        imuBiasMsg.angular_velocity.x = graphIMUBias().angular_velocity.x;
-        imuBiasMsg.angular_velocity.y = graphIMUBias().angular_velocity.y;
-        imuBiasMsg.angular_velocity.z = graphIMUBias().angular_velocity.z;
+        imuBiasMsg.linear_acceleration.x = graphIMUBias().accelerometer()(0);
+        imuBiasMsg.linear_acceleration.y = graphIMUBias().accelerometer()(1);
+        imuBiasMsg.linear_acceleration.z = graphIMUBias().accelerometer()(2);
+        imuBiasMsg.angular_velocity.x = graphIMUBias().gyroscope()(0);
+        imuBiasMsg.angular_velocity.y = graphIMUBias().gyroscope()(1);
+        imuBiasMsg.angular_velocity.z = graphIMUBias().gyroscope()(2);
         _pubLaserImuBias.publish(imuBiasMsg);
       }
     }

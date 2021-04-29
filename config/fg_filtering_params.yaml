@@ -9,6 +9,7 @@ odomFrame: odom
 baseLinkFrame: BASE
 lidarFrame: os_lidar                     #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
 imuFrame: IMU_CABIN_link                 #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
+cabinFrame: CABIN
 gnssFrame: _
 
 #Factor Graph
@@ -35,5 +36,5 @@ cacheLinearizedFactors: true
 findUnusedFactorSlots: false
 enablePartialRelinearizationCheck: true
 enableDetailedResults: false
-poseBetweenNoise: [0.5, 0.5, 0.05, 0.1, 0.1, 0.1] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+poseBetweenNoise: [0.0005, 0.0005, 0.00005, 0.0001, 0.0001, 0.0001] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
 zeroMotionDetection: false                        #Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)

@@ -48,12 +48,13 @@ class FactorGraphFiltering {
   void setBaseLinkFrame(const std::string& s) { _baseLinkFrame = s; }
   void setImuFrame(const std::string& s) { _imuFrame = s; }
   void setLidarFrame(const std::string& s) { _lidarFrame = s; }
+  void setCabinFrame(const std::string& s) { _cabinFrame = s; }
   //// Timing and Motions
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setZeroMotionDetection(const bool b) { _zeroMotionDetection = b; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
   auto const& transformSum() { return _transformSum; }
-  auto const& graphIMUBias() const { return _imuBiasMsg; }
+  auto const& graphIMUBias() const { return _graphMgr._state.imuBias(); }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
@@ -147,6 +148,7 @@ class FactorGraphFiltering {
   std::string _baseLinkFrame = "";
   std::string _imuFrame = "";
   std::string _lidarFrame = "";
+  std::string _cabinFrame = "";
 
   /// Publishers
   ros::Publisher _pubOdometry;              // laser odometry publisher
@@ -158,9 +160,6 @@ class FactorGraphFiltering {
   ros::Subscriber _subImu;            /// IMU subscriber
   ros::Subscriber _subLidarOdometry;  // LiDAR Odometry subscriber
   tf::TransformListener _tfListener;
-
-  /// Messages
-  sensor_msgs::Imu _imuBiasMsg;  // IMU bias publishing ROS message
 
   /// Motion Parameters
   bool _gravityAttitudeInit = false;  // Flag if attitude from gravity were initialized
