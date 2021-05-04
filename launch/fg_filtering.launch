@@ -9,16 +9,28 @@
   <!-- Input topics remap -->
   <!--arg name="lidar_odometry_topic_name" default="/loam_transform_CORRECTED" /-->
   <!--arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" /-->
+  
+  <!-- Config for fg_filtering -->
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
-  <arg name="gnss_topic_name" default="/m545_gnss_left" />
+  <arg name="gnss_left_topic_name" default="/m545_gnss_left" />
+  <arg name="gnss_right_topic_name" default="/m545_gnss_right" />
+
+  <!-- Config for loam -->
+  <arg name="pointcloud_topic_name" default="/os_cloud_node/points" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
-    <remap from="/gnss_topic" to="$(arg gnss_topic_name)" />
+    <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
+    <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />
   </node>
+
+  <!-- Launch compslam -->
+  <include file="$(find loam)/launch/loam_m545.launch"> 
+    <arg name="pointcloud_topic_name"    value="$(arg pointcloud_topic_name)" />
+  </include>
 
 </launch>

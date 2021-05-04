@@ -82,7 +82,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   }
 
   // Geodetic Converter
-  _geodeticConverter = geodetic_converter::GeodeticConverter();
+  _geodeticConverterLeft = geodetic_converter::GeodeticConverter();
+  _geodeticConverterRight = geodetic_converter::GeodeticConverter();
 
   // Factor Graph
   if (privateNode.getParam("accNoiseDensity", dParam)) _graphMgr.setAccNoiseDensity(dParam);
@@ -136,10 +137,12 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _pubOdometry = privateNode.advertise<nav_msgs::Odometry>("/transform_odom_base", 5);
   _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/fg_imu_bias", 20);
   _pubOdomPath = node.advertise<nav_msgs::Path>("/odom_path", 5);
-  _pubGnssPath = node.advertise<nav_msgs::Path>("/gnss_path", 20);
+  _pubLeftGnssPath = node.advertise<nav_msgs::Path>("/gnss_path_left", 20);
+  _pubRightGnssPath = node.advertise<nav_msgs::Path>("/gnss_path_right", 20);
   /// Messages
   _odomPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
-  _gnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
+  _leftGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
+  _rightGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
 
   // Subscribers
   /// subscribe to remapped IMU topic
@@ -151,9 +154,12 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
       node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback,
                                          this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
-  /// subscribe to gnss topic
-  _subGnss = node.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", 20, &FactorGraphFiltering::gnssCallback, this,
-                                                    ros::TransportHints().tcpNoDelay());
+
+  // subscribe to gnss topics using ROS exact sync policy in a single callback
+  _subGnssLeft.subscribe(node, "/gnss_topic_left", 20);
+  _subGnssRight.subscribe(node, "/gnss_topic_right", 20);
+  _gnssExactSyncPtr.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(20), _subGnssLeft, _subGnssRight));
+  _gnssExactSyncPtr->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback, this, _1, _2));
 
   // Initialize helper threads
   _publishOdometryAndTFThread = std::thread(&FactorGraphFiltering::publishOdometryAndTF, this);
@@ -260,7 +266,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
       delete lockPtr;
 
       // Preliminary until output comes from graph
-      _tf_T_OI = tf_T_OI_Compslam;
+      //_tf_T_OI = tf_T_OI_Compslam;
     }
   }
   if (_firstScanCallback) {
@@ -271,39 +277,68 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   _tf_T_OI_CompslamLast = tf_T_OI_Compslam;
 }
 
-void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& gnss_ptr) {
+void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr) {
   // First callback --> set position to zero
   if (_firstGnssCallback) {
-    _geodeticConverter.initialiseReference(gnss_ptr->latitude, gnss_ptr->longitude, gnss_ptr->altitude);
+    /// Left
+    _geodeticConverterLeft.initialiseReference(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude);
     _firstGnssCallback = false;
-    if (_geodeticConverter.isInitialised()) {
-      ROS_INFO("GNSS position was initialized.");
+    if (_geodeticConverterLeft.isInitialised()) {
+      ROS_INFO("Left GNSS position was initialized.");
     } else {
-      ROS_ERROR("GNSS position could not be initialized.");
+      ROS_ERROR("Left GNSS position could not be initialized.");
     }
+    /// Right
+    _geodeticConverterRight.initialiseReference(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude);
+    _firstGnssCallback = false;
+    if (_geodeticConverterRight.isInitialised()) {
+      ROS_INFO("Right GNSS position was initialized.");
+    } else {
+      ROS_ERROR("Right GNSS position could not be initialized.");
+    }
+  // Later callbacks
   } else {
-    // ROS_INFO_STREAM("GNSS altitude: " << gnss_ptr->altitude);
-    auto eastPtr = std::make_unique<double>();
-    auto northPtr = std::make_unique<double>();
-    auto upPtr = std::make_unique<double>();
-    _geodeticConverter.geodetic2Enu(gnss_ptr->latitude, gnss_ptr->longitude, gnss_ptr->altitude, eastPtr.get(),
-                                    northPtr.get(), upPtr.get());
-    ROS_INFO_STREAM("East, north, up: " << *eastPtr << ", " << *northPtr << ", " << *upPtr);
+    /// Left
+    auto leftEastPtr = std::make_unique<double>();
+    auto leftNorthPtr = std::make_unique<double>();
+    auto leftUpPtr = std::make_unique<double>();
+    _geodeticConverterLeft.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
+                                    leftNorthPtr.get(), leftUpPtr.get());
+    /// Right
+    auto rightEastPtr = std::make_unique<double>();
+    auto rightNorthPtr = std::make_unique<double>();
+    auto rightUpPtr = std::make_unique<double>();
+    _geodeticConverterRight.geodetic2Enu(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude, rightEastPtr.get(),
+                                    rightNorthPtr.get(), rightUpPtr.get());
 
     // Publish path
-    /// Pose
+    /// Left
+    //// Pose
     geometry_msgs::PoseStamped pose;
     pose.header.frame_id = _odomFrame;
-    pose.header.stamp = gnss_ptr->header.stamp;
-    pose.pose.position.x = *eastPtr;
-    pose.pose.position.y = *northPtr;
-    pose.pose.position.z = *upPtr;
-    /// Path
-    _gnssPathPtr->header.frame_id = _odomFrame;
-    _gnssPathPtr->header.stamp = gnss_ptr->header.stamp;
-    _gnssPathPtr->poses.push_back(pose);
-    /// Publish
-    _pubGnssPath.publish(_gnssPathPtr);
+    pose.header.stamp = leftGnssPtr->header.stamp;
+    pose.pose.position.x = *leftEastPtr;
+    pose.pose.position.y = *leftNorthPtr;
+    pose.pose.position.z = *leftUpPtr;
+    //// Path
+    _leftGnssPathPtr->header.frame_id = _odomFrame;
+    _leftGnssPathPtr->header.stamp = leftGnssPtr->header.stamp;
+    _leftGnssPathPtr->poses.push_back(pose);
+    //// Publish
+    _pubLeftGnssPath.publish(_leftGnssPathPtr);
+    /// Right
+    //// Pose
+    pose.header.frame_id = _odomFrame;
+    pose.header.stamp = rightGnssPtr->header.stamp;
+    pose.pose.position.x = *rightEastPtr;
+    pose.pose.position.y = *rightNorthPtr;
+    pose.pose.position.z = *rightUpPtr;
+    //// Path
+    _rightGnssPathPtr->header.frame_id = _odomFrame;
+    _rightGnssPathPtr->header.stamp = rightGnssPtr->header.stamp;
+    _rightGnssPathPtr->poses.push_back(pose);
+    //// Publish
+    _pubRightGnssPath.publish(_rightGnssPathPtr);
   }
 }
 
@@ -392,18 +427,19 @@ void FactorGraphFiltering::writeToGraph() {
       _newImuMeasurement = false;
       delete imuLockPtr;
       // Write output to corresponding member variable for advertisement
-      gtsam::Pose3 navState_OC = _graphMgr._state.navState().pose();
+      gtsam::Pose3 I_T_rel = _graphMgr._state.navState().pose();
+      // Transform relative transformation in IMU frame to T_OI
+      tf::StampedTransform tfT_CI, tfT_IC;
+      _tfListener.lookupTransform(_cabinFrame, _imuFrame, _currentImuTime, tfT_CI);
+      _tfListener.lookupTransform(_imuFrame, _cabinFrame, _currentImuTime, tfT_IC);
+      tf::StampedTransform I_tfT_rel, tfT_OC;
+      Eigen::Quaterniond I_r_rel = I_T_rel.rotation().toQuaternion();
+      I_tfT_rel.setRotation(tf::Quaternion(I_r_rel.x(), I_r_rel.y(), I_r_rel.z(), I_r_rel.w()));
+      I_tfT_rel.setOrigin(tf::Vector3(I_T_rel.x(), I_T_rel.y(), I_T_rel.z()));
+      tfT_OC.setData(tfT_CI * I_tfT_rel * tfT_IC);
 
-      // Transform relative transformation in IMU frame to T_OI --> use cabin frame because aligned with robot
-      // orientation
-      tf::StampedTransform tf_T_CI;
-      _tfListener.lookupTransform(_cabinFrame, _imuFrame, _currentImuTime, tf_T_CI);
-      tf::StampedTransform tf_T_OC;
-      Eigen::Quaterniond quat_OC = navState_OC.rotation().toQuaternion();
-      tf_T_OC.setRotation(tf::Quaternion(quat_OC.x(), quat_OC.y(), quat_OC.z(), quat_OC.w()));
-      tf_T_OC.setOrigin(tf::Vector3(navState_OC.x(), navState_OC.y(), navState_OC.z()));
-      //_tf_T_OI.setData(tf_T_OC * tf_T_CI);
-      //_tf_T_OI.stamp_ = _currentImuTime;
+      _tf_T_OI.setData(tfT_OC * tfT_CI);
+      _tf_T_OI.stamp_ = _currentImuTime;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }

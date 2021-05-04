@@ -23,7 +23,7 @@
 
 // catkin workspace
 /// loam
-#include "loam/Angle.h"
+//#include "loam/Angle.h"
 #include "loam/GraphManager.hpp"
 #include "loam/ImuManager.hpp"
 #include "loam/Twist.h"
@@ -72,7 +72,7 @@ class FactorGraphFiltering {
   /// LiDAR Odometry Callback
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   /// GNSS Callback
-  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& gnss_ptr);
+  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
 
   void print_map(loam::IMUMap m) {
     for (auto const& pair : m) {
@@ -103,7 +103,8 @@ class FactorGraphFiltering {
 
   // Member variables -------------
   /// Geodetic Converter
-  geodetic_converter::GeodeticConverter _geodeticConverter;
+  geodetic_converter::GeodeticConverter _geodeticConverterLeft;
+  geodetic_converter::GeodeticConverter _geodeticConverterRight;
 
   /// IMU buffer
   loam::ImuManager _imuBuffer;
@@ -165,17 +166,24 @@ class FactorGraphFiltering {
   ros::Publisher _pubOdometry;
   ros::Publisher _pubLaserImuBias;
   ros::Publisher _pubOdomPath;
-  ros::Publisher _pubGnssPath;
+  ros::Publisher _pubLeftGnssPath;
+  ros::Publisher _pubRightGnssPath;
   tf::TransformBroadcaster _tfBroadcaster;
+  
   /// Messages
   nav_msgs::PathPtr _odomPathPtr;
-  nav_msgs::PathPtr _gnssPathPtr;
+  nav_msgs::PathPtr _leftGnssPathPtr;
+  nav_msgs::PathPtr _rightGnssPathPtr;
+  //// Exact sync for gnss
+  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
+  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
 
   /// Subscribers
   ros::Subscriber _subImu;
   ros::Subscriber _subLidarOdometry;
-  ros::Subscriber _subGnss;
   tf::TransformListener _tfListener;
+  message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
+  message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
 
   /// Motion Parameters
   bool _gravityAttitudeInit = false;  // Flag if attitude from gravity were initialized
