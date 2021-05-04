@@ -11,12 +11,14 @@
   <!--arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" /-->
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
+  <arg name="gnss_topic_name" default="/m545_gnss_left" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
+    <remap from="/gnss_topic" to="$(arg gnss_topic_name)" />
   </node>
 
 </launch>

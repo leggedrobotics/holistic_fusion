@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
-  pcl_conversions
   eigen_conversions
   tf_conversions
   message_generation
@@ -17,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   message_filters
   loam
+  geodetic_utils
 )
 
 find_package(Eigen3 REQUIRED)
@@ -35,8 +35,6 @@ include_directories(
   include
   ${loam_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
-	#${EIGEN3_INCLUDE_DIR}
-	${PCL_INCLUDE_DIRS}
   ${GTSAM_INCLUDE_DIR}
 )
 

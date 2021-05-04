@@ -7,10 +7,12 @@
 #include <thread>
 
 // ROS
-#include <nav_msgs/Odometry.h>
 #include <ros/node_handle.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <nav_msgs/Path.h>
+
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -19,15 +21,18 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
-// loam
+// catkin workspace
+/// loam
 #include "loam/Angle.h"
 #include "loam/GraphManager.hpp"
 #include "loam/ImuManager.hpp"
 #include "loam/Twist.h"
 #include "loam/math_utils.h"
+/// geodetic_utils
+#include "geodetic_utils/geodetic_conv.hpp"
 
 // Local
-#include "LidarOdometryManager.hpp"
+//#include "LidarOdometryManager.hpp"
 //#include "math_utils.h"
 
 namespace fg_filtering {
@@ -66,6 +71,8 @@ class FactorGraphFiltering {
   void imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr);
   /// LiDAR Odometry Callback
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  /// GNSS Callback
+  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& gnss_ptr);
 
   void print_map(loam::IMUMap m) {
     for (auto const& pair : m) {
@@ -95,6 +102,9 @@ class FactorGraphFiltering {
   std::mutex _imuMeasurementMutex;
 
   // Member variables -------------
+  /// Geodetic Converter
+  geodetic_converter::GeodeticConverter _geodeticConverter;
+
   /// IMU buffer
   loam::ImuManager _imuBuffer;
 
@@ -102,10 +112,11 @@ class FactorGraphFiltering {
   loam::GraphManager _graphMgr;
 
   /// Flags
-  bool _systemInited = false;  // initialization flag
+  bool _systemInited = false;
   bool _imuAligned = false;
   bool _graphInited = false;
   bool _firstScanCallback = true;
+  bool _firstGnssCallback = true;
 
   /// Times
   ros::Time _lastImuTime;
@@ -151,14 +162,19 @@ class FactorGraphFiltering {
   std::string _cabinFrame = "";
 
   /// Publishers
-  ros::Publisher _pubOdometry;              // laser odometry publisher
-  ros::Publisher _pubLaserImuBias;          // laser odometry imu bias publisher
-  tf::TransformBroadcaster _tfBroadcaster;  // laser odometry transform broadcaster
+  ros::Publisher _pubOdometry;
+  ros::Publisher _pubLaserImuBias;
+  ros::Publisher _pubOdomPath;
+  ros::Publisher _pubGnssPath;
+  tf::TransformBroadcaster _tfBroadcaster;
+  /// Messages
+  nav_msgs::PathPtr _odomPathPtr;
+  nav_msgs::PathPtr _gnssPathPtr;
 
   /// Subscribers
-  ros::Subscriber _subImuTrans;       // IMU transformation information message subscriber
-  ros::Subscriber _subImu;            /// IMU subscriber
-  ros::Subscriber _subLidarOdometry;  // LiDAR Odometry subscriber
+  ros::Subscriber _subImu;
+  ros::Subscriber _subLidarOdometry;
+  ros::Subscriber _subGnss;
   tf::TransformListener _tfListener;
 
   /// Motion Parameters
@@ -167,8 +183,7 @@ class FactorGraphFiltering {
   bool _zeroMotionDetection = false;  // Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)
 
   /// Timing
-  double _imuTimeOffset =
-      0.0;  // Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
+  double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
   float _scanPeriod;  // time per scan
   uint16_t _ioRatio;  // ratio of input to output frames
 

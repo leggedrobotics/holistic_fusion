@@ -81,6 +81,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     }
   }
 
+  // Geodetic Converter
+  _geodeticConverter = geodetic_converter::GeodeticConverter();
+
   // Factor Graph
   if (privateNode.getParam("accNoiseDensity", dParam)) _graphMgr.setAccNoiseDensity(dParam);
   if (privateNode.getParam("accBiasRandomWalk", dParam)) _graphMgr.setAccBiasRandomWalk(dParam);
@@ -132,6 +135,11 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   /// advertise odometry topic
   _pubOdometry = privateNode.advertise<nav_msgs::Odometry>("/transform_odom_base", 5);
   _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/fg_imu_bias", 20);
+  _pubOdomPath = node.advertise<nav_msgs::Path>("/odom_path", 5);
+  _pubGnssPath = node.advertise<nav_msgs::Path>("/gnss_path", 20);
+  /// Messages
+  _odomPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
+  _gnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
 
   // Subscribers
   /// subscribe to remapped IMU topic
@@ -143,6 +151,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
       node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback,
                                          this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
+  /// subscribe to gnss topic
+  _subGnss = node.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", 20, &FactorGraphFiltering::gnssCallback, this,
+                                                    ros::TransportHints().tcpNoDelay());
 
   // Initialize helper threads
   _publishOdometryAndTFThread = std::thread(&FactorGraphFiltering::publishOdometryAndTF, this);
@@ -249,7 +260,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
       delete lockPtr;
 
       // Preliminary until output comes from graph
-      //_tf_T_OI = tf_T_OI_Compslam;
+      _tf_T_OI = tf_T_OI_Compslam;
     }
   }
   if (_firstScanCallback) {
@@ -258,6 +269,42 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
 
   // Set last pose for the next iteration
   _tf_T_OI_CompslamLast = tf_T_OI_Compslam;
+}
+
+void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& gnss_ptr) {
+  // First callback --> set position to zero
+  if (_firstGnssCallback) {
+    _geodeticConverter.initialiseReference(gnss_ptr->latitude, gnss_ptr->longitude, gnss_ptr->altitude);
+    _firstGnssCallback = false;
+    if (_geodeticConverter.isInitialised()) {
+      ROS_INFO("GNSS position was initialized.");
+    } else {
+      ROS_ERROR("GNSS position could not be initialized.");
+    }
+  } else {
+    // ROS_INFO_STREAM("GNSS altitude: " << gnss_ptr->altitude);
+    auto eastPtr = std::make_unique<double>();
+    auto northPtr = std::make_unique<double>();
+    auto upPtr = std::make_unique<double>();
+    _geodeticConverter.geodetic2Enu(gnss_ptr->latitude, gnss_ptr->longitude, gnss_ptr->altitude, eastPtr.get(),
+                                    northPtr.get(), upPtr.get());
+    ROS_INFO_STREAM("East, north, up: " << *eastPtr << ", " << *northPtr << ", " << *upPtr);
+
+    // Publish path
+    /// Pose
+    geometry_msgs::PoseStamped pose;
+    pose.header.frame_id = _odomFrame;
+    pose.header.stamp = gnss_ptr->header.stamp;
+    pose.pose.position.x = *eastPtr;
+    pose.pose.position.y = *northPtr;
+    pose.pose.position.z = *upPtr;
+    /// Path
+    _gnssPathPtr->header.frame_id = _odomFrame;
+    _gnssPathPtr->header.stamp = gnss_ptr->header.stamp;
+    _gnssPathPtr->poses.push_back(pose);
+    /// Publish
+    _pubGnssPath.publish(_gnssPathPtr);
+  }
 }
 
 // write to graph ----------------------------------------------------------------------------------------
@@ -339,8 +386,8 @@ void FactorGraphFiltering::writeToGraph() {
 
       // Update graph
       /// Add constraints in the beginning before the first update
-      //if (numLidarFactors > 3) {
-       _graphMgr.updateGraphAndState(_currentImuTime.toSec(), _currentImuKey);
+      // if (numLidarFactors > 3) {
+      _graphMgr.updateGraphAndState(_currentImuTime.toSec(), _currentImuKey);
       //}
       _newImuMeasurement = false;
       delete imuLockPtr;
@@ -355,9 +402,8 @@ void FactorGraphFiltering::writeToGraph() {
       Eigen::Quaterniond quat_OC = navState_OC.rotation().toQuaternion();
       tf_T_OC.setRotation(tf::Quaternion(quat_OC.x(), quat_OC.y(), quat_OC.z(), quat_OC.w()));
       tf_T_OC.setOrigin(tf::Vector3(navState_OC.x(), navState_OC.y(), navState_OC.z()));
-      _tf_T_OI.setData(tf_T_OC * tf_T_CI);
-      _tf_T_OI.stamp_ = _currentImuTime;
-
+      //_tf_T_OI.setData(tf_T_OC * tf_T_CI);
+      //_tf_T_OI.stamp_ = _currentImuTime;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
@@ -396,14 +442,27 @@ void FactorGraphFiltering::publishOdometryAndTF() {
 
       // Publish to Tf tree
       _tfBroadcaster.sendTransform(_tf_T_OB);
-      // ROS_INFO("TF broadcasted.");
 
+      // Publish odometry message
       nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
       odomBaseMsgPtr->header.frame_id = _tf_T_OB.frame_id_;
       odomBaseMsgPtr->child_frame_id = _tf_T_OB.child_frame_id_;
       odomBaseMsgPtr->header.stamp = _tf_T_OB.stamp_;
       tf::poseTFToMsg(_tf_T_OB, odomBaseMsgPtr->pose.pose);
       _pubOdometry.publish(odomBaseMsgPtr);
+
+      // Publish path
+      /// Pose
+      geometry_msgs::PoseStamped pose;
+      pose.header.frame_id = odomBaseMsgPtr->header.frame_id;
+      pose.header.stamp = odomBaseMsgPtr->header.stamp;
+      pose.pose = odomBaseMsgPtr->pose.pose;
+      /// Path
+      _odomPathPtr->header.frame_id = odomBaseMsgPtr->header.frame_id;
+      _odomPathPtr->header.stamp = odomBaseMsgPtr->header.stamp;
+      _odomPathPtr->poses.push_back(pose);
+      /// Publish
+      _pubOdomPath.publish(_odomPathPtr);
 
       // IMU Bias
       if (_pubLaserImuBias.getNumSubscribers() > 0) {
