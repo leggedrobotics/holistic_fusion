@@ -54,6 +54,8 @@ class FactorGraphFiltering {
   void setImuFrame(const std::string& s) { _imuFrame = s; }
   void setLidarFrame(const std::string& s) { _lidarFrame = s; }
   void setCabinFrame(const std::string& s) { _cabinFrame = s; }
+  void setLeftGnssFrame(const std::string& s) { _leftGnssFrame = s; }
+  void setRightGnssFrame(const std::string& s) { _rightGnssFrame = s; }
   //// Timing and Motions
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setZeroMotionDetection(const bool b) { _zeroMotionDetection = b; }
@@ -121,18 +123,20 @@ class FactorGraphFiltering {
 
   /// Times
   ros::Time _lastImuTime;
-  ros::Time _lastLidarTime;
+  ros::Time _lastCompslamTime;
   ros::Time _currentImuTime;
-  ros::Time _currentLidarTime;
+  ros::Time _currentCompslamTime;
 
   /// Graph keys
   gtsam::Key _currentImuKey;
   gtsam::Key _currentLidarKey;
 
   /// Transformations
+  //// Compslam
   tf::StampedTransform _tf_T_OI_CompslamLast;
-  //// Output of factor graph
-  tf::StampedTransform _tf_T_OI;  // odometry transformation
+  tf::StampedTransform _tf_T_OC_Compslam;
+  //// Transformed output of factor graph
+  tf::StampedTransform _tf_T_OC;  // odometry transformation
   //// Transform of interest for state estimation
   tf::StampedTransform _tf_T_OB;
   //// IMU init
@@ -161,17 +165,21 @@ class FactorGraphFiltering {
   std::string _imuFrame = "";
   std::string _lidarFrame = "";
   std::string _cabinFrame = "";
+  std::string _leftGnssFrame = "";
+  std::string _rightGnssFrame = "";
 
   /// Publishers
   ros::Publisher _pubOdometry;
   ros::Publisher _pubLaserImuBias;
   ros::Publisher _pubOdomPath;
+  ros::Publisher _pubCompslamPath;
   ros::Publisher _pubLeftGnssPath;
   ros::Publisher _pubRightGnssPath;
   tf::TransformBroadcaster _tfBroadcaster;
   
   /// Messages
   nav_msgs::PathPtr _odomPathPtr;
+  nav_msgs::PathPtr _compslamPathPtr;
   nav_msgs::PathPtr _leftGnssPathPtr;
   nav_msgs::PathPtr _rightGnssPathPtr;
   //// Exact sync for gnss

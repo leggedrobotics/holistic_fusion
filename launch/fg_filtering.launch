@@ -29,7 +29,7 @@
   </node>
 
   <!-- Launch compslam -->
-  <include file="$(find loam)/launch/loam_m545.launch"> 
+  <include file="$(find loam)/launch/loam_m545.launch" output="log"> 
     <arg name="pointcloud_topic_name"    value="$(arg pointcloud_topic_name)" />
   </include>
 
