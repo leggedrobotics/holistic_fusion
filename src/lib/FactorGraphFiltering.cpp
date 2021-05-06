@@ -508,6 +508,9 @@ void FactorGraphFiltering::publishOdometryAndTF() {
     if (!_systemInited && _imuAligned && _graphInited) {
       _systemInited = true;
       ROS_WARN("System fully initialized, start publishing.");
+      // Initialize timing variables
+      lastFactorGraphStamp = currentFactorGraphStamp;
+      lastCompslamStamp = currentCompslamStamp;
     }
     // Actual publishing
     else {
@@ -554,6 +557,9 @@ void FactorGraphFiltering::publishOdometryAndTF() {
           imuBiasMsg.angular_velocity.z = graphIMUBias().gyroscope()(2);
           _pubLaserImuBias.publish(imuBiasMsg);
         }
+
+        // Update time
+        lastFactorGraphStamp = currentFactorGraphStamp;
       }
       // Visualization of Compslam pose
       if (_systemInited && currentCompslamStamp != lastCompslamStamp) {
@@ -567,17 +573,17 @@ void FactorGraphFiltering::publishOdometryAndTF() {
         _compslamPathPtr->poses.push_back(poseStamped);
         /// Publish
         _pubCompslamPath.publish(_compslamPathPtr);
+        // Update time
+        lastCompslamStamp = currentCompslamStamp;
       }
     }
-
-    lastFactorGraphStamp = currentFactorGraphStamp;
-    lastCompslamStamp = currentCompslamStamp;
+    
     // Time to exactly 100 Hz
     endLoopTime = std::chrono::system_clock::now();
     // ROS_WARN_STREAM("Odometry publishing took "
     //                 << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
     //                 << " milliseconds.");
-    std::this_thread::sleep_for(std::chrono::milliseconds(10) - (endLoopTime - startLoopTime));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(10) - (endLoopTime - startLoopTime));
   }
 }
 
