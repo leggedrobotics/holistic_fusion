@@ -1,5 +1,5 @@
-#ifndef LOAM_LASERODOMETRY_H
-#define LOAM_LASERODOMETRY_H
+#ifndef FG_FILTERING_H
+#define FG_FILTERING_H
 
 // CPP
 #include <mutex>
@@ -22,12 +22,10 @@
 #include <message_filters/synchronizer.h>
 
 // catkin workspace
-/// loam
-//#include "loam/Angle.h"
-#include "loam/GraphManager.hpp"
-#include "loam/ImuManager.hpp"
-#include "loam/Twist.h"
-#include "loam/math_utils.h"
+/// Own Headers
+#include "fg_filtering/GraphManager.hpp"
+#include "fg_filtering/ImuManager.hpp"
+#include "fg_filtering/geometry/math_utils.h"
 /// geodetic_utils
 #include "geodetic_utils/geodetic_conv.hpp"
 
@@ -60,7 +58,6 @@ class FactorGraphFiltering {
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setZeroMotionDetection(const bool b) { _zeroMotionDetection = b; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
-  auto const& transformSum() { return _transformSum; }
   auto const& graphIMUBias() const { return _graphMgr._state.imuBias(); }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
@@ -76,7 +73,7 @@ class FactorGraphFiltering {
   /// GNSS Callback
   void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
 
-  void print_map(loam::IMUMap m) {
+  void print_map(IMUMap m) {
     for (auto const& pair : m) {
       std::cout << "{" << pair.first << ": " << pair.second << "}\n";
     }
@@ -109,10 +106,10 @@ class FactorGraphFiltering {
   geodetic_converter::GeodeticConverter _geodeticConverterRight;
 
   /// IMU buffer
-  loam::ImuManager _imuBuffer;
+  ImuManager _imuBuffer;
 
   /// Factor graph
-  loam::GraphManager _graphMgr;
+  GraphManager _graphMgr;
 
   /// Flags
   bool _systemInited = false;
@@ -148,11 +145,6 @@ class FactorGraphFiltering {
   //// LiDAR Delta Pose
   gtsam::Pose3 _lidarDeltaPose;
   bool _newLidarDeltaPose = false;
-
-  /// Twists
-  loam::Twist _transform;     // optimized pose transformation //smk: also used as motion prior, also adjusted by IMU or
-                              // VIO(if needed)
-  loam::Twist _transformSum;  // accumulated optimized pose transformation
 
   /// ROS related
   ros::Time _timeImuTrans;  // time of current IMU transformation information
@@ -212,4 +204,4 @@ class FactorGraphFiltering {
 
 }  // end namespace fg_filtering
 
-#endif  // LOAM_LASERODOMETRY_H
+#endif  // FG_FILTERING_H

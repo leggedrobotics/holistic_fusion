@@ -15,7 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   nodelet
   message_filters
-  loam
   geodetic_utils
 )
 
@@ -36,6 +35,7 @@ include_directories(
   ${loam_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
   ${GTSAM_INCLUDE_DIR}
+  ${PCL_INCLUDE_DIRS}
 )
 
 add_message_files(

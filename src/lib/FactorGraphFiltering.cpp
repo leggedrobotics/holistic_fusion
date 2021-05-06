@@ -1,7 +1,5 @@
 #include "fg_filtering/FactorGraphFiltering.h"
 
-#include <pcl/filters/filter.h>
-
 namespace fg_filtering {
 
 using std::asin;
@@ -141,7 +139,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   // Verbosity
   iParam = 0;
   if (privateNode.getParam("Verbosity", iParam)) {
-    ROS_INFO("Set loamVerbosity: %d", iParam);
+    ROS_INFO("Set fg_filtering-Verbosity: %d", iParam);
     setVerboseLevel(iParam);
   } else
     setVerboseLevel(0);
@@ -273,8 +271,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
           Eigen::Quaterniond(tf_T_OI_Compslam.getRotation().w(), tf_T_OI_Compslam.getRotation().x(),
                              tf_T_OI_Compslam.getRotation().y(), tf_T_OI_Compslam.getRotation().z())
               .toRotationMatrix();
-      // loam::invertHomogenousMatrix(T_OI_last, T_IO_last);
-      loam::invertHomogenousMatrix(T_OI_last, T_OI_last_inv);
+      invertHomogenousMatrix(T_OI_last, T_OI_last_inv);
       I_T_rel = T_OI_last_inv * T_OI_current;
 
       // Write to delta pose --> mutex such that time and delta pose always correspond to each other
@@ -412,7 +409,7 @@ void FactorGraphFiltering::writeToGraph() {
       _imuBuffer.addToKeyBuffer(_currentImuTime.toSec(), _currentImuKey);
 
       // Create IMU Map
-      loam::IMUMap imuMeas;
+      IMUMap imuMeas;
       bool success = _imuBuffer.getLastTwoMeasurements(imuMeas);
       // std::cout << "Map: ";
       // print_map(imuMeas);
@@ -430,7 +427,7 @@ void FactorGraphFiltering::writeToGraph() {
         std::lock_guard<std::mutex>* lidarLockPtr = new std::lock_guard<std::mutex>(_lidarDeltaPoseMutex);
 
         // Find closest lidar key in existing graph
-        loam::IMUMapItr lidarMapItr;
+        IMUMapItr lidarMapItr;
         _imuBuffer.getClosestIMUBufferIteratorToTime(_currentCompslamTime.toSec(), lidarMapItr);
         std::cout << "Found time stamp is: " << lidarMapItr->first << std::endl;
         gtsam::Key closestLidarKey;

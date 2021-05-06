@@ -17,7 +17,7 @@
   <arg name="gnss_right_topic_name" default="/m545_gnss_right" />
 
   <!-- Config for loam -->
-  <arg name="pointcloud_topic_name" default="/os_cloud_node/points" />
+  <arg name="pointcloud_topic_name" default="/ouster_points_self_filtered" /> #default="/os_cloud_node/points" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">

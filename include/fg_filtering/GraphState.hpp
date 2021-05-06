@@ -8,7 +8,7 @@
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/NavState.h>
 
-namespace loam {
+namespace fg_filtering {
 // Class defining Robot State
 class State {
  private:
@@ -69,5 +69,5 @@ class State {
     return *this;
   }
 };
-}  // namespace loam
+}  // namespace fg_filtering
 #endif
