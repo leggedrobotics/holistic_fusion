@@ -381,6 +381,8 @@ void FactorGraphFiltering::writeToGraph() {
       // Create IMU Map
       IMUMap imuMeas;
       bool success = _imuBuffer.getLastTwoMeasurements(imuMeas);
+      IMUMapItr endItr = --(imuMeas.end());
+      ROS_WARN_STREAM("Returned IMU message at time " << endItr->first << " is: " << endItr->second);
       if (success) {
         _graphMgr.addImuFactor(imuKey_km1, _imuKey_k, imuMeas);
       } else {
