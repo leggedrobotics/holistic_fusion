@@ -7,12 +7,11 @@
 #include <thread>
 
 // ROS
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <ros/node_handle.h>
 #include <sensor_msgs/Imu.h>
-#include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
-#include <nav_msgs/Path.h>
-
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -56,7 +55,6 @@ class FactorGraphFiltering {
   void setRightGnssFrame(const std::string& s) { _rightGnssFrame = s; }
   //// Timing and Motions
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
-  void setZeroMotionDetection(const bool b) { _zeroMotionDetection = b; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
   auto const& graphIMUBias() const { return _graphMgr._state.imuBias(); }
   /// Setup function
@@ -71,7 +69,8 @@ class FactorGraphFiltering {
   /// LiDAR Odometry Callback
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   /// GNSS Callback
-  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
+                    const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
 
   void print_map(IMUMap m) {
     for (auto const& pair : m) {
@@ -81,6 +80,13 @@ class FactorGraphFiltering {
 
  private:
   // Functions -------------
+  /// Set Imu Attitude
+  void alignImu();
+  /// Initialize GNSS pose
+  void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
+                const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  /// Initialize the graph
+  void initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr);
   /// Publish the current result via the respective topics.
   void publishOdometryAndTF();
   /// Write IMU to grah
@@ -115,29 +121,34 @@ class FactorGraphFiltering {
   bool _systemInited = false;
   bool _imuAligned = false;
   bool _graphInited = false;
+  bool _firstLidarOdomCallback = true;
   bool _firstScanCallback = true;
   bool _firstGnssCallback = true;
 
   /// Times
-  ros::Time _lastImuTime;
-  ros::Time _lastCompslamTime;
-  ros::Time _currentImuTime;
-  ros::Time _currentCompslamTime;
+  ros::Time _imuTime_km1;
+  ros::Time _compslamTime_km1;
+  ros::Time _imuTime_k;
+  ros::Time _compslamTime_k;
 
   /// Graph keys
-  gtsam::Key _currentImuKey;
-  gtsam::Key _currentLidarKey;
+  gtsam::Key _imuKey_k;
+  gtsam::Key _lidarKey_k;
 
   /// Transformations
   //// Compslam
-  tf::StampedTransform _tf_T_OI_CompslamLast;
+  tf::StampedTransform _tf_T_OI_Compslam_km1;
   tf::StampedTransform _tf_T_OC_Compslam;
   //// Transformed output of factor graph
   tf::StampedTransform _tf_T_OC;  // odometry transformation
   //// Transform of interest for state estimation
   tf::StampedTransform _tf_T_OB;
-  //// IMU init
+  //// Inverse initial compslam pose
+  tf::Transform _tf_T_OI_init_inv;
+  /// Attitude Parameters
   gtsam::Rot3 _zeroYawIMUattitude;
+  double _gravityConstant;
+  tf::Transform _tf_initialImuPose;
 
   /// Measurements
   //// IMU measurement, can then be found in the IMU buffer
@@ -168,15 +179,17 @@ class FactorGraphFiltering {
   ros::Publisher _pubLeftGnssPath;
   ros::Publisher _pubRightGnssPath;
   tf::TransformBroadcaster _tfBroadcaster;
-  
+
   /// Messages
   nav_msgs::PathPtr _odomPathPtr;
   nav_msgs::PathPtr _compslamPathPtr;
   nav_msgs::PathPtr _leftGnssPathPtr;
   nav_msgs::PathPtr _rightGnssPathPtr;
   //// Exact sync for gnss
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
+  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix>
+      _gnssExactSyncPolicy;
+  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>>
+      _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
 
   /// Subscribers
   ros::Subscriber _subImu;
@@ -185,15 +198,10 @@ class FactorGraphFiltering {
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
 
-  /// Motion Parameters
-  bool _gravityAttitudeInit = false;  // Flag if attitude from gravity were initialized
-  tf::Transform _gravityAttitude;     // Attitude from initial gravity alignment
-  bool _zeroMotionDetection = false;  // Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)
-
   /// Timing
   double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
-  float _scanPeriod;  // time per scan
-  uint16_t _ioRatio;  // ratio of input to output frames
+  float _scanPeriod;            // time per scan
+  uint16_t _ioRatio;            // ratio of input to output frames
 
   /// Counter
   long _frameCount;  // number of processed frames

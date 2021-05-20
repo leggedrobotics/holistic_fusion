@@ -28,9 +28,9 @@
     <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />
   </node>
 
-  <!-- Launch compslam -->
+  <!-- Launch compslam >
   <include file="$(find loam)/launch/loam_m545.launch" output="log"> 
     <arg name="pointcloud_topic_name"    value="$(arg pointcloud_topic_name)" />
-  </include>
+  </include-->
 
 </launch>

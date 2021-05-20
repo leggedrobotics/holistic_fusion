@@ -13,36 +13,28 @@ namespace fg_filtering {
  * @param radians The radian angle to convert.
  * @return The angle in degrees.
  */
-inline double rad2deg(double radians) {
-  return radians * 180.0 / M_PI;
-}
+inline double rad2deg(double radians) { return radians * 180.0 / M_PI; }
 
 /** \brief Convert the given radian angle to degrees.
  *
  * @param radians The radian angle to convert.
  * @return The angle in degrees.
  */
-inline float rad2deg(float radians) {
-  return (float)(radians * 180.0 / M_PI);
-}
+inline float rad2deg(float radians) { return (float)(radians * 180.0 / M_PI); }
 
 /** \brief Convert the given degree angle to radian.
  *
  * @param degrees The degree angle to convert.
  * @return The radian angle.
  */
-inline double deg2rad(double degrees) {
-  return degrees * M_PI / 180.0;
-}
+inline double deg2rad(double degrees) { return degrees * M_PI / 180.0; }
 
 /** \brief Convert the given degree angle to radian.
  *
  * @param degrees The degree angle to convert.
  * @return The radian angle.
  */
-inline float deg2rad(float degrees) {
-  return (float)(degrees * M_PI / 180.0);
-}
+inline float deg2rad(float degrees) { return (float)(degrees * M_PI / 180.0); }
 
 /** \brief Calculate the squared difference of the given two points.
  *
@@ -171,10 +163,7 @@ inline void rotZ(PointT& p, const Angle& ang) {
  * @param angX the rotation angle around the x-axis
  * @param angY the rotation angle around the y-axis
  */
-inline void rotateZXY(Vector3& v,
-                      const Angle& angZ,
-                      const Angle& angX,
-                      const Angle& angY) {
+inline void rotateZXY(Vector3& v, const Angle& angZ, const Angle& angX, const Angle& angY) {
   rotZ(v, angZ);
   rotX(v, angX);
   rotY(v, angY);
@@ -188,10 +177,7 @@ inline void rotateZXY(Vector3& v,
  * @param angY the rotation angle around the y-axis
  */
 template <typename PointT>
-inline void rotateZXY(PointT& p,
-                      const Angle& angZ,
-                      const Angle& angX,
-                      const Angle& angY) {
+inline void rotateZXY(PointT& p, const Angle& angZ, const Angle& angX, const Angle& angY) {
   rotZ(p, angZ);
   rotX(p, angX);
   rotY(p, angY);
@@ -204,10 +190,7 @@ inline void rotateZXY(PointT& p,
  * @param angX the rotation angle around the x-axis
  * @param angZ the rotation angle around the z-axis
  */
-inline void rotateYXZ(Vector3& v,
-                      const Angle& angY,
-                      const Angle& angX,
-                      const Angle& angZ) {
+inline void rotateYXZ(Vector3& v, const Angle& angY, const Angle& angX, const Angle& angZ) {
   rotY(v, angY);
   rotX(v, angX);
   rotZ(v, angZ);
@@ -221,10 +204,7 @@ inline void rotateYXZ(Vector3& v,
  * @param angZ the rotation angle around the z-axis
  */
 template <typename PointT>
-inline void rotateYXZ(PointT& p,
-                      const Angle& angY,
-                      const Angle& angX,
-                      const Angle& angZ) {
+inline void rotateYXZ(PointT& p, const Angle& angY, const Angle& angX, const Angle& angZ) {
   rotY(p, angY);
   rotX(p, angX);
   rotZ(p, angZ);
@@ -241,6 +221,41 @@ inline void invertHomogenousMatrix(const Eigen::Matrix4d& m_in, Eigen::Matrix4d&
   Eigen::Vector3d t = m_in.block<3, 1>(0, 3);
   m_out.block<3, 3>(0, 0) = R.transpose();
   m_out.block<3, 1>(0, 3) = -R.transpose() * t;
+}
+
+inline void odomMsgToTF(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
+  tf::Quaternion tf_q;
+  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
+  tf::Vector3 tf_t =
+      tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+  tf_T.setRotation(tf_q);
+  tf_T.setOrigin(tf_t);
+}
+
+inline void pose3ToTF(const gtsam::Pose3& T, tf::Transform& tf_T) {
+  Eigen::Quaterniond r = T.rotation().toQuaternion();
+  tf_T.setRotation(tf::Quaternion(r.x(), r.y(), r.z(), r.w()));
+  tf_T.setOrigin(tf::Vector3(T.x(), T.y(), T.z()));
+}
+
+Eigen::Matrix4d computeDeltaPose(const tf::StampedTransform& tf_T_km1, const tf::StampedTransform& tf_T_k) {
+  Eigen::Matrix4d T_km1 = Eigen::MatrixXd::Identity(4, 4);
+  Eigen::Matrix4d T_k = Eigen::MatrixXd::Identity(4, 4);
+  Eigen::Matrix4d T_km1_inv = Eigen::MatrixXd::Identity(4, 4);
+  Eigen::Matrix4d T_km1_k = Eigen::MatrixXd::Identity(4, 4);
+  T_km1.block<4, 1>(0, 3) =
+      Eigen::Vector4d(tf_T_km1.getOrigin().x(), tf_T_km1.getOrigin().y(), tf_T_km1.getOrigin().z(), 1.0);
+  T_km1.block<3, 3>(0, 0) = Eigen::Quaterniond(tf_T_km1.getRotation().w(), tf_T_km1.getRotation().x(),
+                                               tf_T_km1.getRotation().y(), tf_T_km1.getRotation().z())
+                                .toRotationMatrix();
+  T_k.block<4, 1>(0, 3) = Eigen::Vector4d(tf_T_k.getOrigin().x(), tf_T_k.getOrigin().y(), tf_T_k.getOrigin().z(), 1.0);
+  T_k.block<3, 3>(0, 0) = Eigen::Quaterniond(tf_T_k.getRotation().w(), tf_T_k.getRotation().x(),
+                                             tf_T_k.getRotation().y(), tf_T_k.getRotation().z())
+                              .toRotationMatrix();
+  invertHomogenousMatrix(T_km1, T_km1_inv);
+  T_km1_k = T_km1_inv * T_k;
+
+  return T_km1_k;
 }
 
 }  // end namespace fg_filtering

@@ -207,7 +207,6 @@ class ImuManager {
   bool estimateAttitudeFromImu(const double imu_pose_init_ts, gtsam::Rot3& init_attitude, double& gravity_magnitude, bool output = false) {
     //Get timestamp of first message for lookup
     if (_IMUBuffer.size() < (_imuRate * _imuPoseInitWaitSecs)) {
-      std::cout << "\033[33mIMU-Manager\033[0m NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE\n";
       return false;
     } else {
       //Get IMU Message iterators in the interval
