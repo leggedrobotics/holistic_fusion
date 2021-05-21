@@ -24,7 +24,7 @@ gyrNoiseDensity: 5.398e-06               #Continuous-time "Covariance" of gyrosc
 gyrBiasRandomWalk: 9.33e-08              #Continuous-time "Covariance" describing gyroscope bias random walk
 gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
 smootherLag: 3.0                         #Lag of fixed lag smoother[seconds]
-additonalIterations: 3                   #Additional iterations of graph optimizer after update with new factors
+additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
 positionReLinTh: 0.05                    #Position linearization threshold
 rotationReLinTh: 0.05                    #Rotation linearization threshold
 velocityReLinTh: 0.1                     #Linear Velocity linearization threshold

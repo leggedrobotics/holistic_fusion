@@ -108,12 +108,6 @@ bool GraphManager::updateImuIntegrator(const IMUMap& imu_meas) {
     ++count;
   }
 
-  // //DEBUG
-  // std::cout << std::fixed << "updateImuIntegrator -- # of IMU msgs: " << count
-  //           << ", with Start/End ts: " << imu_meas.begin()->first << "/" << imu_meas.rbegin()->first
-  //           << ", diff: " << imu_meas.rbegin()->first - imu_meas.begin()->first << std::endl;
-  // //DEBUG
-
   return true;
 }
 
@@ -168,9 +162,6 @@ void GraphManager::updateGraphAndState(const double new_ts, const gtsam::Key new
 
   // Debug
   if (debug) {
-    // auto& ps = imuPropogatedState;
-    // std::cout << "Predict   t(x,y,z): " << ps.position().transpose()<< ", RPY(deg): " <<
-    // ps.attitude().rpy().transpose() * (180.0 / M_PI) << "\n";
     auto& ns = _state.navState();
     std::cout << "Optimized t(x,y,z): " << ns.position().transpose()
               << ", RPY(deg): " << ns.attitude().rpy().transpose() * (180.0 / M_PI)

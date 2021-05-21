@@ -55,9 +55,7 @@ class ImuManager {
   // JN
   bool getLastTwoMeasurements(IMUMap& imuMap) {
     IMUMapItr endItr = --(_IMUBuffer.end());
-    IMUMapItr previousItr = --(_IMUBuffer.end());
-    
-    ROS_WARN_STREAM("IMU message buffer at time " << endItr->first << " is: " << endItr->second);
+    IMUMapItr previousItr = --(--(_IMUBuffer.end()));
 
     // Write into IMU Map
     imuMap[previousItr->first] = previousItr->second;
