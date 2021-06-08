@@ -81,7 +81,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   }
   if (privateNode.getParam("imuRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
-    _imuBuffer.setImuRate(dParam);
+    _graphMgr.setImuRate(dParam);
   }
   if (privateNode.getParam("ioRatio", iParam)) {
     if (iParam < 1) {
@@ -111,14 +111,14 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   if (privateNode.getParam("velocityReLinTh", dParam)) _graphMgr.setVelocityReLinTh(dParam);
   if (privateNode.getParam("accBiasReLinTh", dParam)) _graphMgr.setAccBiasReLinTh(dParam);
   if (privateNode.getParam("gyrBiasReLinTh", dParam)) _graphMgr.setGyrBiasReLinTh(dParam);
-  if (privateNode.getParam("relinearizeSkip", iParam)) _graphMgr._params.setRelinearizeSkip(iParam);
-  if (privateNode.getParam("enableRelinearization", bParam)) _graphMgr._params.setEnableRelinearization(bParam);
-  if (privateNode.getParam("evaluateNonlinearError", bParam)) _graphMgr._params.setEvaluateNonlinearError(bParam);
-  if (privateNode.getParam("cacheLinearizedFactors", bParam)) _graphMgr._params.setCacheLinearizedFactors(bParam);
-  if (privateNode.getParam("findUnusedFactorSlots", bParam)) _graphMgr._params.findUnusedFactorSlots = bParam;
+  if (privateNode.getParam("relinearizeSkip", iParam)) _graphMgr._isamParams.setRelinearizeSkip(iParam);
+  if (privateNode.getParam("enableRelinearization", bParam)) _graphMgr._isamParams.setEnableRelinearization(bParam);
+  if (privateNode.getParam("evaluateNonlinearError", bParam)) _graphMgr._isamParams.setEvaluateNonlinearError(bParam);
+  if (privateNode.getParam("cacheLinearizedFactors", bParam)) _graphMgr._isamParams.setCacheLinearizedFactors(bParam);
+  if (privateNode.getParam("findUnusedFactorSlots", bParam)) _graphMgr._isamParams.findUnusedFactorSlots = bParam;
   if (privateNode.getParam("enablePartialRelinearizationCheck", bParam))
-    _graphMgr._params.setEnablePartialRelinearizationCheck(bParam);
-  if (privateNode.getParam("enableDetailedResults", bParam)) _graphMgr._params.setEnableDetailedResults(bParam);
+    _graphMgr._isamParams.setEnablePartialRelinearizationCheck(bParam);
+  if (privateNode.getParam("enableDetailedResults", bParam)) _graphMgr._isamParams.setEnableDetailedResults(bParam);
   std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  // roll,pitch,yaw,x,y,z
   if (privateNode.getParam("poseBetweenNoise", poseNoise)) {
     _graphMgr.setPoseNoise(poseNoise);
@@ -165,20 +165,20 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _gnssExactSyncPtr->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback, this, _1, _2));
 
   // Initialize helper threads
-  _publishOdometryAndTFThread = std::thread(&FactorGraphFiltering::publishOdometryAndTF, this);
-  _writeToGraphThread = std::thread(&FactorGraphFiltering::writeToGraph, this);
+  _updateGraphThread = std::thread(&FactorGraphFiltering::updateGraph, this);
 
   return true;
 }
 
-void FactorGraphFiltering::alignImu() {
+void FactorGraphFiltering::alignImu(const double imuTime_k) {
   gtsam::Rot3 imu_attitude;
-  if (_imuBuffer.estimateAttitudeFromImu(_imuTime_k.toSec(), imu_attitude, _gravityConstant)) {
+  if (_graphMgr.estimateAttitudeFromImu(imuTime_k, imu_attitude, _gravityConstant)) {
     _zeroYawIMUattitude = gtsam::Rot3::Ypr(0.0, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
     _imuAligned = true;
-    ROS_WARN_STREAM("Attitude of IMU is initialized. Determined Gravity Magnitude: " << _gravityConstant);
+    ROS_WARN_STREAM("\033[33mFG_FILTERING\033[0mAttitude of IMU is initialized. Determined Gravity Magnitude: "
+                    << _gravityConstant);
   } else {
-    std::cout << "\033[33mFG_FILTERING\033[0m NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE.\n";
+    ROS_INFO_STREAM("\033[33mFG_FILTERING\033[0m NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITNG FOR MORE...\n");
   }
 }
 
@@ -205,44 +205,43 @@ void FactorGraphFiltering::initGNSS(const sensor_msgs::NavSatFix::ConstPtr& left
 // Graph initialization from starting attitude
 void FactorGraphFiltering::initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Gravity
-  _graphMgr.initImuIntegrator(_gravityConstant);
+  _graphMgr.initImuIntegrators(_gravityConstant);
   // Set starting time and key to the first node
   _compslamTime_k = odomLidarPtr->header.stamp;
-  _lidarKey_k = _graphMgr._state.key();
-  _imuKey_k = _lidarKey_k;
   // Initialize first node
   _graphMgr.initPoseVelocityBiasGraph(_compslamTime_k.toSec(), gtsam::Pose3(_zeroYawIMUattitude, gtsam::Point3()));
   // Print Initialization
   ROS_WARN("Graph is initialized with first pose.");
-  gtsam::Pose3 initialImuPose(_graphMgr._state.navState().pose().matrix());
+  gtsam::Pose3 initialImuPose(_graphMgr.getGraphState().navState().pose().matrix());
   ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose() << ", RPY(deg): "
                                     << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
-  ROS_WARN_STREAM("Factor graph key of very first node: " << _lidarKey_k << std::endl);
+  ROS_WARN_STREAM("Factor graph key of very first node: " << _graphMgr.getStateKey() << std::endl);
   // Write in tf member variable
   pose3ToTF(initialImuPose, _tf_initialImuPose);
 }
 
 // imuCallback ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr) {
-  // Write to imu measurement and to buffer --> mutex
-  std::lock_guard<std::mutex>* lockPtr = new std::lock_guard<std::mutex>(_imuMeasurementMutex);
+  // Set IMU time
+  ros::Time imuTime_k = imu_ptr->header.stamp;
 
   // Add to buffer
-  _imuBuffer.addToIMUBuffer(imu_ptr->header.stamp.toSec(), imu_ptr->linear_acceleration.x,
-                            imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z, imu_ptr->angular_velocity.x,
-                            imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
+  _graphMgr.addToIMUBuffer(imuTime_k.toSec(), imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y,
+                           imu_ptr->linear_acceleration.z, imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y,
+                           imu_ptr->angular_velocity.z);
 
-  // Set IMU time
-  _imuTime_k = imu_ptr->header.stamp;
   // If IMU not yet aligned
   if (!_imuAligned) {
-    alignImu();
-  }  // Else: set flag that new measurement arrived
-  else {
-    _newImuMeasurement = true;
+    alignImu(imuTime_k.toSec());
+  }  // Add measurement to graph but don't optimize it
+  else if (_graphInited) {
+    // Add IMU factor and get propagated state
+    gtsam::NavState currentState = _graphMgr.addImuFactorAndGetState(imuTime_k.toSec());
+    // Publish current state at imu frequency
+    publishState(currentState, imuTime_k);
+  } else {
+    ROS_WARN("FG Filtering - IMU factor not added to graph");
   }
-  // Release mutex
-  delete lockPtr;
 }
 
 // lidarOdometryCallback ----------------------------------------------------------------------------------------
@@ -263,41 +262,59 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   tf::StampedTransform tf_T_CI;
   _tfListener.lookupTransform(_cabinFrame, _imuFrame, ros::Time(0), tf_T_CI);
 
-  // Transform message Imu frame
+  // Transform message to Imu frame
   tf::StampedTransform tf_T_OI_Compslam_k;
   tf_T_OI_Compslam_k.setData(tf_T_OL_Compslam_k * tf_T_LI);
   tf_T_OI_Compslam_k.stamp_ = odomLidarPtr->header.stamp;
 
-  // Initialize compslam pose
+  // Set initial compslam pose
   if (_firstLidarOdomCallback) {
     _tf_T_OI_init_inv = tf_T_OI_Compslam_k.inverse();
     _firstLidarOdomCallback = false;
   }
 
-  // Compslam - Wait with graph manipulation until IMU attitude is determined
+  // Compslam - Wait with writing to graph until IMU attitude is determined
   if (_imuAligned) {
     // Initialize graph (if not happened already)
     if (!_graphInited) {
       initGraph(odomLidarPtr);
       _graphInited = true;
-    }  // Wait one iteration
-    else if (_firstScanCallback) {
+    }  // Wait one iteration to be able to compute delta pose
+    if (_firstScanCallback) {
       _firstScanCallback = false;
     }  // Else: Get Delta pose from Compslam
-    else if (!_firstScanCallback) {
-      /// Delta pose
-      Eigen::Matrix4d I_T_km1_k = computeDeltaPose(_tf_T_OI_Compslam_km1, tf_T_OI_Compslam_k);
-      // Write to delta pose --> mutex such that time and delta pose always correspond to each other
-      std::lock_guard<std::mutex>* lockDeltaPosePtr = new std::lock_guard<std::mutex>(_lidarDeltaPoseMutex);
-      _lidarDeltaPose = gtsam::Pose3(I_T_km1_k);
+    else {
       // Set LiDAR time
       _compslamTime_km1 = _compslamTime_k;
       _compslamTime_k = odomLidarPtr->header.stamp;
-      // Set Flag
-      _newLidarDeltaPose = true;
-      delete lockDeltaPosePtr;
+      /// Delta pose
+      Eigen::Matrix4d I_T_km1_k = computeDeltaPose(_tf_T_OI_Compslam_km1, tf_T_OI_Compslam_k);
+      // Write to delta pose --> mutex such that time and delta pose always correspond to each other
+      gtsam::Pose3 lidarDeltaPose(I_T_km1_k);
+      // Write the lidar odom delta to the graph
+      _graphMgr.addPoseBetweenFactor(lidarDeltaPose, _compslamTime_km1.toSec(), _compslamTime_k.toSec());
+      // Mutex for optimizeGraph Flag
+      {
+        // Lock
+        const std::lock_guard<std::mutex> optimizeGraphLock(_optimizeGraphMutex);
+        _optimizeGraph = true;
+      }
+
       // Direct compslam estimate for base
       _tf_T_OC_Compslam.setData(tf_T_CI * _tf_initialImuPose * _tf_T_OI_init_inv * tf_T_OI_Compslam_k * tf_T_IC);
+      _tf_T_OC_Compslam.stamp_ = odomLidarPtr->header.stamp;
+
+      // Visualization of Compslam pose
+      geometry_msgs::PoseStamped poseStamped;
+      poseStamped.header.frame_id = _odomFrame;
+      poseStamped.header.stamp = _tf_T_OC_Compslam.stamp_;
+      tf::poseTFToMsg(_tf_T_OC_Compslam, poseStamped.pose);
+      /// Path
+      _compslamPathPtr->header.frame_id = _odomFrame;
+      _compslamPathPtr->header.stamp = _tf_T_OC_Compslam.stamp_;
+      _compslamPathPtr->poses.push_back(poseStamped);
+      /// Publish
+      _pubCompslamPath.publish(_compslamPathPtr);
     }
     // Set last pose for the next iteration
     _tf_T_OI_Compslam_km1 = tf_T_OI_Compslam_k;
@@ -355,8 +372,8 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
   }
 }
 
-// write to graph ----------------------------------------------------------------------------------------
-void FactorGraphFiltering::writeToGraph() {
+// update graph ----------------------------------------------------------------------------------------
+void FactorGraphFiltering::updateGraph() {
   // Preallocation
   int numLidarFactors = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
@@ -365,193 +382,85 @@ void FactorGraphFiltering::writeToGraph() {
   tf::StampedTransform tf_T_CB;
   ros::Rate loopRate(100);
 
-  ROS_INFO("Thread for adding factors to graph is ready.");
+  ROS_INFO("Thread for updating graph is ready.");
   while (ros::ok()) {
-    startLoopTime = std::chrono::high_resolution_clock::now();
-    // If graph not yet initialized
-    if (!_graphInited) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-    // Else, add measurements to graph
-    else if (_newImuMeasurement) {
-      // Write to delta pose --> mutex such that time and delta pose always correspond to each other
-      std::lock_guard<std::mutex>* imuLockPtr = new std::lock_guard<std::mutex>(_imuMeasurementMutex);
-      gtsam::Key imuKey_km1 = _imuKey_k;
-      _imuKey_k = _graphMgr.newStateKey();
-      ros::Time imuTime_k = _imuTime_k;
-
-      // Write to key buffer
-      _imuBuffer.addToKeyBuffer(imuTime_k.toSec(), _imuKey_k);
-
-      // Create IMU Map
-      IMUMap imuMeas;
-      bool success = _imuBuffer.getLastTwoMeasurements(imuMeas);
-      IMUMapItr endItr = --(imuMeas.end());
-      IMUMapItr previousItr = --(--(imuMeas.end()));
-
-      if (success) {
-        _graphMgr.addImuFactor(imuKey_km1, _imuKey_k, imuMeas);
-      } else {
-        ROS_WARN("FG Filtering - IMU factor not added to graph");
+    bool optimizeGraph = false;
+    // Mutex for optimizeGraph Flag
+    {
+      // Lock
+      const std::lock_guard<std::mutex> optimizeGraphLock(_optimizeGraphMutex);
+      if (_optimizeGraph) {
+        optimizeGraph = _optimizeGraph;
+        _optimizeGraph = false;
       }
-      // Release lock
-      delete imuLockPtr;
-
-      // If a LiDAR delta pose is there, add this as well
-      if (_newLidarDeltaPose) {
-        // Mutex to have reliable correspondences and always distinct values for last and current
-        std::lock_guard<std::mutex>* lidarLockPtr = new std::lock_guard<std::mutex>(_lidarDeltaPoseMutex);
-
-        // Find closest lidar key in existing graph
-        IMUMapItr lidarMapItr;
-        _imuBuffer.getClosestIMUBufferIteratorToTime(_compslamTime_k.toSec(), lidarMapItr);
-        std::cout << "Found time stamp is: " << lidarMapItr->first << std::endl;
-        gtsam::Key closestLidarKey;
-        _imuBuffer.getCorrespondingGtsamKey(lidarMapItr->first, closestLidarKey);
-
-        // Create new key
-        gtsam::Key lidarKey_km1 = _lidarKey_k;
-        _lidarKey_k = closestLidarKey;
-
-        // std::cout << "Last IMU key: " << imuKey_km1 << ", current IMU key: " << _imuKey_k << std::endl;
-        // std::cout << "Adding the " << ++numLidarFactors << "th LiDAR factor. "
-        //           << "Last LiDAR Key: " << lidarKey_km1 << ", current LiDAR Key: " << _lidarKey_k << std::endl;
-        // std::cout << "Delta Pose: " << _lidarDeltaPose << std::endl;
-
-        // Write the lidar odom delta to the graph
-        _graphMgr.addPoseBetweenFactor(lidarKey_km1, _lidarKey_k, _lidarDeltaPose);
-        _newLidarDeltaPose = false;
-
-        // Release mutex
-        delete lidarLockPtr;
-      }
-
-      // Update graph
-      _graphMgr.updateGraphAndState(imuTime_k.toSec(), _imuKey_k);
-      _newImuMeasurement = false;
-
-      // Lookup transforms
-      tf::StampedTransform tfT_CI, tfT_IC;
-      _tfListener.lookupTransform(_cabinFrame, _imuFrame, imuTime_k, tfT_CI);
-      _tfListener.lookupTransform(_imuFrame, _cabinFrame, imuTime_k, tfT_IC);
-
-      // From Eigen to TF
-      gtsam::Pose3 I_T_rel = _graphMgr._state.navState().pose();
-      tf::Transform I_tfT_rel;
-      pose3ToTF(I_T_rel, I_tfT_rel);
-      tf::Transform tfT_OC;
-      // Transform
-      tfT_OC = tfT_CI * I_tfT_rel * tfT_IC;
-      _tf_T_OC.setData(tfT_OC);
-      _tf_T_OC.stamp_ = imuTime_k;
-      // Get odom-->base_link transformation from odom-->imu
-      _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);
-      _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
-      _tf_T_OB.stamp_ = imuTime_k;
-
-      // Publish odometry message for odom->base with 100 Hz
-      nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
-      odomBaseMsgPtr->header.frame_id = _tf_T_OB.frame_id_;
-      odomBaseMsgPtr->child_frame_id = _tf_T_OB.child_frame_id_;
-      odomBaseMsgPtr->header.stamp = imuTime_k;
-      tf::poseTFToMsg(_tf_T_OB, odomBaseMsgPtr->pose.pose);
-      _pubOdometry.publish(odomBaseMsgPtr);
     }
-    endLoopTime = std::chrono::high_resolution_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 10) {
+
+    if (optimizeGraph) {
+      startLoopTime = std::chrono::high_resolution_clock::now();
+      _graphMgr.updateGraphAndState();
+      endLoopTime = std::chrono::high_resolution_clock::now();
       ROS_WARN_STREAM("Iteration for writing into graph took "
                       << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
                       << " milliseconds.");
+      // Publish IMU Bias after update of graph
+      sensor_msgs::Imu imuBiasMsg;
+      imuBiasMsg.header.frame_id = "/fg_odometry_imu";
+      imuBiasMsg.header.stamp = _tf_T_OC.stamp_;
+      imuBiasMsg.linear_acceleration.x = _graphMgr.getIMUBias().accelerometer()(0);
+      imuBiasMsg.linear_acceleration.y = _graphMgr.getIMUBias().accelerometer()(1);
+      imuBiasMsg.linear_acceleration.z = _graphMgr.getIMUBias().accelerometer()(2);
+      imuBiasMsg.angular_velocity.x = _graphMgr.getIMUBias().gyroscope()(0);
+      imuBiasMsg.angular_velocity.y = _graphMgr.getIMUBias().gyroscope()(1);
+      imuBiasMsg.angular_velocity.z = _graphMgr.getIMUBias().gyroscope()(2);
+      _pubLaserImuBias.publish(imuBiasMsg);
+    }  // else just sleep for a short amount of time before polling again
+    else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
 }
 
-// publish result ----------------------------------------------------------------------------------------
-void FactorGraphFiltering::publishOdometryAndTF() {
-  ROS_INFO("Thread for publishing the odometry is initialized.");
-  // Timing
-  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
-  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
-  // Time stamps
-  ros::Time factorGraphStamp_k;
-  ros::Time factorGraphStamp_km1;
-  ros::Time compslamStamp_k;
-  ros::Time compslamStamp_km1;
+void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time imuTime_k) {
+  // Lookup transforms
+  tf::StampedTransform tf_T_CI, tf_T_IC, tf_T_CB;
+  _tfListener.lookupTransform(_cabinFrame, _imuFrame, imuTime_k, tf_T_CI);
+  _tfListener.lookupTransform(_imuFrame, _cabinFrame, imuTime_k, tf_T_IC);
 
-  ros::Rate loopRate(20);
+  // From Eigen to TF
+  gtsam::Pose3 I_T_rel = currentState.pose();
+  tf::Transform I_tf_T_rel;
+  pose3ToTF(I_T_rel, I_tf_T_rel);
+  tf::Transform tf_T_OC;
+  // Transform
+  tf_T_OC = tf_T_CI * I_tf_T_rel * tf_T_IC;
+  _tf_T_OC.setData(tf_T_OC);
+  _tf_T_OC.stamp_ = imuTime_k;
+  // Get odom-->base_link transformation from odom-->imu
+  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB); // TODO
+  _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
+  _tf_T_OB.stamp_ = imuTime_k;
 
-  // Main loop of thread
-  while (ros::ok()) {
-    // Starting time of the iteration
-    startLoopTime = std::chrono::high_resolution_clock::now();
-    factorGraphStamp_k = _tf_T_OC.stamp_;
-    compslamStamp_k = _compslamTime_k;
-
-    // Check whether system is initialized --> set flag
-    if (!_systemInited && _imuAligned && _graphInited) {
-      _systemInited = true;
-      ROS_WARN("System fully initialized, start publishing.");
-      // Initialize timing variables
-      factorGraphStamp_km1 = factorGraphStamp_k;
-      compslamStamp_km1 = compslamStamp_k;
-    }
-    // Actual publishing
-    else if (_systemInited) {
-      // Publish to Tf tree
-      _tfBroadcaster.sendTransform(_tf_T_OB);
-
-      // Publish path for cabin frame
-      /// Pose
-      geometry_msgs::PoseStamped poseStamped;
-      poseStamped.header.frame_id = _odomFrame;
-      poseStamped.header.stamp = factorGraphStamp_k;
-      tf::poseTFToMsg(_tf_T_OC, poseStamped.pose);
-      /// Path
-      _odomPathPtr->header.frame_id = _odomFrame;
-      _odomPathPtr->header.stamp = factorGraphStamp_k;
-      _odomPathPtr->poses.push_back(poseStamped);
-      /// Publish
-      _pubOdomPath.publish(_odomPathPtr);
-
-      // IMU Bias
-      sensor_msgs::Imu imuBiasMsg;
-      imuBiasMsg.header.frame_id = "/fg_odometry_imu";
-      imuBiasMsg.header.stamp = _tf_T_OC.stamp_;
-      imuBiasMsg.linear_acceleration.x = graphIMUBias().accelerometer()(0);
-      imuBiasMsg.linear_acceleration.y = graphIMUBias().accelerometer()(1);
-      imuBiasMsg.linear_acceleration.z = graphIMUBias().accelerometer()(2);
-      imuBiasMsg.angular_velocity.x = graphIMUBias().gyroscope()(0);
-      imuBiasMsg.angular_velocity.y = graphIMUBias().gyroscope()(1);
-      imuBiasMsg.angular_velocity.z = graphIMUBias().gyroscope()(2);
-      _pubLaserImuBias.publish(imuBiasMsg);
-
-      // Update time
-      factorGraphStamp_km1 = factorGraphStamp_k;
-
-      // Visualization of Compslam pose
-      if (_systemInited && compslamStamp_k != compslamStamp_km1) {
-        geometry_msgs::PoseStamped poseStamped;
-        poseStamped.header.frame_id = _odomFrame;
-        poseStamped.header.stamp = _tf_T_OC_Compslam.stamp_;
-        tf::poseTFToMsg(_tf_T_OC_Compslam, poseStamped.pose);
-        /// Path
-        _compslamPathPtr->header.frame_id = _odomFrame;
-        _compslamPathPtr->header.stamp = _tf_T_OC_Compslam.stamp_;
-        _compslamPathPtr->poses.push_back(poseStamped);
-        /// Publish
-        _pubCompslamPath.publish(_compslamPathPtr);
-        // Update time
-        compslamStamp_km1 = compslamStamp_k;
-      }
-    }
-
-    // Time to exactly 100 Hz
-    loopRate.sleep();
-    endLoopTime = std::chrono::high_resolution_clock::now();
-    // ROS_WARN_STREAM("Publishing took "
-    //                 << (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime)).count()
-    //                 << " milliseconds.");
-  }
+  // Publish odometry message for odom->base with 100 Hz
+  nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
+  odomBaseMsgPtr->header.frame_id = _tf_T_OB.frame_id_;
+  odomBaseMsgPtr->child_frame_id = _tf_T_OB.child_frame_id_;
+  odomBaseMsgPtr->header.stamp = imuTime_k;
+  tf::poseTFToMsg(_tf_T_OB, odomBaseMsgPtr->pose.pose);
+  _pubOdometry.publish(odomBaseMsgPtr);
+  // Publish to Tf tree
+  _tfBroadcaster.sendTransform(_tf_T_OB);
+  // Publish path for cabin frame
+  /// Pose
+  geometry_msgs::PoseStamped poseStamped;
+  poseStamped.header.frame_id = _odomFrame;
+  poseStamped.header.stamp = imuTime_k;
+  tf::poseTFToMsg(_tf_T_OC, poseStamped.pose);
+  /// Path
+  _odomPathPtr->header.frame_id = _odomFrame;
+  _odomPathPtr->header.stamp = imuTime_k;
+  _odomPathPtr->poses.push_back(poseStamped);
+  /// Publish
+  _pubOdomPath.publish(_odomPathPtr);
 }
 
 }  // end namespace fg_filtering

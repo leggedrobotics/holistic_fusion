@@ -2,6 +2,8 @@
 
 namespace fg_filtering {
 
+// Public --------------------------------------------------------------------
+
 bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3 init_pose) {
   // Set graph relinearization thresholds - must be lower case letters, check:gtsam::symbol_shorthand
   gtsam::FastMap<char, gtsam::Vector> relinTh;
@@ -11,9 +13,9 @@ bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3
   relinTh['b'] = (gtsam::Vector(6) << _accBiasReLinTh, _accBiasReLinTh, _accBiasReLinTh, _gyrBiasReLinTh,
                   _gyrBiasReLinTh, _gyrBiasReLinTh)
                      .finished();
-  _params.relinearizeThreshold = relinTh;
-  _params.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in poorly
-                                                   // conditioned problems
+  _isamParams.relinearizeThreshold = relinTh;
+  _isamParams.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
+                                                       // poorly conditioned problems
 
   // Create Prior factor and Initialize factor graph
   // Prior factor noise
@@ -23,49 +25,41 @@ bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3
   auto biasNoise =
       gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
   // Create prior factors
-  _newFactors.resize(0);
-  _newFactors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
-      X(_state_key), init_pose,
+  _newGraphFactors.resize(0);
+  _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+      X(_stateKey), init_pose,
       poseNoise);  // POSE - PriorFactor format is (key,value,matrix) value is same type as type of PriorFactor
-  _newFactors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(_state_key), gtsam::Vector3(0, 0, 0),
-                                                                 velocityNoise);  // VELOCITY
-  _newFactors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(_state_key), *_imuBiasPrior,
-                                                                               biasNoise);  // BIAS
+  _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(_stateKey), gtsam::Vector3(0, 0, 0),
+                                                                      velocityNoise);  // VELOCITY
+  _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(_stateKey), *_imuBiasPrior,
+                                                                                    biasNoise);  // BIAS
   // Initial estimate
   gtsam::Values estimate;
-  estimate.insert(X(_state_key), init_pose);
-  estimate.insert(V(_state_key), gtsam::Vector3(0, 0, 0));
-  estimate.insert(B(_state_key), *_imuBiasPrior);
+  estimate.insert(X(_stateKey), init_pose);
+  estimate.insert(V(_stateKey), gtsam::Vector3(0, 0, 0));
+  estimate.insert(B(_stateKey), *_imuBiasPrior);
 
   // Initialize factor graph
-  _graph = std::make_shared<gtsam::IncrementalFixedLagSmoother>(_smootherLag, _params);
-  _graph->params().print("Factor Graph Parameters:");
+  _mainGraph = std::make_shared<gtsam::IncrementalFixedLagSmoother>(_smootherLag, _isamParams);
+  _mainGraph->params().print("Factor Graph Parameters:");
   std::cout << "Pose Between Factor Noise - RPY(rad): " << _poseNoise[0] << "," << _poseNoise[1] << "," << _poseNoise[2]
             << ", XYZ(m): " << _poseNoise[3] << "," << _poseNoise[4] << "," << _poseNoise[5] << std::endl;
 
   // Add prior factor to graph and update
   std::map<gtsam::Key, double> keyTimestampMap;
   valuesToKeyTimeStampMap(estimate, ts, keyTimestampMap);
-  _graph->update(_newFactors, estimate, keyTimestampMap);
+  _mainGraph->update(_newGraphFactors, estimate, keyTimestampMap);
 
   // Reset
-  _newFactors.resize(0);
+  _newGraphFactors.resize(0);
 
   // Update Current State
-  _state.updateNavStateAndBias(_state_key, ts, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPrior);
-
-  // //DEBUG
-  // gtsam::Values result = _graph->calculateEstimate();
-  // result.print("Prior Factor Result:");
-  // auto& ns = _state.navState();
-  // std::cout << "Init t(x,y,z): " << ns.position().transpose()<< ", RPY(deg): " << ns.attitude().rpy().transpose() *
-  // (180.0 / M_PI) << ", v(x,y,z): " << ns.velocity().transpose()  << "\n";
-  // //DEBUG
+  _graphState.updateNavStateAndBias(_stateKey, ts, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPrior);
 
   return true;
 }
 
-bool GraphManager::initImuIntegrator(const double g) {
+bool GraphManager::initImuIntegrators(const double g) {
   // Initialize IMU Preintegrator
   _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
   _imuParams->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * _accNoiseDensity;
@@ -79,99 +73,77 @@ bool GraphManager::initImuIntegrator(const double g) {
   gtsam::Vector3 acc_bias_prior(_accBiasPrior, _accBiasPrior, _accBiasPrior);
   gtsam::Vector3 gyr_bias_prior(_gyrBiasPrior, _gyrBiasPrior, _gyrBiasPrior);
   _imuBiasPrior = std::make_shared<gtsam::imuBias::ConstantBias>(acc_bias_prior, gyr_bias_prior);
-  _imuPreintegrator = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParams, *_imuBiasPrior);
+
+  // Init preintegrators
+  _imuBufferPreintegrator = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParams, *_imuBiasPrior);
+  _imuStepPreintegrator = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParams, *_imuBiasPrior);
   _imuParams->print("IMU Preintegration Parameters:");
   return true;
 }
 
-bool GraphManager::updateImuIntegrator(const IMUMap& imu_meas) {
-  if (imu_meas.size() < 2) {
-    std::cout << "updateImuIntegrator --- Received less than 2 IMU messages --- No Preintegration done" << std::endl;
-    return false;
-  }
+gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
+  // Operating on graph data --> acquire mutex during whole method
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
 
-  // Reset IMU Pre-integration
-  _imuPreintegrator->resetIntegrationAndSetBias(_state.imuBias());
+  // Get new key
+  gtsam::Key oldKey = _stateKey;
+  gtsam::Key newKey = newStateKey();
+  // Write current time
+  _stateTime = imuTime_k;
 
-  // Start integrating with imu_meas.begin()+1 meas to calculate dt //NOTE imu_meas.begin() meas was integrated before
-  auto curr_itr = imu_meas.begin();
-  auto prev_itr = curr_itr;
-  ++curr_itr;
+  // Add to key buffer
+  _imuBuffer.addToKeyBuffer(imuTime_k, newKey);
 
-  // Calculate dt and integrate IMU measurements
-  size_t count = 0;
-  for (; curr_itr != imu_meas.end(); ++curr_itr, ++prev_itr) {
-    double dt = curr_itr->first - prev_itr->first;
-    _imuPreintegrator->integrateMeasurement(curr_itr->second.head<3>(),  // acc
-                                            curr_itr->second.tail<3>(),  // gyro
-                                            dt);                         // delta t
-    ++count;
-  }
+  // Get last two measurements from buffer
+  IMUMap imuMeas;
+  _imuBuffer.getLastTwoMeasurements(imuMeas);
 
-  return true;
-}
-
-bool GraphManager::addImuFactor(const gtsam::Key old_key, const gtsam::Key new_key, const IMUMap& imu_meas) {
   // Update IMU preintegrator
-  bool success = updateImuIntegrator(imu_meas);
-  if (!success) return success;
+  bool success = _updateImuIntegrators(imuMeas);
 
-  // Create IMU Factor
-  gtsam::CombinedImuFactor imu_factor(X(old_key), V(old_key), X(new_key), V(new_key), B(old_key), B(new_key),
-                                      *_imuPreintegrator);
+  // Create and add IMU Factor
+  gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey),
+                                     *_imuBufferPreintegrator);
+  _newGraphFactors.add(imuFactor);
+  // Predict propagated state
+  _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
+  // Add IMU Value
+  _newGraphValues.insert(X(newKey), _imuPropogatedState.pose());
+  _newGraphValues.insert(V(newKey), _imuPropogatedState.velocity());
+  _newGraphValues.insert(B(newKey), _graphState.imuBias());
 
-  // Add factor
-  _newFactors.add(imu_factor);
-
-  return success;
+  // Return copy of propagated state (for publishing)
+  return _imuPropogatedState;
 }
 
-void GraphManager::addPoseBetweenFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose) {
+void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1,
+                                        const double lidarTime_k) {
+  // Operating on graph data --> acquire mutex during whole method
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
+  
+  // Find closest lidar keys in existing graph
+  IMUMapItr lidarMapItr_km1, lidarMapItr_k;
+  _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_km1, lidarMapItr_km1);
+  _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_k, lidarMapItr_k);
+  std::cout << "Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first << std::endl;
+  gtsam::Key closestLidarKey_km1, closestLidarKey_k;
+  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_km1->first, closestLidarKey_km1);
+  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_k->first, closestLidarKey_k);
+
   // Create Pose BetweenFactor and add
   auto poseNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << _poseNoise[0], _poseNoise[1], _poseNoise[2], _poseNoise[3], _poseNoise[4], _poseNoise[5])
           .finished());  // rad,rad,rad,m,m,m
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(X(old_key), X(new_key), pose, poseNoiseModel);
-  _newFactors.add(poseBetweenFactor);
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(X(closestLidarKey_km1), X(closestLidarKey_k), pose,
+                                                       poseNoiseModel);
+  _newGraphFactors.add(poseBetweenFactor);
 }
 
-void GraphManager::updateGraphAndState(const double new_ts, const gtsam::Key new_key, const bool debug /*= false*/) {
-  auto t1 = std::chrono::high_resolution_clock::now();
-  // Create propogated state estimate using IMU
-  gtsam::NavState imuPropogatedState = _imuPreintegrator->predict(_state.navState(), _state.imuBias());
-  gtsam::Values estimate;
-  estimate.insert(X(new_key), imuPropogatedState.pose());
-  estimate.insert(V(new_key), imuPropogatedState.velocity());
-  estimate.insert(B(new_key), _state.imuBias());
-
-  // Update graph
-  std::map<gtsam::Key, double> keyTimestampMap;
-  valuesToKeyTimeStampMap(estimate, new_ts, keyTimestampMap);
-  _graph->update(_newFactors, estimate, keyTimestampMap);
-  _newFactors.resize(0);
-
-  // Additional iterations
-  for (size_t itr = 0; itr < _additonalIterations; ++itr) _graph->update();
-
-  // Update State
-  auto result = _graph->calculateEstimate();
-  _state.updateNavStateAndBias(
-      new_key, new_ts, gtsam::NavState(result.at<gtsam::Pose3>(X(new_key)), result.at<gtsam::Vector3>(V(new_key))),
-      result.at<gtsam::imuBias::ConstantBias>(B(new_key)));
-  auto t2 = std::chrono::high_resolution_clock::now();
-
-  // Debug
-  if (debug) {
-    auto& ns = _state.navState();
-    std::cout << "Optimized t(x,y,z): " << ns.position().transpose()
-              << ", RPY(deg): " << ns.attitude().rpy().transpose() * (180.0 / M_PI)
-              << ", time(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-              << std::endl;  // lag:1s->0-1ms, lag:5s->1-2ms
-  }
-  // Debug
+void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose) {
+  // TODO: TO BE IMPLEMENTED
 }
 
-bool GraphManager::zeroMotionFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3 pose) {
+bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3 pose) {
   // Check external motion
   if (pose.translation().norm() > _zeroMotionTh) {
     _detectionCount = 0;
@@ -179,7 +151,7 @@ bool GraphManager::zeroMotionFactor(const gtsam::Key old_key, const gtsam::Key n
   }
 
   // Check IMU motion
-  gtsam::NavState imuPropogatedState = _imuPreintegrator->predict(gtsam::NavState(), _state.imuBias());
+  gtsam::NavState imuPropogatedState = _imuStepPreintegrator->predict(gtsam::NavState(), _graphState.imuBias());
   if (imuPropogatedState.position().norm() > _zeroMotionTh) {
     _detectionCount = 0;
     return false;
@@ -190,11 +162,11 @@ bool GraphManager::zeroMotionFactor(const gtsam::Key old_key, const gtsam::Key n
   if (_detectionCount < _minDetections) return false;
 
   // Add Zero Pose Factor
-  _newFactors.add(gtsam::BetweenFactor<gtsam::Pose3>(X(old_key), X(new_key), gtsam::Pose3::identity(),
-                                                     gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+  _newGraphFactors.add(gtsam::BetweenFactor<gtsam::Pose3>(X(old_key), X(new_key), gtsam::Pose3::identity(),
+                                                          gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   // Add Zero Velocity Factor
-  _newFactors.add(gtsam::PriorFactor<gtsam::Vector3>(V(old_key), gtsam::Vector3::Zero(),
-                                                     gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
+  _newGraphFactors.add(gtsam::PriorFactor<gtsam::Vector3>(V(old_key), gtsam::Vector3::Zero(),
+                                                          gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
   // Re-detect Zero Motion
   _detectionCount = _minDetections / 2;
@@ -209,8 +181,83 @@ bool GraphManager::zeroMotionFactor(const gtsam::Key old_key, const gtsam::Key n
 bool GraphManager::addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude) {
   static auto imuEstNoise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << 1e-6, 1e-6, 1e+10, 1e+10, 1e+10, 1e+10).finished());  // rad,rad,rad,m, m, m
-  _newFactors.add(
+  _newGraphFactors.add(
       gtsam::PriorFactor<gtsam::Pose3>(X(key), gtsam::Pose3(imu_attitude, gtsam::Point3::Zero()), imuEstNoise));
+  return true;
+}
+
+void GraphManager::updateGraphAndState() {
+  gtsam::NonlinearFactorGraph newGraphFactors;
+  gtsam::Values newGraphValues;
+  gtsam::Key currentKey;
+  double currentTime;
+  // Mutex Block 1 -----------------
+  {
+    // Lock
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
+    // Get copy of factors and values
+    newGraphFactors = _newGraphFactors;
+    newGraphValues = _newGraphValues;
+    // Empty graph buffers
+    _newGraphFactors.resize(0);
+    _newGraphValues.clear();
+    // Empty Buffer Preintegrator --> everything missed during the update will be in here
+    _imuBufferPreintegrator->resetIntegrationAndSetBias(_graphState.imuBias());
+    // Get current key and time
+    currentKey = _stateKey;
+    currentTime = _stateTime;
+  }
+  // Graph Update (time consuming) -------------------
+  std::map<gtsam::Key, double> keyTimestampMap;
+  valuesToKeyTimeStampMap(newGraphValues, currentTime, keyTimestampMap);
+  _mainGraph->update(newGraphFactors, newGraphValues, keyTimestampMap);
+  // Additional iterations
+  for (size_t itr = 0; itr < _additonalIterations; ++itr) _mainGraph->update();
+  // Compute result
+  auto result = _mainGraph->calculateEstimate();
+  // Mutex block 2 ------------------
+  {
+    // Lock
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
+    // Update Graph State
+    _graphState.updateNavStateAndBias(
+        currentKey, currentTime,
+        gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
+        result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
+    // Predict from solution to obtain refined propagated state
+    _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
+  }
+}
+
+// Private --------------------------------------------------------------------
+
+bool GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
+  if (imuMeas.size() < 2) {
+    std::cout << "_updateImuIntegrators --- Received less than 2 IMU messages --- No Preintegration done" << std::endl;
+    return false;
+  }
+
+  // Reset IMU Step Preintegration
+  _imuStepPreintegrator->resetIntegrationAndSetBias(_graphState.imuBias());
+
+  // Start integrating with imu_meas.begin()+1 meas to calculate dt, imu_meas.begin() meas was integrated before
+  auto currItr = imuMeas.begin();
+  auto prevItr = currItr;
+  ++currItr;
+
+  // Calculate dt and integrate IMU measurements for both preintegrators
+  size_t count = 0;
+  for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
+    double dt = currItr->first - prevItr->first;
+    _imuStepPreintegrator->integrateMeasurement(currItr->second.head<3>(),    // acc
+                                                currItr->second.tail<3>(),    // gyro
+                                                dt);                          // delta t
+    _imuBufferPreintegrator->integrateMeasurement(currItr->second.head<3>(),  // acc
+                                                  currItr->second.tail<3>(),  // gyro
+                                                  dt);
+    ++count;
+  }
+
   return true;
 }
 
