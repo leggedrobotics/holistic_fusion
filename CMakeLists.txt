@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   message_filters
   geodetic_utils
+  signal_logger
 )
 
 find_package(Eigen3 REQUIRED)

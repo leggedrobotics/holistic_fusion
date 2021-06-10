@@ -103,13 +103,19 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
 
   // Create and add IMU Factor
   gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey),
-                                     *_imuBufferPreintegrator);
+                                     *_imuStepPreintegrator);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
-  ROS_INFO_STREAM("Propagated state (key " << oldKey << ") before prediction: " << _imuPropogatedState.pose().translation());
+  ROS_INFO_STREAM("Propagated state (key " << oldKey
+                                           << ") before prediction: " << _imuPropogatedState.pose().translation());
   _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
-  ROS_INFO_STREAM("Propagated state (key " << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
+  ROS_INFO_STREAM("Propagated state (key "
+                  << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
   ROS_INFO("----------------------------");
+
+  // Add to IMU pose buffer
+  _imuBuffer.addImuPoseToBuffer(imuTime_k, _imuPropogatedState.pose());
+
   // Add IMU Value
   _newGraphValues.insert(X(newKey), _imuPropogatedState.pose());
   _newGraphValues.insert(V(newKey), _imuPropogatedState.velocity());
@@ -128,15 +134,17 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
   IMUMapItr lidarMapItr_km1, lidarMapItr_k;
   _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_km1, lidarMapItr_km1);
   _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_k, lidarMapItr_k);
-  gtsam::Key key_km1, key_k;
-  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_km1->first, key_km1);
-  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_k->first, key_k);
-  std::cout << "Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first << std::endl;
-  std::cout << "Current key: " << _stateKey << ", found lidar keys are: "
-            << key_km1 << " and " << key_k << std::endl;
   gtsam::Key closestLidarKey_km1, closestLidarKey_k;
-  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_km1->first, closestLidarKey_km1);
-  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_k->first, closestLidarKey_k);
+  _imuBuffer.getCorrespondingGtsamKey(lidarTime_km1, closestLidarKey_km1);
+  _imuBuffer.getCorrespondingGtsamKey(lidarTime_k, closestLidarKey_k);
+  ROS_INFO_STREAM("Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first);
+  ROS_INFO_STREAM("Current key: " << _stateKey << ", found lidar keys are: " << closestLidarKey_km1 << " and "
+                                  << closestLidarKey_k);
+  ROS_WARN_STREAM("LiDAR delta pose: " << pose);
+  gtsam::Pose3 imuPose_km1, imuPose_k;
+  _imuBuffer.getCorrespondingIMUGraphPose(lidarTime_km1, imuPose_km1);
+  _imuBuffer.getCorrespondingIMUGraphPose(lidarTime_k, imuPose_k);
+  ROS_WARN_STREAM("Delta pose in graph from IMU: " << imuPose_km1.inverse() * imuPose_k);
 
   // Create Pose BetweenFactor and add
   auto poseNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
@@ -233,9 +241,11 @@ void GraphManager::updateGraphAndState() {
         gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
         result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
-    ROS_WARN_STREAM("Graph state (key " << currentKey << ") before prediction: " << _graphState.navState().pose().translation());
+    ROS_WARN_STREAM("Graph state (key " << currentKey
+                                        << ") before prediction: " << _graphState.navState().pose().translation());
     _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
-    ROS_WARN_STREAM("Propagated state (key " << _stateKey << ") after prediction: " << _imuPropogatedState.pose().translation());
+    ROS_WARN_STREAM("Propagated state (key " << _stateKey
+                                             << ") after prediction: " << _imuPropogatedState.pose().translation());
   }
 }
 

@@ -19,6 +19,9 @@ namespace fg_filtering {
 typedef std::map<double, gtsam::Vector6, std::less<double>,
                  Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
     IMUMap;
+typedef std::map<double, gtsam::Pose3, std::less<double>,
+                 Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
+    GraphIMUPoseMap;
 typedef std::map<double, gtsam::Key, std::less<double>,
                  Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
     TimeToKeyMap;
@@ -51,6 +54,9 @@ class ImuManager {
 
   // JN
   void addToKeyBuffer(double ts, gtsam::Key key) { _timeToKeyBuffer[ts] = key; }
+
+  // JN
+  void addImuPoseToBuffer(double ts, gtsam::Pose3 pose) { _imuPosesInGraphBuffer[ts] = pose; }
 
   // JN
   void getLastTwoMeasurements(IMUMap& imuMap) {
@@ -124,6 +130,11 @@ class ImuManager {
   // JN
   void getCorrespondingGtsamKey(const double& tLidar, gtsam::Key& key) {
     key = _timeToKeyBuffer.lower_bound(tLidar)->second;
+  }
+
+  // JN
+  void getCorrespondingIMUGraphPose(const double& tLidar, gtsam::Pose3& pose) {
+    pose = _imuPosesInGraphBuffer.lower_bound(tLidar)->second;
   }
 
   // Get iterators to IMU messages in a given time interval
@@ -249,6 +260,7 @@ class ImuManager {
   std::mutex _IMUBufferMutex;  // Mutex for reading writing IMU buffer
   IMUMap _IMUBuffer;           // IMU buffer
   TimeToKeyMap _timeToKeyBuffer;
+  GraphIMUPoseMap _imuPosesInGraphBuffer;
   double _imuRate;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and
                     // init attitude
   const double _imuPoseInitWaitSecs = 1.0;  // Multiplied with _imuRate

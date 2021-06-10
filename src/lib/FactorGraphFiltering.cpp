@@ -146,6 +146,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _leftGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
   _rightGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
 
+  // Signal logger
+  _signalLogger.setup(node);
+
   // Subscribers
   /// subscribe to remapped IMU topic
   _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this,
@@ -239,6 +242,7 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
     gtsam::NavState currentState = _graphMgr.addImuFactorAndGetState(imuTime_k.toSec());
     // Publish current state at imu frequency
     publishState(currentState, imuTime_k);
+    _signalLogger.publishLogger(currentState.pose());
   }
 }
 

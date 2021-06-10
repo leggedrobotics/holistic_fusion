@@ -20,11 +20,10 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
-// catkin workspace
-/// Own Headers
+// Workspace
 #include "fg_filtering/GraphManager.hpp"
 #include "fg_filtering/geometry/math_utils.h"
-/// geodetic_utils
+#include "fg_filtering/SignalLogger.h"
 #include "geodetic_utils/geodetic_conv.hpp"
 
 // Local
@@ -173,6 +172,9 @@ class FactorGraphFiltering {
   tf::TransformListener _tfListener;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
+
+  // Signal Logger
+  SignalLogger _signalLogger;
 
   /// Timing
   double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
