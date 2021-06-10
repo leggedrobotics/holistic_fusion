@@ -106,7 +106,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
                                      *_imuBufferPreintegrator);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
-  ROS_INFO_STREAM("Propagated state (key " <<oldKey << ") before prediction: " << _imuPropogatedState.pose().translation());
+  ROS_INFO_STREAM("Propagated state (key " << oldKey << ") before prediction: " << _imuPropogatedState.pose().translation());
   _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
   ROS_INFO_STREAM("Propagated state (key " << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
   ROS_INFO("----------------------------");
