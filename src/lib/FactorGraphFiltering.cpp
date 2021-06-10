@@ -239,8 +239,6 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
     gtsam::NavState currentState = _graphMgr.addImuFactorAndGetState(imuTime_k.toSec());
     // Publish current state at imu frequency
     publishState(currentState, imuTime_k);
-  } else {
-    ROS_WARN("FG Filtering - IMU factor not added to graph");
   }
 }
 
@@ -249,6 +247,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   // Output of compslam --> predicts absolute motion in lidar frame
   tf::Transform tf_T_OL_Compslam_k;
   odomMsgToTF(*odomLidarPtr, tf_T_OL_Compslam_k);
+  ros::Time compslamTime_km1;
 
   // Lookup transformations
   tf::StampedTransform tf_T_LC;
@@ -285,14 +284,14 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
     }  // Else: Get Delta pose from Compslam
     else {
       // Set LiDAR time
-      _compslamTime_km1 = _compslamTime_k;
+      compslamTime_km1 = _compslamTime_k;
       _compslamTime_k = odomLidarPtr->header.stamp;
       /// Delta pose
       Eigen::Matrix4d I_T_km1_k = computeDeltaPose(_tf_T_OI_Compslam_km1, tf_T_OI_Compslam_k);
       // Write to delta pose --> mutex such that time and delta pose always correspond to each other
       gtsam::Pose3 lidarDeltaPose(I_T_km1_k);
       // Write the lidar odom delta to the graph
-      _graphMgr.addPoseBetweenFactor(lidarDeltaPose, _compslamTime_km1.toSec(), _compslamTime_k.toSec());
+      _graphMgr.addPoseBetweenFactor(lidarDeltaPose, compslamTime_km1.toSec(), _compslamTime_k.toSec());
       // Mutex for optimizeGraph Flag
       {
         // Lock
@@ -354,7 +353,6 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
     _leftGnssPathPtr->header.frame_id = _odomFrame;
     _leftGnssPathPtr->header.stamp = leftGnssPtr->header.stamp;
     _leftGnssPathPtr->poses.push_back(pose);
-    //// Publish
     _pubLeftGnssPath.publish(_leftGnssPathPtr);
     /// Right
     //// Pose
@@ -367,7 +365,6 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
     _rightGnssPathPtr->header.frame_id = _odomFrame;
     _rightGnssPathPtr->header.stamp = rightGnssPtr->header.stamp;
     _rightGnssPathPtr->poses.push_back(pose);
-    //// Publish
     _pubRightGnssPath.publish(_rightGnssPathPtr);
   }
 }
@@ -436,7 +433,7 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   _tf_T_OC.setData(tf_T_OC);
   _tf_T_OC.stamp_ = imuTime_k;
   // Get odom-->base_link transformation from odom-->imu
-  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB); // TODO
+  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);  // TODO
   _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
   _tf_T_OB.stamp_ = imuTime_k;
 

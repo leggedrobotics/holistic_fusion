@@ -6,6 +6,9 @@
 #include <mutex>
 #include <vector>
 
+// ROS
+#include <rosconsole/macros_generated.h>
+
 // GTSAM
 #define SLOW_BUT_CORRECT_BETWEENFACTOR  // increases accuracy in handling rotations
 #include <gtsam/inference/Symbol.h>

@@ -116,7 +116,6 @@ class FactorGraphFiltering {
   bool _optimizeGraph = false;
 
   /// Times
-  ros::Time _compslamTime_km1;
   ros::Time _compslamTime_k;
 
   /// Transformations

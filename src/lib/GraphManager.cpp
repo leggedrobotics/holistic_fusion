@@ -106,7 +106,10 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
                                      *_imuBufferPreintegrator);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
+  ROS_INFO_STREAM("Propagated state (key " <<oldKey << ") before prediction: " << _imuPropogatedState.pose().translation());
   _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
+  ROS_INFO_STREAM("Propagated state (key " << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
+  ROS_INFO("----------------------------");
   // Add IMU Value
   _newGraphValues.insert(X(newKey), _imuPropogatedState.pose());
   _newGraphValues.insert(V(newKey), _imuPropogatedState.velocity());
@@ -120,12 +123,17 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
                                         const double lidarTime_k) {
   // Operating on graph data --> acquire mutex during whole method
   const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
-  
+
   // Find closest lidar keys in existing graph
   IMUMapItr lidarMapItr_km1, lidarMapItr_k;
   _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_km1, lidarMapItr_km1);
   _imuBuffer.getClosestIMUBufferIteratorToTime(lidarTime_k, lidarMapItr_k);
+  gtsam::Key key_km1, key_k;
+  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_km1->first, key_km1);
+  _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_k->first, key_k);
   std::cout << "Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first << std::endl;
+  std::cout << "Current key: " << _stateKey << ", found lidar keys are: "
+            << key_km1 << " and " << key_k << std::endl;
   gtsam::Key closestLidarKey_km1, closestLidarKey_k;
   _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_km1->first, closestLidarKey_km1);
   _imuBuffer.getCorrespondingGtsamKey(lidarMapItr_k->first, closestLidarKey_k);
@@ -225,7 +233,9 @@ void GraphManager::updateGraphAndState() {
         gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
         result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
+    ROS_WARN_STREAM("Graph state (key " << currentKey << ") before prediction: " << _graphState.navState().pose().translation());
     _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
+    ROS_WARN_STREAM("Propagated state (key " << _stateKey << ") after prediction: " << _imuPropogatedState.pose().translation());
   }
 }
 
@@ -249,6 +259,7 @@ bool GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
   size_t count = 0;
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
+    ROS_INFO_STREAM("IMU acceleration: " << currItr->second.head<3>());
     _imuStepPreintegrator->integrateMeasurement(currItr->second.head<3>(),    // acc
                                                 currItr->second.tail<3>(),    // gyro
                                                 dt);                          // delta t
