@@ -106,12 +106,12 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
                                      *_imuStepPreintegrator);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
-  ROS_INFO_STREAM("Propagated state (key " << oldKey
-                                           << ") before prediction: " << _imuPropogatedState.pose().translation());
+  //ROS_INFO_STREAM("Propagated state (key " << oldKey
+  //                                         << ") before prediction: " << _imuPropogatedState.pose().translation());
   _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
-  ROS_INFO_STREAM("Propagated state (key "
-                  << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
-  ROS_INFO("----------------------------");
+  // ROS_INFO_STREAM("Propagated state (key "
+  //                 << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
+  // ROS_INFO("----------------------------");
 
   // Add to IMU pose buffer
   _imuBuffer.addImuPoseToBuffer(imuTime_k, _imuPropogatedState.pose());
@@ -137,14 +137,14 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
   gtsam::Key closestLidarKey_km1, closestLidarKey_k;
   _imuBuffer.getCorrespondingGtsamKey(lidarTime_km1, closestLidarKey_km1);
   _imuBuffer.getCorrespondingGtsamKey(lidarTime_k, closestLidarKey_k);
-  ROS_INFO_STREAM("Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first);
+  //ROS_INFO_STREAM("Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first);
   ROS_INFO_STREAM("Current key: " << _stateKey << ", found lidar keys are: " << closestLidarKey_km1 << " and "
                                   << closestLidarKey_k);
-  ROS_WARN_STREAM("LiDAR delta pose: " << pose);
+  //ROS_WARN_STREAM("LiDAR delta pose: " << pose);
   gtsam::Pose3 imuPose_km1, imuPose_k;
-  _imuBuffer.getCorrespondingIMUGraphPose(lidarTime_km1, imuPose_km1);
-  _imuBuffer.getCorrespondingIMUGraphPose(lidarTime_k, imuPose_k);
-  ROS_WARN_STREAM("Delta pose in graph from IMU: " << imuPose_km1.inverse() * imuPose_k);
+  //_imuBuffer.getCorrespondingIMUGraphPose(lidarTime_km1, imuPose_km1);
+  //_imuBuffer.getCorrespondingIMUGraphPose(lidarTime_k, imuPose_k);
+  //ROS_WARN_STREAM("Delta pose in graph from IMU: " << imuPose_km1.inverse() * imuPose_k);
 
   // Create Pose BetweenFactor and add
   auto poseNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
@@ -241,11 +241,11 @@ void GraphManager::updateGraphAndState() {
         gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
         result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
-    ROS_WARN_STREAM("Graph state (key " << currentKey
-                                        << ") before prediction: " << _graphState.navState().pose().translation());
+    //ROS_WARN_STREAM("Graph state (key " << currentKey
+    //                                    << ") before prediction: " << _graphState.navState().pose().translation());
     _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
-    ROS_WARN_STREAM("Propagated state (key " << _stateKey
-                                             << ") after prediction: " << _imuPropogatedState.pose().translation());
+    //ROS_WARN_STREAM("Propagated state (key " << _stateKey
+    //                                         << ") after prediction: " << _imuPropogatedState.pose().translation());
   }
 }
 
@@ -269,7 +269,6 @@ bool GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
   size_t count = 0;
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
-    ROS_INFO_STREAM("IMU acceleration: " << currItr->second.head<3>());
     _imuStepPreintegrator->integrateMeasurement(currItr->second.head<3>(),    // acc
                                                 currItr->second.tail<3>(),    // gyro
                                                 dt);                          // delta t

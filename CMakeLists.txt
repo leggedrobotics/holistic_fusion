@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.12)
 project(fg_filtering)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -19,6 +19,10 @@ find_package(catkin REQUIRED COMPONENTS
   signal_logger
 )
 
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+message("Python Version:" ${Python3_VERSION})
+  message("Python Path:" ${Python3_INCLUDE_DIRS})
+
 find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
@@ -37,6 +41,7 @@ include_directories(
 	${catkin_INCLUDE_DIRS}
   ${GTSAM_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
+  ${Python3_INCLUDE_DIRS}
 )
 
 add_message_files(

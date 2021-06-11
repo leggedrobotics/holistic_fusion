@@ -228,6 +228,15 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   // Set IMU time
   ros::Time imuTime_k = imu_ptr->header.stamp;
 
+  // Filter out imu messages with same time stamp
+  if (imuTime_k == _imuTime_km1) {
+    ROS_WARN_STREAM("Imu time " << imuTime_k << " was repeated.");
+    return;
+  }
+  else {
+    _imuTime_km1 = imuTime_k;
+  }
+
   // Add to buffer
   _graphMgr.addToIMUBuffer(imuTime_k.toSec(), imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y,
                            imu_ptr->linear_acceleration.z, imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y,

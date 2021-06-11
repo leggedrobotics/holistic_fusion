@@ -116,6 +116,7 @@ class FactorGraphFiltering {
 
   /// Times
   ros::Time _compslamTime_k;
+  ros::Time _imuTime_km1;
 
   /// Transformations
   //// Compslam
