@@ -1,7 +1,7 @@
 #ifndef FG_FILTERING_H
 #define FG_FILTERING_H
 
-// CPP
+// C++
 #include <mutex>
 #include <string_view>
 #include <thread>
@@ -20,12 +20,10 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
-// catkin workspace
-/// Own Headers
+// Workspace
 #include "fg_filtering/GraphManager.hpp"
-#include "fg_filtering/ImuManager.hpp"
 #include "fg_filtering/geometry/math_utils.h"
-/// geodetic_utils
+#include "fg_filtering/SignalLogger.h"
 #include "geodetic_utils/geodetic_conv.hpp"
 
 // Local
@@ -56,13 +54,11 @@ class FactorGraphFiltering {
   //// Timing and Motions
   void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
-  auto const& graphIMUBias() const { return _graphMgr._state.imuBias(); }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
-  // Processing of buffered data ------------
-  void process();
-
+ private:
+  // Functions -------------
   // Callbacks
   /// IMU Callback Function for handling incoming IMU messages -------------
   void imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr);
@@ -71,48 +67,39 @@ class FactorGraphFiltering {
   /// GNSS Callback
   void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
                     const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-
-  void print_map(IMUMap m) {
-    for (auto const& pair : m) {
-      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
-    }
-  }
-
- private:
-  // Functions -------------
+  // Worker functions
   /// Set Imu Attitude
-  void alignImu();
+  void alignImu(const double imuTime_k);
   /// Initialize GNSS pose
   void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
                 const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Initialize the graph
   void initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr);
-  /// Publish the current result via the respective topics.
-  void publishOdometryAndTF();
-  /// Write IMU to grah
-  void writeToGraph();
   /// Updating the factor graph
-  bool updateFactorGraph();
+  void updateGraph();
+  /// Publish state in imu callback
+  void publishState(gtsam::NavState currentState, ros::Time imuTime_k);
+  // Commodity
+  inline void print_map(IMUMap m) {
+    for (auto const& pair : m) {
+      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
+    }
+  }
 
   // Threads
   /// Thread 1: Callback for compslam odometry
   /// thread 2: Callback for IMU data
   /// Thread 3: Callback for GNSS
   std::thread _publishOdometryAndTFThread;  // Thread 4: publishes the estimate at exactly 100 Hz
-  std::thread _writeToGraphThread;          // Thread 5: writes the IMU constraints to the graph
+  std::thread _updateGraphThread;           // Thread 5: writes the IMU constraints to the graph
 
   // Mutex
-  // std::mutex _factorGraphMutex;
-  std::mutex _lidarDeltaPoseMutex;
-  std::mutex _imuMeasurementMutex;
+  std::mutex _optimizeGraphMutex;
 
   // Member variables -------------
   /// Geodetic Converter
   geodetic_converter::GeodeticConverter _geodeticConverterLeft;
   geodetic_converter::GeodeticConverter _geodeticConverterRight;
-
-  /// IMU buffer
-  ImuManager _imuBuffer;
 
   /// Factor graph
   GraphManager _graphMgr;
@@ -124,16 +111,12 @@ class FactorGraphFiltering {
   bool _firstLidarOdomCallback = true;
   bool _firstScanCallback = true;
   bool _firstGnssCallback = true;
+  //// Optimize graph
+  bool _optimizeGraph = false;
 
   /// Times
-  ros::Time _imuTime_km1;
-  ros::Time _compslamTime_km1;
-  ros::Time _imuTime_k;
   ros::Time _compslamTime_k;
-
-  /// Graph keys
-  gtsam::Key _imuKey_k;
-  gtsam::Key _lidarKey_k;
+  ros::Time _imuTime_km1;
 
   /// Transformations
   //// Compslam
@@ -149,13 +132,6 @@ class FactorGraphFiltering {
   gtsam::Rot3 _zeroYawIMUattitude;
   double _gravityConstant;
   tf::Transform _tf_initialImuPose;
-
-  /// Measurements
-  //// IMU measurement, can then be found in the IMU buffer
-  bool _newImuMeasurement = false;
-  //// LiDAR Delta Pose
-  gtsam::Pose3 _lidarDeltaPose;
-  bool _newLidarDeltaPose = false;
 
   /// ROS related
   ros::Time _timeImuTrans;  // time of current IMU transformation information
@@ -197,6 +173,9 @@ class FactorGraphFiltering {
   tf::TransformListener _tfListener;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
+
+  // Signal Logger
+  SignalLogger _signalLogger;
 
   /// Timing
   double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements

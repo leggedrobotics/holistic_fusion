@@ -19,9 +19,12 @@ namespace fg_filtering {
 typedef std::map<double, gtsam::Vector6, std::less<double>,
                  Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
     IMUMap;
+typedef std::map<double, gtsam::Pose3, std::less<double>,
+                 Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
+    GraphIMUPoseMap;
 typedef std::map<double, gtsam::Key, std::less<double>,
                  Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
-    IMUToKeyMap;
+    TimeToKeyMap;
 typedef IMUMap::iterator IMUMapItr;
 
 class ImuManager {
@@ -50,18 +53,19 @@ class ImuManager {
   }
 
   // JN
-  void addToKeyBuffer(double ts, gtsam::Key key) { _IMUToKeyBuffer[ts] = key; }
+  void addToKeyBuffer(double ts, gtsam::Key key) { _timeToKeyBuffer[ts] = key; }
 
   // JN
-  bool getLastTwoMeasurements(IMUMap& imuMap) {
+  void addImuPoseToBuffer(double ts, gtsam::Pose3 pose) { _imuPosesInGraphBuffer[ts] = pose; }
+
+  // JN
+  void getLastTwoMeasurements(IMUMap& imuMap) {
     IMUMapItr endItr = --(_IMUBuffer.end());
     IMUMapItr previousItr = --(--(_IMUBuffer.end()));
 
     // Write into IMU Map
     imuMap[previousItr->first] = previousItr->second;
     imuMap[endItr->first] = endItr->second;
-
-    return true;
   }
 
   // Get IMU measurements with interpolated values at start and end timestamps
@@ -101,8 +105,8 @@ class ImuManager {
         // Add last actual IMU message
         interpolatedIMUMap[e_itr->first] =
             e_itr->second;  ////std::map insert doesn't insert last iterator so if e_itr->first > ts_end then it means
-                            ///we are at the end of IMU buffer and we need to insert the last IMU message to the return
-                            ///buffer
+                            /// we are at the end of IMU buffer and we need to insert the last IMU message to the return
+                            /// buffer
         // Extrapolate IMU message at timestamp(ts_end>k), e_itr(k), prev_e_itr(k-1)
         auto prev_e_itr = e_itr;
         --prev_e_itr;
@@ -125,7 +129,12 @@ class ImuManager {
 
   // JN
   void getCorrespondingGtsamKey(const double& tLidar, gtsam::Key& key) {
-    key = _IMUToKeyBuffer.lower_bound(tLidar)->second;
+    key = _timeToKeyBuffer.lower_bound(tLidar)->second;
+  }
+
+  // JN
+  void getCorrespondingIMUGraphPose(const double& tLidar, gtsam::Pose3& pose) {
+    pose = _imuPosesInGraphBuffer.lower_bound(tLidar)->second;
   }
 
   // Get iterators to IMU messages in a given time interval
@@ -250,7 +259,8 @@ class ImuManager {
  private:
   std::mutex _IMUBufferMutex;  // Mutex for reading writing IMU buffer
   IMUMap _IMUBuffer;           // IMU buffer
-  IMUToKeyMap _IMUToKeyBuffer;
+  TimeToKeyMap _timeToKeyBuffer;
+  GraphIMUPoseMap _imuPosesInGraphBuffer;
   double _imuRate;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and
                     // init attitude
   const double _imuPoseInitWaitSecs = 1.0;  // Multiplied with _imuRate

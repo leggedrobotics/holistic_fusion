@@ -1,15 +1,16 @@
 <launch>
-  <param name="use_sim_time" value="true" /> #be sure to run --clock
+  <param name="use_sim_time" value="true" />
+ #be sure to run --clock
 
   # CERBERUS - Frame Connector - Only needed if localization manager is not running
-  <!-- <node pkg="tf" type="static_transform_publisher" name="map_corrected_tf" respawn="true" args="0 0 0 0 0 0 map camera_init_CORRECTED 10"/>
+    <!-- <node pkg="tf" type="static_transform_publisher" name="map_corrected_tf" respawn="true" args="0 0 0 0 0 0 map camera_init_CORRECTED 10"/>
   <node pkg="tf" type="static_transform_publisher" name="corrected_init_tf" respawn="true" args="0 0 0 1.570796327 0 1.570796327 camera_init_CORRECTED camera_init 10 "/> -->
   # CERBERUS - Frame Connector
 
-  <!-- Input topics remap -->
+    <!-- Input topics remap -->
   <!--arg name="lidar_odometry_topic_name" default="/loam_transform_CORRECTED" /-->
   <!--arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" /-->
-  
+
   <!-- Config for fg_filtering -->
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
@@ -17,10 +18,11 @@
   <arg name="gnss_right_topic_name" default="/m545_gnss_right" />
 
   <!-- Config for loam -->
-  <arg name="pointcloud_topic_name" default="/ouster_points_self_filtered" /> #default="/os_cloud_node/points" />
+  <arg name="pointcloud_topic_name" default="/ouster_points_self_filtered" />
+ #default="/os_cloud_node/points" />
 
   <!-- Node -->
-  <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen">
+  <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> #launch-prefix="gdb --args">
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
@@ -30,7 +32,7 @@
 
   <!-- Launch compslam >
   <include file="$(find loam)/launch/loam_m545.launch" output="log"> 
-    <arg name="pointcloud_topic_name"    value="$(arg pointcloud_topic_name)" />
+    <arg name="pointcloud_topic_name" value="$(arg pointcloud_topic_name)" />
   </include-->
 
 </launch>
