@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   geodetic_utils
   signal_logger
+  excavator_model
 )
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
