@@ -1,15 +1,5 @@
 <launch>
   <param name="use_sim_time" value="true" />
- #be sure to run --clock
-
-  # CERBERUS - Frame Connector - Only needed if localization manager is not running
-    <!-- <node pkg="tf" type="static_transform_publisher" name="map_corrected_tf" respawn="true" args="0 0 0 0 0 0 map camera_init_CORRECTED 10"/>
-  <node pkg="tf" type="static_transform_publisher" name="corrected_init_tf" respawn="true" args="0 0 0 1.570796327 0 1.570796327 camera_init_CORRECTED camera_init 10 "/> -->
-  # CERBERUS - Frame Connector
-
-    <!-- Input topics remap -->
-  <!--arg name="lidar_odometry_topic_name" default="/loam_transform_CORRECTED" /-->
-  <!--arg name="lidar_odometry_topic_name" default="/integrated_to_init_CORRECTED" /-->
 
   <!-- Config for fg_filtering -->
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
@@ -19,7 +9,6 @@
 
   <!-- Config for loam -->
   <arg name="pointcloud_topic_name" default="/ouster_points_self_filtered" />
- #default="/os_cloud_node/points" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> #launch-prefix="gdb --args">
@@ -29,10 +18,5 @@
     <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
     <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />
   </node>
-
-  <!-- Launch compslam >
-  <include file="$(find loam)/launch/loam_m545.launch" output="log"> 
-    <arg name="pointcloud_topic_name" value="$(arg pointcloud_topic_name)" />
-  </include-->
 
 </launch>

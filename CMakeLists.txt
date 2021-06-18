@@ -37,7 +37,6 @@ message("GTSAM path: ${GTSAM_DIR}")
 
 include_directories(
   include
-  ${loam_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
   ${GTSAM_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}

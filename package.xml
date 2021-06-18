@@ -29,7 +29,6 @@
   <build_depend>nodelet</build_depend>
   <build_depend>message_filters</build_depend>
   <build_depend>geodetic_utils</build_depend>
-  <build_depend>loam</build_depend>
   <build_depend>pcl</build_depend>
   <build_depend>signal_logger</build_depend>
 
@@ -48,7 +47,6 @@
   <run_depend>nodelet</run_depend>
   <run_depend>message_filters</run_depend>
   <run_depend>geodetic_utils</run_depend>
-  <run_depend>loam</run_depend>
   <run_depend>pcl</run_depend>
   <run_depend>signal_logger</run_depend>
 
