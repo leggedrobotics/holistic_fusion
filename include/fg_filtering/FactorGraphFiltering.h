@@ -22,8 +22,8 @@
 
 // Workspace
 #include "fg_filtering/GraphManager.hpp"
-#include "fg_filtering/geometry/math_utils.h"
 #include "fg_filtering/SignalLogger.h"
+#include "fg_filtering/geometry/math_utils.h"
 #include "geodetic_utils/geodetic_conv.hpp"
 
 // Local
@@ -65,14 +65,12 @@ class FactorGraphFiltering {
   /// LiDAR Odometry Callback
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   /// GNSS Callback
-  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
-                    const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   // Worker functions
   /// Set Imu Attitude
   void alignImu(const double imuTime_k);
   /// Initialize GNSS pose
-  void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
-                const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Initialize the graph
   void initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr);
   /// Updating the factor graph
@@ -162,10 +160,8 @@ class FactorGraphFiltering {
   nav_msgs::PathPtr _leftGnssPathPtr;
   nav_msgs::PathPtr _rightGnssPathPtr;
   //// Exact sync for gnss
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix>
-      _gnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>>
-      _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
+  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
+  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
 
   /// Subscribers
   ros::Subscriber _subImu;

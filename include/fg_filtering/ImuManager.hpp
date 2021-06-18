@@ -16,15 +16,10 @@
 #include <gtsam/geometry/Pose3.h>
 
 namespace fg_filtering {
-typedef std::map<double, gtsam::Vector6, std::less<double>,
-                 Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
-    IMUMap;
-typedef std::map<double, gtsam::Pose3, std::less<double>,
-                 Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
+typedef std::map<double, gtsam::Vector6, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> IMUMap;
+typedef std::map<double, gtsam::Pose3, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
     GraphIMUPoseMap;
-typedef std::map<double, gtsam::Key, std::less<double>,
-                 Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>>
-    TimeToKeyMap;
+typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToKeyMap;
 typedef IMUMap::iterator IMUMapItr;
 
 class ImuManager {
@@ -97,8 +92,7 @@ class ImuManager {
         // Interpolate IMU message at timestamp
         auto prev_e_itr = e_itr;
         --prev_e_itr;
-        gtsam::Vector6 ts_end_meas =
-            interpolateIMUMeasurement(prev_e_itr->first, prev_e_itr->second, ts_end, e_itr->first, e_itr->second);
+        gtsam::Vector6 ts_end_meas = interpolateIMUMeasurement(prev_e_itr->first, prev_e_itr->second, ts_end, e_itr->first, e_itr->second);
 
         interpolatedIMUMap[ts_end] = ts_end_meas;
       } else {
@@ -110,8 +104,7 @@ class ImuManager {
         // Extrapolate IMU message at timestamp(ts_end>k), e_itr(k), prev_e_itr(k-1)
         auto prev_e_itr = e_itr;
         --prev_e_itr;
-        gtsam::Vector6 ts_end_meas =
-            extrapolateIMUMeasurement(prev_e_itr->first, prev_e_itr->second, e_itr->first, e_itr->second, ts_end);
+        gtsam::Vector6 ts_end_meas = extrapolateIMUMeasurement(prev_e_itr->first, prev_e_itr->second, e_itr->first, e_itr->second, ts_end);
         // Add Extrapolated Value to return IMUMap
         interpolatedIMUMap[ts_end] = ts_end_meas;
       }
@@ -128,22 +121,17 @@ class ImuManager {
   }
 
   // JN
-  void getCorrespondingGtsamKey(const double& tLidar, gtsam::Key& key) {
-    key = _timeToKeyBuffer.lower_bound(tLidar)->second;
-  }
+  void getCorrespondingGtsamKey(const double& tLidar, gtsam::Key& key) { key = _timeToKeyBuffer.lower_bound(tLidar)->second; }
 
   // JN
-  void getCorrespondingIMUGraphPose(const double& tLidar, gtsam::Pose3& pose) {
-    pose = _imuPosesInGraphBuffer.lower_bound(tLidar)->second;
-  }
+  void getCorrespondingIMUGraphPose(const double& tLidar, gtsam::Pose3& pose) { pose = _imuPosesInGraphBuffer.lower_bound(tLidar)->second; }
 
   // Get iterators to IMU messages in a given time interval
-  bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr,
-                                       IMUMapItr& e_itr) {
+  bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr) {
     // Check if timestamps are in correct order
     if (ts_start >= ts_end) {
-      std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup Timestamps are not correct ts_start(" << std::fixed
-                << ts_start << ") >= ts_end(" << ts_end << ")\n";
+      std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup Timestamps are not correct ts_start(" << std::fixed << ts_start << ") >= ts_end("
+                << ts_end << ")\n";
       return false;
     }
 
@@ -163,23 +151,23 @@ class ImuManager {
 
     // Check if lookup start time is ahead of buffer start time
     if (s_itr == _IMUBuffer.end()) {
-      std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup start time ahead latest IMU message in the buffer, lookup: "
-                << ts_start << ", latest IMU: " << _IMUBuffer.rbegin()->first << std::endl;
+      std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup start time ahead latest IMU message in the buffer, lookup: " << ts_start
+                << ", latest IMU: " << _IMUBuffer.rbegin()->first << std::endl;
       return false;
     }
 
     // Check if last value is valid
     if (e_itr == _IMUBuffer.end()) {
-      std::cout << "\033[33mIMU-Manager\033[0m Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
-                << ts_start << "/" << ts_end << " and latest IMU: " << _IMUBuffer.rbegin()->first << std::endl;
+      std::cout << "\033[33mIMU-Manager\033[0m Lookup is past IMU buffer, with lookup Start/End: " << std::fixed << ts_start << "/"
+                << ts_end << " and latest IMU: " << _IMUBuffer.rbegin()->first << std::endl;
       e_itr = _IMUBuffer.end();
       --e_itr;
     }
 
     // Check if two IMU messages are different
     if (s_itr == e_itr) {
-      std::cout << "\033[33mIMU-Manager\033[0m Not Enough IMU values between timestamps , with Start/End: "
-                << std::fixed << ts_start << "/" << ts_end << ", with diff: " << ts_end - ts_start << std::endl;
+      std::cout << "\033[33mIMU-Manager\033[0m Not Enough IMU values between timestamps , with Start/End: " << std::fixed << ts_start << "/"
+                << ts_end << ", with diff: " << ts_end - ts_start << std::endl;
       return false;
     }
 
@@ -188,8 +176,8 @@ class ImuManager {
   }
 
   // Interpolate IMU measurement between timestamps
-  gtsam::Vector6 interpolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2,
-                                           const double& ts3, const gtsam::Vector6& meas3) {
+  gtsam::Vector6 interpolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const double& ts3,
+                                           const gtsam::Vector6& meas3) {
     double tsDiffRatio = (ts2 - ts1) / (ts3 - ts1);                //(x2-x1)/(x3-x1)
     gtsam::Vector6 meas2 = (meas3 - meas1) * tsDiffRatio + meas1;  // y2 = (y3-y1) * ((x2-x1)/(x3-x1)) + y1
 
@@ -202,8 +190,8 @@ class ImuManager {
   }
 
   // Extrapolate IMU measurement between timestamps
-  gtsam::Vector6 extrapolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2,
-                                           const gtsam::Vector6& meas2, const double& ts3) {
+  gtsam::Vector6 extrapolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const gtsam::Vector6& meas2,
+                                           const double& ts3) {
     double tsDiffRatio = (ts3 - ts1) / (ts2 - ts1);                //(x2-x1)/(x3-x1)
     gtsam::Vector6 meas3 = (meas2 - meas1) * tsDiffRatio + meas1;  // y3 = (y2-y1) * ((x2-x1)/(x3-x1)) + y1
 
@@ -216,8 +204,7 @@ class ImuManager {
   }
 
   // Determine initial IMU pose w.r.t to gravity vector pointing up
-  bool estimateAttitudeFromImu(const double imu_pose_init_ts, gtsam::Rot3& init_attitude, double& gravity_magnitude,
-                               bool output = false) {
+  bool estimateAttitudeFromImu(const double imu_pose_init_ts, gtsam::Rot3& init_attitude, double& gravity_magnitude, bool output = false) {
     // Get timestamp of first message for lookup
     if (_IMUBuffer.size() < (_imuRate * _imuPoseInitWaitSecs)) {
       return false;
@@ -228,7 +215,7 @@ class ImuManager {
       bool success = getInterpolatedImuMeasurements(prev_ts, imu_pose_init_ts, init_imu_map);
       if (success) {
         // Accumulate Acceleration part of IMU Messages
-        double imu_pose_init_msg_count = 0.0;  // Counter for messages needed for  initializing Pose from IMU
+        double imu_pose_init_msg_count = 0.0;                   // Counter for messages needed for  initializing Pose from IMU
         Eigen::Vector3d imu_pose_init_acc_mean(0.0, 0.0, 0.0);  // vector accumulating and imag
         for (auto itr = init_imu_map.begin(); itr != init_imu_map.end(); ++itr) {
           imu_pose_init_acc_mean += itr->second.head<3>();
@@ -244,11 +231,9 @@ class ImuManager {
         init_attitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(imu_pose_init_acc_mean, g_unit_vec));
         if (output) {
           std::cout << "\033[33mIMU-Manager\033[0m Gravity Magnitude: " << gravity_magnitude << std::endl;
-          std::cout << "\033[33mIMU-Manager\033[0m Mean IMU Acceleration Vector(x,y,z): "
-                    << imu_pose_init_acc_mean.transpose() << " - Gravity Unit Vector(x,y,z): " << g_unit_vec.transpose()
-                    << std::endl;
-          std::cout << "\033[33mIMU-Manager\033[0m Yaw/Pitch/Roll(deg): "
-                    << init_attitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
+          std::cout << "\033[33mIMU-Manager\033[0m Mean IMU Acceleration Vector(x,y,z): " << imu_pose_init_acc_mean.transpose()
+                    << " - Gravity Unit Vector(x,y,z): " << g_unit_vec.transpose() << std::endl;
+          std::cout << "\033[33mIMU-Manager\033[0m Yaw/Pitch/Roll(deg): " << init_attitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
         }
       } else
         return false;

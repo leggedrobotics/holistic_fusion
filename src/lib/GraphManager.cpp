@@ -7,23 +7,20 @@ namespace fg_filtering {
 bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3 init_pose) {
   // Set graph relinearization thresholds - must be lower case letters, check:gtsam::symbol_shorthand
   gtsam::FastMap<char, gtsam::Vector> relinTh;
-  relinTh['x'] =
-      (gtsam::Vector(6) << _rotReLinTh, _rotReLinTh, _rotReLinTh, _posReLinTh, _posReLinTh, _posReLinTh).finished();
+  relinTh['x'] = (gtsam::Vector(6) << _rotReLinTh, _rotReLinTh, _rotReLinTh, _posReLinTh, _posReLinTh, _posReLinTh).finished();
   relinTh['v'] = (gtsam::Vector(3) << _velReLinTh, _velReLinTh, _velReLinTh).finished();
-  relinTh['b'] = (gtsam::Vector(6) << _accBiasReLinTh, _accBiasReLinTh, _accBiasReLinTh, _gyrBiasReLinTh,
-                  _gyrBiasReLinTh, _gyrBiasReLinTh)
-                     .finished();
+  relinTh['b'] =
+      (gtsam::Vector(6) << _accBiasReLinTh, _accBiasReLinTh, _accBiasReLinTh, _gyrBiasReLinTh, _gyrBiasReLinTh, _gyrBiasReLinTh).finished();
   _isamParams.relinearizeThreshold = relinTh;
   _isamParams.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
                                                        // poorly conditioned problems
 
   // Create Prior factor and Initialize factor graph
   // Prior factor noise
-  auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-6, 1e-6, 1e-6).finished());  // rad,rad,rad,m, m, m
-  auto velocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1e-3);         // m/s
-  auto biasNoise =
-      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
+  auto poseNoise =
+      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-6, 1e-6, 1e-6).finished());  // rad,rad,rad,m, m, m
+  auto velocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1e-3);                                             // m/s
+  auto biasNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
   // Create prior factors
   _newGraphFactors.resize(0);
   _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
@@ -66,8 +63,7 @@ bool GraphManager::initImuIntegrators(const double g) {
   _imuParams->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * _accBiasRandomWalk;
   _imuParams->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrNoiseDensity;
   _imuParams->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrBiasRandomWalk;
-  _imuParams->integrationCovariance =
-      gtsam::Matrix33::Identity(3, 3) * 1.0e-8;  // error committed in integrating position from velocities
+  _imuParams->integrationCovariance = gtsam::Matrix33::Identity(3, 3) * 1.0e-8;  // error committed in integrating position from velocities
   // _imuParams->biasAccOmegaInt = gtsam::Matrix66::Identity(6, 6) * 1.0e-5; // error in the bias used for
   // preintegration
   gtsam::Vector3 acc_bias_prior(_accBiasPrior, _accBiasPrior, _accBiasPrior);
@@ -102,11 +98,10 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   bool success = _updateImuIntegrators(imuMeas);
 
   // Create and add IMU Factor
-  gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey),
-                                     *_imuStepPreintegrator);
+  gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey), *_imuStepPreintegrator);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
-  //ROS_INFO_STREAM("Propagated state (key " << oldKey
+  // ROS_INFO_STREAM("Propagated state (key " << oldKey
   //                                         << ") before prediction: " << _imuPropogatedState.pose().translation());
   _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
   // ROS_INFO_STREAM("Propagated state (key "
@@ -125,8 +120,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   return _imuPropogatedState;
 }
 
-void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1,
-                                        const double lidarTime_k) {
+void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1, const double lidarTime_k) {
   // Operating on graph data --> acquire mutex during whole method
   const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
 
@@ -137,21 +131,19 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
   gtsam::Key closestLidarKey_km1, closestLidarKey_k;
   _imuBuffer.getCorrespondingGtsamKey(lidarTime_km1, closestLidarKey_km1);
   _imuBuffer.getCorrespondingGtsamKey(lidarTime_k, closestLidarKey_k);
-  //ROS_INFO_STREAM("Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first);
-  ROS_INFO_STREAM("Current key: " << _stateKey << ", found lidar keys are: " << closestLidarKey_km1 << " and "
-                                  << closestLidarKey_k);
-  //ROS_WARN_STREAM("LiDAR delta pose: " << pose);
+  // ROS_INFO_STREAM("Found time stamps are: " << lidarMapItr_km1->first << " and " << lidarMapItr_k->first);
+  ROS_INFO_STREAM("Current key: " << _stateKey << ", found lidar keys are: " << closestLidarKey_km1 << " and " << closestLidarKey_k);
+  // ROS_WARN_STREAM("LiDAR delta pose: " << pose);
   gtsam::Pose3 imuPose_km1, imuPose_k;
   //_imuBuffer.getCorrespondingIMUGraphPose(lidarTime_km1, imuPose_km1);
   //_imuBuffer.getCorrespondingIMUGraphPose(lidarTime_k, imuPose_k);
-  //ROS_WARN_STREAM("Delta pose in graph from IMU: " << imuPose_km1.inverse() * imuPose_k);
+  // ROS_WARN_STREAM("Delta pose in graph from IMU: " << imuPose_km1.inverse() * imuPose_k);
 
   // Create Pose BetweenFactor and add
   auto poseNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << _poseNoise[0], _poseNoise[1], _poseNoise[2], _poseNoise[3], _poseNoise[4], _poseNoise[5])
           .finished());  // rad,rad,rad,m,m,m
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(X(closestLidarKey_km1), X(closestLidarKey_k), pose,
-                                                       poseNoiseModel);
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(X(closestLidarKey_km1), X(closestLidarKey_k), pose, poseNoiseModel);
   _newGraphFactors.add(poseBetweenFactor);
 }
 
@@ -178,11 +170,11 @@ bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Ke
   if (_detectionCount < _minDetections) return false;
 
   // Add Zero Pose Factor
-  _newGraphFactors.add(gtsam::BetweenFactor<gtsam::Pose3>(X(old_key), X(new_key), gtsam::Pose3::identity(),
-                                                          gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+  _newGraphFactors.add(
+      gtsam::BetweenFactor<gtsam::Pose3>(X(old_key), X(new_key), gtsam::Pose3::identity(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   // Add Zero Velocity Factor
-  _newGraphFactors.add(gtsam::PriorFactor<gtsam::Vector3>(V(old_key), gtsam::Vector3::Zero(),
-                                                          gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
+  _newGraphFactors.add(
+      gtsam::PriorFactor<gtsam::Vector3>(V(old_key), gtsam::Vector3::Zero(), gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
   // Re-detect Zero Motion
   _detectionCount = _minDetections / 2;
@@ -195,10 +187,9 @@ bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Ke
 }
 
 bool GraphManager::addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude) {
-  static auto imuEstNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 1e-6, 1e-6, 1e+10, 1e+10, 1e+10, 1e+10).finished());  // rad,rad,rad,m, m, m
-  _newGraphFactors.add(
-      gtsam::PriorFactor<gtsam::Pose3>(X(key), gtsam::Pose3(imu_attitude, gtsam::Point3::Zero()), imuEstNoise));
+  static auto imuEstNoise =
+      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e+10, 1e+10, 1e+10, 1e+10).finished());  // rad,rad,rad,m, m, m
+  _newGraphFactors.add(gtsam::PriorFactor<gtsam::Pose3>(X(key), gtsam::Pose3(imu_attitude, gtsam::Point3::Zero()), imuEstNoise));
   return true;
 }
 
@@ -236,15 +227,14 @@ void GraphManager::updateGraphAndState() {
     // Lock
     const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
     // Update Graph State
-    _graphState.updateNavStateAndBias(
-        currentKey, currentTime,
-        gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
-        result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
+    _graphState.updateNavStateAndBias(currentKey, currentTime,
+                                      gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
+                                      result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
-    //ROS_WARN_STREAM("Graph state (key " << currentKey
+    // ROS_WARN_STREAM("Graph state (key " << currentKey
     //                                    << ") before prediction: " << _graphState.navState().pose().translation());
     _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
-    //ROS_WARN_STREAM("Propagated state (key " << _stateKey
+    // ROS_WARN_STREAM("Propagated state (key " << _stateKey
     //                                         << ") after prediction: " << _imuPropogatedState.pose().translation());
   }
 }

@@ -55,8 +55,7 @@ class GraphManager {
   // Update graph and get new state
   void updateGraphAndState();
   // Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  void valuesToKeyTimeStampMap(const gtsam::Values& values, const double ts,
-                               std::map<gtsam::Key, double>& key_timestamp_map) {
+  void valuesToKeyTimeStampMap(const gtsam::Values& values, const double ts, std::map<gtsam::Key, double>& key_timestamp_map) {
     for (const auto& value : values) key_timestamp_map[value.key] = ts;
   }
 
@@ -142,8 +141,8 @@ class GraphManager {
   /// Pose Between Factor
   std::vector<double> _poseNoise{0.02, 0.02, 0.02, 0.05, 0.05, 0.05};  // ORDER RPY(rad) - XYZ(meters)
   /// Zero Velocity Factor
-  double _zeroMotionTh = 0.01;  // Zero motion threshold meters
-  double _minDetections = 10;   // Number of consective zero motions detected before zero motion factors are added
+  double _zeroMotionTh = 0.01;              // Zero motion threshold meters
+  double _minDetections = 10;               // Number of consective zero motions detected before zero motion factors are added
   double _detectionCount = _minDetections;  // Assumption: Robot starts at rest so initially zero motion is enabled
 };
 }  // namespace fg_filtering

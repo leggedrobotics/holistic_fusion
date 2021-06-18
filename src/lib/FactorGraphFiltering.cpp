@@ -116,8 +116,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   if (privateNode.getParam("evaluateNonlinearError", bParam)) _graphMgr._isamParams.setEvaluateNonlinearError(bParam);
   if (privateNode.getParam("cacheLinearizedFactors", bParam)) _graphMgr._isamParams.setCacheLinearizedFactors(bParam);
   if (privateNode.getParam("findUnusedFactorSlots", bParam)) _graphMgr._isamParams.findUnusedFactorSlots = bParam;
-  if (privateNode.getParam("enablePartialRelinearizationCheck", bParam))
-    _graphMgr._isamParams.setEnablePartialRelinearizationCheck(bParam);
+  if (privateNode.getParam("enablePartialRelinearizationCheck", bParam)) _graphMgr._isamParams.setEnablePartialRelinearizationCheck(bParam);
   if (privateNode.getParam("enableDetailedResults", bParam)) _graphMgr._isamParams.setEnableDetailedResults(bParam);
   std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  // roll,pitch,yaw,x,y,z
   if (privateNode.getParam("poseBetweenNoise", poseNoise)) {
@@ -151,20 +150,18 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Subscribers
   /// subscribe to remapped IMU topic
-  _subImu = node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this,
-                                             ros::TransportHints().tcpNoDelay());
+  _subImu =
+      node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized IMU subscriber.");
   /// subscribe to remapped LiDAR odometry topic
-  _subLidarOdometry =
-      node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback,
-                                         this, ros::TransportHints().tcpNoDelay());
+  _subLidarOdometry = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback, this,
+                                                         ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
 
   // subscribe to gnss topics using ROS exact sync policy in a single callback
   _subGnssLeft.subscribe(node, "/gnss_topic_left", 20);
   _subGnssRight.subscribe(node, "/gnss_topic_right", 20);
-  _gnssExactSyncPtr.reset(
-      new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(20), _subGnssLeft, _subGnssRight));
+  _gnssExactSyncPtr.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(20), _subGnssLeft, _subGnssRight));
   _gnssExactSyncPtr->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback, this, _1, _2));
 
   // Initialize helper threads
@@ -178,8 +175,7 @@ void FactorGraphFiltering::alignImu(const double imuTime_k) {
   if (_graphMgr.estimateAttitudeFromImu(imuTime_k, imu_attitude, _gravityConstant)) {
     _zeroYawIMUattitude = gtsam::Rot3::Ypr(0.0, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
     _imuAligned = true;
-    ROS_WARN_STREAM("\033[33mFG_FILTERING\033[0mAttitude of IMU is initialized. Determined Gravity Magnitude: "
-                    << _gravityConstant);
+    ROS_WARN_STREAM("\033[33mFG_FILTERING\033[0mAttitude of IMU is initialized. Determined Gravity Magnitude: " << _gravityConstant);
   } else {
     ROS_INFO_STREAM("\033[33mFG_FILTERING\033[0m NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITNG FOR MORE...\n");
   }
@@ -216,8 +212,8 @@ void FactorGraphFiltering::initGraph(const nav_msgs::Odometry::ConstPtr& odomLid
   // Print Initialization
   ROS_WARN("Graph is initialized with first pose.");
   gtsam::Pose3 initialImuPose(_graphMgr.getGraphState().navState().pose().matrix());
-  ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose() << ", RPY(deg): "
-                                    << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
+  ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose()
+                                    << ", RPY(deg): " << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
   ROS_WARN_STREAM("Factor graph key of very first node: " << _graphMgr.getStateKey() << std::endl);
   // Write in tf member variable
   pose3ToTF(initialImuPose, _tf_initialImuPose);
@@ -232,8 +228,7 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   if (imuTime_k == _imuTime_km1) {
     ROS_WARN_STREAM("Imu time " << imuTime_k << " was repeated.");
     return;
-  }
-  else {
+  } else {
     _imuTime_km1 = imuTime_k;
   }
 
@@ -345,14 +340,14 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
     auto leftEastPtr = std::make_unique<double>();
     auto leftNorthPtr = std::make_unique<double>();
     auto leftUpPtr = std::make_unique<double>();
-    _geodeticConverterLeft.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude,
-                                        leftEastPtr.get(), leftNorthPtr.get(), leftUpPtr.get());
+    _geodeticConverterLeft.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
+                                        leftNorthPtr.get(), leftUpPtr.get());
     /// Right
     auto rightEastPtr = std::make_unique<double>();
     auto rightNorthPtr = std::make_unique<double>();
     auto rightUpPtr = std::make_unique<double>();
-    _geodeticConverterRight.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude,
-                                         rightEastPtr.get(), rightNorthPtr.get(), rightUpPtr.get());
+    _geodeticConverterRight.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, rightEastPtr.get(),
+                                         rightNorthPtr.get(), rightUpPtr.get());
     // Publish path
     /// Left
     //// Pose
@@ -410,8 +405,7 @@ void FactorGraphFiltering::updateGraph() {
       _graphMgr.updateGraphAndState();
       endLoopTime = std::chrono::high_resolution_clock::now();
       ROS_WARN_STREAM("Iteration for writing into graph took "
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                      << " milliseconds.");
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;
       imuBiasMsg.header.frame_id = "/fg_odometry_imu";

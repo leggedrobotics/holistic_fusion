@@ -40,8 +40,7 @@ class SignalLogger {
     siloOptions.loggerName_ = logger_name;
     // Init logger
     signal_logger::logger->initLogger(siloOptions);
-    ROS_INFO("Initialize logger with window time: %f, sampling frequency: %d", siloOptions.maxLoggingTime_,
-             siloOptions.updateFrequency_);
+    ROS_INFO("Initialize logger with window time: %f, sampling frequency: %d", siloOptions.maxLoggingTime_, siloOptions.updateFrequency_);
 
     // Add poses to logger
     addPosesToLogger();
@@ -58,12 +57,12 @@ class SignalLogger {
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
 
     // Rotation
-    signal_logger::add(_logMeas.rotation().yaw(), "rotation_yaw", "cabin", "", 1, signal_logger::LogElementAction::SAVE,
-                       10000, signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_logMeas.rotation().pitch(), "rotation_pitch", "cabin", "", 1,
-                       signal_logger::LogElementAction::SAVE, 10000, signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_logMeas.rotation().roll(), "rotation_roll", "cabin", "", 1,
-                       signal_logger::LogElementAction::SAVE, 10000, signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_logMeas.rotation().yaw(), "rotation_yaw", "cabin", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_logMeas.rotation().pitch(), "rotation_pitch", "cabin", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_logMeas.rotation().roll(), "rotation_roll", "cabin", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
 
     signal_logger::logger->updateLogger();
     signal_logger::logger->startLogger();
