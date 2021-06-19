@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   sensor_msgs
+  m545_msgs
   roscpp
   rospy
   std_msgs
@@ -18,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   geodetic_utils
   signal_logger
   excavator_model
+  m545_description_ros
 )
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)

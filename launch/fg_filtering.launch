@@ -6,9 +6,7 @@
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
   <arg name="gnss_left_topic_name" default="/m545_gnss_left" />
   <arg name="gnss_right_topic_name" default="/m545_gnss_right" />
-
-  <!-- Config for loam -->
-  <arg name="pointcloud_topic_name" default="/ouster_points_self_filtered" />
+  <arg name="measurement_topic_name" default="/m545_measurements" />
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> #launch-prefix="gdb --args">
@@ -17,6 +15,7 @@
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
     <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
     <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />
+    <remap from="/measurement_topic" to="$(arg measurement_topic_name)" />
   </node>
 
 </launch>

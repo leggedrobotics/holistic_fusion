@@ -139,6 +139,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _pubCompslamPath = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", 5);
   _pubLeftGnssPath = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", 20);
   _pubRightGnssPath = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", 20);
+  _excavatorStatePublisher = node.advertise<m545_msgs::M545State>("/m545_state", 100);
   /// Messages
   _odomPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
   _compslamPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -157,12 +158,15 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _subLidarOdometry = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback, this,
                                                          ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
-
-  // subscribe to gnss topics using ROS exact sync policy in a single callback
+  /// subscribe to gnss topics using ROS exact sync policy in a single callback
   _subGnssLeft.subscribe(node, "/gnss_topic_left", 20);
   _subGnssRight.subscribe(node, "/gnss_topic_right", 20);
   _gnssExactSyncPtr.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(20), _subGnssLeft, _subGnssRight));
   _gnssExactSyncPtr->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback, this, _1, _2));
+  /// Subscribe to measurements
+  _subMeasurements = node.subscribe<m545_msgs::M545Measurements>("/measurement_topic", 100, &FactorGraphFiltering::measurementsCallback,
+                                                                 this, ros::TransportHints().tcpNoDelay());
+  ROS_INFO("Initialized Measurements subscriber.");
 
   // Initialize helper threads
   _updateGraphThread = std::thread(&FactorGraphFiltering::updateGraph, this);
@@ -252,6 +256,7 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
 
 // lidarOdometryCallback ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  ROS_ERROR("In lidar callback");
   // Output of compslam --> predicts absolute motion in lidar frame
   tf::Transform tf_T_OL_Compslam_k;
   odomMsgToTF(*odomLidarPtr, tf_T_OL_Compslam_k);
@@ -377,6 +382,11 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
   }
 }
 
+void FactorGraphFiltering::measurementsCallback(const m545_msgs::M545Measurements::ConstPtr& measurementsMsgPtr) {
+  // Converting measurement message to measurement
+  _measurements = _measurementConverter.convert(*measurementsMsgPtr);
+}
+
 // update graph ----------------------------------------------------------------------------------------
 void FactorGraphFiltering::updateGraph() {
   // Preallocation
@@ -425,6 +435,7 @@ void FactorGraphFiltering::updateGraph() {
 }
 
 void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time imuTime_k) {
+  ROS_ERROR("in publishState()");
   // Lookup transforms
   tf::StampedTransform tf_T_CI, tf_T_IC, tf_T_CB;
   _tfListener.lookupTransform(_cabinFrame, _imuFrame, imuTime_k, tf_T_CI);
@@ -439,10 +450,26 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   tf_T_OC = tf_T_CI * I_tf_T_rel * tf_T_IC;
   _tf_T_OC.setData(tf_T_OC);
   _tf_T_OC.stamp_ = imuTime_k;
-  // Get odom-->base_link transformation from odom-->imu
+  // Get odom-->base_link transformation from odom-->cabin
   _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);  // TODO
   _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
   _tf_T_OB.stamp_ = imuTime_k;
+
+  // m545_state
+  excavator_model::ActuatorConversions::jointStateFromActuatorState(_estExcavatorState, _measurements);
+  //_estExcavatorState.setAngularVelocityBaseInBaseFrame(...);
+  _estExcavatorState.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(0.0, 0.0, 0.0));
+  _estExcavatorState.setPositionWorldToBaseInWorldFrame(
+      kindr::Position3D(_tf_T_OB.getOrigin().getX(), _tf_T_OB.getOrigin().getY(), _tf_T_OB.getOrigin().getZ()));
+  _estExcavatorState.setOrientationBaseToWorld(kindr::RotationQuaternionPD(_tf_T_OB.getRotation().w(), _tf_T_OB.getRotation().x(),
+                                                                           _tf_T_OB.getRotation().y(), _tf_T_OB.getRotation().z()));
+  _estExcavatorState.setTime(_measurements.time_.toChrono());
+  _estExcavatorState.setSequence(_measurements.sequence_);
+  _estExcavatorState.setStatus(excavator_model::ExcavatorState::Status::STATUS_OK);
+  m545_msgs::M545State excavatorStateMsg;
+  excavatorStateMsg = _stateConverter.convert(_estExcavatorState);
+  _excavatorStatePublisher.publish(excavatorStateMsg);
+  ROS_INFO_STREAM("PUBLISHED /m545_state at time: " << _measurements.time_.toSeconds());
 
   // Publish odometry message for odom->base with 100 Hz
   nav_msgs::OdometryPtr odomBaseMsgPtr(new nav_msgs::Odometry);
@@ -452,7 +479,7 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   tf::poseTFToMsg(_tf_T_OB, odomBaseMsgPtr->pose.pose);
   _pubOdometry.publish(odomBaseMsgPtr);
   // Publish to Tf tree
-  _tfBroadcaster.sendTransform(_tf_T_OB);
+  //_tfBroadcaster.sendTransform(_tf_T_OB);
   // Publish path for cabin frame
   /// Pose
   geometry_msgs::PoseStamped poseStamped;

@@ -20,15 +20,23 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
+#include "m545_msgs/M545ActuatorStates.h"
+#include "m545_msgs/M545Measurements.h"
+#include "m545_msgs/M545State.h"
+
 // Workspace
 #include "fg_filtering/GraphManager.hpp"
 #include "fg_filtering/SignalLogger.h"
 #include "fg_filtering/geometry/math_utils.h"
 #include "geodetic_utils/geodetic_conv.hpp"
+#include "kindr/Core"
 
-// Local
-//#include "LidarOdometryManager.hpp"
-//#include "math_utils.h"
+// Menzi
+#include "m545_description/M545Measurements.hpp"
+#include "m545_description_ros/ConversionTraits.hpp"
+#include "excavator_model/ConversionTraits.hpp"
+#include "excavator_model/ExcavatorState.hpp"
+#include "excavator_model/ActuatorConversions.hpp"
 
 namespace fg_filtering {
 
@@ -66,6 +74,8 @@ class FactorGraphFiltering {
   void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   /// GNSS Callback
   void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  /// Measurement Callback
+  void measurementsCallback(const m545_msgs::M545Measurements::ConstPtr& measurementsMsg);
   // Worker functions
   /// Set Imu Attitude
   void alignImu(const double imuTime_k);
@@ -153,6 +163,10 @@ class FactorGraphFiltering {
   ros::Publisher _pubLeftGnssPath;
   ros::Publisher _pubRightGnssPath;
   tf::TransformBroadcaster _tfBroadcaster;
+  ros::Publisher _excavatorStatePublisher;
+
+  /// State to be published
+  excavator_model::ExcavatorState _estExcavatorState;
 
   /// Messages
   nav_msgs::PathPtr _odomPathPtr;
@@ -169,9 +183,17 @@ class FactorGraphFiltering {
   tf::TransformListener _tfListener;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
   message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
+  ros::Subscriber _subMeasurements;
 
-  // Signal Logger
-  SignalLogger _signalLogger;
+  /// Stored Messages
+  m545_description::M545Measurements _measurements;
+
+  // Message Converter
+  m545_description_ros::ConversionTraits<m545_description::M545Measurements, m545_msgs::M545Measurements> _measurementConverter;
+  excavator_model::ConversionTraits<excavator_model::ExcavatorState, m545_msgs::M545State> _stateConverter;
+
+      // Signal Logger
+      SignalLogger _signalLogger;
 
   /// Timing
   double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
