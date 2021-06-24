@@ -451,12 +451,12 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   _tf_T_OC.setData(tf_T_OC);
   _tf_T_OC.stamp_ = imuTime_k;
   // Get odom-->base_link transformation from odom-->cabin
-  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);  // TODO
+  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);
   _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
   _tf_T_OB.stamp_ = imuTime_k;
 
   // m545_state
-  excavator_model::ActuatorConversions::jointStateFromActuatorState(_estExcavatorState, _measurements);
+  excavator_model::ActuatorConversions::jointStateFromActuatorState(_measurements, _estExcavatorState);
   //_estExcavatorState.setAngularVelocityBaseInBaseFrame(...);
   _estExcavatorState.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(0.0, 0.0, 0.0));
   _estExcavatorState.setPositionWorldToBaseInWorldFrame(
