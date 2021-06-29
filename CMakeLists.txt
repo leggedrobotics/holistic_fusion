@@ -81,6 +81,21 @@ target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
+# Add clang tooling
+find_package(cmake_clang_tools QUIET)
+if(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
+  add_clang_tooling(
+    TARGET ${PROJECT_NAME}
+    SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include
+    CT_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+    CF_FIX
+  )
+endif(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
+
+#############
+## Install ##
+#############
+
 install(TARGETS ${PROJECT_NAME}_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

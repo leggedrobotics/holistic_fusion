@@ -26,7 +26,7 @@ class SignalLogger {
   };
 
   // Setup
-  void setup(ros::NodeHandle &nh) {
+  void setup(ros::NodeHandle& nh) {
     // configure logger
     double window_time = 60.0;
     std::string logger_name = "fg_filtering_log";
@@ -69,7 +69,7 @@ class SignalLogger {
   }
 
   // Publish logger data
-  void publishLogger(const gtsam::Pose3 &inputMeasurement) {
+  void publishLogger(const gtsam::Pose3& inputMeasurement) {
     _logMeas = inputMeasurement;
 
     signal_logger::logger->collectLoggerData();

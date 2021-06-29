@@ -14,34 +14,25 @@ namespace fg_filtering {
  */
 class Angle {
  public:
-  Angle()
-      : _radian(0.0),
-        _cos(1.0),
-        _sin(0.0) {}
+  Angle() : _radian(0.0), _cos(1.0), _sin(0.0) {}
 
-  Angle(float radValue)
-      : _radian(radValue),
-        _cos(std::cos(radValue)),
-        _sin(std::sin(radValue)) {}
+  Angle(float radValue) : _radian(radValue), _cos(std::cos(radValue)), _sin(std::sin(radValue)) {}
 
-  Angle(const Angle &other)
-      : _radian(other._radian),
-        _cos(other._cos),
-        _sin(other._sin) {}
+  Angle(const Angle& other) : _radian(other._radian), _cos(other._cos), _sin(other._sin) {}
 
-  void operator=(const Angle &rhs) {
+  void operator=(const Angle& rhs) {
     _radian = (rhs._radian);
     _cos = (rhs._cos);
     _sin = (rhs._sin);
   }
 
-  void operator+=(const float &radValue) { *this = (_radian + radValue); }
+  void operator+=(const float& radValue) { *this = (_radian + radValue); }
 
-  void operator+=(const Angle &other) { *this = (_radian + other._radian); }
+  void operator+=(const Angle& other) { *this = (_radian + other._radian); }
 
-  void operator-=(const float &radValue) { *this = (_radian - radValue); }
+  void operator-=(const float& radValue) { *this = (_radian - radValue); }
 
-  void operator-=(const Angle &other) { *this = (_radian - other._radian); }
+  void operator-=(const Angle& other) { *this = (_radian - other._radian); }
 
   Angle operator-() const {
     Angle out;
@@ -67,4 +58,4 @@ class Angle {
 
 }  // end namespace fg_filtering
 
-#endif  //LOAM_ANGLE_H
+#endif  // LOAM_ANGLE_H

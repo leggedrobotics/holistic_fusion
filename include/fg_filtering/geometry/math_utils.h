@@ -13,28 +13,36 @@ namespace fg_filtering {
  * @param radians The radian angle to convert.
  * @return The angle in degrees.
  */
-inline double rad2deg(double radians) { return radians * 180.0 / M_PI; }
+inline double rad2deg(double radians) {
+  return radians * 180.0 / M_PI;
+}
 
 /** \brief Convert the given radian angle to degrees.
  *
  * @param radians The radian angle to convert.
  * @return The angle in degrees.
  */
-inline float rad2deg(float radians) { return (float)(radians * 180.0 / M_PI); }
+inline float rad2deg(float radians) {
+  return (float)(radians * 180.0 / M_PI);
+}
 
 /** \brief Convert the given degree angle to radian.
  *
  * @param degrees The degree angle to convert.
  * @return The radian angle.
  */
-inline double deg2rad(double degrees) { return degrees * M_PI / 180.0; }
+inline double deg2rad(double degrees) {
+  return degrees * M_PI / 180.0;
+}
 
 /** \brief Convert the given degree angle to radian.
  *
  * @param degrees The degree angle to convert.
  * @return The radian angle.
  */
-inline float deg2rad(float degrees) { return (float)(degrees * M_PI / 180.0); }
+inline float deg2rad(float degrees) {
+  return (float)(degrees * M_PI / 180.0);
+}
 
 /** \brief Calculate the squared difference of the given two points.
  *
@@ -226,8 +234,7 @@ inline void invertHomogenousMatrix(const Eigen::Matrix4d& m_in, Eigen::Matrix4d&
 inline void odomMsgToTF(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
   tf::Quaternion tf_q;
   tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
-  tf::Vector3 tf_t =
-      tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+  tf::Vector3 tf_t = tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
   tf_T.setRotation(tf_q);
   tf_T.setOrigin(tf_t);
 }
@@ -243,15 +250,14 @@ Eigen::Matrix4d computeDeltaPose(const tf::StampedTransform& tf_T_km1, const tf:
   Eigen::Matrix4d T_k = Eigen::MatrixXd::Identity(4, 4);
   Eigen::Matrix4d T_km1_inv = Eigen::MatrixXd::Identity(4, 4);
   Eigen::Matrix4d T_km1_k = Eigen::MatrixXd::Identity(4, 4);
-  T_km1.block<4, 1>(0, 3) =
-      Eigen::Vector4d(tf_T_km1.getOrigin().x(), tf_T_km1.getOrigin().y(), tf_T_km1.getOrigin().z(), 1.0);
-  T_km1.block<3, 3>(0, 0) = Eigen::Quaterniond(tf_T_km1.getRotation().w(), tf_T_km1.getRotation().x(),
-                                               tf_T_km1.getRotation().y(), tf_T_km1.getRotation().z())
-                                .toRotationMatrix();
+  T_km1.block<4, 1>(0, 3) = Eigen::Vector4d(tf_T_km1.getOrigin().x(), tf_T_km1.getOrigin().y(), tf_T_km1.getOrigin().z(), 1.0);
+  T_km1.block<3, 3>(0, 0) =
+      Eigen::Quaterniond(tf_T_km1.getRotation().w(), tf_T_km1.getRotation().x(), tf_T_km1.getRotation().y(), tf_T_km1.getRotation().z())
+          .toRotationMatrix();
   T_k.block<4, 1>(0, 3) = Eigen::Vector4d(tf_T_k.getOrigin().x(), tf_T_k.getOrigin().y(), tf_T_k.getOrigin().z(), 1.0);
-  T_k.block<3, 3>(0, 0) = Eigen::Quaterniond(tf_T_k.getRotation().w(), tf_T_k.getRotation().x(),
-                                             tf_T_k.getRotation().y(), tf_T_k.getRotation().z())
-                              .toRotationMatrix();
+  T_k.block<3, 3>(0, 0) =
+      Eigen::Quaterniond(tf_T_k.getRotation().w(), tf_T_k.getRotation().x(), tf_T_k.getRotation().y(), tf_T_k.getRotation().z())
+          .toRotationMatrix();
   invertHomogenousMatrix(T_km1, T_km1_inv);
   T_km1_k = T_km1_inv * T_k;
 

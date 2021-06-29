@@ -10,7 +10,9 @@ using std::pow;
 using std::sin;
 using std::sqrt;
 
-FactorGraphFiltering::FactorGraphFiltering(float scanPeriod) { ROS_INFO("FactorGraphFiltering instance created."); }
+FactorGraphFiltering::FactorGraphFiltering(float scanPeriod) {
+  ROS_INFO("FactorGraphFiltering instance created.");
+}
 
 // setup ----------------------------------------------------------------------------------------
 bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode) {

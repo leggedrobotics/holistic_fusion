@@ -32,11 +32,11 @@
 #include "kindr/Core"
 
 // Menzi
-#include "m545_description/M545Measurements.hpp"
-#include "m545_description_ros/ConversionTraits.hpp"
+#include "excavator_model/ActuatorConversions.hpp"
 #include "excavator_model/ConversionTraits.hpp"
 #include "excavator_model/ExcavatorState.hpp"
-#include "excavator_model/ActuatorConversions.hpp"
+#include "m545_description/M545Measurements.hpp"
+#include "m545_description_ros/ConversionTraits.hpp"
 
 namespace fg_filtering {
 
@@ -192,8 +192,8 @@ class FactorGraphFiltering {
   m545_description_ros::ConversionTraits<m545_description::M545Measurements, m545_msgs::M545Measurements> _measurementConverter;
   excavator_model::ConversionTraits<excavator_model::ExcavatorState, m545_msgs::M545State> _stateConverter;
 
-      // Signal Logger
-      SignalLogger _signalLogger;
+  // Signal Logger
+  SignalLogger _signalLogger;
 
   /// Timing
   double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
