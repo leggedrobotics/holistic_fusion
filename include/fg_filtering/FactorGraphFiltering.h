@@ -27,6 +27,7 @@
 // Workspace
 #include "fg_filtering/GraphManager.hpp"
 #include "fg_filtering/SignalLogger.h"
+#include "fg_filtering/StaticTransforms.h"
 #include "fg_filtering/geometry/math_utils.h"
 #include "geodetic_utils/geodetic_conv.hpp"
 #include "kindr/Core"
@@ -144,6 +145,9 @@ class FactorGraphFiltering {
   /// ROS related
   ros::Time _timeImuTrans;  // time of current IMU transformation information
   ros::Time _timeUpdate;
+
+  /// Static transforms
+  StaticTransforms* staticTransformsPtr_;
 
   /// Frames
   std::string _mapFrame = "";

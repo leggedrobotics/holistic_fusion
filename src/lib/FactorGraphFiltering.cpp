@@ -24,6 +24,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   std::string sParam;
 
   // Set frames
+  /// Initialize containers
+  staticTransformsPtr_ = new StaticTransforms(privateNode);
   /// Odom
   if (privateNode.getParam("odomFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - Odom frame set to: " << sParam);
@@ -38,18 +40,21 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     ROS_INFO_STREAM("FactorGraphFiltering - base_link frame: " << sParam);
     setBaseLinkFrame(sParam);
     _tf_T_OB.child_frame_id_ = sParam;
+    staticTransformsPtr_->setBaseLinkFrame(sParam);
   } else
     ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
   /// IMU
   if (privateNode.getParam("imuFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU frame for preintegrator and tf: " << sParam);
     setImuFrame(sParam);
+    staticTransformsPtr_->setImuFrame(sParam);
   } else
     ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
   /// LiDAR frame
   if (privateNode.getParam("lidarFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);
     setLidarFrame(sParam);
+    staticTransformsPtr_->setLidarFrame(sParam);
   } else {
     ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
   }
@@ -58,6 +63,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     ROS_INFO_STREAM("FactorGraphFiltering - cabin frame: " << sParam);
     setCabinFrame(sParam);
     _tf_T_OC.child_frame_id_ = sParam;
+    staticTransformsPtr_->setCabinFrame(sParam);
   } else {
     ROS_WARN("FactorGraphFiltering - cabin frame not set");
   }

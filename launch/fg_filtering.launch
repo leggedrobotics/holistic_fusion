@@ -2,6 +2,7 @@
   <param name="use_sim_time" value="true" />
 
   <!-- Config for fg_filtering -->
+  <arg name="description_name" default="/romo_mm_description" />
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
   <arg name="imu_topic_name" default="/m545_imu_cabin" />
   <arg name="gnss_left_topic_name" default="/m545_gnss_left" />
@@ -9,7 +10,8 @@
   <arg name="measurement_topic_name" default="/m545_measurements" />
 
   <!-- Node -->
-  <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> #launch-prefix="gdb --args">
+  <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> <!-- launch-prefix="gdb -args"-->
+    <param name="description_name" type="string" value="$(arg description_name)"/>
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
