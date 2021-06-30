@@ -6,53 +6,56 @@
 namespace fg_filtering {
 
 class StaticTransforms {
-public:
-  StaticTransforms(ros::NodeHandle &privateNode) {
-    std::cout << "Static Transforms container initializing...";
+ public:
+  StaticTransforms(ros::NodeHandle& privateNode) {
+    ROS_INFO("Static Transforms container initializing...");
     std::string sParam;
     if (privateNode.getParam("description_name", sParam)) {
-      ROS_INFO_STREAM("FactorGraphFiltering - URDF-Description: " << sParam);
-      urdfDescription_ = sParam;
+      ROS_INFO_STREAM("FactorGraphFiltering - URDF-Description-Name: " << sParam);
+      privateNode.getParam(std::string("/") + sParam, urdfDescription_);
+      // urdfDescription_ = sParam;
+      if (urdfDescription_.empty()) {
+        ROS_ERROR("Could not load description!");
+        return;
+      }
     } else {
       ROS_ERROR("FactorGraphFiltering - urdf description not set.");
       return;
     }
-    /* load excavator model from URDF */
+    // load excavator model from URDF
     double timeStep;
-    excavator_model::ExcavatorModel excavatorModel(timeStep);
-    excavatorModel.initModelFromUrdf(urdfDescription_.c_str());
-    rbdlModel_ = excavatorModel.getRbdlModel();
+    excavatorModelPtr_ = std::make_unique<excavator_model::ExcavatorModel>(timeStep);
+    excavatorModelPtr_->initModelFromUrdf(urdfDescription_.c_str());
   }
 
   // Setters
-  void setBaseLinkFrame(const std::string &s) { baseLinkFrame_ = s; }
+  void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
 
-  void setImuFrame(const std::string &s) { imuFrame_ = s; }
+  void setImuFrame(const std::string& s) { imuFrame_ = s; }
 
-  void setLidarFrame(const std::string &s) { lidarFrame_ = s; }
+  void setLidarFrame(const std::string& s) { lidarFrame_ = s; }
 
-  void setCabinFrame(const std::string &s) { cabinFrame_ = s; }
+  void setCabinFrame(const std::string& s) { cabinFrame_ = s; }
 
   void findTransformations() {
-    // Probably better this one
-    baseToCabinInBaseFramePosition_ = excavatorModel.getPositionBodyToBody(excavator_model::RD::BodyEnum::BASE,
-                                                                           excavator_model::RD::BodyEnum::CABIN,
-                                                                           excavator_model::RD::CoordinateFrameEnum::BASE);
-
-
-
-
-    const unsigned int imuBodyId = rbdlModel_.GetBodyId(std::string("IMU_link").c_str());
+    ROS_WARN("Looking up transformations in URDF model:");
+    // Cabin IMU
+    const unsigned int imuBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_CABIN_link").c_str());
     if (imuBodyId != std::numeric_limits<unsigned int>::max()) {
-      Eigen::Matrix<double, 3, 1> chassisToChassisImuPosition = rbdlModel_.mFixedBodies[imuBodyId - rbdlModel_.fixed_body_discriminator]->mParentTransform.r;
-      Eigen::Matrix<double, 3, 3> chassisToChassisImuRotationMatrix = rbdlModel_.mFixedBodies[imuBodyId - rbdlModel_.fixed_body_discriminator]->mParentTransform.E;
+      ROS_WARN_STREAM("IMU ID: " << imuBodyId);
+      ROS_WARN_STREAM("Numeric limits: " << std::numeric_limits<unsigned int>::max());
+      tf_T_CI_ = getTransformFromID(imuBodyId);
+      tf_T_IC_ = tf_T_CI_.inverse();
+      ROS_WARN_STREAM("IMU_CABIN_LINK: " << tf_T_CI_.getOrigin());
     } else {
-      ROS_ERROR("Did not find Body IMU!");
-      return false;
+      ROS_ERROR("Did not find Cabin IMU!");
+      return;
     }
+
+    // LiDAR
   }
 
-private:
+ private:
   // Names
   std::string urdfDescription_;
   std::string baseLinkFrame_;
@@ -61,16 +64,32 @@ private:
   std::string cabinFrame_;
 
   // Robot Model
-  RigidBodyDynamics::Model rbdlModel_;
+  std::unique_ptr<excavator_model::ExcavatorModel> excavatorModelPtr_;
 
   // Transformations
-  tf::StampedTransform tf_T_LC;
-  tf::StampedTransform tf_T_CL;
-  tf::StampedTransform tf_T_LI;
-  tf::StampedTransform tf_T_IC;
-  tf::StampedTransform tf_T_CI;
+  tf::Transform tf_T_LC_;
+  tf::Transform tf_T_CL_;
+  tf::Transform tf_T_LI_;
+  tf::Transform tf_T_IC_;
+  tf::Transform tf_T_CI_;
+
+  // Methods
+  tf::Transform getTransformFromID(const unsigned int imuBodyId) {
+    tf::Transform T;
+    Eigen::Vector3d t = excavatorModelPtr_->getRbdlModel()
+                            .mFixedBodies[imuBodyId - excavatorModelPtr_->getRbdlModel().fixed_body_discriminator]
+                            ->mParentTransform.r;
+    ROS_WARN_STREAM("Translation: " << t);
+    Eigen::Matrix3d R = excavatorModelPtr_->getRbdlModel()
+                            .mFixedBodies[imuBodyId - excavatorModelPtr_->getRbdlModel().fixed_body_discriminator]
+                            ->mParentTransform.E;
+    Eigen::Quaterniond q(R);
+    T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
+    T.setOrigin(tf::Vector3(t.x(), t.y(), t.z()));
+    return T;
+  }
 };
 
-} // namespace fg_filtering
+}  // namespace fg_filtering
 
-#endif //MENZI_SIM_STATICTRANSFORMS_H
+#endif  // MENZI_SIM_STATICTRANSFORMS_H

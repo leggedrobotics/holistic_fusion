@@ -101,6 +101,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     }
   }
 
+  // Get transformations from URDF
+  staticTransformsPtr_->findTransformations();
+
   // Geodetic Converter
   _geodeticConverterLeft = geodetic_converter::GeodeticConverter();
   _geodeticConverterRight = geodetic_converter::GeodeticConverter();

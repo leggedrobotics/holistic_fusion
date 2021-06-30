@@ -161,6 +161,7 @@ class FactorGraphFiltering {
 
   /// Publishers
   ros::Publisher _pubOdometry;
+
   ros::Publisher _pubLaserImuBias;
   ros::Publisher _pubOdomPath;
   ros::Publisher _pubCompslamPath;
