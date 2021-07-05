@@ -83,17 +83,17 @@ class FactorGraphFiltering {
   /// Initialize GNSS pose
   void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Initialize the graph
-  void initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr);
+  void initGraph(const ros::Time& timeStamp_k);
   /// Updating the factor graph
   void updateGraph();
   /// Publish state in imu callback
   void publishState(gtsam::NavState currentState, ros::Time imuTime_k);
   // Commodity
-  inline void print_map(IMUMap m) {
-    for (auto const& pair : m) {
-      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
-    }
-  }
+  //  inline void print_map(IMUMap m) {
+  //    for (auto const& pair : m) {
+  //      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
+  //    }
+  //  }
 
   // Threads
   /// Thread 1: Callback for compslam odometry

@@ -217,15 +217,11 @@ void FactorGraphFiltering::initGNSS(const sensor_msgs::NavSatFix::ConstPtr& left
 }
 
 // Graph initialization from starting attitude
-void FactorGraphFiltering::initGraph(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+void FactorGraphFiltering::initGraph(const ros::Time& timeStamp_k) {
   // Gravity
   _graphMgr.initImuIntegrators(_gravityConstant);
-  // Set starting time and key to the first node
-  _compslamTime_k = odomLidarPtr->header.stamp;
   // Initialize first node
-  _graphMgr.initPoseVelocityBiasGraph(_compslamTime_k.toSec(), gtsam::Pose3(_zeroYawIMUattitude, gtsam::Point3()));
-  // Print Initialization
-  ROS_WARN("Graph is initialized with first pose.");
+  _graphMgr.initPoseVelocityBiasGraph(timeStamp_k.toSec(), gtsam::Pose3(_zeroYawIMUattitude, gtsam::Point3()));
   gtsam::Pose3 initialImuPose(_graphMgr.getGraphState().navState().pose().matrix());
   ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose()
                                     << ", RPY(deg): " << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
@@ -255,8 +251,14 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   // If IMU not yet aligned
   if (!_imuAligned) {
     alignImu(imuTime_k.toSec());
+  }  // Initialize graph at next iteration step
+  else if (!_graphInited) {
+    ROS_WARN("Initializing the graph...");
+    initGraph(imuTime_k);
+    ROS_WARN("...graph is initialized.");
+    _graphInited = true;
   }  // Add measurement to graph but don't optimize it
-  else if (_graphInited) {
+  else {
     // Add IMU factor and get propagated state
     gtsam::NavState currentState = _graphMgr.addImuFactorAndGetState(imuTime_k.toSec());
     // Publish current state at imu frequency
@@ -275,15 +277,20 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
 
   // Lookup transformations
   tf::StampedTransform tf_T_LC;
-  _tfListener.lookupTransform(_lidarFrame, _cabinFrame, ros::Time(0), tf_T_LC);
+  tf_T_LC.setData(staticTransformsPtr_->T_LC());
+  //_tfListener.lookupTransform(_lidarFrame, _cabinFrame, ros::Time(0), tf_T_LC);
   tf::StampedTransform tf_T_CL;
-  _tfListener.lookupTransform(_lidarFrame, _cabinFrame, ros::Time(0), tf_T_CL);
+  tf_T_CL.setData(staticTransformsPtr_->T_CL());
+  //_tfListener.lookupTransform(_lidarFrame, _cabinFrame, ros::Time(0), tf_T_CL);
   tf::StampedTransform tf_T_LI;
-  _tfListener.lookupTransform(_lidarFrame, _imuFrame, ros::Time(0), tf_T_LI);
+  tf_T_LI.setData(staticTransformsPtr_->T_LI());
+  //_tfListener.lookupTransform(_lidarFrame, _imuFrame, ros::Time(0), tf_T_LI);
   tf::StampedTransform tf_T_IC;
-  _tfListener.lookupTransform(_imuFrame, _cabinFrame, ros::Time(0), tf_T_IC);
+  tf_T_IC.setData(staticTransformsPtr_->T_IC());
+  //_tfListener.lookupTransform(_imuFrame, _cabinFrame, ros::Time(0), tf_T_IC);
   tf::StampedTransform tf_T_CI;
-  _tfListener.lookupTransform(_cabinFrame, _imuFrame, ros::Time(0), tf_T_CI);
+  tf_T_CI.setData(staticTransformsPtr_->T_CI());
+  //_tfListener.lookupTransform(_cabinFrame, _imuFrame, ros::Time(0), tf_T_CI);
 
   // Transform message to Imu frame
   tf::StampedTransform tf_T_OI_Compslam_k;
@@ -297,12 +304,14 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   }
 
   // Compslam - Wait with writing to graph until IMU attitude is determined
-  if (_imuAligned) {
+  if (_graphInited) {
     // Initialize graph (if not happened already)
-    if (!_graphInited) {
-      initGraph(odomLidarPtr);
-      _graphInited = true;
-    }  // Wait one iteration to be able to compute delta pose
+    //    if (!_graphInited) {
+    //      ROS_WARN("Initializing the graph...");
+    //      initGraph(odomLidarPtr);
+    //      ROS_WARN("...graph is initialized.");
+    //      _graphInited = true;
+    //    }  // Wait one iteration to be able to compute delta pose
     if (_firstScanCallback) {
       _firstScanCallback = false;
     }  // Else: Get Delta pose from Compslam
@@ -449,8 +458,11 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   ROS_ERROR("in publishState()");
   // Lookup transforms
   tf::StampedTransform tf_T_CI, tf_T_IC, tf_T_CB;
-  _tfListener.lookupTransform(_cabinFrame, _imuFrame, imuTime_k, tf_T_CI);
-  _tfListener.lookupTransform(_imuFrame, _cabinFrame, imuTime_k, tf_T_IC);
+  tf_T_CI.setData(staticTransformsPtr_->T_CI());
+  tf_T_IC.setData(staticTransformsPtr_->T_IC());
+  tf_T_CB.setData(staticTransformsPtr_->T_CB());
+  //_tfListener.lookupTransform(_cabinFrame, _imuFrame, imuTime_k, tf_T_CI);
+  //_tfListener.lookupTransform(_imuFrame, _cabinFrame, imuTime_k, tf_T_IC);
 
   // From Eigen to TF
   gtsam::Pose3 I_T_rel = currentState.pose();
@@ -462,7 +474,8 @@ void FactorGraphFiltering::publishState(gtsam::NavState currentState, ros::Time 
   _tf_T_OC.setData(tf_T_OC);
   _tf_T_OC.stamp_ = imuTime_k;
   // Get odom-->base_link transformation from odom-->cabin
-  _tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);
+  //_tfListener.lookupTransform(_cabinFrame, _baseLinkFrame, ros::Time(0), tf_T_CB);
+  // TODO
   _tf_T_OB.setData(_tf_T_OC * tf_T_CB);
   _tf_T_OB.stamp_ = imuTime_k;
 
