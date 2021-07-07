@@ -41,6 +41,8 @@
 
 namespace fg_filtering {
 
+#define NUM_LIDAR_CALLBACKS_UNTIL_PUBLISHING 5
+
 /** \brief Implementation of the factor graph based filtering.
  *
  */
@@ -50,18 +52,6 @@ class FactorGraphFiltering {
   explicit FactorGraphFiltering(float scanPeriod = 0.1);
 
   // Setup ------------------------
-  /// Helper functions
-  //// Frames
-  void setMapFrame(const std::string& s) { _mapFrame = s; }
-  void setOdomFrame(const std::string& s) { _odomFrame = s; }
-  void setBaseLinkFrame(const std::string& s) { _baseLinkFrame = s; }
-  void setImuFrame(const std::string& s) { _imuFrame = s; }
-  void setLidarFrame(const std::string& s) { _lidarFrame = s; }
-  void setCabinFrame(const std::string& s) { _cabinFrame = s; }
-  void setLeftGnssFrame(const std::string& s) { _leftGnssFrame = s; }
-  void setRightGnssFrame(const std::string& s) { _rightGnssFrame = s; }
-  //// Timing and Motions
-  void setImuTimeOffset(const double d) { _imuTimeOffset = d; }
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
@@ -87,7 +77,7 @@ class FactorGraphFiltering {
   /// Updating the factor graph
   void updateGraph();
   /// Publish state in imu callback
-  void publishState(gtsam::NavState currentState, ros::Time imuTime_k);
+  void publishState(const gtsam::NavState& currentState, ros::Time imuTime_k);
   // Commodity
   //  inline void print_map(IMUMap m) {
   //    for (auto const& pair : m) {
@@ -114,13 +104,11 @@ class FactorGraphFiltering {
   GraphManager _graphMgr;
 
   /// Flags
-  bool _systemInited = false;
   bool _imuAligned = false;
   bool _graphInited = false;
   bool _firstLidarOdomCallback = true;
   bool _firstScanCallback = true;
   bool _firstGnssCallback = true;
-  //// Optimize graph
   bool _optimizeGraph = false;
 
   /// Times
@@ -149,19 +137,8 @@ class FactorGraphFiltering {
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;
 
-  /// Frames
-  std::string _mapFrame = "";
-  std::string _odomFrame = "";
-  std::string _baseLinkFrame = "";
-  std::string _imuFrame = "";
-  std::string _lidarFrame = "";
-  std::string _cabinFrame = "";
-  std::string _leftGnssFrame = "";
-  std::string _rightGnssFrame = "";
-
   /// Publishers
   ros::Publisher _pubOdometry;
-
   ros::Publisher _pubLaserImuBias;
   ros::Publisher _pubOdomPath;
   ros::Publisher _pubCompslamPath;
@@ -200,13 +177,8 @@ class FactorGraphFiltering {
   // Signal Logger
   SignalLogger _signalLogger;
 
-  /// Timing
-  double _imuTimeOffset = 0.0;  // Offset between IMU and LiDAR Measurements
-  float _scanPeriod;            // time per scan
-  uint16_t _ioRatio;            // ratio of input to output frames
-
   /// Counter
-  long _frameCount;  // number of processed frames
+  long lidarCallbackCounter_ = 0;  // number of processed lidar frames
 
   /// Verbose
   int _verboseLevel = 0;

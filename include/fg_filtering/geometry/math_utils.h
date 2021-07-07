@@ -239,9 +239,15 @@ inline void odomMsgToTF(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T
   tf_T.setOrigin(tf_t);
 }
 
+inline void pose3ToTF(const Eigen::Matrix3d& T, tf::Transform& tf_T) {
+  Eigen::Quaterniond q(T);
+  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
+  tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
+}
+
 inline void pose3ToTF(const gtsam::Pose3& T, tf::Transform& tf_T) {
-  Eigen::Quaterniond r = T.rotation().toQuaternion();
-  tf_T.setRotation(tf::Quaternion(r.x(), r.y(), r.z(), r.w()));
+  Eigen::Quaterniond q = T.rotation().toQuaternion();
+  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
   tf_T.setOrigin(tf::Vector3(T.x(), T.y(), T.z()));
 }
 
