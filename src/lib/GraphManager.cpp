@@ -4,7 +4,7 @@ namespace fg_filtering {
 
 // Public --------------------------------------------------------------------
 
-bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3 init_pose) {
+bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& init_pose) {
   // Set graph relinearization thresholds - must be lower case letters, check:gtsam::symbol_shorthand
   gtsam::FastMap<char, gtsam::Vector> relinTh;
   relinTh['x'] = (gtsam::Vector(6) << _rotReLinTh, _rotReLinTh, _rotReLinTh, _posReLinTh, _posReLinTh, _posReLinTh).finished();
@@ -44,21 +44,28 @@ bool GraphManager::initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3
 
   // Add prior factor to graph and update
   std::map<gtsam::Key, double> keyTimestampMap;
-  valuesToKeyTimeStampMap(estimate, ts, keyTimestampMap);
+  valuesToKeyTimeStampMap(estimate, timeStep, keyTimestampMap);
   _mainGraph->update(_newGraphFactors, estimate, keyTimestampMap);
 
   // Reset
   _newGraphFactors.resize(0);
 
   // Update Current State
-  _graphState.updateNavStateAndBias(_stateKey, ts, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPrior);
-
+  _graphState.updateNavStateAndBias(_stateKey, timeStep, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPrior);
+  _imuPropagatedState = gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0));
   return true;
 }
 
-bool GraphManager::initImuIntegrators(const double g) {
+bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
   // Initialize IMU Preintegrator
-  _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
+  if (imuGravityDirection == "up") {
+    _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
+  } else if (imuGravityDirection == "down") {
+    _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
+  } else {
+    throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
+  }
+
   _imuParams->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * _accNoiseDensity;
   _imuParams->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * _accBiasRandomWalk;
   _imuParams->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrNoiseDensity;
@@ -102,22 +109,22 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
   // ROS_INFO_STREAM("Propagated state (key " << oldKey
-  //                                         << ") before prediction: " << _imuPropogatedState.pose().translation());
-  _imuPropogatedState = _imuStepPreintegrator->predict(_imuPropogatedState, _graphState.imuBias());
+  //                                         << ") before prediction: " << _imuPropagatedState.pose().translation());
+  _imuPropagatedState = _imuStepPreintegrator->predict(_imuPropagatedState, _graphState.imuBias());
   // ROS_INFO_STREAM("Propagated state (key "
-  //                 << newKey << ") after prediction prediction: " << _imuPropogatedState.pose().translation());
+  //                 << newKey << ") after prediction prediction: " << _imuPropagatedState.pose().translation());
   // ROS_INFO("----------------------------");
 
   // Add to IMU pose buffer
-  _imuBuffer.addImuPoseToBuffer(imuTime_k, _imuPropogatedState.pose());
+  _imuBuffer.addImuPoseToBuffer(imuTime_k, _imuPropagatedState.pose());
 
   // Add IMU Value
-  _newGraphValues.insert(X(newKey), _imuPropogatedState.pose());
-  _newGraphValues.insert(V(newKey), _imuPropogatedState.velocity());
+  _newGraphValues.insert(X(newKey), _imuPropagatedState.pose());
+  _newGraphValues.insert(V(newKey), _imuPropagatedState.velocity());
   _newGraphValues.insert(B(newKey), _graphState.imuBias());
 
   // Return copy of propagated state (for publishing)
-  return _imuPropogatedState;
+  return _imuPropagatedState;
 }
 
 void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1, const double lidarTime_k) {
@@ -159,8 +166,8 @@ bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Ke
   }
 
   // Check IMU motion
-  gtsam::NavState imuPropogatedState = _imuStepPreintegrator->predict(gtsam::NavState(), _graphState.imuBias());
-  if (imuPropogatedState.position().norm() > _zeroMotionTh) {
+  gtsam::NavState imuPropagatedState = _imuStepPreintegrator->predict(gtsam::NavState(), _graphState.imuBias());
+  if (imuPropagatedState.position().norm() > _zeroMotionTh) {
     _detectionCount = 0;
     return false;
   }
@@ -231,11 +238,7 @@ void GraphManager::updateGraphAndState() {
                                       gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
                                       result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
-    // ROS_WARN_STREAM("Graph state (key " << currentKey
-    //                                    << ") before prediction: " << _graphState.navState().pose().translation());
-    _imuPropogatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
-    // ROS_WARN_STREAM("Propagated state (key " << _stateKey
-    //                                         << ") after prediction: " << _imuPropogatedState.pose().translation());
+    _imuPropagatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
   }
 }
 

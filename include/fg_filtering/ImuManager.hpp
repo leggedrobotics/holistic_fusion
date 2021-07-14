@@ -1,5 +1,6 @@
 #ifndef IMU_MANAGER_HPP_
 #define IMU_MANAGER_HPP_
+#define DEFAULT_IMU_RATE 100
 
 // C++
 #include <map>
@@ -25,13 +26,13 @@ typedef IMUMap::iterator IMUMapItr;
 class ImuManager {
  public:
   // Constructor
-  ImuManager() : _imuRate(400) {
+  ImuManager() : _imuRate(DEFAULT_IMU_RATE) {
     // Reset IMU Buffer
     _IMUBuffer.clear();
   }
 
   // Destructor
-  ~ImuManager() {}
+  ~ImuManager() = default;
 
   // Setters
   void setImuRate(double d) { _imuRate = d; }
@@ -51,7 +52,7 @@ class ImuManager {
   void addToKeyBuffer(double ts, gtsam::Key key) { _timeToKeyBuffer[ts] = key; }
 
   // JN
-  void addImuPoseToBuffer(double ts, gtsam::Pose3 pose) { _imuPosesInGraphBuffer[ts] = pose; }
+  void addImuPoseToBuffer(double ts, const gtsam::Pose3& pose) { _imuPosesInGraphBuffer[ts] = pose; }
 
   // JN
   void getLastTwoMeasurements(IMUMap& imuMap) {
@@ -109,8 +110,9 @@ class ImuManager {
         interpolatedIMUMap[ts_end] = ts_end_meas;
       }
       return true;
-    } else
+    } else {
       return false;
+    }
   }
 
   // JN
@@ -176,8 +178,8 @@ class ImuManager {
   }
 
   // Interpolate IMU measurement between timestamps
-  gtsam::Vector6 interpolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const double& ts3,
-                                           const gtsam::Vector6& meas3) {
+  static gtsam::Vector6 interpolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const double& ts3,
+                                                  const gtsam::Vector6& meas3) {
     double tsDiffRatio = (ts2 - ts1) / (ts3 - ts1);                //(x2-x1)/(x3-x1)
     gtsam::Vector6 meas2 = (meas3 - meas1) * tsDiffRatio + meas1;  // y2 = (y3-y1) * ((x2-x1)/(x3-x1)) + y1
 
@@ -190,8 +192,8 @@ class ImuManager {
   }
 
   // Extrapolate IMU measurement between timestamps
-  gtsam::Vector6 extrapolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const gtsam::Vector6& meas2,
-                                           const double& ts3) {
+  static gtsam::Vector6 extrapolateIMUMeasurement(const double& ts1, const gtsam::Vector6& meas1, const double& ts2,
+                                                  const gtsam::Vector6& meas2, const double& ts3) {
     double tsDiffRatio = (ts3 - ts1) / (ts2 - ts1);                //(x2-x1)/(x3-x1)
     gtsam::Vector6 meas3 = (meas2 - meas1) * tsDiffRatio + meas1;  // y3 = (y2-y1) * ((x2-x1)/(x3-x1)) + y1
 
@@ -204,7 +206,8 @@ class ImuManager {
   }
 
   // Determine initial IMU pose w.r.t to gravity vector pointing up
-  bool estimateAttitudeFromImu(const double imu_pose_init_ts, gtsam::Rot3& init_attitude, double& gravity_magnitude, bool output = false) {
+  bool estimateAttitudeFromImu(const double imu_pose_init_ts, const std::string& imuGravityDirection, gtsam::Rot3& init_attitude,
+                               double& gravity_magnitude, bool output = false) {
     // Get timestamp of first message for lookup
     if (_IMUBuffer.size() < (_imuRate * _imuPoseInitWaitSecs)) {
       return false;
@@ -217,14 +220,21 @@ class ImuManager {
         // Accumulate Acceleration part of IMU Messages
         double imu_pose_init_msg_count = 0.0;                   // Counter for messages needed for  initializing Pose from IMU
         Eigen::Vector3d imu_pose_init_acc_mean(0.0, 0.0, 0.0);  // vector accumulating and imag
-        for (auto itr = init_imu_map.begin(); itr != init_imu_map.end(); ++itr) {
-          imu_pose_init_acc_mean += itr->second.head<3>();
+        for (auto& itr : init_imu_map) {
+          imu_pose_init_acc_mean += itr.second.head<3>();
           ++imu_pose_init_msg_count;
         }
         // Average IMU measurements and set assumed gravity direction
         imu_pose_init_acc_mean /= imu_pose_init_msg_count;
         gravity_magnitude = imu_pose_init_acc_mean.norm();
-        Eigen::Vector3d g_unit_vec(0.0, 0.0, -1.0);  // ROS convention
+        Eigen::Vector3d g_unit_vec;
+        if (imuGravityDirection == "up") {
+          g_unit_vec = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
+        } else if (imuGravityDirection == "down") {
+          g_unit_vec = Eigen::Vector3d(0.0, 0.0, -1.0);
+        } else {
+          throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
+        }
         // Normalize gravity vectors to remove the affect of gravity magnitude from place-to-place
         imu_pose_init_acc_mean.normalize();
         // Calculate robot initial orientation using gravity vector.
@@ -235,8 +245,9 @@ class ImuManager {
                     << " - Gravity Unit Vector(x,y,z): " << g_unit_vec.transpose() << std::endl;
           std::cout << "\033[33mIMU-Manager\033[0m Yaw/Pitch/Roll(deg): " << init_attitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
         }
-      } else
+      } else {
         return false;
+      }
     }
     return true;
   }

@@ -32,10 +32,10 @@ class GraphManager {
   ~GraphManager(){};
 
   // Initialize Factor graph with Pose,Velocity and Bias states
-  bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3 init_pose);
+  bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
 
   // Initialize IMU integrator
-  bool initImuIntegrators(const double g);
+  bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
 
   // Add IMU factor to graph
   gtsam::NavState addImuFactorAndGetState(const double imuTime_k);
@@ -61,8 +61,9 @@ class GraphManager {
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
-  bool estimateAttitudeFromImu(const double init_ts, gtsam::Rot3& initAttitude, double& gravityMagnitude) {
-    return _imuBuffer.estimateAttitudeFromImu(init_ts, initAttitude, gravityMagnitude);
+  bool estimateAttitudeFromImu(const double init_ts, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
+                               double& gravityMagnitude) {
+    return _imuBuffer.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude);
   }
   /// Add to IMU buffer
   void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
@@ -120,7 +121,7 @@ class GraphManager {
   /// Mutex
   std::mutex _operateOnGraphDataMutex;
   /// Propagated state (at IMU frequency)
-  gtsam::NavState _imuPropogatedState;
+  gtsam::NavState _imuPropagatedState;
   /// IMU Preintegration
   double _accNoiseDensity;    // continuous-time "Covariance" of accelerometer
   double _accBiasRandomWalk;  // continuous-time "Covariance" describing accelerometer bias random walk

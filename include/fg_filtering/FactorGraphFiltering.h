@@ -53,6 +53,7 @@ class FactorGraphFiltering {
 
   // Setup ------------------------
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
+  void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = sParam; }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
@@ -107,9 +108,9 @@ class FactorGraphFiltering {
   bool _imuAligned = false;
   bool _graphInited = false;
   bool _firstLidarOdomCallback = true;
-  bool _firstScanCallback = true;
   bool _firstGnssCallback = true;
   bool _optimizeGraph = false;
+  std::string imuGravityDirection_;
 
   /// Times
   ros::Time _compslamTime_k;
