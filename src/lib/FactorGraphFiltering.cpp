@@ -251,16 +251,17 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   else if (_graphInited) {
     // Add IMU factor and get propagated state
     gtsam::NavState currentState = _graphMgr.addImuFactorAndGetState(imuTime_k.toSec());
-    ROS_WARN_STREAM("Current pose of imu with respect to odom: t=["
-                    << currentState.pose().x() << "," << currentState.pose().y() << "," << currentState.pose().z() << "], RPY(deg)=["
-                    << currentState.pose().rotation().roll() * 180.0 / M_PI << "," << currentState.pose().rotation().pitch() * 180.0 / M_PI
-                    << "," << currentState.pose().rotation().yaw() * 180.0 / M_PI << "]");
+    //    ROS_WARN_STREAM("Current pose of imu with respect to odom: t=["
+    //                    << currentState.pose().x() << "," << currentState.pose().y() << "," << currentState.pose().z() << "], RPY(deg)=["
+    //                    << currentState.pose().rotation().roll() * 180.0 / M_PI << "," << currentState.pose().rotation().pitch() * 180.0 /
+    //                    M_PI
+    //                    << "," << currentState.pose().rotation().yaw() * 180.0 / M_PI << "]");
     // Publish current state at imu frequency
     if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_PUBLISHING) {
       // currentState = gtsam::NavState(gtsam::Pose3::identity(), gtsam::Velocity3(0.0, 0.0, 0.0));
     }
     publishState(currentState, imuTime_k);
-    _signalLogger.publishLogger(currentState.pose());
+    _signalLogger.publishLogger(currentState.pose(), _graphMgr.getIMUBias());
   } else {
     publishState(gtsam::NavState(gtsam::Pose3(_zeroYawIMUattitude, gtsam::Point3()), gtsam::Velocity3(0.0, 0.0, 0.0)), imuTime_k);
   }
@@ -460,10 +461,6 @@ void FactorGraphFiltering::publishState(const gtsam::NavState& currentState, ros
   tf::Transform tf_T_OI;
   pose3ToTF(T_OI, tf_T_OI);
   tf::Vector3 testVector = tf_T_OI * tf::Vector3(0, 0, 0);
-  ROS_WARN_STREAM("Test multiplication for OI: [" << testVector.x() << "," << testVector.y() << "," << testVector.z() << "]");
-  ROS_WARN_STREAM("Rotation axis of imu with respect to odometry: ["
-                  << tf_T_OI.getRotation().getAxis().x() << "," << tf_T_OI.getRotation().getAxis().y() << ","
-                  << tf_T_OI.getRotation().getAxis().z() << "], angle=" << tf_T_OI.getRotation().getAngle() * 180 / M_PI);
   tf::Transform tf_T_OC;
   // Transform
   // Only publish state if already some lidar constraints in graph

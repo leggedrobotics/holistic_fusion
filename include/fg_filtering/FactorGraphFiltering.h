@@ -50,12 +50,17 @@ class FactorGraphFiltering {
  public:
   // Constructor
   explicit FactorGraphFiltering(float scanPeriod = 0.1);
+  // Destructor --> log signals
+  ~FactorGraphFiltering() { _signalLogger.~SignalLogger(); };
 
   // Setup ------------------------
   void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
   void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = sParam; }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+
+  // Log data
+  void logSignals() { _signalLogger.~SignalLogger(); }
 
  private:
   // Functions -------------

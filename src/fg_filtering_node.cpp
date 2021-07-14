@@ -18,10 +18,13 @@ int main(int argc, char** argv) {
   ros::MultiThreadedSpinner spinner(3);
 
   // Create Instance
-  fg_filtering::FactorGraphFiltering fgFilter(0.1);
+  fg_filtering::FactorGraphFiltering fgFiltering(0.1);
   // Setup Instance
-  if (fgFilter.setup(node, privateNode)) ROS_INFO("Node is set up completely.");
+  if (fgFiltering.setup(node, privateNode)) ROS_INFO("Node is set up completely.");
   spinner.spin();
+
+  // Cleanup and log signals
+  fgFiltering.logSignals();
 
   // Create plots
   std::cout << "------------------------" << std::endl << "Plotting the logs..." << std::endl;
@@ -30,7 +33,7 @@ int main(int argc, char** argv) {
   boost::filesystem::path globalFileName(__FILE__);
   char pythonFileName[99];
   std::strcpy(pythonFileName, globalFileName.parent_path().c_str());
-  std::cout << "Test: " << strcat(pythonFileName, "/../python/plot.py") << std::endl;
+  std::cout << "Plotting: " << strcat(pythonFileName, "/../python/plot.py") << std::endl;
   FILE* pythonFile = _Py_fopen(pythonFileName, "r");
   PyRun_SimpleFile(pythonFile, pythonFileName);
 
