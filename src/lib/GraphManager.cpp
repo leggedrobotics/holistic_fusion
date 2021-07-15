@@ -102,7 +102,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   _imuBuffer.getLastTwoMeasurements(imuMeas);
 
   // Update IMU preintegrator
-  bool success = _updateImuIntegrators(imuMeas);
+  _updateImuIntegrators(imuMeas);
 
   // Create and add IMU Factor
   gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey), *_imuStepPreintegrator);
@@ -200,7 +200,7 @@ bool GraphManager::addGravityRollPitchFactor(const gtsam::Key key, const gtsam::
   return true;
 }
 
-void GraphManager::updateGraphAndState() {
+gtsam::NavState GraphManager::updateGraphAndState() {
   gtsam::NonlinearFactorGraph newGraphFactors;
   gtsam::Values newGraphValues;
   gtsam::Key currentKey;
@@ -230,24 +230,24 @@ void GraphManager::updateGraphAndState() {
   // Compute result
   auto result = _mainGraph->calculateEstimate();
   // Mutex block 2 ------------------
+  gtsam::NavState navState = gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey)));
   {
     // Lock
     const std::lock_guard<std::mutex> operateOnGraphDataLock(_operateOnGraphDataMutex);
     // Update Graph State
-    _graphState.updateNavStateAndBias(currentKey, currentTime,
-                                      gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey))),
-                                      result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
+    _graphState.updateNavStateAndBias(currentKey, currentTime, navState, result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
     _imuPropagatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
   }
+  return navState;
 }
 
 // Private --------------------------------------------------------------------
 
-bool GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
+void GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
   if (imuMeas.size() < 2) {
     std::cout << "_updateImuIntegrators --- Received less than 2 IMU messages --- No Preintegration done" << std::endl;
-    return false;
+    return;
   }
 
   // Reset IMU Step Preintegration
@@ -270,8 +270,6 @@ bool GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
                                                   dt);
     ++count;
   }
-
-  return true;
 }
 
 }  // namespace fg_filtering

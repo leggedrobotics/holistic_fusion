@@ -142,12 +142,14 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   _pubOdometry = privateNode.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", 100);
   _pubLaserImuBias = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", 100);
   _pubOdomPath = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", 100);
+  pubOdomLidarPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odomLidar_path", 5);
   _pubCompslamPath = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", 5);
   _pubLeftGnssPath = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", 20);
   _pubRightGnssPath = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", 20);
   _excavatorStatePublisher = node.advertise<m545_msgs::M545State>("/m545_state", 100);
   /// Messages
   _odomPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
+  odomLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   _compslamPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
   _leftGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
   _rightGnssPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -257,9 +259,9 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
     //                    M_PI
     //                    << "," << currentState.pose().rotation().yaw() * 180.0 / M_PI << "]");
     // Publish current state at imu frequency
-    if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_PUBLISHING) {
-      // currentState = gtsam::NavState(gtsam::Pose3::identity(), gtsam::Velocity3(0.0, 0.0, 0.0));
-    }
+    //    if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_PUBLISHING) {
+    //      // currentState = gtsam::NavState(gtsam::Pose3::identity(), gtsam::Velocity3(0.0, 0.0, 0.0));
+    //    }
     publishState(currentState, imuTime_k);
     _signalLogger.publishLogger(currentState.pose(), _graphMgr.getIMUBias());
   } else {
@@ -401,11 +403,18 @@ void FactorGraphFiltering::measurementsCallback(const m545_msgs::M545Measurement
 void FactorGraphFiltering::updateGraph() {
   // Preallocation
   int numLidarFactors = 0;
+  // Pose Stamped
+  geometry_msgs::PoseStamped poseStamped;
+  poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
+  // Transforms
+  tf::Transform tf_T_IC, tf_T_OI;
+  tf::StampedTransform tf_T_OC;
+  tf_T_IC = staticTransformsPtr_->T_IC();
+  // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
-  double imuTime_k;
-  ros::Rate loopRate(100);
 
+  // While loop
   ROS_INFO("Thread for updating graph is ready.");
   while (ros::ok()) {
     bool optimizeGraph = false;
@@ -420,11 +429,28 @@ void FactorGraphFiltering::updateGraph() {
     }
 
     if (optimizeGraph) {
+      // Get result
       startLoopTime = std::chrono::high_resolution_clock::now();
-      _graphMgr.updateGraphAndState();
+      gtsam::NavState optimizedNavState = _graphMgr.updateGraphAndState();
       endLoopTime = std::chrono::high_resolution_clock::now();
       ROS_ERROR_STREAM("Optimizing the graph took "
                        << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
+      // Transform pose
+      gtsam::Pose3 T_OI = optimizedNavState.pose();
+      pose3ToTF(T_OI, tf_T_OI);
+      tf_T_OC.setData(tf_T_OI * tf_T_IC);
+
+      // Publish path of optimized poses
+      /// Pose
+      poseStamped.header.stamp = _compslamTime_k;
+      tf::poseTFToMsg(tf_T_OC, poseStamped.pose);
+      /// Path
+      odomLidarPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+      odomLidarPathPtr_->header.stamp = _compslamTime_k;
+      odomLidarPathPtr_->poses.push_back(poseStamped);
+      /// Publish
+      pubOdomLidarPath_.publish(odomLidarPathPtr_);
+
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;
       imuBiasMsg.header.frame_id = "/fg_odometry_imu";
@@ -445,8 +471,7 @@ void FactorGraphFiltering::updateGraph() {
 
 void FactorGraphFiltering::publishState(const gtsam::NavState& currentState, ros::Time imuTime_k) {
   // Lookup static transforms
-  tf::StampedTransform tf_T_CI, tf_T_IC, tf_T_CB;
-  tf_T_CI.setData(staticTransformsPtr_->T_CI());
+  tf::StampedTransform tf_T_IC, tf_T_CB;
   tf_T_IC.setData(staticTransformsPtr_->T_IC());
   // tf_T_CB.setData(staticTransformsPtr_->T_CB());
 
@@ -460,15 +485,12 @@ void FactorGraphFiltering::publishState(const gtsam::NavState& currentState, ros
   gtsam::Pose3 T_OI = currentState.pose();
   tf::Transform tf_T_OI;
   pose3ToTF(T_OI, tf_T_OI);
-  tf::Vector3 testVector = tf_T_OI * tf::Vector3(0, 0, 0);
-  tf::Transform tf_T_OC;
   // Transform
   // Only publish state if already some lidar constraints in graph
-  tf_T_OC = tf_T_OI * tf_T_IC;
-  _tf_T_OC.setData(tf_T_OC);
+  _tf_T_OC.setData(tf_T_OI * tf_T_IC);
   _tf_T_OC.stamp_ = imuTime_k;
   // Get odom-->base_link transformation from odom-->cabin
-  tf::Transform tf_T_OB = tf_T_OC * tf_T_CB;
+  tf::Transform tf_T_OB = _tf_T_OC * tf_T_CB;
 
   // m545_state
   excavator_model::ActuatorConversions::jointStateFromActuatorState(_measurements, _estExcavatorState);

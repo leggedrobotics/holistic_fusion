@@ -28,7 +28,7 @@ class SignalLogger {
   // Setup
   void setup(ros::NodeHandle& nh) {
     // configure logger
-    double window_time = 60.0;
+    double window_time = 6000.0;
     std::string logger_name = "fg_filtering_log";
     // signal logger ros
     signal_logger::setSignalLoggerRos(&nh);
@@ -52,32 +52,38 @@ class SignalLogger {
   // Prepare logger
   void addPosesToLogger() {
     // Translation
-    signal_logger::add(_poseLogMeas.x(), "translation_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_positionLogMeas.x(), "translation_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_poseLogMeas.y(), "translation_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_positionLogMeas.y(), "translation_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_poseLogMeas.z(), "translation_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_positionLogMeas.z(), "translation_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
 
     // Rotation
-    signal_logger::add(_poseLogMeas.rotation().yaw(), "rotation_yaw", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_orientationLogMeas.x(), "rotation_roll", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_poseLogMeas.rotation().pitch(), "rotation_pitch", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_orientationLogMeas.y(), "rotation_pitch", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
-    signal_logger::add(_poseLogMeas.rotation().roll(), "rotation_roll", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+    signal_logger::add(_orientationLogMeas.z(), "rotation_yaw", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
                        signal_logger::BufferType::EXPONENTIALLY_GROWING);
   }
 
   void addBiasesToLogger() {
     // Linear acceleration
-    signal_logger::add(_biasLogMeas.accelerometer()(0), "bias_linAcc_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
-    signal_logger::add(_biasLogMeas.accelerometer()(1), "bias_linAcc_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
-    signal_logger::add(_biasLogMeas.accelerometer()(2), "bias_linAcc_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
+    signal_logger::add(_biasLogMeas.accelerometer()(0), "bias_linAcc_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_biasLogMeas.accelerometer()(1), "bias_linAcc_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_biasLogMeas.accelerometer()(2), "bias_linAcc_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
 
     // Angular velocity
-    signal_logger::add(_biasLogMeas.gyroscope()(0), "bias_angVel_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
-    signal_logger::add(_biasLogMeas.gyroscope()(1), "bias_angVel_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
-    signal_logger::add(_biasLogMeas.gyroscope()(2), "bias_angVel_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000);
+    signal_logger::add(_biasLogMeas.gyroscope()(0), "bias_angVel_x", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_biasLogMeas.gyroscope()(1), "bias_angVel_y", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
+    signal_logger::add(_biasLogMeas.gyroscope()(2), "bias_angVel_z", "", "", 1, signal_logger::LogElementAction::SAVE, 10000,
+                       signal_logger::BufferType::EXPONENTIALLY_GROWING);
   }
 
   // Publish logger data
@@ -85,7 +91,12 @@ class SignalLogger {
     //    ROS_ERROR_STREAM("Value of x position in logger: " << inputMeasurement.translation()(0));
     //    ROS_ERROR_STREAM("Value of roll old: " << inputMeasurement.rotation().roll());
     //    ROS_ERROR_STREAM("Value of roll new: " << inputMeasurement.rotation());
-    _poseLogMeas = inputMeasurement;
+    _positionLogMeas.x() = inputMeasurement.x();
+    _positionLogMeas.y() = inputMeasurement.y();
+    _positionLogMeas.z() = inputMeasurement.z();
+    _orientationLogMeas.x() = inputMeasurement.rotation().roll() * 180 / M_PI;
+    _orientationLogMeas.y() = inputMeasurement.rotation().pitch() * 180 / M_PI;
+    _orientationLogMeas.z() = inputMeasurement.rotation().yaw() * 180 / M_PI;
     _biasLogMeas = inputBias;
 
     signal_logger::logger->collectLoggerData();
@@ -93,7 +104,8 @@ class SignalLogger {
   }
 
  private:
-  gtsam::Pose3 _poseLogMeas = gtsam::Pose3();
+  Eigen::Vector3d _positionLogMeas;
+  Eigen::Vector3d _orientationLogMeas;
   gtsam::imuBias::ConstantBias _biasLogMeas;
 };
 

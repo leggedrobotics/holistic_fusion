@@ -147,6 +147,7 @@ class FactorGraphFiltering {
   ros::Publisher _pubOdometry;
   ros::Publisher _pubLaserImuBias;
   ros::Publisher _pubOdomPath;
+  ros::Publisher pubOdomLidarPath_;
   ros::Publisher _pubCompslamPath;
   ros::Publisher _pubLeftGnssPath;
   ros::Publisher _pubRightGnssPath;
@@ -158,6 +159,7 @@ class FactorGraphFiltering {
 
   /// Messages
   nav_msgs::PathPtr _odomPathPtr;
+  nav_msgs::PathPtr odomLidarPathPtr_;
   nav_msgs::PathPtr _compslamPathPtr;
   nav_msgs::PathPtr _leftGnssPathPtr;
   nav_msgs::PathPtr _rightGnssPathPtr;

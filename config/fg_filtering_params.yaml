@@ -18,11 +18,11 @@ rightGnssFrame: GNSS_R
 lidarRate: 10                 
 imuRate: 100                             #Rate of IMU input (Hz)
 imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
-accNoiseDensity: 1.3e-04                 #Continuous-time "Covariance" of accelerometer
-accBiasRandomWalk: 1.0e-06               #Continuous-time "Covariance" describing accelerometer bias random walk
+accNoiseDensity: 7.225e-7                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+accBiasRandomWalk: 1.0e-7               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
 accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
-gyrNoiseDensity: 5.398e-06               #Continuous-time "Covariance" of gyroscope measurements
-gyrBiasRandomWalk: 9.33e-08              #Continuous-time "Covariance" describing gyroscope bias random walk
+gyrNoiseDensity: 1.71-8               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
+gyrBiasRandomWalk: 9.33e-8              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
 gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
 smootherLag: 3.0                         #Lag of fixed lag smoother[seconds]
 additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
@@ -38,5 +38,5 @@ cacheLinearizedFactors: true
 findUnusedFactorSlots: false
 enablePartialRelinearizationCheck: true
 enableDetailedResults: false
-poseBetweenNoise: [0.0005, 0.0005, 0.0005, 0.0001, 0.0001, 0.0001] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+poseBetweenNoise: [0.005, 0.005, 0.0005, 0.001, 0.001, 0.001] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
 zeroMotionDetection: false                        #Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)

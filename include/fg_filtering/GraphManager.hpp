@@ -53,7 +53,7 @@ class GraphManager {
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude);
 
   // Update graph and get new state
-  void updateGraphAndState();
+  gtsam::NavState updateGraphAndState();
   // Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
   void valuesToKeyTimeStampMap(const gtsam::Values& values, const double ts, std::map<gtsam::Key, double>& key_timestamp_map) {
     for (const auto& value : values) key_timestamp_map[value.key] = ts;
@@ -98,7 +98,7 @@ class GraphManager {
  private:
   // Methods
   /// Update IMU integrator with new measurements - Resets bias
-  bool _updateImuIntegrators(const IMUMap& imuMeas);
+  void _updateImuIntegrators(const IMUMap& imuMeas);
   const auto newStateKey() { return ++_stateKey; }
 
   // Objects
