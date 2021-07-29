@@ -76,6 +76,8 @@ class GraphManager {
   void setAccBiasPrior(double val) { _accBiasPrior = val; }
   void setGyroNoiseDensity(double val) { _gyrNoiseDensity = val; }
   void setGyrBiasRandomWalk(double val) { _gyrBiasRandomWalk = val; }
+  void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
+  void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
   void setGyrBiasPrior(double val) { _gyrBiasPrior = val; }
   void setSmootherLag(double val) { _smootherLag = val; }
   void setIterations(int val) { _additonalIterations = val; }
@@ -102,17 +104,17 @@ class GraphManager {
   const auto newStateKey() { return ++_stateKey; }
 
   // Objects
-  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> _imuParams;
-  std::shared_ptr<gtsam::imuBias::ConstantBias> _imuBiasPrior;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> _mainGraph;
+  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> _imuParamsPtr;
+  std::shared_ptr<gtsam::imuBias::ConstantBias> _imuBiasPriorPtr;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> _mainGraphPtr;
   fg_filtering::State _graphState;
   /// Data buffers for callbacks to add information via member functions
   gtsam::NonlinearFactorGraph _newGraphFactors;
   gtsam::Values _newGraphValues;
   /// Buffer Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuBufferPreintegrator;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuBufferPreintegratorPtr;
   /// Step Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuStepPreintegrator;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuStepPreintegratorPtr;
   /// IMU Buffer
   /// IMU buffer
   ImuManager _imuBuffer;
@@ -123,12 +125,14 @@ class GraphManager {
   /// Propagated state (at IMU frequency)
   gtsam::NavState _imuPropagatedState;
   /// IMU Preintegration
-  double _accNoiseDensity;    // continuous-time "Covariance" of accelerometer
-  double _accBiasRandomWalk;  // continuous-time "Covariance" describing accelerometer bias random walk
-  double _accBiasPrior;       // prior/starting value of accelerometer bias
-  double _gyrNoiseDensity;    // continuous-time "Covariance" of gyroscope measurements
-  double _gyrBiasRandomWalk;  // continuous-time "Covariance" describing gyroscope bias random walk
-  double _gyrBiasPrior;       // prior/starting value of gyroscope bias
+  double _accNoiseDensity;          // continuous-time "Covariance" of accelerometer
+  double _accBiasRandomWalk;        // continuous-time "Covariance" describing accelerometer bias random walk
+  double _accBiasPrior;             // prior/starting value of accelerometer bias
+  double _gyrNoiseDensity;          // continuous-time "Covariance" of gyroscope measurements
+  double _gyrBiasRandomWalk;        // continuous-time "Covariance" describing gyroscope bias random walk
+  double integrationNoiseDensity_;  // "Covariance" describing
+  double biasAccOmegaPreint_;       // Describing error of bias for preintegration
+  double _gyrBiasPrior;             // prior/starting value of gyroscope bias
   /// Factor Graph
   gtsam::Key _stateKey = 0;  // Current state key
   double _stateTime;

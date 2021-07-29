@@ -28,30 +28,30 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
       poseNoise);  // POSE - PriorFactor format is (key,value,matrix) value is same type as type of PriorFactor
   _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(_stateKey), gtsam::Vector3(0, 0, 0),
                                                                       velocityNoise);  // VELOCITY
-  _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(_stateKey), *_imuBiasPrior,
+  _newGraphFactors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(_stateKey), *_imuBiasPriorPtr,
                                                                                     biasNoise);  // BIAS
   // Initial estimate
   gtsam::Values estimate;
   estimate.insert(X(_stateKey), init_pose);
   estimate.insert(V(_stateKey), gtsam::Vector3(0, 0, 0));
-  estimate.insert(B(_stateKey), *_imuBiasPrior);
+  estimate.insert(B(_stateKey), *_imuBiasPriorPtr);
 
   // Initialize factor graph
-  _mainGraph = std::make_shared<gtsam::IncrementalFixedLagSmoother>(_smootherLag, _isamParams);
-  _mainGraph->params().print("Factor Graph Parameters:");
+  _mainGraphPtr = std::make_shared<gtsam::IncrementalFixedLagSmoother>(_smootherLag, _isamParams);
+  _mainGraphPtr->params().print("Factor Graph Parameters:");
   std::cout << "Pose Between Factor Noise - RPY(rad): " << _poseNoise[0] << "," << _poseNoise[1] << "," << _poseNoise[2]
             << ", XYZ(m): " << _poseNoise[3] << "," << _poseNoise[4] << "," << _poseNoise[5] << std::endl;
 
   // Add prior factor to graph and update
   std::map<gtsam::Key, double> keyTimestampMap;
   valuesToKeyTimeStampMap(estimate, timeStep, keyTimestampMap);
-  _mainGraph->update(_newGraphFactors, estimate, keyTimestampMap);
+  _mainGraphPtr->update(_newGraphFactors, estimate, keyTimestampMap);
 
   // Reset
   _newGraphFactors.resize(0);
 
   // Update Current State
-  _graphState.updateNavStateAndBias(_stateKey, timeStep, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPrior);
+  _graphState.updateNavStateAndBias(_stateKey, timeStep, gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0)), *_imuBiasPriorPtr);
   _imuPropagatedState = gtsam::NavState(init_pose, gtsam::Vector3(0, 0, 0));
   return true;
 }
@@ -59,28 +59,28 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
   // Initialize IMU Preintegrator
   if (imuGravityDirection == "up") {
-    _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
+    _imuParamsPtr = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
   } else if (imuGravityDirection == "down") {
-    _imuParams = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
+    _imuParamsPtr = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
   } else {
     throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
   }
 
-  _imuParams->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * _accNoiseDensity;
-  _imuParams->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * _accBiasRandomWalk;
-  _imuParams->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrNoiseDensity;
-  _imuParams->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrBiasRandomWalk;
-  _imuParams->integrationCovariance = gtsam::Matrix33::Identity(3, 3) * 1.0e-8;  // error committed in integrating position from velocities
-  // _imuParams->biasAccOmegaInt = gtsam::Matrix66::Identity(6, 6) * 1.0e-5; // error in the bias used for
-  // preintegration
+  _imuParamsPtr->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * _accNoiseDensity;
+  _imuParamsPtr->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * _accBiasRandomWalk;
+  _imuParamsPtr->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrNoiseDensity;
+  _imuParamsPtr->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * _gyrBiasRandomWalk;
+  _imuParamsPtr->integrationCovariance =
+      gtsam::Matrix33::Identity(3, 3) * integrationNoiseDensity_;  // error committed in integrating position from velocities
+  _imuParamsPtr->biasAccOmegaInt = gtsam::Matrix66::Identity(6, 6) * biasAccOmegaPreint_;  // covariance of bias used for preintegration
   gtsam::Vector3 acc_bias_prior(_accBiasPrior, _accBiasPrior, _accBiasPrior);
   gtsam::Vector3 gyr_bias_prior(_gyrBiasPrior, _gyrBiasPrior, _gyrBiasPrior);
-  _imuBiasPrior = std::make_shared<gtsam::imuBias::ConstantBias>(acc_bias_prior, gyr_bias_prior);
+  _imuBiasPriorPtr = std::make_shared<gtsam::imuBias::ConstantBias>(acc_bias_prior, gyr_bias_prior);
 
   // Init preintegrators
-  _imuBufferPreintegrator = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParams, *_imuBiasPrior);
-  _imuStepPreintegrator = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParams, *_imuBiasPrior);
-  _imuParams->print("IMU Preintegration Parameters:");
+  _imuBufferPreintegratorPtr = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParamsPtr, *_imuBiasPriorPtr);
+  _imuStepPreintegratorPtr = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(_imuParamsPtr, *_imuBiasPriorPtr);
+  _imuParamsPtr->print("IMU Preintegration Parameters:");
   return true;
 }
 
@@ -105,12 +105,12 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   _updateImuIntegrators(imuMeas);
 
   // Create and add IMU Factor
-  gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey), *_imuStepPreintegrator);
+  gtsam::CombinedImuFactor imuFactor(X(oldKey), V(oldKey), X(newKey), V(newKey), B(oldKey), B(newKey), *_imuStepPreintegratorPtr);
   _newGraphFactors.add(imuFactor);
   // Predict propagated state
   // ROS_INFO_STREAM("Propagated state (key " << oldKey
   //                                         << ") before prediction: " << _imuPropagatedState.pose().translation());
-  _imuPropagatedState = _imuStepPreintegrator->predict(_imuPropagatedState, _graphState.imuBias());
+  _imuPropagatedState = _imuStepPreintegratorPtr->predict(_imuPropagatedState, _graphState.imuBias());
   // ROS_INFO_STREAM("Propagated state (key "
   //                 << newKey << ") after prediction prediction: " << _imuPropagatedState.pose().translation());
   // ROS_INFO("----------------------------");
@@ -166,7 +166,7 @@ bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Ke
   }
 
   // Check IMU motion
-  gtsam::NavState imuPropagatedState = _imuStepPreintegrator->predict(gtsam::NavState(), _graphState.imuBias());
+  gtsam::NavState imuPropagatedState = _imuStepPreintegratorPtr->predict(gtsam::NavState(), _graphState.imuBias());
   if (imuPropagatedState.position().norm() > _zeroMotionTh) {
     _detectionCount = 0;
     return false;
@@ -216,7 +216,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
     _newGraphFactors.resize(0);
     _newGraphValues.clear();
     // Empty Buffer Preintegrator --> everything missed during the update will be in here
-    _imuBufferPreintegrator->resetIntegrationAndSetBias(_graphState.imuBias());
+    _imuBufferPreintegratorPtr->resetIntegrationAndSetBias(_graphState.imuBias());
     // Get current key and time
     currentKey = _stateKey;
     currentTime = _stateTime;
@@ -224,11 +224,11 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   // Graph Update (time consuming) -------------------
   std::map<gtsam::Key, double> keyTimestampMap;
   valuesToKeyTimeStampMap(newGraphValues, currentTime, keyTimestampMap);
-  _mainGraph->update(newGraphFactors, newGraphValues, keyTimestampMap);
+  _mainGraphPtr->update(newGraphFactors, newGraphValues, keyTimestampMap);
   // Additional iterations
-  for (size_t itr = 0; itr < _additonalIterations; ++itr) _mainGraph->update();
+  for (size_t itr = 0; itr < _additonalIterations; ++itr) _mainGraphPtr->update();
   // Compute result
-  auto result = _mainGraph->calculateEstimate();
+  auto result = _mainGraphPtr->calculateEstimate();
   // Mutex block 2 ------------------
   gtsam::NavState navState = gtsam::NavState(result.at<gtsam::Pose3>(X(currentKey)), result.at<gtsam::Vector3>(V(currentKey)));
   {
@@ -237,7 +237,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
     // Update Graph State
     _graphState.updateNavStateAndBias(currentKey, currentTime, navState, result.at<gtsam::imuBias::ConstantBias>(B(currentKey)));
     // Predict from solution to obtain refined propagated state
-    _imuPropagatedState = _imuBufferPreintegrator->predict(_graphState.navState(), _graphState.imuBias());
+    _imuPropagatedState = _imuBufferPreintegratorPtr->predict(_graphState.navState(), _graphState.imuBias());
   }
   return navState;
 }
@@ -251,7 +251,7 @@ void GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
   }
 
   // Reset IMU Step Preintegration
-  _imuStepPreintegrator->resetIntegrationAndSetBias(_graphState.imuBias());
+  _imuStepPreintegratorPtr->resetIntegrationAndSetBias(_graphState.imuBias());
 
   // Start integrating with imu_meas.begin()+1 meas to calculate dt, imu_meas.begin() meas was integrated before
   auto currItr = imuMeas.begin();
@@ -262,12 +262,12 @@ void GraphManager::_updateImuIntegrators(const IMUMap& imuMeas) {
   size_t count = 0;
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
-    _imuStepPreintegrator->integrateMeasurement(currItr->second.head<3>(),    // acc
-                                                currItr->second.tail<3>(),    // gyro
-                                                dt);                          // delta t
-    _imuBufferPreintegrator->integrateMeasurement(currItr->second.head<3>(),  // acc
-                                                  currItr->second.tail<3>(),  // gyro
-                                                  dt);
+    _imuStepPreintegratorPtr->integrateMeasurement(currItr->second.head<3>(),    // acc
+                                                   currItr->second.tail<3>(),    // gyro
+                                                   dt);                          // delta t
+    _imuBufferPreintegratorPtr->integrateMeasurement(currItr->second.head<3>(),  // acc
+                                                     currItr->second.tail<3>(),  // gyro
+                                                     dt);
     ++count;
   }
 }

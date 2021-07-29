@@ -51,19 +51,20 @@ class FactorGraphFiltering {
   // Constructor
   explicit FactorGraphFiltering(float scanPeriod = 0.1);
   // Destructor --> log signals
-  ~FactorGraphFiltering() { _signalLogger.~SignalLogger(); };
+  ~FactorGraphFiltering() { signalLogger_.~SignalLogger(); };
 
   // Setup ------------------------
-  void setVerboseLevel(int verbose) { _verboseLevel = verbose; }
+  void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
   void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = sParam; }
   /// Setup function
   bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
   // Log data
-  void logSignals() { _signalLogger.~SignalLogger(); }
+  void logSignals() { signalLogger_.~SignalLogger(); }
 
  private:
   // Functions -------------
+
   // Callbacks
   /// IMU Callback Function for handling incoming IMU messages -------------
   void imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr);
@@ -73,9 +74,10 @@ class FactorGraphFiltering {
   void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Measurement Callback
   void measurementsCallback(const m545_msgs::M545Measurements::ConstPtr& measurementsMsg);
+
   // Worker functions
   /// Set Imu Attitude
-  void alignImu(const double imuTime_k);
+  void alignImu(const double imuTimeK);
   /// Initialize GNSS pose
   void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Initialize the graph
@@ -83,113 +85,109 @@ class FactorGraphFiltering {
   /// Updating the factor graph
   void updateGraph();
   /// Publish state in imu callback
-  void publishState(const gtsam::NavState& currentState, ros::Time imuTime_k);
+  void publishState(const gtsam::NavState& currentState, ros::Time imuTimeK);
+
   // Commodity
-  //  inline void print_map(IMUMap m) {
-  //    for (auto const& pair : m) {
-  //      std::cout << "{" << pair.first << ": " << pair.second << "}\n";
-  //    }
-  //  }
 
   // Threads
   /// Thread 1: Callback for compslam odometry
-  /// thread 2: Callback for IMU data
-  /// Thread 3: Callback for GNSS
-  std::thread _publishOdometryAndTFThread;  // Thread 4: publishes the estimate at exactly 100 Hz
-  std::thread _updateGraphThread;           // Thread 5: writes the IMU constraints to the graph
+  /// Thread 2: Callback for IMU data, also publishes the state at exactly 100 Hz
+  /// Thread 3: Dual callback for both GNSS topics
+  /// Thread 4: Measurement callback
+  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
   // Mutex
-  std::mutex _optimizeGraphMutex;
+  std::mutex optimizeGraphMutex_;
 
   // Member variables -------------
   /// Geodetic Converter
-  geodetic_converter::GeodeticConverter _geodeticConverterLeft;
-  geodetic_converter::GeodeticConverter _geodeticConverterRight;
+  geodetic_converter::GeodeticConverter geodeticConverterLeft_;
+  geodetic_converter::GeodeticConverter geodeticConverterRight_;
 
   /// Factor graph
-  GraphManager _graphMgr;
+  GraphManager graphMgr_;
 
   /// Flags
-  bool _imuAligned = false;
-  bool _graphInited = false;
-  bool _firstLidarOdomCallback = true;
-  bool _firstGnssCallback = true;
-  bool _optimizeGraph = false;
+  bool imuAligned_ = false;
+  bool graphInited_ = false;
+  bool firstLidarOdomCallback_ = true;
+  bool firstGnssCallback_ = true;
+  bool optimizeGraph_ = false;
   std::string imuGravityDirection_;
 
   /// Times
-  ros::Time _compslamTime_k;
-  ros::Time _imuTime_km1;
+  ros::Time compslamTimeK_;
+  ros::Time imuTimeKm1_;
 
   /// Transformations
   //// Compslam
-  tf::StampedTransform _tf_T_OI_Compslam_km1;
-  tf::StampedTransform _tf_T_OC_Compslam;
+  tf::StampedTransform tf_T_OI_Compslam_km1_;
+  tf::StampedTransform tf_T_OC_Compslam_;
   //// Transformed output of factor graph
-  tf::StampedTransform _tf_T_OC;  // odometry transformation
+  tf::StampedTransform tf_T_OC_;  // odometry transformation
   //// Transform of interest for state estimation
-  tf::StampedTransform _tf_T_OB;
+  tf::StampedTransform tf_T_OB_;
   //// Inverse initial compslam pose
-  tf::Transform _tf_T_OI_init_inv;
+  tf::Transform tf_T_OI_init_inv_;
   /// Attitude Parameters
-  gtsam::Rot3 _zeroYawIMUattitude;
-  double _gravityConstant;
-  tf::Transform _tf_initialImuPose;
+  gtsam::Rot3 zeroYawImuAttitude_;
+  double gravityConstant_;
+  tf::Transform tf_initialImuPose_;
 
   /// ROS related
-  ros::Time _timeImuTrans;  // time of current IMU transformation information
-  ros::Time _timeUpdate;
+  ros::Time timeImuTrans_;  // time of current IMU transformation information
+  ros::Time timeUpdate_;
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;
 
   /// Publishers
-  ros::Publisher _pubOdometry;
-  ros::Publisher _pubLaserImuBias;
-  ros::Publisher _pubOdomPath;
+  ros::Publisher pubOdometry_;
+  ros::Publisher pubLaserImuBias_;
+  ros::Publisher pubOdomPath_;
   ros::Publisher pubOdomLidarPath_;
-  ros::Publisher _pubCompslamPath;
-  ros::Publisher _pubLeftGnssPath;
-  ros::Publisher _pubRightGnssPath;
-  tf::TransformBroadcaster _tfBroadcaster;
-  ros::Publisher _excavatorStatePublisher;
+  ros::Publisher pubCompslamPath_;
+  ros::Publisher pubLeftGnssPath_;
+  ros::Publisher pubRightGnssPath_;
+  tf::TransformBroadcaster tfBroadcaster_;
+  ros::Publisher excavatorStatePublisher_;
 
   /// State to be published
-  excavator_model::ExcavatorState _estExcavatorState;
+  excavator_model::ExcavatorState estExcavatorState_;
 
   /// Messages
-  nav_msgs::PathPtr _odomPathPtr;
+  nav_msgs::PathPtr odomPathPtr_;
   nav_msgs::PathPtr odomLidarPathPtr_;
-  nav_msgs::PathPtr _compslamPathPtr;
-  nav_msgs::PathPtr _leftGnssPathPtr;
-  nav_msgs::PathPtr _rightGnssPathPtr;
+  nav_msgs::PathPtr compslamPathPtr_;
+  nav_msgs::PathPtr leftGnssPathPtr_;
+  nav_msgs::PathPtr rightGnssPathPtr_;
   //// Exact sync for gnss
   typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> _gnssExactSyncPtr;  // ROS Exact Sync Policy Message Filter
+  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
 
   /// Subscribers
-  ros::Subscriber _subImu;
-  ros::Subscriber _subLidarOdometry;
-  tf::TransformListener _tfListener;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssLeft;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> _subGnssRight;
-  ros::Subscriber _subMeasurements;
+  ros::Subscriber subImu_;
+  ros::Subscriber subLidarOdometry_;
+  tf::TransformListener tfListener_;
+  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssLeft_;
+  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssRight_;
+  ros::Subscriber subMeasurements_;
 
   /// Stored Messages
-  m545_description::M545Measurements _measurements;
+  m545_description::M545Measurements measurements_;
 
   // Message Converter
-  m545_description_ros::ConversionTraits<m545_description::M545Measurements, m545_msgs::M545Measurements> _measurementConverter;
-  excavator_model::ConversionTraits<excavator_model::ExcavatorState, m545_msgs::M545State> _stateConverter;
+  m545_description_ros::ConversionTraits<m545_description::M545Measurements, m545_msgs::M545Measurements> measurementConverter_;
+  excavator_model::ConversionTraits<excavator_model::ExcavatorState, m545_msgs::M545State> stateConverter_;
 
   // Signal Logger
-  SignalLogger _signalLogger;
+  SignalLogger signalLogger_;
 
   /// Counter
   long lidarCallbackCounter_ = 0;  // number of processed lidar frames
 
   /// Verbose
-  int _verboseLevel = 0;
+  int verboseLevel_ = 0;
 };
 
 }  // end namespace fg_filtering

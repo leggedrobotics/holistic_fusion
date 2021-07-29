@@ -15,7 +15,7 @@ leftGnssFrame: GNSS_L
 rightGnssFrame: GNSS_R
 
 #Factor Graph
-lidarRate: 10                 
+#lidarRate: 10
 imuRate: 100                             #Rate of IMU input (Hz)
 imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
 accNoiseDensity: 7.225e-7                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
@@ -23,14 +23,16 @@ accBiasRandomWalk: 1.0e-7               #Continuous-time "Covariance" describing
 accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
 gyrNoiseDensity: 1.71-8               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
 gyrBiasRandomWalk: 9.33e-8              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+integrationNoiseDensity: 1.0e-8         #continuous-time "Covariance" describing integration uncertainty
+biasAccOmegaPreint: 1.0e-2                 #covariance of bias used for preintegration
 gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
-smootherLag: 3.0                         #Lag of fixed lag smoother[seconds]
+smootherLag: 6.0                         #Lag of fixed lag smoother[seconds]
 additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
-positionReLinTh: 0.05                    #Position linearization threshold
-rotationReLinTh: 0.05                    #Rotation linearization threshold
-velocityReLinTh: 0.1                     #Linear Velocity linearization threshold
-accBiasReLinTh: 0.1                      #Accelerometer bias linearization threshold
-gyrBiasReLinTh: 0.1                      #Gyroscope bias linearization threshold
+positionReLinTh: 0.005                    #Position linearization threshold
+rotationReLinTh: 0.001                    #Rotation linearization threshold
+velocityReLinTh: 0.001                     #Linear Velocity linearization threshold
+accBiasReLinTh: 0.0001                      #Accelerometer bias linearization threshold
+gyrBiasReLinTh: 0.0001                      #Gyroscope bias linearization threshold
 relinearizeSkip: 1
 enableRelinearization: true
 evaluateNonlinearError: false
