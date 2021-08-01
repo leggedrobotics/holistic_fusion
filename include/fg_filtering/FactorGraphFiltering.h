@@ -121,22 +121,13 @@ class FactorGraphFiltering {
 
   /// Transformations
   //// Compslam
-  tf::StampedTransform tf_T_OI_Compslam_km1_;
-  tf::StampedTransform tf_T_OC_Compslam_;
-  //// Transformed output of factor graph
-  tf::StampedTransform tf_T_OC_;  // odometry transformation
-  //// Transform of interest for state estimation
-  tf::StampedTransform tf_T_OB_;
+  tf::StampedTransform tf_T_O_Ikm1_Compslam_;
   //// Inverse initial compslam pose
-  tf::Transform tf_T_OI_init_inv_;
+  tf::Transform tf_T_I0_O_Compslam_;
   /// Attitude Parameters
   gtsam::Rot3 zeroYawImuAttitude_;
-  double gravityConstant_;
-  tf::Transform tf_initialImuPose_;
-
-  /// ROS related
-  ros::Time timeImuTrans_;  // time of current IMU transformation information
-  ros::Time timeUpdate_;
+  double gravityConstant_ = 9.81;  // Will be overwritten
+  tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;
@@ -149,7 +140,6 @@ class FactorGraphFiltering {
   ros::Publisher pubCompslamPath_;
   ros::Publisher pubLeftGnssPath_;
   ros::Publisher pubRightGnssPath_;
-  tf::TransformBroadcaster tfBroadcaster_;
   ros::Publisher excavatorStatePublisher_;
 
   /// State to be published
