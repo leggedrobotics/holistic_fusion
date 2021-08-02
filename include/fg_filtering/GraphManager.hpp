@@ -10,7 +10,6 @@
 #include <rosconsole/macros_generated.h>
 
 // GTSAM
-#define SLOW_BUT_CORRECT_BETWEENFACTOR  // increases accuracy in handling rotations
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -19,10 +18,6 @@
 
 #include "fg_filtering/GraphState.hpp"
 #include "fg_filtering/ImuManager.hpp"
-
-using gtsam::symbol_shorthand::B;  // Bias  (ax,ay,az,gx,gy,gz)
-using gtsam::symbol_shorthand::V;  // Vel   (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::X;  // Pose3 (R,t)
 
 namespace fg_filtering {
 class GraphManager {
@@ -61,94 +56,92 @@ class GraphManager {
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
-  bool estimateAttitudeFromImu(const double init_ts, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
-                               double& gravityMagnitude) {
-    return _imuBuffer.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude);
+  inline bool estimateAttitudeFromImu(const double init_ts, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
+                                      double& gravityMagnitude) {
+    return imuBuffer_.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude);
   }
   /// Add to IMU buffer
-  void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
-    _imuBuffer.addToIMUBuffer(ts, accX, accY, accZ, gyrX, gyrY, gyrZ);
+  inline void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
+    imuBuffer_.addToIMUBuffer(ts, accX, accY, accZ, gyrX, gyrY, gyrZ);
   }
 
   // Accessors - Setters
-  void setAccNoiseDensity(double val) { _accNoiseDensity = val; }
-  void setAccBiasRandomWalk(double val) { _accBiasRandomWalk = val; }
-  void setAccBiasPrior(double val) { _accBiasPrior = val; }
-  void setGyroNoiseDensity(double val) { _gyrNoiseDensity = val; }
-  void setGyrBiasRandomWalk(double val) { _gyrBiasRandomWalk = val; }
+  void setAccNoiseDensity(double val) { accNoiseDensity_ = val; }
+  void setAccBiasRandomWalk(double val) { accBiasRandomWalk_ = val; }
+  void setAccBiasPrior(double val) { accBiasPrior_ = val; }
+  void setGyroNoiseDensity(double val) { gyrNoiseDensity_ = val; }
+  void setGyrBiasRandomWalk(double val) { gyrBiasRandomWalk_ = val; }
   void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
   void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
-  void setGyrBiasPrior(double val) { _gyrBiasPrior = val; }
-  void setSmootherLag(double val) { _smootherLag = val; }
-  void setIterations(int val) { _additonalIterations = val; }
-  void setPositionReLinTh(double val) { _posReLinTh = val; }
-  void setRotationReLinTh(double val) { _rotReLinTh = val; }
-  void setVelocityReLinTh(double val) { _velReLinTh = val; }
-  void setAccBiasReLinTh(double val) { _accBiasReLinTh = val; }
-  void setGyrBiasReLinTh(double val) { _gyrBiasReLinTh = val; }
-  void setPoseNoise(const std::vector<double>& v) { _poseNoise = v; }
-  void setImuRate(double d) { _imuBuffer.setImuRate(d); }
+  void setGyrBiasPrior(double val) { gyrBiasPrior_ = val; }
+  void setSmootherLag(double val) { smootherLag_ = val; }
+  void setIterations(int val) { additonalIterations_ = val; }
+  void setPositionReLinTh(double val) { posReLinTh_ = val; }
+  void setRotationReLinTh(double val) { rotReLinTh_ = val; }
+  void setVelocityReLinTh(double val) { velReLinTh_ = val; }
+  void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
+  void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
+  void setPoseNoise(const std::vector<double>& v) { poseNoise_ = v; }
+  void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   // Accessors - Getters
-  auto iterations() const { return _additonalIterations; }
-  const fg_filtering::State& getGraphState() { return _graphState; }
-  const auto getStateKey() { return _stateKey; }
-  const auto getIMUBias() { return _graphState.imuBias(); }
-
-  // Objects
-  gtsam::ISAM2Params _isamParams;
+  auto iterations() const { return additonalIterations_; }
+  const fg_filtering::State& getGraphState() { return graphState_; }
+  const auto getStateKey() { return stateKey_; }
+  const auto getIMUBias() { return graphState_.imuBias(); }
+  gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
  private:
   // Methods
   /// Update IMU integrator with new measurements - Resets bias
-  void _updateImuIntegrators(const IMUMap& imuMeas);
-  const auto newStateKey() { return ++_stateKey; }
+  void updateImuIntegrators_(const IMUMap& imuMeas);
+  const auto newStateKey() { return ++stateKey_; }
 
   // Objects
-  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> _imuParamsPtr;
-  std::shared_ptr<gtsam::imuBias::ConstantBias> _imuBiasPriorPtr;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> _mainGraphPtr;
-  fg_filtering::State _graphState;
+  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
+  std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;
+  fg_filtering::State graphState_;
+  gtsam::ISAM2Params isamParams_;
   /// Data buffers for callbacks to add information via member functions
-  gtsam::NonlinearFactorGraph _newGraphFactors;
-  gtsam::Values _newGraphValues;
+  gtsam::NonlinearFactorGraph newGraphFactors_;
+  gtsam::Values newGraphValues_;
   /// Buffer Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuBufferPreintegratorPtr;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
   /// Step Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> _imuStepPreintegratorPtr;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
-  /// IMU buffer
-  ImuManager _imuBuffer;
+  ImuManager imuBuffer_;
 
   // Member variables
   /// Mutex
-  std::mutex _operateOnGraphDataMutex;
+  std::mutex operateOnGraphDataMutex_;
   /// Propagated state (at IMU frequency)
-  gtsam::NavState _imuPropagatedState;
+  gtsam::NavState imuPropagatedState_;
   /// IMU Preintegration
-  double _accNoiseDensity;          // continuous-time "Covariance" of accelerometer
-  double _accBiasRandomWalk;        // continuous-time "Covariance" describing accelerometer bias random walk
-  double _accBiasPrior;             // prior/starting value of accelerometer bias
-  double _gyrNoiseDensity;          // continuous-time "Covariance" of gyroscope measurements
-  double _gyrBiasRandomWalk;        // continuous-time "Covariance" describing gyroscope bias random walk
+  double accNoiseDensity_;          // continuous-time "Covariance" of accelerometer
+  double accBiasRandomWalk_;        // continuous-time "Covariance" describing accelerometer bias random walk
+  double accBiasPrior_;             // prior/starting value of accelerometer bias
+  double gyrNoiseDensity_;          // continuous-time "Covariance" of gyroscope measurements
+  double gyrBiasRandomWalk_;        // continuous-time "Covariance" describing gyroscope bias random walk
   double integrationNoiseDensity_;  // "Covariance" describing
   double biasAccOmegaPreint_;       // Describing error of bias for preintegration
-  double _gyrBiasPrior;             // prior/starting value of gyroscope bias
+  double gyrBiasPrior_;             // prior/starting value of gyroscope bias
   /// Factor Graph
-  gtsam::Key _stateKey = 0;  // Current state key
-  double _stateTime;
-  double _smootherLag = 1;       // Lag of fixed lag smoother[seconds]
-  int _additonalIterations = 1;  // Additional iterations of graph optimizer after update with new factors
-  double _posReLinTh = 0.05;     // Position linearization threshold
-  double _rotReLinTh = 0.05;     // Rotation linearization threshold
-  double _velReLinTh = 0.1;      // Linear Velocity linearization threshold
-  double _accBiasReLinTh = 0.1;  // Accelerometer bias linearization threshold
-  double _gyrBiasReLinTh = 0.1;  // Gyroscope bias linearization threshold
+  gtsam::Key stateKey_ = 0;  // Current state key
+  double stateTime_;
+  double smootherLag_ = 1;       // Lag of fixed lag smoother[seconds]
+  int additonalIterations_ = 1;  // Additional iterations of graph optimizer after update with new factors
+  double posReLinTh_ = 0.05;     // Position linearization threshold
+  double rotReLinTh_ = 0.05;     // Rotation linearization threshold
+  double velReLinTh_ = 0.1;      // Linear Velocity linearization threshold
+  double accBiasReLinTh_ = 0.1;  // Accelerometer bias linearization threshold
+  double gyrBiasReLinTh_ = 0.1;  // Gyroscope bias linearization threshold
   /// Pose Between Factor
-  std::vector<double> _poseNoise{0.02, 0.02, 0.02, 0.05, 0.05, 0.05};  // ORDER RPY(rad) - XYZ(meters)
+  std::vector<double> poseNoise_{0.02, 0.02, 0.02, 0.05, 0.05, 0.05};  // ORDER RPY(rad) - XYZ(meters)
   /// Zero Velocity Factor
-  double _zeroMotionTh = 0.01;              // Zero motion threshold meters
-  double _minDetections = 10;               // Number of consective zero motions detected before zero motion factors are added
-  double _detectionCount = _minDetections;  // Assumption: Robot starts at rest so initially zero motion is enabled
+  double zeroMotionTh_ = 0.01;              // Zero motion threshold meters
+  double minDetections_ = 10;               // Number of consective zero motions detected before zero motion factors are added
+  double detectionCount_ = minDetections_;  // Assumption: Robot starts at rest so initially zero motion is enabled
 };
 }  // namespace fg_filtering
 

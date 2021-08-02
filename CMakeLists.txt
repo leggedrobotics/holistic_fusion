@@ -76,7 +76,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(src/lib)
 
-add_executable(${PROJECT_NAME}_node src/fg_filtering_node.cpp)
+add_executable(${PROJECT_NAME}_node src/fg_filtering_node.cpp include/fg_filtering/Datatypes.hpp)
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})

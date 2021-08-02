@@ -148,25 +148,25 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     graphMgr_.setGyrBiasReLinTh(dParam);
   }
   if (privateNode.getParam("relinearizeSkip", iParam)) {
-    graphMgr_._isamParams.setRelinearizeSkip(iParam);
+    graphMgr_.getIsamParamsReference().setRelinearizeSkip(iParam);
   }
   if (privateNode.getParam("enableRelinearization", bParam)) {
-    graphMgr_._isamParams.setEnableRelinearization(bParam);
+    graphMgr_.getIsamParamsReference().setEnableRelinearization(bParam);
   }
   if (privateNode.getParam("evaluateNonlinearError", bParam)) {
-    graphMgr_._isamParams.setEvaluateNonlinearError(bParam);
+    graphMgr_.getIsamParamsReference().setEvaluateNonlinearError(bParam);
   }
   if (privateNode.getParam("cacheLinearizedFactors", bParam)) {
-    graphMgr_._isamParams.setCacheLinearizedFactors(bParam);
+    graphMgr_.getIsamParamsReference().setCacheLinearizedFactors(bParam);
   }
   if (privateNode.getParam("findUnusedFactorSlots", bParam)) {
-    graphMgr_._isamParams.findUnusedFactorSlots = bParam;
+    graphMgr_.getIsamParamsReference().findUnusedFactorSlots = bParam;
   }
   if (privateNode.getParam("enablePartialRelinearizationCheck", bParam)) {
-    graphMgr_._isamParams.setEnablePartialRelinearizationCheck(bParam);
+    graphMgr_.getIsamParamsReference().setEnablePartialRelinearizationCheck(bParam);
   }
   if (privateNode.getParam("enableDetailedResults", bParam)) {
-    graphMgr_._isamParams.setEnableDetailedResults(bParam);
+    graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
   }
   std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  // roll,pitch,yaw,x,y,z
   if (privateNode.getParam("poseBetweenNoise", poseNoise)) {
