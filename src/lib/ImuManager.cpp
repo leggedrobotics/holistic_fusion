@@ -29,13 +29,14 @@ void ImuManager::getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapI
 }
 
 void ImuManager::getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key) {
-  auto lowerIterator = timeToKeyBuffer_.lower_bound(tLidar);
   auto upperIterator = timeToKeyBuffer_.upper_bound(tLidar);
+  auto lowerIterator = upperIterator;
+  --lowerIterator;
+
   // Keep key which is closer to tLidar
-  tInGraph = lowerIterator->first;
-  // std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->first : upperIterator->first;
-  key = lowerIterator->second;  // std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->second
-                                // : upperIterator->second;
+  tInGraph =
+      std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->first : upperIterator->first;
+  key = std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->second : upperIterator->second;
 }
 
 bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr) {
@@ -86,45 +87,49 @@ bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const d
   return true;
 }
 
-bool ImuManager::estimateAttitudeFromImu(const double imu_pose_init_ts, const std::string& imuGravityDirection, gtsam::Rot3& init_attitude,
-                                         double& gravity_magnitude, bool output) {
+bool ImuManager::estimateAttitudeFromImu(const double initTs, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
+                                         double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
   // Get timestamp of first message for lookup
   if (imuBuffer_.size() < (imuRate_ * imuPoseInitWaitSecs_)) {
     return false;
   } else {
     // Get IMU Message iterators in the interval
-    IMUMap init_imu_map;
-    double prev_ts = imu_pose_init_ts - imuPoseInitWaitSecs_;
-    bool success = getInterpolatedImuMeasurements_(prev_ts, imu_pose_init_ts, init_imu_map);
+    IMUMap initImuMap;
+    double prev_ts = initTs - imuPoseInitWaitSecs_;
+    bool success = getInterpolatedImuMeasurements_(prev_ts, initTs, initImuMap);
     if (success) {
       // Accumulate Acceleration part of IMU Messages
-      double imu_pose_init_msg_count = 0.0;                   // Counter for messages needed for  initializing Pose from IMU
-      Eigen::Vector3d imu_pose_init_acc_mean(0.0, 0.0, 0.0);  // vector accumulating and imag
-      for (auto& itr : init_imu_map) {
-        imu_pose_init_acc_mean += itr.second.head<3>();
-        ++imu_pose_init_msg_count;
+      Eigen::Vector3d initAccMean(0.0, 0.0, 0.0), initGyrMean(0.0, 0.0, 0.0);
+      for (auto& itr : initImuMap) {
+        initAccMean += itr.second.head<3>();
+        initGyrMean += itr.second.tail<3>();
       }
+
       // Average IMU measurements and set assumed gravity direction
-      imu_pose_init_acc_mean /= imu_pose_init_msg_count;
-      gravity_magnitude = imu_pose_init_acc_mean.norm();
-      Eigen::Vector3d g_unit_vec;
+      initAccMean /= initImuMap.size();
+      gravityMagnitude = initAccMean.norm();
+      Eigen::Vector3d gUnitVec;
       if (imuGravityDirection == "up") {
-        g_unit_vec = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
+        gUnitVec = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
       } else if (imuGravityDirection == "down") {
-        g_unit_vec = Eigen::Vector3d(0.0, 0.0, -1.0);
+        gUnitVec = Eigen::Vector3d(0.0, 0.0, -1.0);
       } else {
         throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
       }
       // Normalize gravity vectors to remove the affect of gravity magnitude from place-to-place
-      imu_pose_init_acc_mean.normalize();
+      initAccMean.normalize();
+      initAttitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVec));
+
+      // Gyro
+      initGyrMean /= initImuMap.size();
+      gyrBias = initGyrMean;
+
       // Calculate robot initial orientation using gravity vector.
-      init_attitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(imu_pose_init_acc_mean, g_unit_vec));
-      if (output) {
-        std::cout << "\033[33mIMU-Manager\033[0m Gravity Magnitude: " << gravity_magnitude << std::endl;
-        std::cout << "\033[33mIMU-Manager\033[0m Mean IMU Acceleration Vector(x,y,z): " << imu_pose_init_acc_mean.transpose()
-                  << " - Gravity Unit Vector(x,y,z): " << g_unit_vec.transpose() << std::endl;
-        std::cout << "\033[33mIMU-Manager\033[0m Yaw/Pitch/Roll(deg): " << init_attitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
-      }
+      std::cout << "\033[33mFGF-IMU-Manager\033[0m Gravity Magnitude: " << gravityMagnitude << std::endl;
+      std::cout << "\033[33mFGF-IMU-Manager\033[0m Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
+                << " - Gravity Unit Vector(x,y,z): " << gUnitVec.transpose() << std::endl;
+      std::cout << "\033[33mFGF-IMU-Manager\033[0m Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
+      std::cout << "\033[33mFGF-IMU-Manager\033[0m Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
     } else {
       return false;
     }

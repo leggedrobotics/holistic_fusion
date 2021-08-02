@@ -25,23 +25,17 @@ class GraphManager {
   GraphManager(){};
   ~GraphManager(){};
 
-  // Initialize Factor graph with Pose,Velocity and Bias states
-  bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-
-  // Initialize IMU integrator
   bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
 
-  // Add IMU factor to graph
+  bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
+
   gtsam::NavState addImuFactorAndGetState(const double imuTime_k);
 
-  // Add a pose between factor
   void addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1, const double lidarTime_k);
 
-  // Add a pose unary factor
   void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose);
 
-  // Check if zero motion has occured and add zero pose/velocity factor
-  bool addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3 pose);
+  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   // Add gravity-aligned roll/ptich when no motion
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude);
@@ -56,8 +50,8 @@ class GraphManager {
   // IMU Buffer interface
   /// Estimate attitude from IMU
   inline bool estimateAttitudeFromImu(const double init_ts, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
-                                      double& gravityMagnitude) {
-    return imuBuffer_.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude);
+                                      double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
+    return imuBuffer_.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
   inline void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
@@ -72,7 +66,7 @@ class GraphManager {
   inline void setGyrBiasRandomWalk(double val) { gyrBiasRandomWalk_ = val; }
   inline void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
   inline void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
-  inline void setGyrBiasPrior(double val) { gyrBiasPrior_ = val; }
+  inline void setGyrBiasPrior(Eigen::Vector3d gyrBiasPrior) { gyrBiasPrior_ = gyrBiasPrior; }
   inline void setSmootherLag(double val) { smootherLag_ = val; }
   inline void setIterations(int val) { additonalIterations_ = val; }
   inline void setPositionReLinTh(double val) { posReLinTh_ = val; }
@@ -84,6 +78,7 @@ class GraphManager {
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
   // Accessors - Getters
+  Eigen::Vector3d& getInitGyrBiasReference() { return gyrBiasPrior_; }
   auto iterations() const { return additonalIterations_; }
   const fg_filtering::State& getGraphState() { return graphState_; }
   const auto getStateKey() { return stateKey_; }
@@ -93,8 +88,9 @@ class GraphManager {
  private:
   // Methods
   /// Update IMU integrator with new measurements - Resets bias
+  bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK);
   void updateImuIntegrators_(const IMUMap& imuMeas);
-  const auto newStateKey() { return ++stateKey_; }
+  const auto newStateKey_() { return ++stateKey_; }
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
@@ -118,14 +114,14 @@ class GraphManager {
   /// Propagated state (at IMU frequency)
   gtsam::NavState imuPropagatedState_;
   /// IMU Preintegration
-  double accNoiseDensity_;          // continuous-time "Covariance" of accelerometer
-  double accBiasRandomWalk_;        // continuous-time "Covariance" describing accelerometer bias random walk
-  double accBiasPrior_;             // prior/starting value of accelerometer bias
-  double gyrNoiseDensity_;          // continuous-time "Covariance" of gyroscope measurements
-  double gyrBiasRandomWalk_;        // continuous-time "Covariance" describing gyroscope bias random walk
-  double integrationNoiseDensity_;  // "Covariance" describing
-  double biasAccOmegaPreint_;       // Describing error of bias for preintegration
-  double gyrBiasPrior_;             // prior/starting value of gyroscope bias
+  double accNoiseDensity_;                      // continuous-time "Covariance" of accelerometer
+  double accBiasRandomWalk_;                    // continuous-time "Covariance" describing accelerometer bias random walk
+  double accBiasPrior_;                         // prior/starting value of accelerometer bias
+  double gyrNoiseDensity_;                      // continuous-time "Covariance" of gyroscope measurements
+  double gyrBiasRandomWalk_;                    // continuous-time "Covariance" describing gyroscope bias random walk
+  double integrationNoiseDensity_;              // "Covariance" describing
+  double biasAccOmegaPreint_;                   // Describing error of bias for preintegration
+  gtsam::Vector3 gyrBiasPrior_{0.0, 0.0, 0.0};  // prior/starting value of gyroscope bias
   /// Factor Graph
   gtsam::Key stateKey_ = 0;  // Current state key
   double stateTime_;
@@ -139,9 +135,7 @@ class GraphManager {
   /// Pose Between Factor
   std::vector<double> poseNoise_{0.02, 0.02, 0.02, 0.05, 0.05, 0.05};  // ORDER RPY(rad) - XYZ(meters)
   /// Zero Velocity Factor
-  double zeroMotionTh_ = 0.01;              // Zero motion threshold meters
-  double minDetections_ = 10;               // Number of consective zero motions detected before zero motion factors are added
-  double detectionCount_ = minDetections_;  // Assumption: Robot starts at rest so initially zero motion is enabled
+  double zeroMotionTh_ = 0.01;  // Zero motion threshold meters
   // Timing
   double lidarRate_ = 5;
 };

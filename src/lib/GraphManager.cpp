@@ -4,6 +4,34 @@ namespace fg_filtering {
 
 // Public --------------------------------------------------------------------
 
+bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
+  // Gravity direction definition
+  if (imuGravityDirection == "up") {
+    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
+  } else if (imuGravityDirection == "down") {
+    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
+  } else {
+    throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
+  }
+  // Set noise and bias parameters
+  imuParamsPtr_->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * accNoiseDensity_;
+  imuParamsPtr_->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * accBiasRandomWalk_;
+  imuParamsPtr_->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * gyrNoiseDensity_;
+  imuParamsPtr_->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * gyrBiasRandomWalk_;
+  imuParamsPtr_->integrationCovariance =
+      gtsam::Matrix33::Identity(3, 3) * integrationNoiseDensity_;  // error committed in integrating position from velocities
+  imuParamsPtr_->biasAccOmegaInt = gtsam::Matrix66::Identity(6, 6) * biasAccOmegaPreint_;  // covariance of bias used for preintegration
+  gtsam::Vector3 accBiasPrior(accBiasPrior_, accBiasPrior_, accBiasPrior_);
+  // Use previously defined prior for gyro
+  imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(accBiasPrior, gyrBiasPrior_);
+
+  // Init preintegrators
+  imuBufferPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
+  imuStepPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
+  imuParamsPtr_->print("IMU Preintegration Parameters:");
+  return true;
+}
+
 bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& init_pose) {
   // Set graph relinearization thresholds - must be lower case letters, check:gtsam::symbol_shorthand
   gtsam::FastMap<char, gtsam::Vector> relinTh;
@@ -57,41 +85,13 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   return true;
 }
 
-bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
-  // Gravity direction definition
-  if (imuGravityDirection == "up") {
-    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
-  } else if (imuGravityDirection == "down") {
-    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
-  } else {
-    throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
-  }
-  // Set noise and bias parameters
-  imuParamsPtr_->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * accNoiseDensity_;
-  imuParamsPtr_->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * accBiasRandomWalk_;
-  imuParamsPtr_->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * gyrNoiseDensity_;
-  imuParamsPtr_->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * gyrBiasRandomWalk_;
-  imuParamsPtr_->integrationCovariance =
-      gtsam::Matrix33::Identity(3, 3) * integrationNoiseDensity_;  // error committed in integrating position from velocities
-  imuParamsPtr_->biasAccOmegaInt = gtsam::Matrix66::Identity(6, 6) * biasAccOmegaPreint_;  // covariance of bias used for preintegration
-  gtsam::Vector3 accBiasPrior(accBiasPrior_, accBiasPrior_, accBiasPrior_);
-  gtsam::Vector3 gyrBiasPrior(gyrBiasPrior_, gyrBiasPrior_, gyrBiasPrior_);
-  imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(accBiasPrior, gyrBiasPrior);
-
-  // Init preintegrators
-  imuBufferPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
-  imuStepPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
-  imuParamsPtr_->print("IMU Preintegration Parameters:");
-  return true;
-}
-
 gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
   // Operating on graph data --> acquire mutex during whole method
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
   // Get new key
   gtsam::Key oldKey = stateKey_;
-  gtsam::Key newKey = newStateKey();
+  gtsam::Key newKey = newStateKey_();
   // Write current time
   stateTime_ = imuTime_k;
 
@@ -132,33 +132,14 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
     throw std::runtime_error("Time at time step k-1 must be smaller than time at time step k.");
   }
 
-  // Find closest lidar keys in existing graph
-  gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
-  double closestGraphTimeKm1, closestGraphTimeK;
-  imuBuffer_.getClosestKeyAndTimestamp(lidarTimeKm1, closestGraphTimeKm1, closestLidarKeyKm1);
-  imuBuffer_.getClosestKeyAndTimestamp(lidarTimeK, closestGraphTimeK, closestLidarKeyK);
-  ROS_INFO_STREAM("Current key: " << stateKey_ << ", found lidar keys are: " << closestLidarKeyKm1 << " and " << closestLidarKeyK);
-  ROS_WARN_STREAM("Lidar time at k-1: " << lidarTimeKm1 << ", found LiDAR time: " << closestGraphTimeKm1);
-  ROS_WARN_STREAM("Lidar time at k: " << lidarTimeK << ", found LiDAR time: " << closestGraphTimeK);
-
-  // Check search result and potentially warn user
+  // Find corresponding keys in graph
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  double lowerTimeDeviation = std::abs(lidarTimeKm1 - closestGraphTimeKm1);
-  if (lowerTimeDeviation > maxSearchDeviation) {
-    ROS_ERROR_STREAM("Time deviation at key " << closestLidarKeyKm1 << " is " << lowerTimeDeviation
-                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
-  }
-  double upperTimeDeviation = std::abs(lidarTimeK - closestGraphTimeK);
-  if (upperTimeDeviation > maxSearchDeviation) {
-    ROS_ERROR_STREAM("Time deviation at key " << closestLidarKeyK << " is " << upperTimeDeviation
-                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
-  }
   double maxLidarTimestampDistance = 1.0 / lidarRate_ + 2.0 * maxSearchDeviation;
-  double lidarTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
-  if (lidarTimestampDistance > maxLidarTimestampDistance) {
-    ROS_ERROR_STREAM("Distance of LiDAR timestamps is too big. Real lidar timestamps are  "
-                     << lidarTimeKm1 << " and " << lidarTimeK << " which is larger than the maximum allowed distance of "
-                     << maxLidarTimestampDistance);
+  gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
+  ROS_INFO("Looking for LiDAR PoseBetween keys.");
+  if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK)) {
+    ROS_WARN("PoseBetween factor not added to graph.");
+    return;
   }
 
   // Create Pose BetweenFactor and add
@@ -174,37 +155,32 @@ void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, cons
   // TODO: TO BE IMPLEMENTED
 }
 
-bool GraphManager::addZeroMotionFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3 pose) {
+bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
+  // Operating on graph data --> acquire mutex during whole method
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
   // Check external motion
   if (pose.translation().norm() > zeroMotionTh_) {
-    detectionCount_ = 0;
+    ROS_INFO("Not adding zero motion factor due to too big motion.");
     return false;
   }
 
-  // Check IMU motion
-  gtsam::NavState imuPropagatedState = imuStepPreintegratorPtr_->predict(gtsam::NavState(), graphState_.imuBias());
-  if (imuPropagatedState.position().norm() > zeroMotionTh_) {
-    detectionCount_ = 0;
+  // Find corresponding keys in graph
+  gtsam::Key closestKeyKm1, closestKeyK;
+  ROS_INFO("Looking for zero motion constraint keys.");
+  if (!findGraphKeys_(maxTimestampDistance, timeKm1, timeK, closestKeyKm1, closestKeyK)) {
     return false;
   }
-
-  // Check consective zero-motion detections
-  ++detectionCount_;
-  if (detectionCount_ < minDetections_) return false;
 
   // Add Zero Pose Factor
-  newGraphFactors_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(old_key), gtsam::symbol_shorthand::X(new_key),
-                                                          gtsam::Pose3::identity(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+  newGraphFactors_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
+                                                          gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
+                                                          gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   // Add Zero Velocity Factor
-  newGraphFactors_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(old_key), gtsam::Vector3::Zero(),
+  newGraphFactors_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
                                                           gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
-  // Re-detect Zero Motion
-  detectionCount_ = minDetections_ / 2;
-
-  // DEBUG
-  std::cout << "Zero Motion Factor added between: " << old_key << "/" << new_key << std::endl;
-  // DEBUG
+  ROS_WARN_STREAM("Zero Motion Factor added between key " << closestKeyKm1 << " and key " << closestKeyK);
 
   return true;
 }
@@ -264,6 +240,39 @@ gtsam::NavState GraphManager::updateGraphAndState() {
 }
 
 // Private --------------------------------------------------------------------
+
+bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& closestKeyKm1,
+                                  gtsam::Key& closestKeyK) {
+  // Find closest lidar keys in existing graph
+  double closestGraphTimeKm1, closestGraphTimeK;
+  imuBuffer_.getClosestKeyAndTimestamp(timeKm1, closestGraphTimeKm1, closestKeyKm1);
+  imuBuffer_.getClosestKeyAndTimestamp(timeK, closestGraphTimeK, closestKeyK);
+  ROS_INFO_STREAM("Current key: " << stateKey_ << ", found keys are: " << closestKeyKm1 << " and " << closestKeyK);
+  ROS_WARN_STREAM("Time at k-1: " << timeKm1 << ", found graph time: " << closestGraphTimeKm1);
+  ROS_WARN_STREAM("Time at k: " << timeK << ", found graph time: " << closestGraphTimeK);
+
+  // Check search result and potentially warn user
+  double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
+  double timeDeviationKm1 = std::abs(timeKm1 - closestGraphTimeKm1);
+  if (timeDeviationKm1 > maxSearchDeviation) {
+    ROS_ERROR_STREAM("Time deviation at key " << closestKeyKm1 << " is " << timeDeviationKm1
+                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
+  }
+  double timeDeviationK = std::abs(timeK - closestGraphTimeK);
+  if (timeDeviationK > maxSearchDeviation) {
+    ROS_ERROR_STREAM("Time deviation at key " << closestKeyK << " is " << timeDeviationK
+                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
+  }
+
+  double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
+  if (keyTimestampDistance > maxTimestampDistance) {
+    ROS_ERROR_STREAM("Distance of LiDAR timestamps is too big. Found timestamp difference is  "
+                     << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum allowed distance of "
+                     << maxTimestampDistance);
+    return false;
+  }
+  return true;
+}
 
 void GraphManager::updateImuIntegrators_(const IMUMap& imuMeas) {
   if (imuMeas.size() < 2) {
