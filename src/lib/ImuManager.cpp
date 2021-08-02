@@ -28,6 +28,16 @@ void ImuManager::getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapI
   s_itr = imuBuffer_.lower_bound(tLidar);
 }
 
+void ImuManager::getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key) {
+  auto lowerIterator = timeToKeyBuffer_.lower_bound(tLidar);
+  auto upperIterator = timeToKeyBuffer_.upper_bound(tLidar);
+  // Keep key which is closer to tLidar
+  tInGraph = lowerIterator->first;
+  // std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->first : upperIterator->first;
+  key = lowerIterator->second;  // std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->second
+                                // : upperIterator->second;
+}
+
 bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr) {
   // Check if timestamps are in correct order
   if (ts_start >= ts_end) {

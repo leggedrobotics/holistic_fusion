@@ -93,6 +93,10 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
     graphMgr_.setImuRate(dParam);
   }
+  if (privateNode.getParam("lidarRate", dParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - LiDAR rate: " << dParam);
+    graphMgr_.setLidarRate(dParam);
+  }
 
   // Get transformations from URDF
   staticTransformsPtr_->findTransformations();
@@ -168,9 +172,12 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   if (privateNode.getParam("enableDetailedResults", bParam)) {
     graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
   }
-  std::vector<double> poseNoise{0, 0, 0, 0, 0, 0};  // roll,pitch,yaw,x,y,z
+  std::vector<double> poseNoise;  // roll,pitch,yaw,x,y,z
   if (privateNode.getParam("poseBetweenNoise", poseNoise)) {
+    ROS_ERROR_STREAM("Set pose noise to " << poseNoise[0]);
     graphMgr_.setPoseNoise(poseNoise);
+  } else {
+    std::runtime_error("Pose between noise needs to be set in config file.");
   }
 
   // Verbosity
@@ -231,9 +238,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 // ROS helper functions ---------------------------------------------------------------
 
 // Estimation dependant functions --------------------------------------------------------------
-void FactorGraphFiltering::alignImu(const double imuTimeK) {
+void FactorGraphFiltering::alignImu(const ros::Time& imuTimeK) {
   gtsam::Rot3 imu_attitude;
-  if (graphMgr_.estimateAttitudeFromImu(imuTimeK, imuGravityDirection_, imu_attitude, gravityConstant_)) {
+  if (graphMgr_.estimateAttitudeFromImu((imuTimeK - initialTime_).toSec(), imuGravityDirection_, imu_attitude, gravityConstant_)) {
     zeroYawImuAttitude_ = gtsam::Rot3::Ypr(0.0, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
     ROS_WARN_STREAM("\033[33mFG_FILTERING\033[0mAttitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_);
     imuAligned_ = true;
@@ -264,10 +271,14 @@ void FactorGraphFiltering::initGNSS(const sensor_msgs::NavSatFix::ConstPtr& left
 
 // Graph initialization from starting attitude
 void FactorGraphFiltering::initGraph(const ros::Time& timeStamp_k) {
+  // Initial ros time
+  initialTime_ = timeStamp_k;
+  ROS_WARN_STREAM("Initial ros time is set to " << initialTime_.toSec() << ". Time of factor graph is relative to this time.");
+
   // Gravity
   graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
   // Initialize first node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), gtsam::Pose3(zeroYawImuAttitude_, gtsam::Point3()));
+  graphMgr_.initPoseVelocityBiasGraph((timeStamp_k - initialTime_).toSec(), gtsam::Pose3(zeroYawImuAttitude_, gtsam::Point3()));
   gtsam::Pose3 initialImuPose(graphMgr_.getGraphState().navState().pose().matrix());
   ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose()
                                     << ", RPY(deg): " << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
@@ -290,17 +301,18 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   }
 
   // Add to buffer
-  graphMgr_.addToIMUBuffer(imuTimeK.toSec(), imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z,
-                           imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
+  graphMgr_.addToIMUBuffer((imuTimeK - initialTime_).toSec(), imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y,
+                           imu_ptr->linear_acceleration.z, imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y,
+                           imu_ptr->angular_velocity.z);
 
   // If IMU not yet aligned
   if (!imuAligned_) {
-    alignImu(imuTimeK.toSec());
+    alignImu(imuTimeK);
   }  // Initialize graph at next iteration step
   // Add measurement to graph but don't optimize it
   else if (graphInited_) {
     // Add IMU factor and get propagated state
-    gtsam::NavState currentState = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec());
+    gtsam::NavState currentState = graphMgr_.addImuFactorAndGetState((imuTimeK - initialTime_).toSec());
     publishState(currentState, imuTimeK);
     // Logging
     signalLogger_.publishLogger(currentState.pose(), graphMgr_.getIMUBias());
@@ -342,7 +354,7 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
     Eigen::Matrix4d T_Ikm1_Ik = computeDeltaPose(tf_T_O_Ikm1_Compslam_, tf_T_O_Ik_Compslam);
     gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
     // Write the lidar odom delta to the graph
-    graphMgr_.addPoseBetweenFactor(lidarDeltaPose, compslamTimeKm1.toSec(), compslamTimeK_.toSec());
+    graphMgr_.addPoseBetweenFactor(lidarDeltaPose, (compslamTimeKm1 - initialTime_).toSec(), (compslamTimeK_ - initialTime_).toSec());
     // Mutex for optimizeGraph Flag
     {
       // Lock

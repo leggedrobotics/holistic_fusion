@@ -22,7 +22,6 @@
 namespace fg_filtering {
 class GraphManager {
  public:
-  // Constructor / Destructor
   GraphManager(){};
   ~GraphManager(){};
 
@@ -66,23 +65,24 @@ class GraphManager {
   }
 
   // Accessors - Setters
-  void setAccNoiseDensity(double val) { accNoiseDensity_ = val; }
-  void setAccBiasRandomWalk(double val) { accBiasRandomWalk_ = val; }
-  void setAccBiasPrior(double val) { accBiasPrior_ = val; }
-  void setGyroNoiseDensity(double val) { gyrNoiseDensity_ = val; }
-  void setGyrBiasRandomWalk(double val) { gyrBiasRandomWalk_ = val; }
-  void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
-  void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
-  void setGyrBiasPrior(double val) { gyrBiasPrior_ = val; }
-  void setSmootherLag(double val) { smootherLag_ = val; }
-  void setIterations(int val) { additonalIterations_ = val; }
-  void setPositionReLinTh(double val) { posReLinTh_ = val; }
-  void setRotationReLinTh(double val) { rotReLinTh_ = val; }
-  void setVelocityReLinTh(double val) { velReLinTh_ = val; }
-  void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
-  void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
-  void setPoseNoise(const std::vector<double>& v) { poseNoise_ = v; }
-  void setImuRate(double d) { imuBuffer_.setImuRate(d); }
+  inline void setAccNoiseDensity(double val) { accNoiseDensity_ = val; }
+  inline void setAccBiasRandomWalk(double val) { accBiasRandomWalk_ = val; }
+  inline void setAccBiasPrior(double val) { accBiasPrior_ = val; }
+  inline void setGyroNoiseDensity(double val) { gyrNoiseDensity_ = val; }
+  inline void setGyrBiasRandomWalk(double val) { gyrBiasRandomWalk_ = val; }
+  inline void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
+  inline void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
+  inline void setGyrBiasPrior(double val) { gyrBiasPrior_ = val; }
+  inline void setSmootherLag(double val) { smootherLag_ = val; }
+  inline void setIterations(int val) { additonalIterations_ = val; }
+  inline void setPositionReLinTh(double val) { posReLinTh_ = val; }
+  inline void setRotationReLinTh(double val) { rotReLinTh_ = val; }
+  inline void setVelocityReLinTh(double val) { velReLinTh_ = val; }
+  inline void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
+  inline void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
+  inline void setPoseNoise(const std::vector<double>& v) { poseNoise_ = v; }
+  inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
+  inline void setLidarRate(double d) { lidarRate_ = d; }
   // Accessors - Getters
   auto iterations() const { return additonalIterations_; }
   const fg_filtering::State& getGraphState() { return graphState_; }
@@ -142,6 +142,8 @@ class GraphManager {
   double zeroMotionTh_ = 0.01;              // Zero motion threshold meters
   double minDetections_ = 10;               // Number of consective zero motions detected before zero motion factors are added
   double detectionCount_ = minDetections_;  // Assumption: Robot starts at rest so initially zero motion is enabled
+  // Timing
+  double lidarRate_ = 5;
 };
 }  // namespace fg_filtering
 

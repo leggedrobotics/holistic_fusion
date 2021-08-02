@@ -33,7 +33,7 @@ class ImuManager {
   ~ImuManager() = default;
 
   // Setters
-  void setImuRate(double d) { imuRate_ = d; }
+  inline void setImuRate(double d) { imuRate_ = d; }
 
   // Add to buffers
   void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ);
@@ -41,13 +41,15 @@ class ImuManager {
   inline void addImuPoseToBuffer(double ts, const gtsam::Pose3& pose) { imuPosesInGraphBuffer_[ts] = pose; }
 
   // Getters
+  inline double getImuRate() { return imuRate_; }
+
   void getLastTwoMeasurements(IMUMap& imuMap);
 
   void getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapItr& s_itr);
 
-  inline void getGtsamKeyOfTimestamp(const double& tLidar, gtsam::Key& key) { key = timeToKeyBuffer_.lower_bound(tLidar)->second; }
+  void getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key);
 
-  inline void getCorrespondingIMUGraphPose(const double& tLidar, gtsam::Pose3& pose) {
+  inline void getCorrespondingImuGraphPose(const double& tLidar, gtsam::Pose3& pose) {
     pose = imuPosesInGraphBuffer_.lower_bound(tLidar)->second;
   }
 

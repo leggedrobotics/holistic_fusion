@@ -15,7 +15,7 @@ leftGnssFrame: GNSS_L
 rightGnssFrame: GNSS_R
 
 #Factor Graph
-#lidarRate: 10
+lidarRate: 5
 imuRate: 100                             #Rate of IMU input (Hz)
 imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
 accNoiseDensity: 7.225e-7                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7

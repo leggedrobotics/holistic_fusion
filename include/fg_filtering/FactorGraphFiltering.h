@@ -77,7 +77,7 @@ class FactorGraphFiltering {
 
   // Worker functions
   /// Set Imu Attitude
-  void alignImu(const double imuTimeK);
+  void alignImu(const ros::Time& imuTimeK);
   /// Initialize GNSS pose
   void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
   /// Initialize the graph
@@ -116,6 +116,7 @@ class FactorGraphFiltering {
   std::string imuGravityDirection_;
 
   /// Times
+  ros::Time initialTime_;
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
 
