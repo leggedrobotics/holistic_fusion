@@ -184,8 +184,11 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   if (privateNode.getParam("Verbosity", iParam)) {
     ROS_INFO("Set fg_filtering-Verbosity: %d", iParam);
     setVerboseLevel(iParam);
-  } else
+    graphMgr_.setVerboseLevel(iParam);
+  } else {
     setVerboseLevel(0);
+    graphMgr_.setVerboseLevel(0);
+  }
 
   // Publishers
   /// advertise odometry topic
@@ -477,8 +480,10 @@ void FactorGraphFiltering::optimizeGraph() {
       if (!graphOptimizedAtLeastOnce_) {
         graphOptimizedAtLeastOnce_ = true;
       }
-      ROS_ERROR_STREAM("Whole optimization loop took "
-                       << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
+      if (verboseLevel_ > 1) {
+        ROS_ERROR_STREAM("Whole optimization loop took "
+                         << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
+      }
       // Transform pose
       gtsam::Pose3 T_O_I = optimizedNavState.pose();
       pose3ToTF(T_O_I, tf_T_O_I);

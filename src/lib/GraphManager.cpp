@@ -145,18 +145,20 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
     return;
   }
 
-  // Create Pose BetweenFactor and add
-  auto poseNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
+  // Create noise model
+  auto measurementNoise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << poseNoise_[0], poseNoise_[1], poseNoise_[2], poseNoise_[3], poseNoise_[4], poseNoise_[5])
           .finished());  // rad,rad,rad,m,m,m
-  ROS_WARN_STREAM("Pose Between Noise: " << poseNoise_[0] << "," << poseNoise_[1] << "," << poseNoise_[2] << "," << poseNoise_[3] << ","
-                                         << poseNoise_[4] << "," << poseNoise_[5]);
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
-                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, poseNoiseModel);
-  newGraphFactors_.add(poseBetweenFactor);
+  auto tukey = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.3), measurementNoise);
 
-  ROS_INFO_STREAM("Current key: " << stateKey_ << ", LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key "
-                                  << closestLidarKeyK);
+  // Create pose between factor and add it
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
+                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, tukey);
+  newGraphFactors_.add(poseBetweenFactor);
+  if (verboseLevel_ > 0) {
+    ROS_INFO_STREAM("Current key: " << stateKey_ << ", LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key "
+                                    << closestLidarKeyK);
+  }
 }
 
 void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose) {
@@ -186,8 +188,10 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   // Add Zero Velocity Factor
   newGraphFactors_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
                                                           gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
-
-  ROS_INFO_STREAM("Current key: " << stateKey_ << ", zero Motion Factor added between key " << closestKeyKm1 << " and key " << closestKeyK);
+  if (verboseLevel_ > 0) {
+    ROS_INFO_STREAM("Current key: " << stateKey_ << ", zero Motion Factor added between key " << closestKeyKm1 << " and key "
+                                    << closestKeyK);
+  }
 
   return true;
 }
@@ -210,8 +214,10 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   gtsam::Key currentKey;
   double currentTime;
   endLoopTime = std::chrono::high_resolution_clock::now();
-  ROS_ERROR_STREAM("Initialization took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                          << " ms.");
+  if (verboseLevel_ > 2) {
+    ROS_ERROR_STREAM("Initialization took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
+                                            << " ms.");
+  }
 
   // Mutex Block 1 -----------------
   startLoopTime = std::chrono::high_resolution_clock::now();
@@ -231,8 +237,10 @@ gtsam::NavState GraphManager::updateGraphAndState() {
     currentTime = stateTime_;
   }
   endLoopTime = std::chrono::high_resolution_clock::now();
-  ROS_ERROR_STREAM("First mutex block took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                             << " ms.");
+  if (verboseLevel_ > 2) {
+    ROS_ERROR_STREAM("First mutex block took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
+                                               << " ms.");
+  }
 
   // Graph Update (time consuming) -------------------
   startLoopTime = std::chrono::high_resolution_clock::now();
@@ -244,8 +252,10 @@ gtsam::NavState GraphManager::updateGraphAndState() {
     mainGraphPtr_->update();
   }
   endLoopTime = std::chrono::high_resolution_clock::now();
-  ROS_ERROR_STREAM("Optimization of the graph took "
-                   << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+  if (verboseLevel_ > 2) {
+    ROS_ERROR_STREAM("Optimization of the graph took "
+                     << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+  }
 
   // Compute result
   startLoopTime = std::chrono::high_resolution_clock::now();
@@ -255,8 +265,10 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   auto resultVelocity = mainGraphPtr_->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(currentKey));
   auto resultBias = mainGraphPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
   endLoopTime = std::chrono::high_resolution_clock::now();
-  ROS_ERROR_STREAM("Calculation of the estimate took "
-                   << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+  if (verboseLevel_ > 2) {
+    ROS_ERROR_STREAM("Calculation of the estimate took "
+                     << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+  }
 
   // Mutex block 2 ------------------
   startLoopTime = std::chrono::high_resolution_clock::now();
@@ -273,8 +285,10 @@ gtsam::NavState GraphManager::updateGraphAndState() {
     imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(graphState_.navState(), graphState_.imuBias());
   }
   endLoopTime = std::chrono::high_resolution_clock::now();
-  ROS_ERROR_STREAM("Second mutex block took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                              << " ms.");
+  if (verboseLevel_ > 2) {
+    ROS_ERROR_STREAM("Second mutex block took "
+                     << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+  }
 
   return navState;
 }
@@ -287,12 +301,14 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   double closestGraphTimeKm1, closestGraphTimeK;
   imuBuffer_.getClosestKeyAndTimestamp(timeKm1, closestGraphTimeKm1, closestKeyKm1);
   imuBuffer_.getClosestKeyAndTimestamp(timeK, closestGraphTimeK, closestKeyK);
-  ROS_INFO_STREAM("----------------------------------------------------");
-  ROS_WARN_STREAM(std::setprecision(14) << "Time steps we are looking for: " << timeKm1 << ", " << timeK);
-  ROS_WARN_STREAM(std::setprecision(14) << "Time steps we have found     : " << closestGraphTimeKm1 << ", " << closestGraphTimeK);
-  ROS_WARN_STREAM("Error     : " << std::abs(1000.0 * (timeKm1 - closestGraphTimeKm1)) << "ms, "
-                                 << std::abs(1000.0 * (timeK - closestGraphTimeK)) << "ms");
-  ROS_INFO_STREAM("Delay     : " << 1000.0 * (stateTime_ - timeK) << "ms");
+  if (verboseLevel_ > 1) {
+    ROS_INFO_STREAM("----------------------------------------------------");
+    ROS_INFO_STREAM(std::setprecision(14) << "Time steps we are looking for: " << timeKm1 << ", " << timeK);
+    ROS_INFO_STREAM(std::setprecision(14) << "Time steps we have found     : " << closestGraphTimeKm1 << ", " << closestGraphTimeK);
+    ROS_INFO_STREAM("Error     : " << std::abs(1000.0 * (timeKm1 - closestGraphTimeKm1)) << "ms, "
+                                   << std::abs(1000.0 * (timeK - closestGraphTimeK)) << "ms");
+    ROS_INFO_STREAM("Delay     : " << 1000.0 * (stateTime_ - timeK) << "ms");
+  }
   // Check search result and potentially warn user
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
   double timeDeviationKm1 = std::abs(timeKm1 - closestGraphTimeKm1);

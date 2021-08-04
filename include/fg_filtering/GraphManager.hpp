@@ -79,6 +79,8 @@ class GraphManager {
   inline void setPoseNoise(const std::vector<double>& v) { poseNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
+  inline void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
+
   // Accessors - Getters
   Eigen::Vector3d& getInitGyrBiasReference() { return gyrBiasPrior_; }
   auto iterations() const { return additonalIterations_; }
@@ -139,7 +141,9 @@ class GraphManager {
   /// Zero Velocity Factor
   double zeroMotionTh_ = 0.01;  // Zero motion threshold meters
   // Timing
-  double lidarRate_ = 5;
+  double lidarRate_ = 10.0;
+  // Verbose
+  int verboseLevel_ = 0;
 };
 }  // namespace fg_filtering
 
