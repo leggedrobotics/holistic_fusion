@@ -190,16 +190,16 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   // Publishers
   /// advertise odometry topic
   pubOdometry_ = privateNode.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", 100);
-  pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", 100);
   pubOdomPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", 100);
-  pubOdomLidarPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odomLidar_path", 5);
-  pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", 5);
-  pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", 20);
-  pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", 20);
+  pubOptimizationPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/optimization_path", 100);
+  pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", 100);
+  pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", 100);
+  pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", 100);
+  pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", 100);
   excavatorStatePublisher_ = node.advertise<m545_msgs::M545State>("/m545_state", 100);
   /// Messages
   odomPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  odomLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  optimizationPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   compslamPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   leftGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   rightGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -213,13 +213,13 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
       node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback, this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized IMU subscriber.");
   /// subscribe to remapped LiDAR odometry topic
-  subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 10, &FactorGraphFiltering::lidarOdometryCallback, this,
+  subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 1000, &FactorGraphFiltering::lidarOdometryCallback, this,
                                                          ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized LiDAR Odometry subscriber.");
   /// subscribe to gnss topics using ROS exact sync policy in a single callback
-  subGnssLeft_.subscribe(node, "/gnss_topic_left", 20);
-  subGnssRight_.subscribe(node, "/gnss_topic_right", 20);
-  gnssExactSyncPtr_.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(20), subGnssLeft_, subGnssRight_));
+  subGnssLeft_.subscribe(node, "/gnss_topic_left", 100);
+  subGnssRight_.subscribe(node, "/gnss_topic_right", 100);
+  gnssExactSyncPtr_.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(100), subGnssLeft_, subGnssRight_));
   gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback, this, _1, _2));
   ROS_INFO("Initialized GNSS subscriber (for both GNSS topics).");
   /// Subscribe to measurements
@@ -228,7 +228,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   ROS_INFO("Initialized Measurements subscriber.");
 
   /// Initialize helper threads
-  optimizeGraphThread_ = std::thread(&FactorGraphFiltering::updateGraph, this);
+  optimizeGraphThread_ = std::thread(&FactorGraphFiltering::optimizeGraph, this);
   ROS_INFO("Initialized thread for optimizing the graph in parallel.");
 
   return true;
@@ -320,7 +320,7 @@ void FactorGraphFiltering::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr
   else if (graphInited_) {
     // Add IMU factor and get propagated state
     gtsam::NavState currentState = graphMgr_.addImuFactorAndGetState((imuTimeK - initialTime_).toSec());
-    if (lidarCallbackCounter_ > 5) {
+    if (graphOptimizedAtLeastOnce_) {
       publishState(currentState, imuTimeK);
       // Logging
       signalLogger_.publishLogger(currentState.pose(), graphMgr_.getIMUBias());
@@ -354,7 +354,6 @@ void FactorGraphFiltering::lidarOdometryCallback(const nav_msgs::Odometry::Const
   // Set LiDAR time
   compslamTimeKm1 = compslamTimeK_;
   compslamTimeK_ = odomLidarPtr->header.stamp;
-  // Compslam - Wait with writing to graph until IMU attitude is determined
 
   if (graphInited_) {
     /// Delta pose
@@ -444,7 +443,7 @@ void FactorGraphFiltering::measurementsCallback(const m545_msgs::M545Measurement
 }
 
 // update graph ----------------------------------------------------------------------------------------
-void FactorGraphFiltering::updateGraph() {
+void FactorGraphFiltering::optimizeGraph() {
   // Preallocation
   int numLidarFactors = 0;
   // Pose Stamped
@@ -475,8 +474,11 @@ void FactorGraphFiltering::updateGraph() {
       startLoopTime = std::chrono::high_resolution_clock::now();
       gtsam::NavState optimizedNavState = graphMgr_.updateGraphAndState();
       endLoopTime = std::chrono::high_resolution_clock::now();
-      ROS_INFO_STREAM("Optimizing the graph took "
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
+      if (!graphOptimizedAtLeastOnce_) {
+        graphOptimizedAtLeastOnce_ = true;
+      }
+      ROS_ERROR_STREAM("Whole optimization loop took "
+                       << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
       // Transform pose
       gtsam::Pose3 T_O_I = optimizedNavState.pose();
       pose3ToTF(T_O_I, tf_T_O_I);
@@ -487,11 +489,11 @@ void FactorGraphFiltering::updateGraph() {
       poseStamped.header.stamp = compslamTimeK_;
       tf::poseTFToMsg(tf_T_O_C, poseStamped.pose);
       /// Path
-      odomLidarPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-      odomLidarPathPtr_->header.stamp = compslamTimeK_;
-      odomLidarPathPtr_->poses.push_back(poseStamped);
+      optimizationPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+      optimizationPathPtr_->header.stamp = compslamTimeK_;
+      optimizationPathPtr_->poses.push_back(poseStamped);
       /// Publish
-      pubOdomLidarPath_.publish(odomLidarPathPtr_);
+      pubOptimizationPath_.publish(optimizationPathPtr_);
 
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;

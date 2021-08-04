@@ -18,7 +18,7 @@ print("Latest CSV file is: " + latestCSVFile)
 
 now = datetime.now()
 # dd/mm/YY H:M:S
-dtString = now.strftime("%d-%m-%Y_%H:%M:%S")
+dtString = now.strftime("%Y-%m-%d_%H:%M:%S")
 
 with open(latestCSVFile, newline='') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')

@@ -12,10 +12,12 @@
 // GTSAM
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/nonlinear/NonlinearISAM.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
+// Catkin workspace
 #include "fg_filtering/GraphState.hpp"
 #include "fg_filtering/ImuManager.hpp"
 
@@ -95,7 +97,7 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  // std::shared_ptr<gtsam::NonlinearISAM> mainGraphPtr_;
   fg_filtering::State graphState_;
   gtsam::ISAM2Params isamParams_;
   /// Data buffers for callbacks to add information via member functions

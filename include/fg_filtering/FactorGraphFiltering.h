@@ -41,8 +41,6 @@
 
 namespace fg_filtering {
 
-#define NUM_LIDAR_CALLBACKS_UNTIL_PUBLISHING 5
-
 /** \brief Implementation of the factor graph based filtering.
  *
  */
@@ -83,7 +81,7 @@ class FactorGraphFiltering {
   /// Initialize the graph
   void initGraph(const ros::Time& timeStamp_k);
   /// Updating the factor graph
-  void updateGraph();
+  void optimizeGraph();
   /// Publish state in imu callback
   void publishState(const gtsam::NavState& currentState, ros::Time imuTimeK);
 
@@ -113,6 +111,7 @@ class FactorGraphFiltering {
   bool firstLidarOdomCallback_ = true;
   bool firstGnssCallback_ = true;
   bool optimizeGraph_ = false;
+  bool graphOptimizedAtLeastOnce_ = false;
   std::string imuGravityDirection_;
 
   /// Times
@@ -137,7 +136,7 @@ class FactorGraphFiltering {
   ros::Publisher pubOdometry_;
   ros::Publisher pubLaserImuBias_;
   ros::Publisher pubOdomPath_;
-  ros::Publisher pubOdomLidarPath_;
+  ros::Publisher pubOptimizationPath_;
   ros::Publisher pubCompslamPath_;
   ros::Publisher pubLeftGnssPath_;
   ros::Publisher pubRightGnssPath_;
@@ -148,7 +147,7 @@ class FactorGraphFiltering {
 
   /// Messages
   nav_msgs::PathPtr odomPathPtr_;
-  nav_msgs::PathPtr odomLidarPathPtr_;
+  nav_msgs::PathPtr optimizationPathPtr_;
   nav_msgs::PathPtr compslamPathPtr_;
   nav_msgs::PathPtr leftGnssPathPtr_;
   nav_msgs::PathPtr rightGnssPathPtr_;
