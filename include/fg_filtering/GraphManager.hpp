@@ -12,6 +12,8 @@
 // GTSAM
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/GPSFactor.h>
+#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearISAM.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -36,6 +38,8 @@ class GraphManager {
   void addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1, const double lidarTime_k);
 
   void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose);
+
+  void addGnssUnaryFactor(double timeKm1, const gtsam::Vector3& position);
 
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
@@ -99,7 +103,8 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  // std::shared_ptr<gtsam::NonlinearISAM> mainGraphPtr_;
+  std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;  // std::shared_ptr<gtsam::NonlinearISAM> mainGraphPtr_; //
+                                                // std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  //
   fg_filtering::State graphState_;
   gtsam::ISAM2Params isamParams_;
   /// Data buffers for callbacks to add information via member functions

@@ -60,6 +60,10 @@ class StaticTransforms {
 
   const tf::Transform& T_Cabin_GnssR() { return tf_T_Cabin_GnssR_; }
 
+  const tf::Transform& T_GnssL_Cabin() { return tf_T_GnssL_Cabin_; }
+
+  const tf::Transform& T_GnssR_Cabin() { return tf_T_GnssR_Cabin_; }
+
   const tf::Transform& T_C_B() { return tf_T_C_B_; }
 
   double BC_z_offset() { return BC_Z_offset_; }

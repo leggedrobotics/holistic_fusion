@@ -396,48 +396,54 @@ void FactorGraphFiltering::gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& 
   // First callback --> set position to zero
   if (firstGnssCallback_) {
     initGNSS(leftGnssPtr, rightGnssPtr);
-
-    // Later callbacks
-  } else {
-    /// Left
-    auto leftEastPtr = std::make_unique<double>();
-    auto leftNorthPtr = std::make_unique<double>();
-    auto leftUpPtr = std::make_unique<double>();
-    geodeticConverterLeft_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
-                                        leftNorthPtr.get(), leftUpPtr.get());
-    /// Right
-    auto rightEastPtr = std::make_unique<double>();
-    auto rightNorthPtr = std::make_unique<double>();
-    auto rightUpPtr = std::make_unique<double>();
-    geodeticConverterRight_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, rightEastPtr.get(),
-                                         rightNorthPtr.get(), rightUpPtr.get());
-    // Publish path
-    /// Left
-    //// Pose
-    geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
-    pose.header.stamp = leftGnssPtr->header.stamp;
-    pose.pose.position.x = *leftEastPtr;   //+ tf_T_C_GL.getOrigin().x();
-    pose.pose.position.y = *leftNorthPtr;  //+ tf_T_C_GL.getOrigin().y();
-    pose.pose.position.z = *leftUpPtr;     //+ tf_T_C_GL.getOrigin().z();
-    //// Path
-    leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-    leftGnssPathPtr_->header.stamp = leftGnssPtr->header.stamp;
-    leftGnssPathPtr_->poses.push_back(pose);
-    pubLeftGnssPath_.publish(leftGnssPathPtr_);
-    /// Right
-    //// Pose
-    pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
-    pose.header.stamp = rightGnssPtr->header.stamp;
-    pose.pose.position.x = *rightEastPtr;   // + tf_T_C_GR.getOrigin().x();
-    pose.pose.position.y = *rightNorthPtr;  // + tf_T_C_GR.getOrigin().y();
-    pose.pose.position.z = *rightUpPtr;     // + tf_T_C_GR.getOrigin().z();
-    //// Path
-    rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-    rightGnssPathPtr_->header.stamp = rightGnssPtr->header.stamp;
-    rightGnssPathPtr_->poses.push_back(pose);
-    pubRightGnssPath_.publish(rightGnssPathPtr_);
+    return;
   }
+  /// Left
+  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
+                                      leftNorthPtr.get(), leftUpPtr.get());
+  /// Right
+  auto rightEastPtr = std::make_unique<double>();
+  auto rightNorthPtr = std::make_unique<double>();
+  auto rightUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude, rightEastPtr.get(),
+                                      rightNorthPtr.get(), rightUpPtr.get());
+  if (graphInited_) {
+    tf::Vector3 tf_ENU_t_ENU_I(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
+    // tf::Vector3 tf_ENU_t_ENU_I = staticTransformsPtr_->T_Cabin_GnssL() * tf_ENU_t_ENU_GnssL
+
+    gtsam::Vector3 position = {*leftEastPtr, *leftNorthPtr, *leftUpPtr};
+    graphMgr_.addGnssUnaryFactor(leftGnssPtr->header.stamp.toSec(), position);
+  }
+
+  // Publish path
+  /// Left
+  //// Pose
+  geometry_msgs::PoseStamped pose;
+  pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
+  pose.header.stamp = leftGnssPtr->header.stamp;
+  pose.pose.position.x = *leftEastPtr;   //+ tf_T_C_GL.getOrigin().x();
+  pose.pose.position.y = *leftNorthPtr;  //+ tf_T_C_GL.getOrigin().y();
+  pose.pose.position.z = *leftUpPtr;     //+ tf_T_C_GL.getOrigin().z();
+  //// Path
+  leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+  leftGnssPathPtr_->header.stamp = leftGnssPtr->header.stamp;
+  leftGnssPathPtr_->poses.push_back(pose);
+  pubLeftGnssPath_.publish(leftGnssPathPtr_);
+  /// Right
+  //// Pose
+  pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
+  pose.header.stamp = rightGnssPtr->header.stamp;
+  pose.pose.position.x = *rightEastPtr;   // + tf_T_C_GR.getOrigin().x();
+  pose.pose.position.y = *rightNorthPtr;  // + tf_T_C_GR.getOrigin().y();
+  pose.pose.position.z = *rightUpPtr;     // + tf_T_C_GR.getOrigin().z();
+  //// Path
+  rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+  rightGnssPathPtr_->header.stamp = rightGnssPtr->header.stamp;
+  rightGnssPathPtr_->poses.push_back(pose);
+  pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
 void FactorGraphFiltering::measurementsCallback(const m545_msgs::M545Measurements::ConstPtr& measurementsMsgPtr) {
@@ -531,22 +537,22 @@ void FactorGraphFiltering::publishState(const gtsam::NavState& currentState, ros
   tf_T_C_B.setOrigin(tf::Vector3(0.0, 0.0, -staticTransformsPtr_->BC_z_offset()));
 
   // From Eigen to TF
-  gtsam::Pose3 T_OI = currentState.pose();
-  pose3ToTF(T_OI, tf_T_O_I);
+  gtsam::Pose3 T_O_I = currentState.pose();
+  pose3ToTF(T_O_I, tf_T_O_I);
   // Transform
   // Only publish state if already some lidar constraints in graph
   tf_T_O_C = tf_T_O_I * tf_T_I_C;
   // Get odom-->base_link transformation from odom-->cabin
-  tf::Transform tf_T_OB = tf_T_O_C * tf_T_C_B;
+  tf::Transform tf_T_O_B = tf_T_O_C * tf_T_C_B;
 
   // m545_state
   excavator_model::ActuatorConversions::jointStateFromActuatorState(measurements_, estExcavatorState_);
   //_estExcavatorState.setAngularVelocityBaseInBaseFrame(...);
   estExcavatorState_.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(0.0, 0.0, 0.0));
   estExcavatorState_.setPositionWorldToBaseInWorldFrame(
-      kindr::Position3D(tf_T_OB.getOrigin().getX(), tf_T_OB.getOrigin().getY(), tf_T_OB.getOrigin().getZ()));
-  estExcavatorState_.setOrientationBaseToWorld(kindr::RotationQuaternionPD(tf_T_OB.getRotation().w(), tf_T_OB.getRotation().x(),
-                                                                           tf_T_OB.getRotation().y(), tf_T_OB.getRotation().z()));
+      kindr::Position3D(tf_T_O_B.getOrigin().getX(), tf_T_O_B.getOrigin().getY(), tf_T_O_B.getOrigin().getZ()));
+  estExcavatorState_.setOrientationBaseToWorld(kindr::RotationQuaternionPD(tf_T_O_B.getRotation().w(), tf_T_O_B.getRotation().x(),
+                                                                           tf_T_O_B.getRotation().y(), tf_T_O_B.getRotation().z()));
   std::chrono::steady_clock::time_point chronoTimeK = std::chrono::steady_clock::time_point(chrono::nanoseconds(imuTimeK.toNSec()));
   estExcavatorState_.setTime(chronoTimeK);
   estExcavatorState_.setSequence(measurements_.sequence_);
