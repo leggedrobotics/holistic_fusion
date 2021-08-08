@@ -1,0 +1,10 @@
+Header header
+
+string status
+bool converged
+bool degenerated
+float32 optimization_time
+int32 iteration_count
+int32 iteration_max
+float32 translation_residual
+float32 rotation_residual
