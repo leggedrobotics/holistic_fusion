@@ -487,8 +487,8 @@ void FactorGraphFiltering::optimizeGraph() {
         graphOptimizedAtLeastOnce_ = true;
       }
       if (verboseLevel_ > 1) {
-        ROS_ERROR_STREAM("Whole optimization loop took "
-                         << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
+        ROS_INFO_STREAM("\033[92m'Whole optimization loop took\033[0m "
+                        << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds.");
       }
       // Transform pose
       gtsam::Pose3 T_O_I = optimizedNavState.pose();
