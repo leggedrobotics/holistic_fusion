@@ -56,13 +56,13 @@ class StaticTransforms {
 
   const tf::Transform& T_C_I() { return tf_T_C_I_; }
 
-  const tf::Transform& T_Cabin_GnssL() { return tf_T_Cabin_GnssL_; }
+  const tf::Transform& T_C_GnssL() { return tf_T_Cabin_GnssL_; }
 
-  const tf::Transform& T_Cabin_GnssR() { return tf_T_Cabin_GnssR_; }
+  const tf::Transform& T_C_GnssR() { return tf_T_C_GnssR_; }
 
-  const tf::Transform& T_GnssL_Cabin() { return tf_T_GnssL_Cabin_; }
+  const tf::Transform& T_GnssL_C() { return tf_T_GnssL_C_; }
 
-  const tf::Transform& T_GnssR_Cabin() { return tf_T_GnssR_Cabin_; }
+  const tf::Transform& T_GnssR_C() { return tf_T_GnssR_C_; }
 
   const tf::Transform& T_C_B() { return tf_T_C_B_; }
 
@@ -96,10 +96,10 @@ class StaticTransforms {
   tf::Transform tf_T_L_I_;
   tf::Transform tf_T_I_C_;
   tf::Transform tf_T_C_I_;
-  tf::Transform tf_T_GnssL_Cabin_;
+  tf::Transform tf_T_GnssL_C_;
   tf::Transform tf_T_Cabin_GnssL_;
-  tf::Transform tf_T_GnssR_Cabin_;
-  tf::Transform tf_T_Cabin_GnssR_;
+  tf::Transform tf_T_GnssR_C_;
+  tf::Transform tf_T_C_GnssR_;
   tf::Transform tf_T_B_C_;
   tf::Transform tf_T_C_B_;
   double BC_Z_offset_;

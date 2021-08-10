@@ -70,8 +70,9 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   mainGraphPtr_ = std::make_shared<gtsam::ISAM2>(isamParams_);
   // std::make_shared<gtsam::IncrementalFixedLagSmoother>(smootherLag_, isamParams_);  // std::make_shared<gtsam::NonlinearISAM>();
   mainGraphPtr_->params().print("Factor Graph Parameters:");
-  std::cout << "Pose Between Factor Noise - RPY(rad): " << poseNoise_[0] << "," << poseNoise_[1] << "," << poseNoise_[2]
-            << ", XYZ(m): " << poseNoise_[3] << "," << poseNoise_[4] << "," << poseNoise_[5] << std::endl;
+  std::cout << "Pose Between Factor Noise - RPY(rad): " << poseBetweenNoise_[0] << "," << poseBetweenNoise_[1] << ","
+            << poseBetweenNoise_[2] << ", XYZ(m): " << poseBetweenNoise_[3] << "," << poseBetweenNoise_[4] << "," << poseBetweenNoise_[5]
+            << std::endl;
 
   // Add prior factor to graph and update
   std::map<gtsam::Key, double> keyTimestampMap;
@@ -127,9 +128,6 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
 }
 
 void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTimeKm1, const double lidarTimeK) {
-  // Operating on graph data --> acquire mutex during whole method
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-
   // Check
   if (lidarTimeKm1 > lidarTimeK) {
     throw std::runtime_error("Time at time step k-1 must be smaller than time at time step k.");
@@ -146,15 +144,24 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
   }
 
   // Create noise model
-  auto measurementNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << poseNoise_[0], poseNoise_[1], poseNoise_[2], poseNoise_[3], poseNoise_[4], poseNoise_[5])
-          .finished());  // rad,rad,rad,m,m,m
-  auto tukey = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.3), measurementNoise);
+  auto poseBetweenNoise =
+      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise_[0], poseBetweenNoise_[1], poseBetweenNoise_[2],
+                                           poseBetweenNoise_[3], poseBetweenNoise_[4], poseBetweenNoise_[5])
+                                              .finished());  // rad,rad,rad,m,m,m
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.3), poseBetweenNoise);
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
-                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, tukey);
-  newGraphFactors_.add(poseBetweenFactor);
+                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, tukeyErrorFunction);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    newGraphFactors_.add(poseBetweenFactor);
+  }
+
+  // Print summary
   if (verboseLevel_ > 0) {
     ROS_INFO_STREAM("Current key: " << stateKey_ << ", LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key "
                                     << closestLidarKeyK);
@@ -165,10 +172,39 @@ void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, cons
   // TODO: TO BE IMPLEMENTED
 }
 
-void GraphManager::addGnssUnaryFactor(double timeKm1, const gtsam::Vector3& position) {
+void GraphManager::addGnssUnaryFactor(double gnssTime, const gtsam::Vector3& position) {
+  // Print information
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM(std::setprecision(14) << "GNSS measurement at time stamp " << timeKm1 << " is: " << position.x() << "," << position.y()
+    ROS_INFO_STREAM(std::setprecision(14) << "GNSS measurement at time stamp " << gnssTime << " is: " << position.x() << "," << position.y()
                                           << "," << position.z());
+    ROS_INFO_STREAM("Prediction of the factor graph: " << graphState_.navState().position().x() << ","
+                                                       << graphState_.navState().position().y() << ","
+                                                       << graphState_.navState().position().z());
+  }
+
+  // Find closest lidar key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  imuBuffer_.getClosestKeyAndTimestamp(gnssTime, closestGraphTime, closestKey);
+
+  // Create noise model
+  auto gnssUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(3) << gnssUnaryNoise_, gnssUnaryNoise_, gnssUnaryNoise_).finished());  // rad,rad,rad,m,m,m
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), gnssUnaryNoise);
+
+  // Create pose between factor and add it
+  gtsam::GPSFactor gnssUnaryFactor(gtsam::symbol_shorthand::X(closestKey), position, tukeyErrorFunction);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    newGraphFactors_.add(gnssUnaryFactor);
+  }
+
+  // Print summary
+  if (verboseLevel_ > 0) {
+    ROS_INFO_STREAM("Key where GNSS factor will be written to is: " << closestKey);
   }
 }
 
@@ -197,8 +233,8 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
                                                           gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("Current key: " << stateKey_ << ", zero Motion Factor added between key " << closestKeyKm1 << " and key "
-                                    << closestKeyK);
+    ROS_INFO_STREAM("\033[92mCurrent key: " << stateKey_ << ", zero Motion Factor added between key " << closestKeyKm1 << " and key "
+                                            << closestKeyK << "\033[0m");
   }
   return true;
 }

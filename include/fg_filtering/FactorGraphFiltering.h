@@ -115,7 +115,6 @@ class FactorGraphFiltering {
   std::string imuGravityDirection_;
 
   /// Times
-  ros::Time initialTime_;
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
 
@@ -128,6 +127,8 @@ class FactorGraphFiltering {
   gtsam::Rot3 zeroYawImuAttitude_;
   double gravityConstant_ = 9.81;  // Will be overwritten
   tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
+  /// Current global transformation
+  tf::StampedTransform tf_T_O_Ik_;
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;

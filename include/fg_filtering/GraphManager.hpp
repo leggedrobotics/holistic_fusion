@@ -80,7 +80,8 @@ class GraphManager {
   inline void setVelocityReLinTh(double val) { velReLinTh_ = val; }
   inline void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
   inline void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
-  inline void setPoseNoise(const std::vector<double>& v) { poseNoise_ = v; }
+  inline void setPoseBetweenNoise(const std::vector<double>& v) { poseBetweenNoise_ = v; }
+  inline void setGnssUnaryNoise(double v) { gnssUnaryNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
   inline void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
@@ -141,8 +142,10 @@ class GraphManager {
   double velReLinTh_ = 0.1;      // Linear Velocity linearization threshold
   double accBiasReLinTh_ = 0.1;  // Accelerometer bias linearization threshold
   double gyrBiasReLinTh_ = 0.1;  // Gyroscope bias linearization threshold
-  /// Pose Between Factor
-  std::vector<double> poseNoise_{0.02, 0.02, 0.02, 0.05, 0.05, 0.05};  // ORDER RPY(rad) - XYZ(meters)
+  /// Pose Between Factor Noise
+  std::vector<double> poseBetweenNoise_;  // ORDER RPY(rad) - XYZ(meters)
+  /// GNSS Unary Factor Noise
+  double gnssUnaryNoise_;  // ORDER RPY(rad) - XYZ(meters)
   /// Zero Velocity Factor
   double zeroMotionTh_ = 0.01;  // Zero motion threshold meters
   // Timing

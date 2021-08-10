@@ -64,8 +64,8 @@ void StaticTransforms::findTransformations() {
   // Left GNSS
   const unsigned int gnssLeftBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("GNSS_L").c_str());
   if (gnssLeftBodyId != std::numeric_limits<unsigned int>::max()) {
-    tf_T_GnssL_Cabin_ = getTransformFromID(gnssLeftBodyId);
-    tf_T_Cabin_GnssL_ = tf_T_GnssL_Cabin_.inverse();
+    tf_T_GnssL_C_ = getTransformFromID(gnssLeftBodyId);
+    tf_T_Cabin_GnssL_ = tf_T_GnssL_C_.inverse();
     ROS_WARN_STREAM("Left GNSS with respect to Cabin frame: t=[" << tf_T_Cabin_GnssL_.getOrigin().x() << ", "
                                                                  << tf_T_Cabin_GnssL_.getOrigin().y() << ", "
                                                                  << tf_T_Cabin_GnssL_.getOrigin().z() << "]");
@@ -76,10 +76,10 @@ void StaticTransforms::findTransformations() {
   // Right GNSS
   const unsigned int gnssRightBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("GNSS_R").c_str());
   if (gnssRightBodyId != std::numeric_limits<unsigned int>::max()) {
-    tf_T_GnssR_Cabin_ = getTransformFromID(gnssRightBodyId);
-    tf_T_Cabin_GnssR_ = tf_T_GnssR_Cabin_.inverse();
-    ROS_WARN_STREAM("Right GNSS to Cabin translation: [" << tf_T_Cabin_GnssR_.getOrigin().x() << ", " << tf_T_Cabin_GnssR_.getOrigin().y()
-                                                         << ", " << tf_T_Cabin_GnssR_.getOrigin().z() << "]");
+    tf_T_GnssR_C_ = getTransformFromID(gnssRightBodyId);
+    tf_T_C_GnssR_ = tf_T_GnssR_C_.inverse();
+    ROS_WARN_STREAM("Right GNSS to Cabin translation: [" << tf_T_C_GnssR_.getOrigin().x() << ", " << tf_T_C_GnssR_.getOrigin().y() << ", "
+                                                         << tf_T_C_GnssR_.getOrigin().z() << "]");
   } else {
     ROS_ERROR("Did not find right GNSS!");
     return;
