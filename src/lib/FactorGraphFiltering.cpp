@@ -189,7 +189,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Verbosity
   iParam = 0;
-  if (privateNode.getParam("Verbosity", iParam)) {
+  if (privateNode.getParam("verbosity", iParam)) {
     ROS_INFO("Set fg_filtering-Verbosity: %d", iParam);
     setVerboseLevel(iParam);
     graphMgr_.setVerboseLevel(iParam);

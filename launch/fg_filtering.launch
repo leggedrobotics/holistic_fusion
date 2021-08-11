@@ -15,6 +15,8 @@
     <param name="description_name" type="string" value="$(arg description_name)"/>
     <param name="imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)"/>
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
+    <rosparam file="$(find fg_filtering)/config/gnss_params.yaml" command="load"/>
+    <rosparam file="$(find fg_filtering)/config/extrinsic_params.yaml" command="load"/>
     <remap from="/imu_topic" to="$(arg imu_topic_name)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
     <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
