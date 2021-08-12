@@ -1,14 +1,14 @@
 #Common
 common_params:
   verbosity: 0                         #Debug Output, 0-disable, higher for more verbose output
-  scanPeriod: 0.1                          #Expected scan period for input pointcloud in seconds. Used of Distortion correction
+  logPlots: true
 
 #Factor Graph
 graph_params:
   lidarRate: 10
   imuRate: 100                             #Rate of IMU input (Hz)
   imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
-  smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  #smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false
@@ -30,10 +30,7 @@ noise_params:
   poseBetweenNoise: [2.0e-02, 2.0e-02, 2.0e-02, 5.0e-01, 5.0e-01, 5.0e-01] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
   ### GNSS
   gnssUnaryNoise: 1.0 #1.0e-02
-https://images:
-  samsung:
-    com/de/smartphones/galaxy-z-flip3-5g/watches/watchstudio/SM-R870NZK_ET-SFR86SG_S:
-      png?$ORIGIN_PNG$:# Relinearization
+# Relinearization
 relinearization_params:
   positionReLinTh: 5.0e-03                    #Position linearization threshold
   rotationReLinTh: 1.0e-03                    #Rotation linearization threshold

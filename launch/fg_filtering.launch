@@ -12,8 +12,8 @@
 
   <!-- Node -->
   <node pkg="fg_filtering" type="fg_filtering_node" name="fg_filtering_node" output="screen"> <!-- launch-prefix="gdb -args"-->
-    <param name="description_name" type="string" value="$(arg description_name)"/>
-    <param name="imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)"/>
+    <param name="launch/description_name" type="string" value="$(arg description_name)"/>
+    <param name="launch/imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)"/>
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/gnss_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/extrinsic_params.yaml" command="load"/>

@@ -9,7 +9,7 @@ namespace fg_filtering {
 StaticTransforms::StaticTransforms(ros::NodeHandle& privateNode) {
   ROS_INFO("Static Transforms container initializing...");
   std::string urdfDescriptionName;
-  if (privateNode.getParam("description_name", urdfDescriptionName)) {
+  if (privateNode.getParam("launch/description_name", urdfDescriptionName)) {
     ROS_INFO_STREAM("FactorGraphFiltering - URDF-Description-Name: " << urdfDescriptionName);
     privateNode.getParam(std::string("/") + urdfDescriptionName, urdfDescription_);
     // urdfDescription_ = sParam;

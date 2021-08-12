@@ -66,7 +66,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   estimate.insert(gtsam::symbol_shorthand::B(stateKey_), *imuBiasPriorPtr_);
 
   // Initialize factor graph
-  ROS_INFO_STREAM("Lag of the IncrementalFixedLagSmoother: " << smootherLag_);
+  // ROS_INFO_STREAM("Lag of the IncrementalFixedLagSmoother: " << smootherLag_);
   mainGraphPtr_ = std::make_shared<gtsam::ISAM2>(isamParams_);
   // std::make_shared<gtsam::IncrementalFixedLagSmoother>(smootherLag_, isamParams_);  // std::make_shared<gtsam::NonlinearISAM>();
   mainGraphPtr_->params().print("Factor Graph Parameters:");

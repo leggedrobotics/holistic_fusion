@@ -73,7 +73,7 @@ class GraphManager {
   inline void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
   inline void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
   inline void setGyrBiasPrior(Eigen::Vector3d gyrBiasPrior) { gyrBiasPrior_ = gyrBiasPrior; }
-  inline void setSmootherLag(double val) { smootherLag_ = val; }
+  // inline void setSmootherLag(double val) { smootherLag_ = val; }
   inline void setIterations(int val) { additonalIterations_ = val; }
   inline void setPositionReLinTh(double val) { posReLinTh_ = val; }
   inline void setRotationReLinTh(double val) { rotReLinTh_ = val; }

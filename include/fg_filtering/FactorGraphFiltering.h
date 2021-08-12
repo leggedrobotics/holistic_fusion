@@ -47,45 +47,50 @@ namespace fg_filtering {
 class FactorGraphFiltering {
  public:
   // Constructor
-  explicit FactorGraphFiltering(float scanPeriod = 0.1);
+  FactorGraphFiltering();
   // Destructor --> log signals
   ~FactorGraphFiltering() { signalLogger_.~SignalLogger(); };
 
-  // Setup ------------------------
+  // Setup
+  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+
+  /// Setters
   void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
   void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = sParam; }
-  /// Setup function
-  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+
+  // Getters
+  bool getLogPlots() { return logPlots_; }
 
   // Log data
   void logSignals() { signalLogger_.~SignalLogger(); }
 
  private:
-  // Functions -------------
+  // Methods -------------
 
-  // Callbacks
-  /// IMU Callback Function for handling incoming IMU messages -------------
-  void imuCallback(const sensor_msgs::Imu::ConstPtr& imu_ptr);
-  /// LiDAR Odometry Callback
-  void lidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  /// GNSS Callback
-  void gnssCallback(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-  /// Measurement Callback
-  void measurementsCallback(const m545_msgs::M545Measurements::ConstPtr& measurementsMsg);
+  /// Callbacks
+  //// IMU Callback Function for handling incoming IMU messages -------------
+  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_ptr);
+  //// LiDAR Odometry Callback
+  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  //// GNSS Callback
+  void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  //// Measurement Callback
+  void measurementsCallback_(const m545_msgs::M545Measurements::ConstPtr& measurementsMsg);
 
-  // Worker functions
-  /// Set Imu Attitude
-  void alignImu(const ros::Time& imuTimeK);
-  /// Initialize GNSS pose
-  void initGNSS(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-  /// Initialize the graph
-  void initGraph(const ros::Time& timeStamp_k);
-  /// Updating the factor graph
-  void optimizeGraph();
-  /// Publish state in imu callback
-  void publishState(const gtsam::NavState& currentState, ros::Time imuTimeK);
+  /// Worker functions
+  //// Set Imu Attitude
+  void alignImu_(const ros::Time& imuTimeK);
+  //// Initialize GNSS pose
+  void initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  //// Initialize the graph
+  void initGraph_(const ros::Time& timeStamp_k);
+  //// Updating the factor graph
+  void optimizeGraph_();
+  //// Publish state in imu callback
+  void publishState_(const gtsam::NavState& currentState, ros::Time imuTimeK);
 
   // Commodity
+  void getParams_(ros::NodeHandle& privateNode);
 
   // Threads
   /// Thread 1: Callback for compslam odometry
@@ -106,12 +111,13 @@ class FactorGraphFiltering {
   GraphManager graphMgr_;
 
   /// Flags
-  bool imuAligned_ = false;
-  bool graphInited_ = false;
-  bool firstLidarOdomCallback_ = true;
-  bool firstGnssCallback_ = true;
-  bool optimizeGraph_ = false;
-  bool graphOptimizedAtLeastOnce_ = false;
+  bool imuAlignedFlag_ = false;
+  bool graphInitedFlag_ = false;
+  bool firstLidarOdomCallbackFlag_ = true;
+  bool firstGnssCallbackFlag_ = true;
+  bool optimizeGraphFlag_ = false;
+  bool graphOptimizedAtLeastOnceFlag_ = false;
+  /// Strings
   std::string imuGravityDirection_;
 
   /// Times
@@ -179,6 +185,9 @@ class FactorGraphFiltering {
 
   /// Verbose
   int verboseLevel_ = 0;
+
+  /// Logging
+  bool logPlots_ = false;
 };
 
 }  // end namespace fg_filtering
