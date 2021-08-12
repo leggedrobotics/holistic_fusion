@@ -393,7 +393,6 @@ void FactorGraphFiltering::publishState_(const gtsam::NavState& T_O_Ik, ros::Tim
   // Used transforms
   tf::Transform tf_T_O_C, tf_T_I_C, tf_T_C_B, tf_T_O_I;
   tf_T_I_C = staticTransformsPtr_->T_I_C();
-  // tf_T_CB.setData(staticTransformsPtr_->T_CB());
 
   // Lookup chassis to cabin turn
   const double turnJointPosition = measurements_.actuatorStates_[m545_description::M545Topology::ActuatorEnum::TURN].position_;
