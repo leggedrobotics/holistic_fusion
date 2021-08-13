@@ -29,7 +29,6 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Geodetic Converter
   geodeticConverterLeft_ = geodetic_converter::GeodeticConverter();
-  geodeticConverterRight_ = geodetic_converter::GeodeticConverter();
 
   // Publishers
   /// advertise odometry topic
@@ -97,16 +96,19 @@ void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_pt
                            imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
 
   // If IMU not yet aligned
-  if (!imuAlignedFlag_) {
+  if (!imuAlignedFlag_ && (initedGnssFlag_ || !usingGnssFlag_)) {
     alignImu_(imuTimeK);
+  }  // Notification that waiting for GNSS
+  else if (!initedGnssFlag_ && usingGnssFlag_) {
+    ROS_INFO("Waiting for GNSS to provide global yaw.");
   }  // Initialize graph at next iteration step
-  else if (imuAlignedFlag_ && !graphInitedFlag_) {
+  else if (imuAlignedFlag_ && !initedGraphFlag_) {
     ROS_WARN("Initializing the graph...");
     initGraph_(imuTimeK);
     ROS_WARN("...graph is initialized.");
   }
-  // Add measurement to graph but don't optimize it
-  else if (graphInitedFlag_) {
+  // Add measurement to graph
+  else if (initedGraphFlag_) {
     // Add IMU factor and get propagated state
     gtsam::NavState T_O_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec());
     // Write information to global variable
@@ -123,7 +125,7 @@ void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_pt
       // Add zero motion factor in the very beginning to make biases converge
       graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
       // Publish zero motion state
-      publishState_(gtsam::NavState(gtsam::Pose3(zeroYawImuAttitude_, gtsam::Point3()), gtsam::Velocity3(0.0, 0.0, 0.0)), imuTimeK);
+      publishState_(gtsam::NavState(gtsam::Pose3(initialImuAttitude_, gtsam::Point3()), gtsam::Velocity3(0.0, 0.0, 0.0)), imuTimeK);
     }
   }
 }
@@ -150,7 +152,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   compslamTimeKm1 = compslamTimeK_;
   compslamTimeK_ = odomLidarPtr->header.stamp;
 
-  if (graphInitedFlag_) {
+  if (initedGraphFlag_) {
     /// Delta pose
     Eigen::Matrix4d T_Ikm1_Ik = computeDeltaPose(tf_T_O_Ikm1_Compslam_, tf_T_O_Ik_Compslam);
     gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
@@ -207,7 +209,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Check whether covariance is okay, otherwise return
   bool covarianceViolated =
       leftGnssPtr->position_covariance[0] > 1.0 || leftGnssPtr->position_covariance[4] > 1.0 || leftGnssPtr->position_covariance[8] > 1.0;
-  if (graphInitedFlag_ && !covarianceViolated) {
+  if (initedGraphFlag_ && graphOptimizedAtLeastOnceFlag_ && !covarianceViolated) {
     // Translation in robot frame
     tf::Vector3 tf_W_t_W_GnssL(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
     tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_I();
@@ -268,7 +270,7 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imu_attitude;
   if (graphMgr_.estimateAttitudeFromImu(imuTimeK.toSec(), imuGravityDirection_, imu_attitude, gravityConstant_,
                                         graphMgr_.getInitGyrBiasReference())) {
-    zeroYawImuAttitude_ = gtsam::Rot3::Ypr(0.0, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
+    initialImuAttitude_ = gtsam::Rot3::Ypr(-initialGlobalYaw_, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
     ROS_WARN_STREAM("\033[33mFG_FILTERING\033[0mAttitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_);
     imuAlignedFlag_ = true;
   } else {
@@ -278,7 +280,7 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
 
 void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
                                      const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr) {
-  /// Left
+  // Initialize left converter
   geodeticConverterLeft_.initialiseReference(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude);
   firstGnssCallbackFlag_ = false;
   if (geodeticConverterLeft_.isInitialised()) {
@@ -286,22 +288,36 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
   } else {
     ROS_ERROR("Left GNSS position could not be initialized.");
   }
-  /// Right
-  geodeticConverterRight_.initialiseReference(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude);
-  firstGnssCallbackFlag_ = false;
-  if (geodeticConverterRight_.isInitialised()) {
-    ROS_INFO("Right GNSS position was initialized.");
-  } else {
-    ROS_ERROR("Right GNSS position could not be initialized.");
-  }
+
+  // Get left initial position
+  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
+                                      leftNorthPtr.get(), leftUpPtr.get());
+  Eigen::Vector3d leftPosition(*leftEastPtr.get(), *leftNorthPtr.get(), *leftUpPtr.get());
+
+  /// Get right initial position
+  std::unique_ptr<double> rightEastPtr = std::make_unique<double>();
+  std::unique_ptr<double> rightNorthPtr = std::make_unique<double>();
+  std::unique_ptr<double> rightUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude, rightEastPtr.get(),
+                                      rightNorthPtr.get(), rightUpPtr.get());
+  Eigen::Vector3d rightPosition(*rightEastPtr.get(), *rightNorthPtr.get(), *rightUpPtr.get());
+
+  // Get initial global yaw
+  initialGlobalYaw_ = computeYawFromGnss_(leftPosition, rightPosition);
+
+  // Set flag to true
+  initedGnssFlag_ = true;
 }
 
-// Graph initialization from starting attitude
+// Graph initialization for roll & pitch from starting attitude, assume zero yaw
 void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   // Gravity
   graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
   // Initialize first node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), gtsam::Pose3(zeroYawImuAttitude_, gtsam::Point3()));
+  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), gtsam::Pose3(initialImuAttitude_, gtsam::Point3()));
   gtsam::Pose3 initialImuPose(graphMgr_.getGraphState().navState().pose().matrix());
   ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose()
                                     << ", RPY(deg): " << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
@@ -313,7 +329,12 @@ void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   tf_T_O_Ik_.frame_id_ = staticTransformsPtr_->getOdomFrame();
   tf_T_O_Ik_.stamp_ = timeStamp_k;
   // Set flag
-  graphInitedFlag_ = true;
+  initedGraphFlag_ = true;
+
+  // Case that no GNSS is existent --> mark graph as initialized
+  if (!usingGnssFlag_) {
+    initedGraphFlag_ = true;
+  }
 }
 
 void FactorGraphFiltering::optimizeGraph_() {
@@ -447,6 +468,19 @@ void FactorGraphFiltering::publishState_(const gtsam::NavState& T_O_Ik, ros::Tim
   pubOdomPath_.publish(odomPathPtr_);
 }
 
+/// Utility -------------------------
+double FactorGraphFiltering::computeYawFromGnss_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition) {
+  // Compute relative vector
+  Eigen::Vector3d W_t_GnssR_GnssL = leftPosition - rightPosition;
+  // Only interested in yaw --> z component to zero
+  W_t_GnssR_GnssL(2) = 0;
+  // Compute forward vector (orthogonal to connection)
+  Eigen::Vector3d zIdentityVector(0.0, 0.0, 1);
+  Eigen::Vector3d forwardVector = W_t_GnssR_GnssL.cross(zIdentityVector);
+  // Compute angle
+  return atan2(forwardVector(1), forwardVector(0));
+}
+
 /// Commodity -----------------------
 void FactorGraphFiltering::getParams_(ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
@@ -516,6 +550,15 @@ void FactorGraphFiltering::getParams_(ros::NodeHandle& privateNode) {
   } else {
     ROS_ERROR("FactorGraphFiltering - gravity direction of imu not set");
     throw std::runtime_error("Rosparam 'launch/imu_gravity_direction' must be set.");
+  }
+
+  // Using gnss
+  if (privateNode.getParam("launch/using_gps", bParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - using GNSS: " << bParam);
+    usingGnssFlag_ = bParam;
+  } else {
+    ROS_ERROR("FactorGraphFiltering - using GNSS not set.");
+    throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
   }
 
   // Factor Graph

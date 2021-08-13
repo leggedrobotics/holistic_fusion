@@ -89,7 +89,10 @@ class FactorGraphFiltering {
   //// Publish state in imu callback
   void publishState_(const gtsam::NavState& currentState, ros::Time imuTimeK);
 
-  // Commodity
+  /// Utility functions
+  static double computeYawFromGnss_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
+
+  // Commodity functions
   void getParams_(ros::NodeHandle& privateNode);
 
   // Threads
@@ -105,18 +108,20 @@ class FactorGraphFiltering {
   // Member variables -------------
   /// Geodetic Converter
   geodetic_converter::GeodeticConverter geodeticConverterLeft_;
-  geodetic_converter::GeodeticConverter geodeticConverterRight_;
 
   /// Factor graph
   GraphManager graphMgr_;
 
   /// Flags
   bool imuAlignedFlag_ = false;
-  bool graphInitedFlag_ = false;
+  bool initedGnssFlag_ = false;
+  bool initedGraphFlag_ = false;
   bool firstLidarOdomCallbackFlag_ = true;
   bool firstGnssCallbackFlag_ = true;
   bool optimizeGraphFlag_ = false;
   bool graphOptimizedAtLeastOnceFlag_ = false;
+  bool usingGnssFlag_ = true;
+
   /// Strings
   std::string imuGravityDirection_;
 
@@ -130,7 +135,8 @@ class FactorGraphFiltering {
   //// Inverse initial compslam pose
   tf::Transform tf_T_I0_O_Compslam_;
   /// Attitude Parameters
-  gtsam::Rot3 zeroYawImuAttitude_;
+  gtsam::Rot3 initialImuAttitude_;
+  double initialGlobalYaw_ = 0.0;
   double gravityConstant_ = 9.81;  // Will be overwritten
   tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
   /// Current global transformation
