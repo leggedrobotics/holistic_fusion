@@ -121,6 +121,7 @@ class FactorGraphFiltering {
   bool optimizeGraphFlag_ = false;
   bool graphOptimizedAtLeastOnceFlag_ = false;
   bool usingGnssFlag_ = true;
+  bool usingCompslamFlag_ = true;
 
   /// Strings
   std::string imuGravityDirection_;

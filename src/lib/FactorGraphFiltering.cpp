@@ -56,15 +56,20 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
       node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback_, this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized IMU subscriber.");
   /// subscribe to remapped LiDAR odometry topic
-  subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 1000, &FactorGraphFiltering::lidarOdometryCallback_, this,
-                                                         ros::TransportHints().tcpNoDelay());
-  ROS_INFO("Initialized LiDAR Odometry subscriber.");
+  if (usingCompslamFlag_) {
+    subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 1000, &FactorGraphFiltering::lidarOdometryCallback_,
+                                                           this, ros::TransportHints().tcpNoDelay());
+    ROS_INFO("Initialized LiDAR Odometry subscriber.");
+  }
   /// subscribe to gnss topics using ROS exact sync policy in a single callback
-  subGnssLeft_.subscribe(node, "/gnss_topic_left", 100);
-  subGnssRight_.subscribe(node, "/gnss_topic_right", 100);
-  gnssExactSyncPtr_.reset(new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(100), subGnssLeft_, subGnssRight_));
-  gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
-  ROS_INFO("Initialized GNSS subscriber (for both GNSS topics).");
+  if (usingGnssFlag_) {
+    subGnssLeft_.subscribe(node, "/gnss_topic_left", 100);
+    subGnssRight_.subscribe(node, "/gnss_topic_right", 100);
+    gnssExactSyncPtr_.reset(
+        new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(100), subGnssLeft_, subGnssRight_));
+    gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
+    ROS_INFO("Initialized GNSS subscriber (for both GNSS topics).");
+  }
   /// Subscribe to measurements
   subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>("/measurement_topic", 100, &FactorGraphFiltering::measurementsCallback_,
                                                                  this, ros::TransportHints().tcpNoDelay());
@@ -209,7 +214,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Check whether covariance is okay, otherwise return
   bool covarianceViolated =
       leftGnssPtr->position_covariance[0] > 1.0 || leftGnssPtr->position_covariance[4] > 1.0 || leftGnssPtr->position_covariance[8] > 1.0;
-  if (initedGraphFlag_ && graphOptimizedAtLeastOnceFlag_ && !covarianceViolated) {
+  if (initedGraphFlag_ && (graphOptimizedAtLeastOnceFlag_ || !usingCompslamFlag_) && !covarianceViolated) {
     // Translation in robot frame
     tf::Vector3 tf_W_t_W_GnssL(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
     tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_I();
@@ -228,6 +233,15 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Modify graph
     gtsam::Vector3 W_t_W_I = {tf_W_t_W_I.x(), tf_W_t_W_I.y(), tf_W_t_W_I.z()};
     graphMgr_.addGnssUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_W_I);
+
+    // If no LiDAR around --> use GNSS as trigger for optimization
+    // Mutex for optimizeGraph Flag
+    if (!usingCompslamFlag_) {
+      // Lock
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+
   } else if (covarianceViolated) {
     ROS_ERROR_STREAM("Covariance is too big, not using GNSS estimate.");
   }
@@ -552,13 +566,22 @@ void FactorGraphFiltering::getParams_(ros::NodeHandle& privateNode) {
     throw std::runtime_error("Rosparam 'launch/imu_gravity_direction' must be set.");
   }
 
-  // Using gnss
+  // Using GNSS
   if (privateNode.getParam("launch/using_gps", bParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - using GNSS: " << bParam);
     usingGnssFlag_ = bParam;
   } else {
     ROS_ERROR("FactorGraphFiltering - using GNSS not set.");
     throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
+  }
+
+  // Using Compslam
+  if (privateNode.getParam("launch/using_compslam", bParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - using Compslam: " << bParam);
+    usingCompslamFlag_ = bParam;
+  } else {
+    ROS_ERROR("FactorGraphFiltering - using Compslam not set.");
+    throw std::runtime_error("Rosparam 'launch/using_compslam' must be set.");
   }
 
   // Factor Graph

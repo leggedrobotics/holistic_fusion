@@ -9,6 +9,7 @@
   <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
   <arg name="measurement_topic_name"    default="/m545_measurements" />
   <arg name="using_gps"                 default="true" />
+  <arg name="using_compslam"            default="true" />
   <arg name="imu_gravity_direction"     default="up" />
 
   <!-- Node -->
@@ -16,6 +17,7 @@
     <param name="launch/description_name" type="string" value="$(arg description_name)"/>
     <param name="launch/imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)"/>
     <param name="launch/using_gps" type="bool" value="$(arg using_gps)"/>
+    <param name="launch/using_compslam" type="bool" value="$(arg using_compslam)"/>
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/gnss_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/extrinsic_params.yaml" command="load"/>
