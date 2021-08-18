@@ -243,7 +243,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     ROS_INFO_STREAM("Heading read from the GNSS is the following: " << W_t_heading);
 
     // Modify graph
-    graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading);
+    graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
 
     // If no LiDAR around --> use GNSS as trigger for optimization
     // Mutex for optimizeGraph Flag
@@ -512,8 +512,15 @@ gtsam::Point3 FactorGraphFiltering::getRobotHeading_(const Eigen::Vector3d& left
 }
 
 double FactorGraphFiltering::computeYawFromHeading_(gtsam::Point3& headingVector) {
+  double yaw = M_PI / 2.0 + atan2(headingVector(1), headingVector(0));
   // Compute angle
-  return 2 * M_PI - atan2(headingVector(1), headingVector(0));
+  if (yaw > M_PI) {
+    return yaw - (2 * M_PI);
+  } else if (yaw < -M_PI) {
+    return yaw + (2 * M_PI);
+  } else {
+    return yaw;
+  }
 }
 
 /// Commodity -----------------------

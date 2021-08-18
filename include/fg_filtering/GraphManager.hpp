@@ -20,7 +20,7 @@
 #include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-#include "fg_filtering/factors/YawFactor.h"
+#include "fg_filtering/factors/HeadingFactor.h"
 
 // Catkin workspace
 #include "fg_filtering/GraphState.hpp"
@@ -44,7 +44,7 @@ class GraphManager {
 
   void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
 
-  void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading);
+  void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw);
 
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 

@@ -208,7 +208,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vect
   }
 }
 
-void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading) {
+void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw) {
   // Print information
   if (verboseLevel_ > 2) {
     ROS_INFO_STREAM(std::setprecision(14) << "GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << ","
@@ -221,12 +221,19 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vecto
   imuBuffer_.getClosestKeyAndTimestamp(gnssTime, closestGraphTime, closestKey);
 
   // Create noise model
+  //  auto gnssHeadingUnaryNoise =
+  //      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << gnssHeadingUnaryNoise_).finished());  // rad,rad,rad,m,m,m
   auto gnssHeadingUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(3) << gnssHeadingUnaryNoise_, gnssHeadingUnaryNoise_, gnssHeadingUnaryNoise_).finished());  // rad,rad,rad,m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), gnssHeadingUnaryNoise);
 
   // Create unary factor and add it
-  fg_filtering::YawFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), heading, tukeyErrorFunction);
+  //  fg_filtering::HeadingFactorYaw gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), heading, measuredYaw,
+  //  tukeyErrorFunction); fg_filtering::HeadingFactorMatrix gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), heading,
+  //  measuredYaw,
+  //                                                           tukeyErrorFunction);
+  fg_filtering::HeadingFactorHeadingVector gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), heading, measuredYaw,
+                                                                  tukeyErrorFunction);
 
   // Write to graph
   {
