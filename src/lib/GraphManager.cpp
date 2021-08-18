@@ -172,34 +172,67 @@ void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, cons
   // TODO: TO BE IMPLEMENTED
 }
 
-void GraphManager::addGnssUnaryFactor(double gnssTime, const gtsam::Vector3& position) {
+void GraphManager::addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position) {
   // Print information
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM(std::setprecision(14) << "GNSS measurement at time stamp " << gnssTime << " is: " << position.x() << "," << position.y()
-                                          << "," << position.z());
+    ROS_INFO_STREAM(std::setprecision(14) << "GNSS position measurement at time stamp " << gnssTime << " is: " << position.x() << ","
+                                          << position.y() << "," << position.z());
     ROS_INFO_STREAM("Prediction of the factor graph: " << graphState_.navState().position().x() << ","
                                                        << graphState_.navState().position().y() << ","
                                                        << graphState_.navState().position().z());
   }
 
-  // Find closest lidar key in existing graph
+  // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
   imuBuffer_.getClosestKeyAndTimestamp(gnssTime, closestGraphTime, closestKey);
 
   // Create noise model
-  auto gnssUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << gnssUnaryNoise_, gnssUnaryNoise_, gnssUnaryNoise_).finished());  // rad,rad,rad,m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), gnssUnaryNoise);
+  auto gnssPositionUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(3) << gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_).finished());  // rad,rad,rad,m,m,m
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), gnssPositionUnaryNoise);
 
-  // Create pose between factor and add it
-  gtsam::GPSFactor gnssUnaryFactor(gtsam::symbol_shorthand::X(closestKey), position, tukeyErrorFunction);
+  // Create unary factor and add it
+  gtsam::GPSFactor gnssPositionUnaryFactor(gtsam::symbol_shorthand::X(closestKey), position, tukeyErrorFunction);
 
   // Write to graph
   {
     // Operating on graph data --> acquire mutex
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    newGraphFactors_.add(gnssUnaryFactor);
+    newGraphFactors_.add(gnssPositionUnaryFactor);
+  }
+
+  // Print summary
+  if (verboseLevel_ > 0) {
+    ROS_INFO_STREAM("Key where GNSS factor will be written to is: " << closestKey);
+  }
+}
+
+void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading) {
+  // Print information
+  if (verboseLevel_ > 2) {
+    ROS_INFO_STREAM(std::setprecision(14) << "GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << ","
+                                          << heading.y() << "," << heading.z());
+  }
+
+  // Find closest key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  imuBuffer_.getClosestKeyAndTimestamp(gnssTime, closestGraphTime, closestKey);
+
+  // Create noise model
+  auto gnssHeadingUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(3) << gnssHeadingUnaryNoise_, gnssHeadingUnaryNoise_, gnssHeadingUnaryNoise_).finished());  // rad,rad,rad,m,m,m
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), gnssHeadingUnaryNoise);
+
+  // Create unary factor and add it
+  fg_filtering::YawFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), heading, tukeyErrorFunction);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    newGraphFactors_.add(gnssHeadingUnaryFactor);
   }
 
   // Print summary

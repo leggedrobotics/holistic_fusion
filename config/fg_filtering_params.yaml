@@ -29,7 +29,8 @@ noise_params:
   ### LiDAR
   poseBetweenNoise: [2.0e-02, 2.0e-02, 2.0e-02, 5.0e-01, 5.0e-01, 5.0e-01] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
   ### GNSS
-  gnssUnaryNoise: 1.0 #1.0e-02
+  gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
+  gnssHeadingUnaryNoise: 1.0e-02 # x,y,z of heading vector
 # Relinearization
 relinearization_params:
   positionReLinTh: 5.0e-03                    #Position linearization threshold

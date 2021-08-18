@@ -11,13 +11,16 @@
 
 // GTSAM
 #include <gtsam/inference/Symbol.h>
-#include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearISAM.h>
+#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+
+// Factors
+#include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include "fg_filtering/factors/YawFactor.h"
 
 // Catkin workspace
 #include "fg_filtering/GraphState.hpp"
@@ -39,7 +42,9 @@ class GraphManager {
 
   void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose);
 
-  void addGnssUnaryFactor(double timeKm1, const gtsam::Vector3& position);
+  void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
+
+  void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading);
 
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
@@ -81,7 +86,8 @@ class GraphManager {
   inline void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
   inline void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
   inline void setPoseBetweenNoise(const std::vector<double>& v) { poseBetweenNoise_ = v; }
-  inline void setGnssUnaryNoise(double v) { gnssUnaryNoise_ = v; }
+  inline void setGnssPositionUnaryNoise(double v) { gnssPositionUnaryNoise_ = v; }
+  inline void setGnssHeadingUnaryNoise(double v) { gnssHeadingUnaryNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
   inline void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
@@ -145,7 +151,8 @@ class GraphManager {
   /// Pose Between Factor Noise
   std::vector<double> poseBetweenNoise_;  // ORDER RPY(rad) - XYZ(meters)
   /// GNSS Unary Factor Noise
-  double gnssUnaryNoise_;  // ORDER RPY(rad) - XYZ(meters)
+  double gnssPositionUnaryNoise_;
+  double gnssHeadingUnaryNoise_;
   /// Zero Velocity Factor
   double zeroMotionTh_ = 0.01;  // Zero motion threshold meters
   // Timing

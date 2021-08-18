@@ -90,10 +90,11 @@ class FactorGraphFiltering {
   void publishState_(const gtsam::NavState& currentState, ros::Time imuTimeK);
 
   /// Utility functions
-  static double computeYawFromGnss_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
+  static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
+  static double computeYawFromHeading_(gtsam::Point3& headingVector);
 
   // Commodity functions
-  void getParams_(ros::NodeHandle& privateNode);
+  void readParams_(ros::NodeHandle& privateNode);
 
   // Threads
   /// Thread 1: Callback for compslam odometry
