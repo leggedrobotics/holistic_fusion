@@ -90,11 +90,19 @@ class FactorGraphFiltering {
   void publishState_(const gtsam::NavState& currentState, ros::Time imuTimeK);
 
   /// Utility functions
+  //// Convert GNSS readings to vectors
+  void convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
+                                const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
+                                gtsam::Point3& rightPosition);
+  //// Geometric transformation to IMU in world frame
+  gtsam::Vector3 transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition);
+  //// Get the robot heading from the two GNSS positions
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
-  static double computeYawFromHeading_(gtsam::Point3& headingVector);
+  //// Compute yaw from the heading vector
+  static double computeYawFromHeading_(const gtsam::Point3& headingVector);
 
   // Commodity functions
-  void readParams_(ros::NodeHandle& privateNode);
+  void readParams_(const ros::NodeHandle& privateNode);
 
   // Threads
   /// Thread 1: Callback for compslam odometry
@@ -138,7 +146,9 @@ class FactorGraphFiltering {
   tf::Transform tf_T_I0_O_Compslam_;
   /// Attitude Parameters
   gtsam::Rot3 initialImuAttitude_;
+  gtsam::Pose3 initialImuPose_;
   double initialGlobalYaw_ = 0.0;
+  gtsam::Point3 W_t_W_GnssL0_;     // initial global position of left GNSS
   double gravityConstant_ = 9.81;  // Will be overwritten
   tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
   /// Current global transformation

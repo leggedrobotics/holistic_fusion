@@ -2,14 +2,6 @@
 
 namespace fg_filtering {
 
-using std::asin;
-using std::atan2;
-using std::cos;
-using std::fabs;
-using std::pow;
-using std::sin;
-using std::sqrt;
-
 // Public -----------------------------------------------------------
 /// Constructor -----------
 FactorGraphFiltering::FactorGraphFiltering() {
@@ -130,7 +122,7 @@ void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_pt
       // Add zero motion factor in the very beginning to make biases converge
       graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
       // Publish zero motion state
-      publishState_(gtsam::NavState(gtsam::Pose3(initialImuAttitude_, gtsam::Point3()), gtsam::Velocity3(0.0, 0.0, 0.0)), imuTimeK);
+      publishState_(gtsam::NavState(initialImuPose_, gtsam::Velocity3(0.0, 0.0, 0.0)), imuTimeK);
     }
   }
 }
@@ -190,52 +182,28 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   tf_T_O_Ikm1_Compslam_ = tf_T_O_Ik_Compslam;
 }
 
-void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
-                                         const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr) {
+void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
+                                         const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
   // First callback --> set position to zero
   if (firstGnssCallbackFlag_) {
-    initGnss_(leftGnssPtr, rightGnssPtr);
+    initGnss_(leftGnssMsgPtr, rightGnssMsgPtr);
     return;
   }
-  /// Left
-  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
-                                      leftNorthPtr.get(), leftUpPtr.get());
-  gtsam::Point3 leftPosition(*leftEastPtr.get(), *leftNorthPtr.get(), *leftUpPtr.get());
-  /// Right
-  auto rightEastPtr = std::make_unique<double>();
-  auto rightNorthPtr = std::make_unique<double>();
-  auto rightUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude, rightEastPtr.get(),
-                                      rightNorthPtr.get(), rightUpPtr.get());
-  gtsam::Point3 rightPosition(*rightEastPtr.get(), *rightNorthPtr.get(), *rightUpPtr.get());
+  // Convert ros messages
+  gtsam::Point3 leftPosition, rightPosition;
+  convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
+  ROS_INFO_STREAM("Left position: " << leftPosition);
 
   // Write to graph
-  // Check whether covariance is okay, otherwise return
-  bool covarianceViolated =
-      leftGnssPtr->position_covariance[0] > 1.0 || leftGnssPtr->position_covariance[4] > 1.0 || leftGnssPtr->position_covariance[8] > 1.0;
+  /// Read covariance
+  bool covarianceViolated = leftGnssMsgPtr->position_covariance[0] > 1.0 || leftGnssMsgPtr->position_covariance[4] > 1.0 ||
+                            leftGnssMsgPtr->position_covariance[8] > 1.0;
+  /// Check whether covariance is okay, otherwise return
   if (initedGraphFlag_ && (graphOptimizedAtLeastOnceFlag_ || !usingCompslamFlag_) && !covarianceViolated) {
     // Position factor --> only use left GNSS
-    /// Translation in robot frame
-    tf::Vector3 tf_W_t_W_GnssL(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
-    tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_I();
-    tf::Vector3 tf_GnssL_t_GnssL_I = tf_T_GnssL_I.getOrigin();
-    /// Global rotation
-    tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_I_C() * staticTransformsPtr_->T_C_GnssL();
-    tf::Quaternion tf_q_W_GnssL = (tf_T_O_Ik_ * tf_T_I_GnssL).getRotation();
-    tf::Transform tf_R_W_GnssL = tf::Transform::getIdentity();
-    tf_R_W_GnssL.setRotation(tf_q_W_GnssL);
-    /// Translation in global frame
-    tf::Vector3 tf_W_t_GnssL_I = tf_R_W_GnssL * tf_GnssL_t_GnssL_I;
-
-    /// Shift observed GNSS position to IMU frame (instead of GNSS antenna)
-    tf::Vector3 tf_W_t_W_I = tf_W_t_W_GnssL + tf_W_t_GnssL_I;
-
-    /// Modify graph
-    gtsam::Vector3 W_t_W_I = {tf_W_t_W_I.x(), tf_W_t_W_I.y(), tf_W_t_W_I.z()};
-    graphMgr_.addGnssPositionUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_W_I);
+    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
+    ROS_INFO_STREAM("IMU position in world frame: " << W_t_W_I);
+    graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
@@ -243,7 +211,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     ROS_INFO_STREAM("Heading read from the GNSS is the following: " << W_t_heading);
 
     // Modify graph
-    graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
+    // graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
 
     // If no LiDAR around --> use GNSS as trigger for optimization
     // Mutex for optimizeGraph Flag
@@ -262,25 +230,25 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   //// Pose
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
-  pose.header.stamp = leftGnssPtr->header.stamp;
-  pose.pose.position.x = *leftEastPtr;   //+ tf_T_C_GL.getOrigin().x();
-  pose.pose.position.y = *leftNorthPtr;  //+ tf_T_C_GL.getOrigin().y();
-  pose.pose.position.z = *leftUpPtr;     //+ tf_T_C_GL.getOrigin().z();
+  pose.header.stamp = leftGnssMsgPtr->header.stamp;
+  pose.pose.position.x = leftPosition(0);  //+ tf_T_C_GL.getOrigin().x();
+  pose.pose.position.y = leftPosition(1);  //+ tf_T_C_GL.getOrigin().y();
+  pose.pose.position.z = leftPosition(2);  //+ tf_T_C_GL.getOrigin().z();
   //// Path
   leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  leftGnssPathPtr_->header.stamp = leftGnssPtr->header.stamp;
+  leftGnssPathPtr_->header.stamp = leftGnssMsgPtr->header.stamp;
   leftGnssPathPtr_->poses.push_back(pose);
   pubLeftGnssPath_.publish(leftGnssPathPtr_);
   /// Right
   //// Pose
   pose.header.frame_id = staticTransformsPtr_->getOdomFrame();
-  pose.header.stamp = rightGnssPtr->header.stamp;
-  pose.pose.position.x = *rightEastPtr;   // + tf_T_C_GR.getOrigin().x();
-  pose.pose.position.y = *rightNorthPtr;  // + tf_T_C_GR.getOrigin().y();
-  pose.pose.position.z = *rightUpPtr;     // + tf_T_C_GR.getOrigin().z();
+  pose.header.stamp = rightGnssMsgPtr->header.stamp;
+  pose.pose.position.x = rightPosition(0);  // + tf_T_C_GR.getOrigin().x();
+  pose.pose.position.y = rightPosition(1);  // + tf_T_C_GR.getOrigin().y();
+  pose.pose.position.z = rightPosition(2);  // + tf_T_C_GR.getOrigin().z();
   //// Path
   rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  rightGnssPathPtr_->header.stamp = rightGnssPtr->header.stamp;
+  rightGnssPathPtr_->header.stamp = rightGnssMsgPtr->header.stamp;
   rightGnssPathPtr_->poses.push_back(pose);
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
@@ -303,10 +271,10 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   }
 }
 
-void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr,
-                                     const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr) {
+void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
+                                     const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
   // Initialize left converter
-  geodeticConverterLeft_.initialiseReference(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude);
+  geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
   firstGnssCallbackFlag_ = false;
   if (geodeticConverterLeft_.isInitialised()) {
     ROS_INFO("Left GNSS position was initialized.");
@@ -314,21 +282,9 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
     ROS_ERROR("Left GNSS position could not be initialized.");
   }
 
-  // Get left initial position
-  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(leftGnssPtr->latitude, leftGnssPtr->longitude, leftGnssPtr->altitude, leftEastPtr.get(),
-                                      leftNorthPtr.get(), leftUpPtr.get());
-  Eigen::Vector3d leftPosition(*leftEastPtr.get(), *leftNorthPtr.get(), *leftUpPtr.get());
-
-  /// Get right initial position
-  std::unique_ptr<double> rightEastPtr = std::make_unique<double>();
-  std::unique_ptr<double> rightNorthPtr = std::make_unique<double>();
-  std::unique_ptr<double> rightUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(rightGnssPtr->latitude, rightGnssPtr->longitude, rightGnssPtr->altitude, rightEastPtr.get(),
-                                      rightNorthPtr.get(), rightUpPtr.get());
-  Eigen::Vector3d rightPosition(*rightEastPtr.get(), *rightNorthPtr.get(), *rightUpPtr.get());
+  // Get Positions
+  gtsam::Point3 leftPosition, rightPosition;
+  convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
 
   // Get heading (assuming that connection between antennas is perpendicular to heading)
   gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
@@ -339,6 +295,9 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
   gtsam::Rot3 yawRotationMatrix = gtsam::Rot3::Yaw(initialGlobalYaw_);
   ROS_INFO_STREAM("Initial global yaw is: " << 180 / M_PI * initialGlobalYaw_);
 
+  // Get initial GNSS position
+  W_t_W_GnssL0_ = leftPosition;
+
   // Set flag to true
   initedGnssFlag_ = true;
 }
@@ -348,15 +307,23 @@ void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   // Gravity
   graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
   // Initialize first node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), gtsam::Pose3(initialImuAttitude_, gtsam::Point3()));
-  gtsam::Pose3 initialImuPose(graphMgr_.getGraphState().navState().pose().matrix());
-  ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose.translation().transpose()
-                                    << ", RPY(deg): " << initialImuPose.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
+  /// Initial rotation known from IMU attitude and GNSS yaw
+  initialImuPose_ = gtsam::Pose3(initialImuAttitude_, gtsam::Point3(0.0, 0.0, 0.0));
+  //// Need to set tf_T_0_Ik_ because function transfromGnssPointToImuFrame makes use of its rotational part --> change later on
+  pose3ToTF(initialImuPose_, tf_T_O_Ik_);
+  /// Add initial IMU translation based on intial orientation
+  initialImuPose_ = gtsam::Pose3(initialImuPose_.rotation(), transformGnssPointToImuFrame_(W_t_W_GnssL0_));
+  /// Initialize graph node
+  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), initialImuPose_);
+  // Read initial pose from graph
+  initialImuPose_ = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
+  ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose_.translation().transpose()
+                                    << ", RPY(deg): " << initialImuPose_.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
   ROS_WARN_STREAM("Factor graph key of very first node: " << graphMgr_.getStateKey() << std::endl);
   // Write in tf member variable
-  pose3ToTF(initialImuPose, tf_T_O_I0_);
+  pose3ToTF(initialImuPose_, tf_T_O_I0_);
   // Initialize global pose
-  pose3ToTF(initialImuPose, tf_T_O_Ik_);
+  tf_T_O_Ik_.setData(tf_T_O_I0_);
   tf_T_O_Ik_.frame_id_ = staticTransformsPtr_->getOdomFrame();
   tf_T_O_Ik_.stamp_ = timeStamp_k;
   // Set flag
@@ -500,6 +467,46 @@ void FactorGraphFiltering::publishState_(const gtsam::NavState& T_O_Ik, ros::Tim
 }
 
 /// Utility -------------------------
+void FactorGraphFiltering::convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
+                                                    const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
+                                                    gtsam::Point3& rightPosition) {
+  /// Left
+  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
+  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, leftEastPtr.get(),
+                                      leftNorthPtr.get(), leftUpPtr.get());
+  leftPosition = gtsam::Point3(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
+  /// Right
+  auto rightEastPtr = std::make_unique<double>();
+  auto rightNorthPtr = std::make_unique<double>();
+  auto rightUpPtr = std::make_unique<double>();
+  geodeticConverterLeft_.geodetic2Enu(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude, rightEastPtr.get(),
+                                      rightNorthPtr.get(), rightUpPtr.get());
+  rightPosition = gtsam::Point3(*rightEastPtr, *rightNorthPtr, *rightUpPtr);
+}
+
+gtsam::Vector3 FactorGraphFiltering::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition) {
+  /// Translation in robot frame
+  tf::Vector3 tf_W_t_W_GnssL(gnssPosition(0), gnssPosition(1), gnssPosition(2));
+  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_I();
+  tf::Vector3 tf_GnssL_t_GnssL_I = tf_T_GnssL_I.getOrigin();
+  /// Global rotation
+  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_I_C() * staticTransformsPtr_->T_C_GnssL();
+  tf::Quaternion tf_q_W_GnssL = (tf_T_O_Ik_ * tf_T_I_GnssL).getRotation();
+  tf::Transform tf_R_W_GnssL = tf::Transform::getIdentity();
+  tf_R_W_GnssL.setRotation(tf_q_W_GnssL);
+  /// Translation in global frame
+  tf::Vector3 tf_W_t_GnssL_I = tf_R_W_GnssL * tf_GnssL_t_GnssL_I;
+
+  /// Shift observed GNSS position to IMU frame (instead of GNSS antenna)
+  tf::Vector3 tf_W_t_W_I = tf_W_t_W_GnssL + tf_W_t_GnssL_I;
+
+  /// Modify graph
+  gtsam::Vector3 W_t_W_I = {tf_W_t_W_I.x(), tf_W_t_W_I.y(), tf_W_t_W_I.z()};
+  return W_t_W_I;
+}
+
 gtsam::Point3 FactorGraphFiltering::getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition) {
   // Compute connecting unity vector
   gtsam::Point3 W_t_GnssR_GnssL = (leftPosition - rightPosition).normalized();
@@ -511,7 +518,7 @@ gtsam::Point3 FactorGraphFiltering::getRobotHeading_(const Eigen::Vector3d& left
   return W_t_heading;
 }
 
-double FactorGraphFiltering::computeYawFromHeading_(gtsam::Point3& headingVector) {
+double FactorGraphFiltering::computeYawFromHeading_(const gtsam::Point3& headingVector) {
   double yaw = M_PI / 2.0 + atan2(headingVector(1), headingVector(0));
   // Compute angle
   if (yaw > M_PI) {
@@ -524,7 +531,7 @@ double FactorGraphFiltering::computeYawFromHeading_(gtsam::Point3& headingVector
 }
 
 /// Commodity -----------------------
-void FactorGraphFiltering::readParams_(ros::NodeHandle& privateNode) {
+void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
   double dParam;
   int iParam;
