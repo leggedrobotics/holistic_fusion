@@ -192,7 +192,6 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Convert ros messages
   gtsam::Point3 leftPosition, rightPosition;
   convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
-  ROS_INFO_STREAM("Left position: " << leftPosition);
 
   // Write to graph
   /// Read covariance
@@ -202,13 +201,11 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   if (initedGraphFlag_ && (graphOptimizedAtLeastOnceFlag_ || !usingCompslamFlag_) && !covarianceViolated) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
-    ROS_INFO_STREAM("IMU position in world frame: " << W_t_W_I);
     graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
     gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-    ROS_INFO_STREAM("Heading read from the GNSS is the following: " << W_t_heading);
 
     // Modify graph
     // graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
