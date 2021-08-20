@@ -138,7 +138,7 @@ void GraphManager::addPoseBetweenFactor(const gtsam::Pose3& pose, const double l
   double maxLidarTimestampDistance = 1.0 / lidarRate_ + 2.0 * maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
-  if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK)) {
+  if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar")) {
     ROS_ERROR("PoseBetween factor not added to graph.");
     return;
   }
@@ -260,7 +260,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
 
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
-  if (!findGraphKeys_(maxTimestampDistance, timeKm1, timeK, closestKeyKm1, closestKeyK)) {
+  if (!findGraphKeys_(maxTimestampDistance, timeKm1, timeK, closestKeyKm1, closestKeyK, "zero motion factor")) {
     return false;
   }
 
@@ -379,7 +379,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
 // Private --------------------------------------------------------------------
 
 bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& closestKeyKm1,
-                                  gtsam::Key& closestKeyK) {
+                                  gtsam::Key& closestKeyK, std::string name) {
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
   imuBuffer_.getClosestKeyAndTimestamp(timeKm1, closestGraphTimeKm1, closestKeyKm1);
@@ -407,7 +407,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
-    ROS_ERROR_STREAM("Distance of LiDAR timestamps is too big. Found timestamp difference is  "
+    ROS_ERROR_STREAM("Distance of " << name << " timestamps is too big. Found timestamp difference is  "
                      << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum allowed distance of "
                      << maxTimestampDistance);
     return false;
