@@ -1,6 +1,4 @@
 <launch>
-  <param name="use_sim_time" value="true" />
-
   <!-- Config for fg_filtering -->
   <arg name="description_name"          default="/romo_mm_description" />
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
