@@ -24,14 +24,14 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Publishers
   /// advertise odometry topic
-  pubOdometry_ = privateNode.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", 100);
-  pubOdomPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", 100);
-  pubOptimizationPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/optimization_path", 100);
-  pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", 100);
-  pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", 100);
-  pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", 100);
-  pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", 100);
-  excavatorStatePublisher_ = node.advertise<m545_msgs::M545State>("/m545_state", 100);
+  pubOdometry_ = privateNode.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", ROS_QUEUE_SIZE);
+  pubOdomPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", ROS_QUEUE_SIZE);
+  pubOptimizationPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/optimization_path", ROS_QUEUE_SIZE);
+  pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", ROS_QUEUE_SIZE);
+  pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", ROS_QUEUE_SIZE);
+  pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", ROS_QUEUE_SIZE);
+  pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", ROS_QUEUE_SIZE);
+  excavatorStatePublisher_ = node.advertise<m545_msgs::M545State>("/m545_state", ROS_QUEUE_SIZE);
   /// Messages
   odomPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   optimizationPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -44,27 +44,27 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Subscribers
   /// subscribe to remapped IMU topic
-  subImu_ =
-      node.subscribe<sensor_msgs::Imu>("/imu_topic", 100, &FactorGraphFiltering::imuCallback_, this, ros::TransportHints().tcpNoDelay());
+  subImu_ = node.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuCallback_, this,
+                                             ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized IMU subscriber.");
   /// subscribe to remapped LiDAR odometry topic
   if (usingCompslamFlag_) {
-    subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", 1000, &FactorGraphFiltering::lidarOdometryCallback_,
-                                                           this, ros::TransportHints().tcpNoDelay());
+    subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>(
+        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
     ROS_INFO("Initialized LiDAR Odometry subscriber.");
   }
   /// subscribe to gnss topics using ROS exact sync policy in a single callback
   if (usingGnssFlag_) {
-    subGnssLeft_.subscribe(node, "/gnss_topic_left", 100);
-    subGnssRight_.subscribe(node, "/gnss_topic_right", 100);
+    subGnssLeft_.subscribe(node, "/gnss_topic_left", ROS_QUEUE_SIZE);
+    subGnssRight_.subscribe(node, "/gnss_topic_right", ROS_QUEUE_SIZE);
     gnssExactSyncPtr_.reset(
-        new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(100), subGnssLeft_, subGnssRight_));
+        new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(ROS_QUEUE_SIZE), subGnssLeft_, subGnssRight_));
     gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
     ROS_INFO("Initialized GNSS subscriber (for both GNSS topics).");
   }
   /// Subscribe to measurements
-  subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>("/measurement_topic", 100, &FactorGraphFiltering::measurementsCallback_,
-                                                                 this, ros::TransportHints().tcpNoDelay());
+  subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>(
+      "/measurement_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::measurementsCallback_, this, ros::TransportHints().tcpNoDelay());
   ROS_INFO("Initialized Measurements subscriber.");
 
   /// Initialize helper threads

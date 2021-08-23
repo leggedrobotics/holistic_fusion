@@ -103,7 +103,8 @@ class GraphManager {
  private:
   // Methods
   /// Update IMU integrator with new measurements - Resets bias
-  bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK, std::string name = "lidar");
+  bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
+                      std::string name = "lidar");
   void updateImuIntegrators_(const IMUMap& imuMeas);
   const auto newStateKey_() { return ++stateKey_; }
 

@@ -41,6 +41,9 @@
 
 namespace fg_filtering {
 
+// Defined constants
+#define ROS_QUEUE_SIZE 100
+
 /** \brief Implementation of the factor graph based filtering.
  *
  */

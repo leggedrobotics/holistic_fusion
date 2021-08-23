@@ -408,8 +408,8 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
     ROS_ERROR_STREAM("Distance of " << name << " timestamps is too big. Found timestamp difference is  "
-                     << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum allowed distance of "
-                     << maxTimestampDistance);
+                                    << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum allowed distance of "
+                                    << maxTimestampDistance);
     return false;
   }
   return true;
