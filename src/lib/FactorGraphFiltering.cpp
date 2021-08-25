@@ -24,7 +24,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Publishers
   /// advertise odometry topic
-  pubOdometry_ = privateNode.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", ROS_QUEUE_SIZE);
+  pubOdometry_ = node.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_base", ROS_QUEUE_SIZE);
   pubOdomPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", ROS_QUEUE_SIZE);
   pubOptimizationPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/optimization_path", ROS_QUEUE_SIZE);
   pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", ROS_QUEUE_SIZE);
@@ -70,6 +70,9 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&FactorGraphFiltering::optimizeGraph_, this);
   ROS_INFO("Initialized thread for optimizing the graph in parallel.");
+
+  // Services
+  toggleGnssUsageService_ = node.advertiseService("fg_filtering/toggle_gnss_usage", &FactorGraphFiltering::toggleGnssFlag_, this);
 
   return true;
 }
@@ -155,9 +158,9 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
     // Write the lidar odom delta to the graph
     graphMgr_.addPoseBetweenFactor(lidarDeltaPose, compslamTimeKm1.toSec(), compslamTimeK_.toSec());
-    // Mutex for optimizeGraph Flag
+
     {
-      // Lock
+      // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
@@ -184,6 +187,12 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
 
 void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
                                          const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
+  // Check whether GNSS should be used
+  if (!usingGnssFlag_) {
+    ROS_WARN("Received GNSS message, but usage is set to false.");
+    return;
+  }
+
   // First callback --> set position to zero
   if (firstGnssCallbackFlag_) {
     initGnss_(leftGnssMsgPtr, rightGnssMsgPtr);
@@ -210,10 +219,8 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Modify graph
     // graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
 
-    // If no LiDAR around --> use GNSS as trigger for optimization
-    // Mutex for optimizeGraph Flag
-    if (!usingCompslamFlag_) {
-      // Lock
+    {
+      // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
@@ -527,6 +534,12 @@ double FactorGraphFiltering::computeYawFromHeading_(const gtsam::Point3& heading
   }
 }
 
+bool FactorGraphFiltering::toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/) {
+  usingGnssFlag_ = !usingGnssFlag_;
+  ROS_WARN_STREAM("GNSS usage was toggled to " << usingGnssFlag_);
+  return true;
+}
+
 /// Commodity -----------------------
 void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
@@ -625,9 +638,9 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR rate: " << dParam);
     graphMgr_.setLidarRate(dParam);
   }
-  //  if (privateNode.getParam("graph_params/smootherLag", dParam)) {
-  //    graphMgr_.setSmootherLag(dParam);
-  //  }
+  if (privateNode.getParam("graph_params/smootherLag", dParam)) {
+    graphMgr_.setSmootherLag(dParam);
+  }
   if (privateNode.getParam("graph_params/additonalIterations", iParam)) {
     graphMgr_.setIterations(iParam);
   }

@@ -1,6 +1,6 @@
 #Common
 common_params:
-  verbosity: 3                         #Debug Output, 0-disable, higher for more verbose output
+  verbosity: 5                         #Debug Output, 0-disable, higher for more verbose output
   logPlots: true
 
 #Factor Graph
@@ -8,7 +8,7 @@ graph_params:
   lidarRate: 10
   imuRate: 100                             #Rate of IMU input (Hz)
   imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
-  #smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false

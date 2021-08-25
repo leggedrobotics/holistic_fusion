@@ -12,6 +12,8 @@
 #include <ros/node_handle.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -103,6 +105,8 @@ class FactorGraphFiltering {
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
   //// Compute yaw from the heading vector
   static double computeYawFromHeading_(const gtsam::Point3& headingVector);
+  //// Toggle GNSS Service Method
+  bool toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/);
 
   // Commodity functions
   void readParams_(const ros::NodeHandle& privateNode);
@@ -169,6 +173,9 @@ class FactorGraphFiltering {
   ros::Publisher pubLeftGnssPath_;
   ros::Publisher pubRightGnssPath_;
   ros::Publisher excavatorStatePublisher_;
+
+  /// Services
+  ros::ServiceServer toggleGnssUsageService_;
 
   /// State to be published
   excavator_model::ExcavatorState estExcavatorState_;

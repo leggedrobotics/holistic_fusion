@@ -54,8 +54,10 @@ class GraphManager {
   // Update graph and get new state
   gtsam::NavState updateGraphAndState();
   // Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  void valuesToKeyTimeStampMap(const gtsam::Values& values, const double ts, std::map<gtsam::Key, double>& key_timestamp_map) {
-    for (const auto& value : values) key_timestamp_map[value.key] = ts;
+  void writeValueKeysToKeyTimeStampMap(const gtsam::Values& values, const double ts, std::map<gtsam::Key, double>& key_timestamp_map) {
+    for (const auto& value : values) {
+      key_timestamp_map[value.key] = ts;
+    }
   }
 
   // IMU Buffer interface
@@ -78,7 +80,7 @@ class GraphManager {
   inline void setIntegrationNoiseDensity(double val) { integrationNoiseDensity_ = val; }
   inline void setBiasAccOmegaPreint(double val) { biasAccOmegaPreint_ = val; }
   inline void setGyrBiasPrior(Eigen::Vector3d gyrBiasPrior) { gyrBiasPrior_ = gyrBiasPrior; }
-  // inline void setSmootherLag(double val) { smootherLag_ = val; }
+  inline void setSmootherLag(double val) { smootherLag_ = val; }
   inline void setIterations(int val) { additonalIterations_ = val; }
   inline void setPositionReLinTh(double val) { posReLinTh_ = val; }
   inline void setRotationReLinTh(double val) { rotReLinTh_ = val; }
@@ -111,13 +113,14 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;  // std::shared_ptr<gtsam::NonlinearISAM> mainGraphPtr_; //
-                                                // std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  //
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
+
   fg_filtering::State graphState_;
   gtsam::ISAM2Params isamParams_;
   /// Data buffers for callbacks to add information via member functions
   gtsam::NonlinearFactorGraph newGraphFactors_;
   gtsam::Values newGraphValues_;
+  std::map<gtsam::Key, double> newGraphKeysTimestampsMap_;
   /// Buffer Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
   /// Step Preintegrator
