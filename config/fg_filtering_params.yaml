@@ -1,6 +1,6 @@
 #Common
 common_params:
-  verbosity: 5                         #Debug Output, 0-disable, higher for more verbose output
+  verbosity: 0                         #Debug Output, 0-disable, higher for more verbose output
   logPlots: true
 
 #Factor Graph
