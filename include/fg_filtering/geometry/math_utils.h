@@ -252,7 +252,7 @@ inline void pose3ToTF(const gtsam::Pose3& T, tf::Transform& tf_T) {
 }
 
 // Transformations need to be in same coordinate frame
-Eigen::Matrix4d computeDeltaPose(const tf::StampedTransform& tf_T_km1, const tf::StampedTransform& tf_T_k) {
+Eigen::Matrix4d computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
   Eigen::Matrix4d T_km1 = Eigen::MatrixXd::Identity(4, 4);
   Eigen::Matrix4d T_k = Eigen::MatrixXd::Identity(4, 4);
   Eigen::Matrix4d T_km1_inv = Eigen::MatrixXd::Identity(4, 4);

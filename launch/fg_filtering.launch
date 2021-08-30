@@ -2,7 +2,8 @@
   <!-- Config for fg_filtering -->
   <arg name="description_name"          default="/romo_mm_description" />
   <arg name="lidar_odometry_topic_name" default="/aft_mapped_to_init_CORRECTED" />
-  <arg name="imu_topic_name"            default="/m545_imu_cabin" />
+  <arg name="imu_topic_cabin"           default="/m545_imu_cabin" />
+  <arg name="imu_topic_base"            default="/m545_imu" />
   <arg name="gnss_left_topic_name"      default="/m545_gnss_left" />
   <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
   <arg name="measurement_topic_name"    default="/m545_measurements" />
@@ -19,7 +20,8 @@
     <rosparam file="$(find fg_filtering)/config/fg_filtering_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/gnss_params.yaml" command="load"/>
     <rosparam file="$(find fg_filtering)/config/extrinsic_params.yaml" command="load"/>
-    <remap from="/imu_topic" to="$(arg imu_topic_name)" />
+    <remap from="/imu_topic_cabin" to="$(arg imu_topic_cabin)" />
+    <remap from="/imu_topic_base" to="$(arg imu_topic_base)" />
     <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
     <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
     <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />

@@ -45,6 +45,7 @@ namespace fg_filtering {
 
 // Defined constants
 #define ROS_QUEUE_SIZE 100
+#define NUM_LIDAR_CALLBACKS_UNTIL_START 3
 
 /** \brief Implementation of the factor graph based filtering.
  *
@@ -73,8 +74,9 @@ class FactorGraphFiltering {
   // Methods -------------
 
   /// Callbacks
-  //// IMU Callback Function for handling incoming IMU messages -------------
-  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_ptr);
+  //// IMU Callback Functions for handling incoming IMU messages -------------
+  void imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
+  void imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   //// LiDAR Odometry Callback
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   //// GNSS Callback
@@ -92,7 +94,7 @@ class FactorGraphFiltering {
   //// Updating the factor graph
   void optimizeGraph_();
   //// Publish state in imu callback
-  void publishState_(const gtsam::NavState& currentState, ros::Time imuTimeK);
+  void publishState_(ros::Time imuTimeK, const gtsam::NavState& currentState, const Eigen::Vector3d& I_w);
 
   /// Utility functions
   //// Convert GNSS readings to vectors
@@ -120,6 +122,8 @@ class FactorGraphFiltering {
 
   // Mutex
   std::mutex optimizeGraphMutex_;
+  std::mutex accessImuBaseMutex_;
+  std::mutex gnssAnchorMutex_;
 
   // Member variables -------------
   /// Geodetic Converter
@@ -132,12 +136,11 @@ class FactorGraphFiltering {
   bool imuAlignedFlag_ = false;
   bool initedGnssFlag_ = false;
   bool initedGraphFlag_ = false;
-  bool firstLidarOdomCallbackFlag_ = true;
   bool firstGnssCallbackFlag_ = true;
   bool optimizeGraphFlag_ = false;
-  bool graphOptimizedAtLeastOnceFlag_ = false;
   bool usingGnssFlag_ = true;
   bool usingCompslamFlag_ = true;
+  bool gnssAbsentFlag_ = false;
 
   /// Strings
   std::string imuGravityDirection_;
@@ -146,20 +149,22 @@ class FactorGraphFiltering {
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
 
-  /// Transformations
-  //// Compslam
-  tf::StampedTransform tf_T_O_Ikm1_Compslam_;
-  //// Inverse initial compslam pose
+  /// Containers
+  //// Transformations
+  ///// Compslam
   tf::Transform tf_T_I0_O_Compslam_;
-  /// Attitude Parameters
+  ///// Current global transformation
+  tf::StampedTransform tf_T_O_Ik_;
+  //// Attitude Parameters
   gtsam::Rot3 initialImuAttitude_;
   gtsam::Pose3 initialImuPose_;
   double initialGlobalYaw_ = 0.0;
   gtsam::Point3 W_t_W_GnssL0_;     // initial global position of left GNSS
   double gravityConstant_ = 9.81;  // Will be overwritten
   tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
-  /// Current global transformation
-  tf::StampedTransform tf_T_O_Ik_;
+  //// Base IMU measurments
+  Eigen::Vector3d latestImuBaseLinearAcc_;
+  Eigen::Vector3d latestImuBaseAngularVel_;
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;
@@ -186,17 +191,19 @@ class FactorGraphFiltering {
   nav_msgs::PathPtr compslamPathPtr_;
   nav_msgs::PathPtr leftGnssPathPtr_;
   nav_msgs::PathPtr rightGnssPathPtr_;
-  //// Exact sync for gnss
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
 
   /// Subscribers
-  ros::Subscriber subImu_;
+  ros::Subscriber subImuCabin_;
+  ros::Subscriber subImuBase_;
   ros::Subscriber subLidarOdometry_;
   tf::TransformListener tfListener_;
   message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssLeft_;
   message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssRight_;
   ros::Subscriber subMeasurements_;
+
+  //// Exact sync for gnss
+  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
+  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
 
   /// Stored Messages
   m545_description::M545Measurements measurements_;

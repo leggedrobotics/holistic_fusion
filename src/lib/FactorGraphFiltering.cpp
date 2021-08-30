@@ -44,9 +44,12 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Subscribers
   /// subscribe to remapped IMU topic
-  subImu_ = node.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuCallback_, this,
-                                             ros::TransportHints().tcpNoDelay());
-  ROS_INFO("Initialized IMU subscriber.");
+  subImuCabin_ = node.subscribe<sensor_msgs::Imu>("/imu_topic_cabin", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuCabinCallback_, this,
+                                                  ros::TransportHints().tcpNoDelay());
+  ROS_INFO("Initialized IMU cabin subscriber.");
+  subImuBase_ = node.subscribe<sensor_msgs::Imu>("/imu_topic_base", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuBaseCallback_, this,
+                                                 ros::TransportHints().tcpNoDelay());
+  ROS_INFO("Initialized IMU base subscriber.");
   /// subscribe to remapped LiDAR odometry topic
   if (usingCompslamFlag_) {
     subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>(
@@ -79,10 +82,10 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
-void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_ptr) {
+void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
-  const ros::Time imuTimeK = imu_ptr->header.stamp;
+  const ros::Time imuTimeK = imuMsgPtr->header.stamp;
   // Filter out imu messages with same time stamp
   if (imuTimeK == imuTimeKm1_) {
     ROS_WARN_STREAM("Imu time " << imuTimeK << " was repeated.");
@@ -91,9 +94,12 @@ void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_pt
     imuTimeKm1_ = imuTimeK;
   }
 
+  // Write measurement to vectors
+  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
+  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
+
   // Add to buffer
-  graphMgr_.addToIMUBuffer(imuTimeK.toSec(), imu_ptr->linear_acceleration.x, imu_ptr->linear_acceleration.y, imu_ptr->linear_acceleration.z,
-                           imu_ptr->angular_velocity.x, imu_ptr->angular_velocity.y, imu_ptr->angular_velocity.z);
+  graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
 
   // If IMU not yet aligned
   if (!imuAlignedFlag_ && (initedGnssFlag_ || !usingGnssFlag_)) {
@@ -116,34 +122,60 @@ void FactorGraphFiltering::imuCallback_(const sensor_msgs::Imu::ConstPtr& imu_pt
     tf_T_O_Ik_.frame_id_ = staticTransformsPtr_->getOdomFrame();
     tf_T_O_Ik_.stamp_ = imuTimeK;
     // Publish state
-    if (graphOptimizedAtLeastOnceFlag_) {
+    if (lidarCallbackCounter_ > NUM_LIDAR_CALLBACKS_UNTIL_START) {
+      Eigen::Vector3d correctedAngularVel = graphMgr_.getIMUBias().correctGyroscope(angularVel);
       // Publish
-      publishState_(T_O_Ik, imuTimeK);
+      publishState_(imuTimeK, T_O_Ik, correctedAngularVel);
       // Log
       signalLogger_.publishLogger(T_O_Ik.pose(), graphMgr_.getIMUBias());
     } else {
       // Add zero motion factor in the very beginning to make biases converge
       graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
+      {
+        // Mutex for optimizeGraph Flag
+        const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+        optimizeGraphFlag_ = true;
+      }
       // Publish zero motion state
-      publishState_(gtsam::NavState(initialImuPose_, gtsam::Velocity3(0.0, 0.0, 0.0)), imuTimeK);
+      publishState_(imuTimeK, gtsam::NavState(initialImuPose_, gtsam::Velocity3(0.0, 0.0, 0.0)), Eigen::Vector3d(0.0, 0.0, 0.0));
     }
   }
 }
 
+void FactorGraphFiltering::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
+  // Timing
+  const ros::Time imuTimeK = imuMsgPtr->header.stamp;
+
+  // Write measurement to vectors
+  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
+  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
+
+  // Write to latest measurement variable
+  {
+    // Mutex for Base IMU measurements
+    const std::lock_guard<std::mutex> optimizeGraphLock(accessImuBaseMutex_);
+    latestImuBaseLinearAcc_ = linearAcc;
+    latestImuBaseAngularVel_ = angularVel;
+  }
+}
+
 void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  // Static variables
+  static bool pseudoUnaryFactorInitialized__ = false;
+  static tf::Transform tf_T_O_Ikm1_Compslam__;
+
   // Output of compslam --> predicts absolute motion in lidar frame
   tf::Transform tf_T_O_Lk_Compslam, tf_T_O_Ck_Compslam;
-  tf::StampedTransform tf_T_O_Ik_Compslam;
+  tf::Transform tf_T_O_Ik_Compslam;
   odomMsgToTF(*odomLidarPtr, tf_T_O_Lk_Compslam);
   ros::Time compslamTimeKm1;
 
   // Transform message to Imu frame
-  tf_T_O_Ik_Compslam.setData(tf_T_O_Lk_Compslam * staticTransformsPtr_->T_L_I());
-  tf_T_O_Ik_Compslam.stamp_ = odomLidarPtr->header.stamp;
+  tf_T_O_Ik_Compslam = tf_T_O_Lk_Compslam * staticTransformsPtr_->T_L_Ic();
 
   // Set initial compslam pose after third callback (because first compslam pose is wrong)
   ++lidarCallbackCounter_;
-  if (lidarCallbackCounter_ <= 3) {
+  if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
     compslamTimeK_ = odomLidarPtr->header.stamp;
     tf_T_I0_O_Compslam_ = tf_T_O_Ik_Compslam.inverse();
     return;
@@ -153,36 +185,38 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   compslamTimeK_ = odomLidarPtr->header.stamp;
 
   if (initedGraphFlag_) {
-    /// Delta pose
-    Eigen::Matrix4d T_Ikm1_Ik = computeDeltaPose(tf_T_O_Ikm1_Compslam_, tf_T_O_Ik_Compslam);
-    gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
-    // Write the lidar odom delta to the graph
-    graphMgr_.addPoseBetweenFactor(lidarDeltaPose, compslamTimeKm1.toSec(), compslamTimeK_.toSec());
+    if (!gnssAbsentFlag_) {
+      /// Delta pose
+      Eigen::Matrix4d T_Ikm1_Ik = computeDeltaPose(tf_T_O_Ikm1_Compslam__, tf_T_O_Ik_Compslam);
+      gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
+      // Write the lidar odom delta to the graph
+      graphMgr_.addPoseBetweenFactor(lidarDeltaPose, compslamTimeKm1.toSec(), compslamTimeK_.toSec());
 
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
+      {
+        // Mutex for optimizeGraph Flag
+        const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+        optimizeGraphFlag_ = true;
+      }
+
+      // Direct compslam estimate for base
+      tf::Transform tf_T_I0_Ik_Compslam = tf_T_I0_O_Compslam_ * tf_T_O_Ik_Compslam;
+      tf_T_O_Ck_Compslam = tf_T_O_I0_ * tf_T_I0_Ik_Compslam * staticTransformsPtr_->T_Ic_C();
+
+      // Visualization of Compslam pose
+      geometry_msgs::PoseStamped poseStamped;
+      poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
+      poseStamped.header.stamp = odomLidarPtr->header.stamp;
+      tf::poseTFToMsg(tf_T_O_Ck_Compslam, poseStamped.pose);
+      /// Path
+      compslamPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+      compslamPathPtr_->header.stamp = odomLidarPtr->header.stamp;
+      compslamPathPtr_->poses.push_back(poseStamped);
+      /// Publish
+      pubCompslamPath_.publish(compslamPathPtr_);
     }
-
-    // Direct compslam estimate for base
-    tf::Transform tf_T_I0_Ik_Compslam = tf_T_I0_O_Compslam_ * tf_T_O_Ik_Compslam;
-    tf_T_O_Ck_Compslam = tf_T_O_I0_ * tf_T_I0_Ik_Compslam * staticTransformsPtr_->T_I_C();
-
-    // Visualization of Compslam pose
-    geometry_msgs::PoseStamped poseStamped;
-    poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
-    poseStamped.header.stamp = odomLidarPtr->header.stamp;
-    tf::poseTFToMsg(tf_T_O_Ck_Compslam, poseStamped.pose);
-    /// Path
-    compslamPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-    compslamPathPtr_->header.stamp = odomLidarPtr->header.stamp;
-    compslamPathPtr_->poses.push_back(poseStamped);
-    /// Publish
-    pubCompslamPath_.publish(compslamPathPtr_);
+    // Set last pose for the next iteration
+    tf_T_O_Ikm1_Compslam__ = tf_T_O_Ik_Compslam;
   }
-  // Set last pose for the next iteration
-  tf_T_O_Ikm1_Compslam_ = tf_T_O_Ik_Compslam;
 }
 
 void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
@@ -196,6 +230,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // First callback --> set position to zero
   if (firstGnssCallbackFlag_) {
     initGnss_(leftGnssMsgPtr, rightGnssMsgPtr);
+    firstGnssCallbackFlag_ = false;
     return;
   }
   // Convert ros messages
@@ -207,7 +242,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   bool covarianceViolated = leftGnssMsgPtr->position_covariance[0] > 1.0 || leftGnssMsgPtr->position_covariance[4] > 1.0 ||
                             leftGnssMsgPtr->position_covariance[8] > 1.0;
   /// Check whether covariance is okay, otherwise return
-  if (initedGraphFlag_ && (graphOptimizedAtLeastOnceFlag_ || !usingCompslamFlag_) && !covarianceViolated) {
+  if (initedGraphFlag_ && !covarianceViolated) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
     graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
@@ -224,8 +259,17 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-
+    {
+      // Mutex for changing LiDAR constraint mode
+      const std::lock_guard<std::mutex> gnssAnchorLock(gnssAnchorMutex_);
+      gnssAbsentFlag_ = false;
+    }
   } else if (covarianceViolated) {
+    {
+      // Mutex for changing LiDAR constraint mode
+      const std::lock_guard<std::mutex> gnssAnchorLock(gnssAnchorMutex_);
+      gnssAbsentFlag_ = false;
+    }
     ROS_ERROR_STREAM("Covariance is too big, not using GNSS estimate.");
   }
 
@@ -279,7 +323,6 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
                                      const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
   // Initialize left converter
   geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
-  firstGnssCallbackFlag_ = false;
   if (geodeticConverterLeft_.isInitialised()) {
     ROS_INFO("Left GNSS position was initialized.");
   } else {
@@ -370,9 +413,7 @@ void FactorGraphFiltering::optimizeGraph_() {
       startLoopTime = std::chrono::high_resolution_clock::now();
       gtsam::NavState optimizedNavState = graphMgr_.updateGraphAndState();
       endLoopTime = std::chrono::high_resolution_clock::now();
-      if (!graphOptimizedAtLeastOnceFlag_) {
-        graphOptimizedAtLeastOnceFlag_ = true;
-      }
+
       if (verboseLevel_ > 1) {
         ROS_INFO_STREAM("\033[92mWhole optimization loop took "
                         << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
@@ -381,7 +422,7 @@ void FactorGraphFiltering::optimizeGraph_() {
       // Transform pose
       gtsam::Pose3 T_O_I = optimizedNavState.pose();
       pose3ToTF(T_O_I, tf_T_O_I);
-      tf_T_O_C = tf_T_O_I * staticTransformsPtr_->T_I_C();
+      tf_T_O_C = tf_T_O_I * staticTransformsPtr_->T_Ic_C();
 
       // Publish path of optimized poses
       /// Pose
@@ -412,38 +453,72 @@ void FactorGraphFiltering::optimizeGraph_() {
   }
 }
 
-void FactorGraphFiltering::publishState_(const gtsam::NavState& T_O_Ik, ros::Time imuTimeK) {
+void FactorGraphFiltering::publishState_(ros::Time imuTimeK, const gtsam::NavState& T_O_Ik, const Eigen::Vector3d& I_w_W_I) {
   // Used transforms
-  tf::Transform tf_T_O_C, tf_T_I_C, tf_T_C_B, tf_T_O_I;
-  tf_T_I_C = staticTransformsPtr_->T_I_C();
+  tf::Transform tf_T_I_C;
+  tf_T_I_C = staticTransformsPtr_->T_Ic_C();
 
   // Lookup chassis to cabin turn
   const double turnJointPosition = measurements_.actuatorStates_[m545_description::M545Topology::ActuatorEnum::TURN].position_;
-  Eigen::AngleAxisd C_CB(-turnJointPosition, Eigen::Vector3d(0.0, 0.0, 1.0));
-  pose3ToTF(C_CB.toRotationMatrix(), tf_T_C_B);
+  Eigen::AngleAxisd C_C_B(-turnJointPosition, Eigen::Vector3d(0.0, 0.0, 1.0));
+  tf::Transform tf_T_C_B;
+  pose3ToTF(C_C_B.toRotationMatrix(), tf_T_C_B);
   tf_T_C_B.setOrigin(tf::Vector3(0.0, 0.0, -staticTransformsPtr_->BC_z_offset()));
 
-  // From Eigen to TF
+  // Lookup / compute remaining relative transformations and rotations
+  tf::Transform R_B_C = tf::Transform(tf_T_C_B.getRotation()).inverse();
+  tf::Transform R_C_Ic = tf::Transform(staticTransformsPtr_->T_C_Ic().getRotation());
+  tf::Transform R_B_Ib = tf::Transform(staticTransformsPtr_->T_B_Ib().getRotation());
+  tf::Vector3 B_t_Ic_C = R_B_C * (R_C_Ic * staticTransformsPtr_->T_Ic_C().getOrigin());
+  tf::Vector3 B_t_C_B = R_B_C * tf_T_C_B.getOrigin();
+
+  // Pose
+  /// From Eigen to TF
   gtsam::Pose3 T_O_I = T_O_Ik.pose();
+  tf::Transform tf_T_O_I;
   pose3ToTF(T_O_I, tf_T_O_I);
-  // Transform
-  // Only publish state if already some lidar constraints in graph
-  tf_T_O_C = tf_T_O_I * tf_T_I_C;
-  // Get odom-->base_link transformation from odom-->cabin
+  /// Transform
+  tf::Transform tf_T_O_C = tf_T_O_I * tf_T_I_C;
+  /// Get odom-->base_link transformation from odom-->cabin
   tf::Transform tf_T_O_B = tf_T_O_C * tf_T_C_B;
 
-  // m545_state
-  excavator_model::ActuatorConversions::jointStateFromActuatorState(measurements_, estExcavatorState_);
-  //_estExcavatorState.setAngularVelocityBaseInBaseFrame(...);
-  estExcavatorState_.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(0.0, 0.0, 0.0));
-  estExcavatorState_.setPositionWorldToBaseInWorldFrame(
-      kindr::Position3D(tf_T_O_B.getOrigin().getX(), tf_T_O_B.getOrigin().getY(), tf_T_O_B.getOrigin().getZ()));
-  estExcavatorState_.setOrientationBaseToWorld(kindr::RotationQuaternionPD(tf_T_O_B.getRotation().w(), tf_T_O_B.getRotation().x(),
-                                                                           tf_T_O_B.getRotation().y(), tf_T_O_B.getRotation().z()));
+  // Angular Velocity
+  tf::Vector3 C_w_W_Ic = R_C_Ic * tf::Vector3(I_w_W_I(0), I_w_W_I(1), I_w_W_I(2));
+  tf::Vector3 B_w_W_Ic = R_B_C * C_w_W_Ic;
+  /// Only along z-axis the angular velocity can be different to rotation in cabin frame
+  tf::Vector3& B_w_W_B = B_w_W_Ic;  // alias
+  B_w_W_B.setZ((R_B_Ib * tf::Vector3(latestImuBaseAngularVel_(0), latestImuBaseAngularVel_(1), latestImuBaseAngularVel_(2))).z());
+
+  // Linear Velocity
+  Eigen::Vector3d Ic_v_W_Ic = T_O_Ik.bodyVelocity();
+  ROS_WARN_STREAM("Body velocity of IMU in IMU frame: " << Ic_v_W_Ic);
+  tf::Vector3 C_v_W_Ic = R_C_Ic * tf::Vector3(Ic_v_W_Ic(0), Ic_v_W_Ic(1), Ic_v_W_Ic(2));
+  tf::Vector3 B_v_W_Ic = R_B_C * C_v_W_Ic;
+  /// Compute velocity of base in world --> need "velocity composition rule"
+  tf::Vector3 B_t_Ic_B = B_t_Ic_C + B_t_C_B;
+  tf::Vector3 B_v_W_B = B_v_W_Ic + B_w_W_Ic.cross(B_t_Ic_B);
+  ROS_WARN_STREAM("Body velocity of base in base frame: " << B_v_W_B.x() << ", " << B_v_W_B.y() << ", " << B_v_W_B.z());
+  tf::Transform R_W_B = tf::Transform(tf_T_O_B.getRotation());
+  tf::Vector3 W_v_W_B = R_W_B * B_v_W_B;
+
+  // Set m545_state
+  /// Time and status
   std::chrono::steady_clock::time_point chronoTimeK = std::chrono::steady_clock::time_point(chrono::nanoseconds(imuTimeK.toNSec()));
   estExcavatorState_.setTime(chronoTimeK);
   estExcavatorState_.setSequence(measurements_.sequence_);
   estExcavatorState_.setStatus(excavator_model::ExcavatorState::Status::STATUS_OK);
+  /// Joint States
+  excavator_model::ActuatorConversions::jointStateFromActuatorState(measurements_, estExcavatorState_);
+  /// Pose
+  estExcavatorState_.setPositionWorldToBaseInWorldFrame(
+      kindr::Position3D(tf_T_O_B.getOrigin().getX(), tf_T_O_B.getOrigin().getY(), tf_T_O_B.getOrigin().getZ()));
+  estExcavatorState_.setOrientationBaseToWorld(kindr::RotationQuaternionPD(tf_T_O_B.getRotation().w(), tf_T_O_B.getRotation().x(),
+                                                                           tf_T_O_B.getRotation().y(), tf_T_O_B.getRotation().z()));
+  /// Angular Velocity
+  estExcavatorState_.setAngularVelocityBaseInBaseFrame(kindr::LocalAngularVelocityD(B_w_W_B.x(), B_w_W_B.y(), B_w_W_B.z()));
+  /// Linear Velocity
+  estExcavatorState_.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(W_v_W_B.x(), W_v_W_B.y(), W_v_W_B.z()));
+  /// Transform to ROS msg
   m545_msgs::M545State excavatorStateMsg;
   excavatorStateMsg = stateConverter_.convert(estExcavatorState_);
   excavatorStatePublisher_.publish(excavatorStateMsg);
@@ -493,10 +568,10 @@ void FactorGraphFiltering::convertNavSatToPositions(const sensor_msgs::NavSatFix
 gtsam::Vector3 FactorGraphFiltering::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition) {
   /// Translation in robot frame
   tf::Vector3 tf_W_t_W_GnssL(gnssPosition(0), gnssPosition(1), gnssPosition(2));
-  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_I();
+  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_Ic();
   tf::Vector3 tf_GnssL_t_GnssL_I = tf_T_GnssL_I.getOrigin();
   /// Global rotation
-  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_I_C() * staticTransformsPtr_->T_C_GnssL();
+  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_Ic_C() * staticTransformsPtr_->T_C_GnssL();
   tf::Quaternion tf_q_W_GnssL = (tf_T_O_Ik_ * tf_T_I_GnssL).getRotation();
   tf::Transform tf_R_W_GnssL = tf::Transform::getIdentity();
   tf_R_W_GnssL.setRotation(tf_q_W_GnssL);
@@ -563,6 +638,7 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   } else
     ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
   /// IMU
+  //// Cabin IMU
   if (privateNode.getParam("extrinsics/imuCabinFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU Cabin frame for preintegrator and tf: " << sParam);
     staticTransformsPtr_->setImuCabinFrame(sParam);
@@ -573,6 +649,12 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     staticTransformsPtr_->setImuRooftopFrame(sParam);
   } else
     ROS_WARN("FactorGraphFiltering - IMU Rooftop frame not set for preintegrator");
+  //// Base IMU
+  if (privateNode.getParam("extrinsics/imuBaseFrame", sParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU Base frame for state publishing: " << sParam);
+    staticTransformsPtr_->setImuBaseFrame(sParam);
+  } else
+    ROS_WARN("FactorGraphFiltering - IMU base frame not set for state publishing");
   /// LiDAR frame
   if (privateNode.getParam("extrinsics/lidarFrame", sParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);

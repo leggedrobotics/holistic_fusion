@@ -297,6 +297,7 @@ bool GraphManager::addGravityRollPitchFactor(const gtsam::Key key, const gtsam::
 }
 
 gtsam::NavState GraphManager::updateGraphAndState() {
+  // Define variables for timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
   // Timing

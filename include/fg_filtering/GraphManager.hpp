@@ -54,9 +54,10 @@ class GraphManager {
   // Update graph and get new state
   gtsam::NavState updateGraphAndState();
   // Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  void writeValueKeysToKeyTimeStampMap(const gtsam::Values& values, const double ts, std::map<gtsam::Key, double>& key_timestamp_map) {
+  void writeValueKeysToKeyTimeStampMap(const gtsam::Values& values, const double measurementTime,
+                                       std::map<gtsam::Key, double>& keyTimestampMap) {
     for (const auto& value : values) {
-      key_timestamp_map[value.key] = ts;
+      keyTimestampMap[value.key] = measurementTime;
     }
   }
 
@@ -67,8 +68,8 @@ class GraphManager {
     return imuBuffer_.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
-  inline void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
-    imuBuffer_.addToIMUBuffer(ts, accX, accY, accZ, gyrX, gyrY, gyrZ);
+  inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
+    imuBuffer_.addToIMUBuffer(ts, linearAcc(0), linearAcc(1), linearAcc(2), angularVel(0), angularVel(1), angularVel(2));
   }
 
   // Accessors - Setters

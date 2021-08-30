@@ -31,32 +31,31 @@ StaticTransforms::StaticTransforms(ros::NodeHandle& privateNode) {
 void StaticTransforms::findTransformations() {
   ROS_WARN("Looking up transformations in URDF model...");
   // Cabin IMU
-  const unsigned int imuBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_CABIN_link").c_str());
+  const unsigned int imuCabinBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_CABIN_link").c_str());
   const unsigned int imuRooftopId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("imu_box_link").c_str());
-  if (imuBodyId != std::numeric_limits<unsigned int>::max()) {
+  if (imuCabinBodyId != std::numeric_limits<unsigned int>::max()) {
     ROS_WARN("Found Body IMU_CABIN.");
-    imuFrame_ = imuCabinFrame_;
-    tf_T_I_C_ = getTransformFromID(imuBodyId);
-    tf_T_C_I_ = tf_T_I_C_.inverse();
+    tf_T_Ic_C_ = getTransformFromID(imuCabinBodyId);
+    tf_T_C_Ic_ = tf_T_Ic_C_.inverse();
   } else if (imuRooftopId != std::numeric_limits<unsigned int>::max()) {
     ROS_WARN("Did not find Body IMU_CABIN. But found IMU in roofbox.");
-    imuFrame_ = imuRooftopFrame_;
-    tf_T_I_C_ = getTransformFromID(imuRooftopId);
-    tf_T_C_I_ = tf_T_I_C_.inverse();
+    imuCabinFrame_ = imuRooftopFrame_;
+    tf_T_Ic_C_ = getTransformFromID(imuRooftopId);
+    tf_T_C_Ic_ = tf_T_Ic_C_.inverse();
   } else {
     ROS_ERROR("Neither found Body IMU_CABIN nor rooftop imu!");
     return;
   }
-  ROS_WARN_STREAM("IMU frame with respect to cabin frame: t=[" << tf_T_C_I_.getOrigin().x() << ", " << tf_T_C_I_.getOrigin().y() << ", "
-                                                               << tf_T_C_I_.getOrigin().z() << "]");
+  ROS_WARN_STREAM("IMU frame with respect to cabin frame: t=[" << tf_T_C_Ic_.getOrigin().x() << ", " << tf_T_C_Ic_.getOrigin().y() << ", "
+                                                               << tf_T_C_Ic_.getOrigin().z() << "]");
   // LiDAR
   const unsigned int lidarBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("os_lidar").c_str());
   if (lidarBodyId != std::numeric_limits<unsigned int>::max()) {
     tf_T_L_C_ = getTransformFromID(lidarBodyId);
     tf_T_C_L_ = tf_T_L_C_.inverse();
-    tf_T_L_I_ = tf_T_L_C_ * tf_T_C_I_;
-    ROS_WARN_STREAM("IMU frame with respect to LiDAR frame: t=[" << tf_T_L_I_.getOrigin().x() << ", " << tf_T_L_I_.getOrigin().y() << ", "
-                                                                 << tf_T_L_I_.getOrigin().z() << "]");
+    tf_T_L_Ic_ = tf_T_L_C_ * tf_T_C_Ic_;
+    ROS_WARN_STREAM("IMU frame with respect to LiDAR frame: t=[" << tf_T_L_Ic_.getOrigin().x() << ", " << tf_T_L_Ic_.getOrigin().y() << ", "
+                                                                 << tf_T_L_Ic_.getOrigin().z() << "]");
   } else {
     ROS_ERROR("Did not find LiDAR!");
     return;
@@ -104,6 +103,19 @@ void StaticTransforms::findTransformations() {
   ROS_WARN_STREAM("Offset from method 2: " << BC_Z_offset_);
 
   ROS_WARN("...found all transformations.");
+
+  // Base IMU
+  const unsigned int imuBaseBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_base_link").c_str());
+  if (imuBaseBodyId != std::numeric_limits<unsigned int>::max()) {
+    ROS_WARN("Found Body IMU_BASE.");
+    tf_T_Ib_B_ = getTransformFromID(imuBaseBodyId);
+    tf_T_B_Ib_ = tf_T_Ib_B_.inverse();
+  } else {
+    ROS_ERROR("Did not find base imu!");
+    return;
+  }
+  ROS_WARN_STREAM("Base IMU frame with respect to base frame: t=[" << tf_T_B_Ib_.getOrigin().x() << ", " << tf_T_B_Ib_.getOrigin().y()
+                                                                   << ", " << tf_T_B_Ib_.getOrigin().z() << "]");
 }
 
 tf::Transform StaticTransforms::getTransformFromID(const unsigned int bodyId) {
