@@ -46,6 +46,10 @@ namespace fg_filtering {
 // Defined constants
 #define ROS_QUEUE_SIZE 100
 #define NUM_LIDAR_CALLBACKS_UNTIL_START 3
+#define NUM_GNSS_CALLBACKS_UNTIL_START 3
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define COLOR_END "\033[0m"
 
 /** \brief Implementation of the factor graph based filtering.
  *
@@ -123,7 +127,7 @@ class FactorGraphFiltering {
   // Mutex
   std::mutex optimizeGraphMutex_;
   std::mutex accessImuBaseMutex_;
-  std::mutex gnssAnchorMutex_;
+  std::mutex lidarUnaryMutex_;
 
   // Member variables -------------
   /// Geodetic Converter
@@ -136,11 +140,10 @@ class FactorGraphFiltering {
   bool imuAlignedFlag_ = false;
   bool initedGnssFlag_ = false;
   bool initedGraphFlag_ = false;
-  bool firstGnssCallbackFlag_ = true;
   bool optimizeGraphFlag_ = false;
   bool usingGnssFlag_ = true;
   bool usingCompslamFlag_ = true;
-  bool gnssAbsentFlag_ = false;
+  bool addLidarUnaryFlag_ = false;
 
   /// Strings
   std::string imuGravityDirection_;
@@ -152,7 +155,7 @@ class FactorGraphFiltering {
   /// Containers
   //// Transformations
   ///// Compslam
-  tf::Transform tf_T_I0_O_Compslam_;
+  tf::Transform tf_compslam_T_I0_O_;
   ///// Current global transformation
   tf::StampedTransform tf_T_O_Ik_;
   //// Attitude Parameters
@@ -217,6 +220,7 @@ class FactorGraphFiltering {
 
   /// Counter
   long lidarCallbackCounter_ = 0;  // number of processed lidar frames
+  long gnssCallbackCounter_ = 0;
 
   /// Verbose
   int verboseLevel_ = 0;

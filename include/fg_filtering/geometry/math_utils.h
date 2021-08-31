@@ -1,5 +1,5 @@
-#ifndef LOAM_MATH_UTILS_H
-#define LOAM_MATH_UTILS_H
+#ifndef FG_FILTERING_MATH_UTILS_H
+#define FG_FILTERING_MATH_UTILS_H
 
 #include <cmath>
 
@@ -231,7 +231,7 @@ inline void invertHomogenousMatrix(const Eigen::Matrix4d& m_in, Eigen::Matrix4d&
   m_out.block<3, 1>(0, 3) = -R.transpose() * t;
 }
 
-inline void odomMsgToTF(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
+inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
   tf::Quaternion tf_q;
   tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
   tf::Vector3 tf_t = tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
@@ -239,38 +239,35 @@ inline void odomMsgToTF(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T
   tf_T.setOrigin(tf_t);
 }
 
-inline void pose3ToTF(const Eigen::Matrix3d& T, tf::Transform& tf_T) {
+inline tf::Transform pose3ToTf(const Eigen::Matrix3d& T) {
   Eigen::Quaterniond q(T);
+  tf::Transform tf_T;
   tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
   tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
+  return tf_T;
 }
 
-inline void pose3ToTF(const gtsam::Pose3& T, tf::Transform& tf_T) {
+inline tf::Transform pose3ToTf(const gtsam::Pose3& T) {
   Eigen::Quaterniond q = T.rotation().toQuaternion();
+  tf::Transform tf_T;
   tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
   tf_T.setOrigin(tf::Vector3(T.x(), T.y(), T.z()));
+  return tf_T;
+}
+
+inline gtsam::Pose3 tFToPose3(const tf::Transform& tf_T) {
+  return gtsam::Pose3(gtsam::Rot3(tf_T.getRotation().w(), tf_T.getRotation().x(), tf_T.getRotation().y(), tf_T.getRotation().z()),
+                      gtsam::Vector3(tf_T.getOrigin().x(), tf_T.getOrigin().y(), tf_T.getOrigin().z()));
 }
 
 // Transformations need to be in same coordinate frame
-Eigen::Matrix4d computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
-  Eigen::Matrix4d T_km1 = Eigen::MatrixXd::Identity(4, 4);
-  Eigen::Matrix4d T_k = Eigen::MatrixXd::Identity(4, 4);
-  Eigen::Matrix4d T_km1_inv = Eigen::MatrixXd::Identity(4, 4);
-  Eigen::Matrix4d T_km1_k = Eigen::MatrixXd::Identity(4, 4);
-  T_km1.block<4, 1>(0, 3) = Eigen::Vector4d(tf_T_km1.getOrigin().x(), tf_T_km1.getOrigin().y(), tf_T_km1.getOrigin().z(), 1.0);
-  T_km1.block<3, 3>(0, 0) =
-      Eigen::Quaterniond(tf_T_km1.getRotation().w(), tf_T_km1.getRotation().x(), tf_T_km1.getRotation().y(), tf_T_km1.getRotation().z())
-          .toRotationMatrix();
-  T_k.block<4, 1>(0, 3) = Eigen::Vector4d(tf_T_k.getOrigin().x(), tf_T_k.getOrigin().y(), tf_T_k.getOrigin().z(), 1.0);
-  T_k.block<3, 3>(0, 0) =
-      Eigen::Quaterniond(tf_T_k.getRotation().w(), tf_T_k.getRotation().x(), tf_T_k.getRotation().y(), tf_T_k.getRotation().z())
-          .toRotationMatrix();
-  invertHomogenousMatrix(T_km1, T_km1_inv);
-  T_km1_k = T_km1_inv * T_k;
-
-  return T_km1_k;
+gtsam::Pose3 computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
+  gtsam::Pose3 T_km1 = tFToPose3(tf_T_km1);
+  gtsam::Pose3 T_k = tFToPose3(tf_T_k);
+  gtsam::Pose3 T_km1_inv = T_km1.inverse();
+  return T_km1_inv * T_k;
 }
 
 }  // end namespace fg_filtering
 
-#endif  // LOAM_MATH_UTILS_H
+#endif  // FG_FILTERING_MATH_UTILS_H

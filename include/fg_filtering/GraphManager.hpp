@@ -32,34 +32,22 @@ class GraphManager {
   GraphManager(){};
   ~GraphManager(){};
 
+  // Change Graph
   bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
-
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-
   gtsam::NavState addImuFactorAndGetState(const double imuTime_k);
-
-  void addPoseBetweenFactor(const gtsam::Pose3& pose, const double lidarTime_km1, const double lidarTime_k);
-
-  void addPoseUnaryFactor(const gtsam::Key old_key, const gtsam::Key new_key, const gtsam::Pose3& pose);
-
+  gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose);
+  void addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
-
   void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw);
-
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
-
-  // Add gravity-aligned roll/ptich when no motion
-  bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude);
+  bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
 
   // Update graph and get new state
   gtsam::NavState updateGraphAndState();
-  // Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  void writeValueKeysToKeyTimeStampMap(const gtsam::Values& values, const double measurementTime,
-                                       std::map<gtsam::Key, double>& keyTimestampMap) {
-    for (const auto& value : values) {
-      keyTimestampMap[value.key] = measurementTime;
-    }
-  }
+
+  // Compute state at specific key
+  gtsam::NavState calculateStateAtKey(const gtsam::Key& key);
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
@@ -72,7 +60,8 @@ class GraphManager {
     imuBuffer_.addToIMUBuffer(ts, linearAcc(0), linearAcc(1), linearAcc(2), angularVel(0), angularVel(1), angularVel(2));
   }
 
-  // Accessors - Setters
+  // Accessors
+  /// Setters
   inline void setAccNoiseDensity(double val) { accNoiseDensity_ = val; }
   inline void setAccBiasRandomWalk(double val) { accBiasRandomWalk_ = val; }
   inline void setAccBiasPrior(double val) { accBiasPrior_ = val; }
@@ -89,27 +78,36 @@ class GraphManager {
   inline void setAccBiasReLinTh(double val) { accBiasReLinTh_ = val; }
   inline void setGyrBiasReLinTh(double val) { gyrBiasReLinTh_ = val; }
   inline void setPoseBetweenNoise(const std::vector<double>& v) { poseBetweenNoise_ = v; }
+  inline void setPoseUnaryNoise(const std::vector<double>& v) { poseUnaryNoise_ = v; }
   inline void setGnssPositionUnaryNoise(double v) { gnssPositionUnaryNoise_ = v; }
   inline void setGnssHeadingUnaryNoise(double v) { gnssHeadingUnaryNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
   inline void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
-
-  // Accessors - Getters
+  /// Getters
   Eigen::Vector3d& getInitGyrBiasReference() { return gyrBiasPrior_; }
   auto iterations() const { return additonalIterations_; }
   const fg_filtering::State& getGraphState() { return graphState_; }
-  const auto getStateKey() { return stateKey_; }
-  const auto getIMUBias() { return graphState_.imuBias(); }
+  const gtsam::Key getStateKey() { return stateKey_; }
+  const gtsam::imuBias::ConstantBias getIMUBias() { return graphState_.imuBias(); }
   gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
  private:
   // Methods
-  /// Update IMU integrator with new measurements - Resets bias
+  /// Update IMU integrators
+  void updateImuIntegrators_(const IMUMap& imuMeas);
+  /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
                       std::string name = "lidar");
-  void updateImuIntegrators_(const IMUMap& imuMeas);
+  /// Generate new key
   const auto newStateKey_() { return ++stateKey_; }
+  /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
+  inline void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
+                                               std::map<gtsam::Key, double>& keyTimestampMap) {
+    for (const auto& value : values) {
+      keyTimestampMap[value.key] = measurementTime;
+    }
+  }
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
@@ -153,8 +151,9 @@ class GraphManager {
   double velReLinTh_ = 0.1;      // Linear Velocity linearization threshold
   double accBiasReLinTh_ = 0.1;  // Accelerometer bias linearization threshold
   double gyrBiasReLinTh_ = 0.1;  // Gyroscope bias linearization threshold
-  /// Pose Between Factor Noise
+  /// LiDAR
   std::vector<double> poseBetweenNoise_;  // ORDER RPY(rad) - XYZ(meters)
+  std::vector<double> poseUnaryNoise_;    // ORDER RPY(rad) - XYZ(meters)
   /// GNSS Unary Factor Noise
   double gnssPositionUnaryNoise_;
   double gnssHeadingUnaryNoise_;
