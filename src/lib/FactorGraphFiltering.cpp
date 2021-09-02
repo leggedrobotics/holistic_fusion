@@ -295,7 +295,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   }
   // Do not write to graph, set flags for lidar unary factor to true
   else {
-    {
+    if (usingLidarUnaryFlag_) {
       // Mutex for changing LiDAR constraint mode
       const std::lock_guard<std::mutex> lidarUnaryLock(lidarUnaryMutex_);
       addLidarUnaryFlag_ = true;
@@ -356,8 +356,13 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
 
 void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
                                      const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
-  // Initialize left converter
-  geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+  // Initialize GNSS converter
+  if (usingGnssReferenceFlag_) {
+    geodeticConverterLeft_.initialiseReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_);
+  } else {
+    geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+  }
+  // Check whether successful
   if (geodeticConverterLeft_.isInitialised()) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Left GNSS position was initialized." << COLOR_END << std::endl;
   } else {
@@ -767,6 +772,10 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   if (privateNode.getParam("graph_params/enableDetailedResults", bParam)) {
     graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
   }
+  if (privateNode.getParam("graph_params/usingLidarUnary", bParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - useUnaryLidar: " << bParam);
+    usingLidarUnaryFlag_ = bParam;
+  }
 
   // Noise Parameters
   /// Accelerometer
@@ -874,6 +883,32 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     logPlots_ = bParam;
   } else {
     logPlots_ = false;
+  }
+
+  // GNSS parameters
+  if (privateNode.getParam("gnss/use_reference", bParam)) {
+    ROS_INFO("Using the GNSS reference is set to: %d", bParam);
+    usingGnssReferenceFlag_ = bParam;
+  } else {
+    std::runtime_error("Must set gnss/use_reference.");
+  }
+  if (privateNode.getParam("gnss/reference_latitude", dParam)) {
+    ROS_INFO("Reference latitude of the scene is given as: %d", dParam);
+    gnssReferenceLatitude_ = dParam;
+  } else if (usingGnssReferenceFlag_) {
+    std::runtime_error("GNSS reference latitude must be provided.");
+  }
+  if (privateNode.getParam("gnss/reference_longitude", dParam)) {
+    ROS_INFO("Reference longitude of the scene is given as: %d", dParam);
+    gnssReferenceLongitude_ = dParam;
+  } else if (usingGnssReferenceFlag_) {
+    std::runtime_error("GNSS reference longitude must be provided.");
+  }
+  if (privateNode.getParam("gnss/reference_altitude", dParam)) {
+    ROS_INFO("Reference altitude of the scene is given as: %d", dParam);
+    gnssReferenceAltitude_ = dParam;
+  } else if (usingGnssReferenceFlag_) {
+    std::runtime_error("GNSS reference altitude must be provided.");
   }
 }
 

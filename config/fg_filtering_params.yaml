@@ -12,6 +12,7 @@ graph_params:
   additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false
+  usingLidarUnary: false
 ## Noise Parameters
 noise_params:
   ### IMU

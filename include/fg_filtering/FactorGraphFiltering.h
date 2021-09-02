@@ -144,6 +144,8 @@ class FactorGraphFiltering {
   bool usingGnssFlag_ = true;
   bool usingCompslamFlag_ = true;
   bool addLidarUnaryFlag_ = false;
+  bool usingLidarUnaryFlag_ = true;
+  bool usingGnssReferenceFlag_ = true;
 
   /// Strings
   std::string imuGravityDirection_;
@@ -168,6 +170,11 @@ class FactorGraphFiltering {
   //// Base IMU measurments
   Eigen::Vector3d latestImuBaseLinearAcc_;
   Eigen::Vector3d latestImuBaseAngularVel_;
+
+  /// Reference position
+  double gnssReferenceLatitude_;
+  double gnssReferenceLongitude_;
+  double gnssReferenceAltitude_;
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;
