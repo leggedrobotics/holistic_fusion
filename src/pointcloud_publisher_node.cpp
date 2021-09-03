@@ -6,6 +6,10 @@
 
 #include "pcl_ros/publisher.h"
 
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define COLOR_END "\033[0m"
+
 using namespace std;
 
 class PCDGenerator {
@@ -60,7 +64,7 @@ class PCDGenerator {
         ros::Duration(0.001).sleep();
         continue;
       }
-      std::cout << "Published leica map at time stamp" << ros::Time::now() << std::endl;
+      std::cout << YELLOW_START << "MapPublisher" << COLOR_END << " Published leica map at time stamp " << ros::Time::now() << std::endl;
 
       usleep(interval);
 

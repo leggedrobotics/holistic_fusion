@@ -27,6 +27,11 @@
 #include "fg_filtering/ImuManager.hpp"
 
 namespace fg_filtering {
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
+#define COLOR_END "\033[0m"
+
 class GraphManager {
  public:
   GraphManager(){};
@@ -83,7 +88,11 @@ class GraphManager {
   inline void setGnssHeadingUnaryNoise(double v) { gnssHeadingUnaryNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
-  inline void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
+  inline void setGnssRate(double d) { gnssRate_ = d; }
+  inline void setVerboseLevel(int verbose) {
+    verboseLevel_ = verbose;
+    imuBuffer_.setVerboseLevel(verbose);
+  }
   /// Getters
   Eigen::Vector3d& getInitGyrBiasReference() { return gyrBiasPrior_; }
   auto iterations() const { return additonalIterations_; }
@@ -98,7 +107,7 @@ class GraphManager {
   void updateImuIntegrators_(const IMUMap& imuMeas);
   /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
-                      std::string name = "lidar");
+                      const std::string& name = "lidar");
   /// Generate new key
   const auto newStateKey_() { return ++stateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
@@ -161,6 +170,7 @@ class GraphManager {
   double zeroMotionTh_ = 0.01;  // Zero motion threshold meters
   // Timing
   double lidarRate_ = 10.0;
+  double gnssRate_ = 20.0;
   // Verbose
   int verboseLevel_ = 0;
 };

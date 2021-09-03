@@ -20,7 +20,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   staticTransformsPtr_->findTransformations();
 
   // Geodetic Converter
-  geodeticConverterLeft_ = geodetic_converter::GeodeticConverter();
+  // geodeticConverterLeft_ = geodetic_converter::GeodeticConverter();
 
   // Publishers
   /// advertise odometry topic
@@ -275,12 +275,13 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   if (!covarianceViolated && usingGnssFlag_) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
-    graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
+    // graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
+    graphMgr_.addGnssPositionUnaryFactor(imuTimeKm1_.toSec(), W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
     gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-    // graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeading_(W_t_heading));
+    // graphMgr_.addGnssHeadingUnaryFactor(leftGnssPtr->header.stamp.toSec(), W_t_heading, computeYawFromHeadingVector_(W_t_heading));
 
     {
       // Mutex for optimizeGraph Flag
@@ -358,16 +359,19 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
                                      const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
   // Initialize GNSS converter
   if (usingGnssReferenceFlag_) {
-    geodeticConverterLeft_.initialiseReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_);
+    // geodeticConverterLeft_.initialiseReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_);
+    gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
-    geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+    // geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+    gnssSensor_.setReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, 0.0);
   }
   // Check whether successful
-  if (geodeticConverterLeft_.isInitialised()) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Left GNSS position was initialized." << COLOR_END << std::endl;
-  } else {
-    ROS_ERROR("Left GNSS position could not be initialized.");
-  }
+  //  if (geodeticConverterLeft_.isInitialised()) {
+  //    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Left GNSS position was initialized." << COLOR_END <<
+  //    std::endl;
+  //  } else {
+  //    ROS_ERROR("Left GNSS position could not be initialized.");
+  //  }
 
   // Get Positions
   gtsam::Point3 leftPosition, rightPosition;
@@ -379,7 +383,7 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
             << std::endl;
 
   // Get initial global yaw
-  initialGlobalYaw_ = computeYawFromHeading_(W_t_heading);
+  initialGlobalYaw_ = computeYawFromHeadingVector_(W_t_heading);
   gtsam::Rot3 yawRotationMatrix = gtsam::Rot3::Yaw(initialGlobalYaw_);
   ROS_INFO_STREAM("Initial global yaw is: " << 180 / M_PI * initialGlobalYaw_);
 
@@ -457,9 +461,9 @@ void FactorGraphFiltering::optimizeGraph_() {
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (verboseLevel_ > 1) {
-        ROS_INFO_STREAM("\033[92mWhole optimization loop took "
-                        << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                        << " milliseconds.\033[0m");
+        std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Whole optimization loop took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
+                  << COLOR_END << std::endl;
       }
       // Transform pose
       gtsam::Pose3 T_O_I = optimizedNavState.pose();
@@ -593,16 +597,25 @@ void FactorGraphFiltering::convertNavSatToPositions(const sensor_msgs::NavSatFix
   std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
   std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
   std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, leftEastPtr.get(),
-                                      leftNorthPtr.get(), leftUpPtr.get());
-  leftPosition = gtsam::Point3(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
+  //  geodeticConverterLeft_.geodetic2Enu(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, leftEastPtr.get(),
+  //                                      leftNorthPtr.get(), leftUpPtr.get());
+  // leftPosition = gtsam::Point3(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
+  leftPosition = gnssSensor_.gpsToCartesian(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+
   /// Right
   auto rightEastPtr = std::make_unique<double>();
   auto rightNorthPtr = std::make_unique<double>();
   auto rightUpPtr = std::make_unique<double>();
-  geodeticConverterLeft_.geodetic2Enu(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude, rightEastPtr.get(),
-                                      rightNorthPtr.get(), rightUpPtr.get());
-  rightPosition = gtsam::Point3(*rightEastPtr, *rightNorthPtr, *rightUpPtr);
+  //  geodeticConverterLeft_.geodetic2Enu(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude,
+  //  rightEastPtr.get(),
+  //                                      rightNorthPtr.get(), rightUpPtr.get());
+  //  rightPosition = gtsam::Point3(*rightEastPtr, *rightNorthPtr, *rightUpPtr);
+  rightPosition = gnssSensor_.gpsToCartesian(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
+
+  // Rotate them to local coordinate frame
+  //  gtsam::Rot3 R_W_ENU = gtsam::Rot3::Yaw(gnssReferenceHeading_);
+  //  leftPosition = R_W_ENU * leftPosition;
+  //  rightPosition = R_W_ENU * rightPosition;
 }
 
 gtsam::Vector3 FactorGraphFiltering::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition) {
@@ -637,7 +650,7 @@ gtsam::Point3 FactorGraphFiltering::getRobotHeading_(const Eigen::Vector3d& left
   return W_t_heading;
 }
 
-double FactorGraphFiltering::computeYawFromHeading_(const gtsam::Point3& headingVector) {
+double FactorGraphFiltering::computeYawFromHeadingVector_(const gtsam::Point3& headingVector) {
   double yaw = M_PI / 2.0 + atan2(headingVector(1), headingVector(0));
   // Compute angle
   if (yaw > M_PI) {
@@ -759,6 +772,10 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   if (privateNode.getParam("graph_params/lidarRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR rate: " << dParam);
     graphMgr_.setLidarRate(dParam);
+  }
+  if (privateNode.getParam("graph_params/gnssRate", dParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - GNSS rate: " << dParam);
+    graphMgr_.setGnssRate(dParam);
   }
   if (privateNode.getParam("graph_params/smootherLag", dParam)) {
     graphMgr_.setSmootherLag(dParam);
@@ -893,22 +910,28 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     std::runtime_error("Must set gnss/use_reference.");
   }
   if (privateNode.getParam("gnss/reference_latitude", dParam)) {
-    ROS_INFO("Reference latitude of the scene is given as: %d", dParam);
+    ROS_INFO_STREAM("Reference latitude of the scene is given as: " << dParam);
     gnssReferenceLatitude_ = dParam;
   } else if (usingGnssReferenceFlag_) {
     std::runtime_error("GNSS reference latitude must be provided.");
   }
   if (privateNode.getParam("gnss/reference_longitude", dParam)) {
-    ROS_INFO("Reference longitude of the scene is given as: %d", dParam);
+    ROS_INFO_STREAM("Reference longitude of the scene is given as: " << dParam);
     gnssReferenceLongitude_ = dParam;
   } else if (usingGnssReferenceFlag_) {
     std::runtime_error("GNSS reference longitude must be provided.");
   }
   if (privateNode.getParam("gnss/reference_altitude", dParam)) {
-    ROS_INFO("Reference altitude of the scene is given as: %d", dParam);
+    ROS_INFO_STREAM("Reference altitude of the scene is given as: " << dParam);
     gnssReferenceAltitude_ = dParam;
   } else if (usingGnssReferenceFlag_) {
     std::runtime_error("GNSS reference altitude must be provided.");
+  }
+  if (privateNode.getParam("gnss/reference_heading", dParam)) {
+    ROS_INFO_STREAM("Reference heading of the scene is given as: " << dParam);
+    gnssReferenceHeading_ = dParam;
+  } else if (usingGnssReferenceFlag_) {
+    std::runtime_error("GNSS reference heading must be provided.");
   }
 }
 

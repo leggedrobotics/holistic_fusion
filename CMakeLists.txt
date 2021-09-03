@@ -16,10 +16,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   nodelet
   message_filters
-  geodetic_utils
+  #geodetic_utils
   signal_logger
   excavator_model
   m545_description_ros
+  robot_utils
 )
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)

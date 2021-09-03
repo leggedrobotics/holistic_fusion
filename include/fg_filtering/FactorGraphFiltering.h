@@ -31,8 +31,9 @@
 #include "fg_filtering/SignalLogger.h"
 #include "fg_filtering/StaticTransforms.h"
 #include "fg_filtering/geometry/math_utils.h"
-#include "geodetic_utils/geodetic_conv.hpp"
+//#include "geodetic_utils/geodetic_conv.hpp"
 #include "kindr/Core"
+#include "robot_utils/sensors/GNSS.hpp"
 
 // Menzi
 #include "excavator_model/ActuatorConversions.hpp"
@@ -110,7 +111,7 @@ class FactorGraphFiltering {
   //// Get the robot heading from the two GNSS positions
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
   //// Compute yaw from the heading vector
-  static double computeYawFromHeading_(const gtsam::Point3& headingVector);
+  static double computeYawFromHeadingVector_(const gtsam::Point3& headingVector);
   //// Toggle GNSS Service Method
   bool toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/);
 
@@ -131,7 +132,8 @@ class FactorGraphFiltering {
 
   // Member variables -------------
   /// Geodetic Converter
-  geodetic_converter::GeodeticConverter geodeticConverterLeft_;
+  // geodetic_converter::GeodeticConverter geodeticConverterLeft_;
+  robot_utils::GNSS gnssSensor_;
 
   /// Factor graph
   GraphManager graphMgr_;
@@ -175,6 +177,7 @@ class FactorGraphFiltering {
   double gnssReferenceLatitude_;
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;
+  double gnssReferenceHeading_;
 
   /// Static transforms
   StaticTransforms* staticTransformsPtr_;

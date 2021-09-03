@@ -21,6 +21,11 @@
 
 namespace fg_filtering {
 
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
+#define COLOR_END "\033[0m"
+
 class ImuManager {
  public:
   // Constructor
@@ -34,6 +39,7 @@ class ImuManager {
 
   // Setters
   inline void setImuRate(double d) { imuRate_ = d; }
+  inline void setVerboseLevel(int i) { verboseLevel_ = i; }
 
   // Add to buffers
   void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ);
@@ -42,20 +48,17 @@ class ImuManager {
 
   // Getters
   inline double getImuRate() { return imuRate_; }
-
   void getLastTwoMeasurements(IMUMap& imuMap);
-
   void getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapItr& s_itr);
-
-  void getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key);
-
+  bool getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tLidar, double& tInGraph,
+                                 gtsam::Key& key);
   inline void getCorrespondingImuGraphPose(const double& tLidar, gtsam::Pose3& pose) {
     pose = imuPosesInGraphBuffer_.lower_bound(tLidar)->second;
   }
-
   bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr);
 
-  // Determine initial IMU pose w.r.t to gravity vector pointing up
+  // Public member functions
+  /// Determine initial IMU pose w.r.t to gravity vector pointing up
   bool estimateAttitudeFromImu(const double imu_pose_init_ts, const std::string& imuGravityDirection, gtsam::Rot3& init_attitude,
                                double& gravity_magnitude, Eigen::Vector3d& gyrBias);
 
@@ -76,6 +79,7 @@ class ImuManager {
   GraphIMUPoseMap imuPosesInGraphBuffer_;
   double imuRate_;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and init attitude
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
+  int verboseLevel_ = 0;
 };
 
 }  // namespace fg_filtering

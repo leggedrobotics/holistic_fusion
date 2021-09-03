@@ -148,7 +148,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar")) {
-    ROS_ERROR("PoseBetween factor not added to graph.");
+    std::cerr << YELLOW_START << "GRAPH MANAGER" << COLOR_END << " PoseBetween factor not added to graph." << std::endl;
     return closestLidarKeyK;
   }
 
@@ -172,8 +172,9 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
 
   // Print summary
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("Current key: " << stateKey_ << ", LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key "
-                                    << closestLidarKeyK);
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
+              << " LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
+              << std::endl;
   }
 
   return closestLidarKeyK;
@@ -183,7 +184,11 @@ void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  imuBuffer_.getClosestKeyAndTimestamp(lidarTimeK, closestGraphTime, closestKey);
+  double maxSearchDeviation = 1 / (2 * lidarRate_);
+  if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
+    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+    return;
+  }
 
   auto poseUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseUnaryNoise_[0], poseUnaryNoise_[1], poseUnaryNoise_[2],
                                                              poseUnaryNoise_[3], poseUnaryNoise_[4], poseUnaryNoise_[5])
@@ -202,7 +207,8 @@ void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose
 
   // Print summary
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("Key where LiDAR unary factor will be written to is: " << closestKey);
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
@@ -210,7 +216,11 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  imuBuffer_.getClosestKeyAndTimestamp(gnssTimeK, closestGraphTime, closestKey);
+  double maxSearchDeviation = 1 / (2 * gnssRate_);
+  if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
+    return;
+  }
 
   // Create noise model
   auto gnssPositionUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -229,21 +239,24 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
 
   // Print summary
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("Key where GNSS factor will be written to is: " << closestKey);
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START << ", GNSS factor added to key "
+              << closestKey << COLOR_END << std::endl;
   }
 }
 
 void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw) {
   // Print information
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM(std::setprecision(14) << "GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << ","
-                                          << heading.y() << "," << heading.z());
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
+              << ", GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << "," << heading.y() << ","
+              << heading.z() << std::endl;
   }
 
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  imuBuffer_.getClosestKeyAndTimestamp(gnssTime, closestGraphTime, closestKey);
+  double maxSearchDeviation = 1 / (2 * gnssRate_);
+  imuBuffer_.getClosestKeyAndTimestamp("gnss heading", maxSearchDeviation, gnssTime, closestGraphTime, closestKey);
 
   // Create noise model
   //  auto gnssHeadingUnaryNoise =
@@ -269,7 +282,8 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vecto
 
   // Print summary
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("Key where GNSS factor will be written to is: " << closestKey);
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << " Key where GNSS factor is added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
@@ -279,7 +293,8 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
 
   // Check external motion
   if (pose.translation().norm() > zeroMotionTh_) {
-    ROS_INFO("Not adding zero motion factor due to too big motion.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_
+              << ", Not adding zero motion factor due to too big motion." << std::endl;
     return false;
   }
 
@@ -298,8 +313,8 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
                                                           gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
   if (verboseLevel_ > 0) {
-    ROS_INFO_STREAM("\033[92mCurrent key: " << stateKey_ << ", zero Motion Factor added between key " << closestKeyKm1 << " and key "
-                                            << closestKeyK << "\033[0m");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_
+              << GREEN_START " Zero Motion Factor added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
   }
   return true;
 }
@@ -327,8 +342,8 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   double currentTime;
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM("Initialization took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                           << " ms.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Initialization took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
   // Mutex Block 1 -----------------
@@ -353,8 +368,8 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 2
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM("First mutex block took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                              << " ms.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " First mutex block took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
   // Graph Update (time consuming) -------------------
@@ -368,8 +383,8 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 3
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM("Optimization of the graph took "
-                    << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Optimization of the graph took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
   // Compute result
@@ -381,8 +396,8 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 4
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM("Calculation of the estimate took "
-                    << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Calculation of the estimate took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
   // Mutex block 2 ------------------
@@ -399,8 +414,8 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 5
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    ROS_INFO_STREAM("Second mutex block took " << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count()
-                                               << " ms.");
+    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Second mutex block took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
   return resultNavState;
@@ -416,37 +431,22 @@ gtsam::NavState GraphManager::calculateStateAtKey(const gtsam::Key& key) {
 // Private --------------------------------------------------------------------
 
 bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& closestKeyKm1,
-                                  gtsam::Key& closestKeyK, std::string name) {
+                                  gtsam::Key& closestKeyK, const std::string& name) {
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
-  imuBuffer_.getClosestKeyAndTimestamp(timeKm1, closestGraphTimeKm1, closestKeyKm1);
-  imuBuffer_.getClosestKeyAndTimestamp(timeK, closestGraphTimeK, closestKeyK);
-  if (verboseLevel_ > 1) {
-    ROS_INFO_STREAM("----------------------------------------------------");
-    ROS_INFO_STREAM(std::setprecision(14) << "Time steps we are looking for: " << timeKm1 << ", " << timeK);
-    ROS_INFO_STREAM(std::setprecision(14) << "Time steps we have found     : " << closestGraphTimeKm1 << ", " << closestGraphTimeK);
-    ROS_INFO_STREAM("Time deviation : " << std::abs(1000.0 * (timeKm1 - closestGraphTimeKm1)) << "ms, "
-                                        << std::abs(1000.0 * (timeK - closestGraphTimeK)) << "ms");
-    ROS_INFO_STREAM("Delay          : " << 1000.0 * (stateTime_ - timeK) << "ms");
-  }
-  // Check search result and potentially warn user
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  double timeDeviationKm1 = std::abs(timeKm1 - closestGraphTimeKm1);
-  if (timeDeviationKm1 > maxSearchDeviation) {
-    ROS_ERROR_STREAM("Time deviation at key " << closestKeyKm1 << " is " << timeDeviationKm1
-                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
+  if (!imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1)) {
+    return false;
   }
-  double timeDeviationK = std::abs(timeK - closestGraphTimeK);
-  if (timeDeviationK > maxSearchDeviation) {
-    ROS_ERROR_STREAM("Time deviation at key " << closestKeyK << " is " << timeDeviationK
-                                              << " which is larger than the maximum time deviation of " << maxSearchDeviation);
+  if (!imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK)) {
+    return false;
   }
 
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
-    ROS_ERROR_STREAM("Distance of " << name << " timestamps is too big. Found timestamp difference is  "
-                                    << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum allowed distance of "
-                                    << maxTimestampDistance);
+    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Distance of " << name
+              << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
+              << " which is larger than the maximum admissible distance of " << maxTimestampDistance << std::endl;
     return false;
   }
   return true;
@@ -454,7 +454,8 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
 void GraphManager::updateImuIntegrators_(const IMUMap& imuMeas) {
   if (imuMeas.size() < 2) {
-    std::cout << "_updateImuIntegrators --- Received less than 2 IMU messages --- No Preintegration done" << std::endl;
+    std::cerr << YELLOW_START << "GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
+              << std::endl;
     return;
   }
 

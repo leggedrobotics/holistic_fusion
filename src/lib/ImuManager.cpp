@@ -24,19 +24,37 @@ void ImuManager::getLastTwoMeasurements(IMUMap& imuMap) {
 
 void ImuManager::getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapItr& s_itr) {
   std::cout << "Buffer Start/End: " << std::fixed << imuBuffer_.begin()->first << "/" << imuBuffer_.rbegin()->first
-            << "Searched LiDAR time stamp: " << tLidar << std::endl;
+            << "Searched time stamp: " << tLidar << std::endl;
   s_itr = imuBuffer_.lower_bound(tLidar);
 }
 
-void ImuManager::getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key) {
-  auto upperIterator = timeToKeyBuffer_.upper_bound(tLidar);
+bool ImuManager::getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tK, double& tInGraph,
+                                           gtsam::Key& key) {
+  auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
   auto lowerIterator = upperIterator;
   --lowerIterator;
 
   // Keep key which is closer to tLidar
-  tInGraph =
-      std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->first : upperIterator->first;
-  key = std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->second : upperIterator->second;
+  tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
+  key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
+
+  if (verboseLevel_ >= 2) {
+    std::cout << YELLOW_START << "ImuManager" << COLOR_END << " " << callingName << std::setprecision(14) << " searched time step: " << tK
+              << std::endl;
+    std::cout << YELLOW_START << "ImuManager" << COLOR_END << " " << callingName << std::setprecision(14)
+              << " Found time step: " << tInGraph << std::endl;
+    std::cout << YELLOW_START << "ImuManager" << COLOR_END << " Delay: " << tInGraph - tK << " s" << std::endl;
+  }
+
+  // Check for error and warn user
+  double timeDeviation = std::abs(tInGraph - tK);
+  if (timeDeviation > maxSearchDeviation) {
+    std::cerr << YELLOW_START << "ImuManager " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
+              << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << std::endl;
+    return false;
+  }
+
+  return true;
 }
 
 bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr) {
