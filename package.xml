@@ -30,6 +30,7 @@
   <build_depend>pcl</build_depend>
   <build_depend>signal_logger</build_depend>
   <build_depend>excavator_model</build_depend>
+  <build_depend>m545_description_ros</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
