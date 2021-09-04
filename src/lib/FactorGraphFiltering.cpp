@@ -139,7 +139,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
         }
       }
       // Publish zero motion state
-      publishState_(imuTimeK, gtsam::NavState(initialImuPose_, gtsam::Velocity3(0.0, 0.0, 0.0)), Eigen::Vector3d(0.0, 0.0, 0.0));
+      publishState_(imuTimeK, gtsam::NavState(T_W_I0_, gtsam::Velocity3(0.0, 0.0, 0.0)), Eigen::Vector3d(0.0, 0.0, 0.0));
     }
   }
 }
@@ -268,15 +268,16 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
 
   // Read covariance
-  bool covarianceViolated = leftGnssMsgPtr->position_covariance[0] > 1.0 || leftGnssMsgPtr->position_covariance[4] > 1.0 ||
-                            leftGnssMsgPtr->position_covariance[8] > 1.0;
+  bool covarianceViolated = leftGnssMsgPtr->position_covariance[0] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                            leftGnssMsgPtr->position_covariance[4] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                            leftGnssMsgPtr->position_covariance[8] > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
 
   // Write to grpah and perform logic
   if (!covarianceViolated && usingGnssFlag_) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
-    // graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
-    graphMgr_.addGnssPositionUnaryFactor(imuTimeKm1_.toSec(), W_t_W_I);
+    graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
+    // graphMgr_.addGnssPositionUnaryFactor(imuTimeKm1_.toSec(), W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
@@ -346,7 +347,8 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imu_attitude;
   if (graphMgr_.estimateAttitudeFromImu(imuTimeK.toSec(), imuGravityDirection_, imu_attitude, gravityConstant_,
                                         graphMgr_.getInitGyrBiasReference())) {
-    initialImuAttitude_ = gtsam::Rot3::Ypr(initialGlobalYaw_, imu_attitude.pitch(), imu_attitude.roll());  // IMU yaw to zero
+    gtsam::Rot3 yawR_W_I0 = yawR_W_C0_ * tFToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+    R_W_I0_ = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imu_attitude.pitch(), imu_attitude.roll());
     std::cout << "\033[33mFactorGraphFiltering\033[0m Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_
               << std::endl;
     imuAlignedFlag_ = true;
@@ -379,13 +381,14 @@ void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& lef
 
   // Get heading (assuming that connection between antennas is perpendicular to heading)
   gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "Heading read from the GNSS is the following: " << W_t_heading
+  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Heading read from the GNSS is the following: " << W_t_heading
             << std::endl;
 
   // Get initial global yaw
-  initialGlobalYaw_ = computeYawFromHeadingVector_(W_t_heading);
-  gtsam::Rot3 yawRotationMatrix = gtsam::Rot3::Yaw(initialGlobalYaw_);
-  ROS_INFO_STREAM("Initial global yaw is: " << 180 / M_PI * initialGlobalYaw_);
+  double yaw_W_C0 = computeYawFromHeadingVector_(W_t_heading);
+  yawR_W_C0_ = gtsam::Rot3::Yaw(yaw_W_C0);
+  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "Initial global yaw of cabin is: " << 180 / M_PI * yaw_W_C0
+            << std::endl;
 
   // Get initial GNSS position
   W_t_W_GnssL0_ = leftPosition;
@@ -400,20 +403,20 @@ void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
   // Initialize first node
   /// Initial rotation known from IMU attitude and GNSS yaw
-  initialImuPose_ = gtsam::Pose3(initialImuAttitude_, gtsam::Point3(0.0, 0.0, 0.0));
+  T_W_I0_ = gtsam::Pose3(R_W_I0_, gtsam::Point3(0.0, 0.0, 0.0));
   //// Need to set tf_T_0_Ik_ because function transfromGnssPointToImuFrame makes use of its rotational part --> change later on
-  tf_T_O_Ik_.setData(pose3ToTf(initialImuPose_));
+  tf_T_O_Ik_.setData(pose3ToTf(T_W_I0_));
   /// Add initial IMU translation based on intial orientation
-  initialImuPose_ = gtsam::Pose3(initialImuPose_.rotation(), transformGnssPointToImuFrame_(W_t_W_GnssL0_));
+  T_W_I0_ = gtsam::Pose3(T_W_I0_.rotation(), transformGnssPointToImuFrame_(W_t_W_GnssL0_));
   /// Initialize graph node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), initialImuPose_);
+  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0_);
   // Read initial pose from graph
-  initialImuPose_ = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
-  ROS_WARN_STREAM("INIT t(x,y,z): " << initialImuPose_.translation().transpose()
-                                    << ", RPY(deg): " << initialImuPose_.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
+  T_W_I0_ = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
+  ROS_WARN_STREAM("INIT t(x,y,z): " << T_W_I0_.translation().transpose()
+                                    << ", RPY(deg): " << T_W_I0_.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
   ROS_WARN_STREAM("Factor graph key of very first node: " << graphMgr_.getStateKey() << std::endl);
   // Write in tf member variable
-  tf_T_O_I0_ = pose3ToTf(initialImuPose_);
+  tf_T_O_I0_ = pose3ToTf(T_W_I0_);
   // Initialize global pose
   tf_T_O_Ik_.setData(tf_T_O_I0_);
   tf_T_O_Ik_.frame_id_ = staticTransformsPtr_->getOdomFrame();
@@ -651,7 +654,7 @@ gtsam::Point3 FactorGraphFiltering::getRobotHeading_(const Eigen::Vector3d& left
 }
 
 double FactorGraphFiltering::computeYawFromHeadingVector_(const gtsam::Point3& headingVector) {
-  double yaw = M_PI / 2.0 + atan2(headingVector(1), headingVector(0));
+  double yaw = atan2(headingVector(1), headingVector(0));
   // Compute angle
   if (yaw > M_PI) {
     return yaw - (2 * M_PI);

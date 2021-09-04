@@ -48,6 +48,7 @@ namespace fg_filtering {
 #define ROS_QUEUE_SIZE 100
 #define NUM_LIDAR_CALLBACKS_UNTIL_START 3
 #define NUM_GNSS_CALLBACKS_UNTIL_START 3
+#define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.1
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
@@ -163,12 +164,12 @@ class FactorGraphFiltering {
   ///// Current global transformation
   tf::StampedTransform tf_T_O_Ik_;
   //// Attitude Parameters
-  gtsam::Rot3 initialImuAttitude_;
-  gtsam::Pose3 initialImuPose_;
-  double initialGlobalYaw_ = 0.0;
+  gtsam::Rot3 yawR_W_C0_;
+  gtsam::Rot3 R_W_I0_;
+  gtsam::Pose3 T_W_I0_;
+  tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
   gtsam::Point3 W_t_W_GnssL0_;     // initial global position of left GNSS
   double gravityConstant_ = 9.81;  // Will be overwritten
-  tf::Transform tf_T_O_I0_;        // Initial IMU pose (in graph)
   //// Base IMU measurments
   Eigen::Vector3d latestImuBaseLinearAcc_;
   Eigen::Vector3d latestImuBaseAngularVel_;
