@@ -86,6 +86,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
   const ros::Time imuTimeK = imuMsgPtr->header.stamp;
+
   // Filter out imu messages with same time stamp
   if (imuTimeK == imuTimeKm1_) {
     ROS_WARN_STREAM("Imu time " << imuTimeK << " was repeated.");
@@ -108,7 +109,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   else if (!initedGnssFlag_ && usingGnssFlag_) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
   }  // Initialize graph at next iteration step
-  else if (imuAlignedFlag_ && !initedGraphFlag_) {
+  else if (!initedGraphFlag_ && imuAlignedFlag_) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "Initializing the graph..." << std::endl;
     initGraph_(imuTimeK);
     std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "...graph is initialized." << std::endl;

@@ -120,9 +120,9 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
 
     // Add IMU values
     gtsam::Values valuesEstimate;
-    valuesEstimate.insert(gtsam::symbol_shorthand::X(stateKey_), imuPropagatedState_.pose());
-    valuesEstimate.insert(gtsam::symbol_shorthand::V(stateKey_), imuPropagatedState_.velocity());
-    valuesEstimate.insert(gtsam::symbol_shorthand::B(stateKey_), graphState_.imuBias());
+    valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), imuPropagatedState_.pose());
+    valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), imuPropagatedState_.velocity());
+    valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), graphState_.imuBias());
     newGraphValues_.insert(valuesEstimate);
 
     // Add timestamp for fixed lag smoother
@@ -137,18 +137,14 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
 }
 
 gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose) {
-  // Check
-  if (lidarTimeKm1 > lidarTimeK) {
-    throw std::runtime_error("Time at time step k-1 must be smaller than time at time step k.");
-  }
-
   // Find corresponding keys in graph
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
   double maxLidarTimestampDistance = 1.0 / lidarRate_ + 2.0 * maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar")) {
-    std::cerr << YELLOW_START << "FG-GraphManager" << COLOR_END << " PoseBetween factor not added to graph." << std::endl;
+    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Current key: " << stateKey_
+              << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << std::endl;
     return closestLidarKeyK;
   }
 
@@ -439,6 +435,12 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
     return false;
   }
   if (!imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK)) {
+    return false;
+  }
+
+  // Check
+  if (closestGraphTimeKm1 > closestGraphTimeK) {
+    ROS_ERROR("Time at time step k-1 must be smaller than time at time step k.");
     return false;
   }
 
