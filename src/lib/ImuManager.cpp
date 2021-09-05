@@ -24,26 +24,44 @@ void ImuManager::getLastTwoMeasurements(IMUMap& imuMap) {
 
 void ImuManager::getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapItr& s_itr) {
   std::cout << "Buffer Start/End: " << std::fixed << imuBuffer_.begin()->first << "/" << imuBuffer_.rbegin()->first
-            << "Searched LiDAR time stamp: " << tLidar << std::endl;
+            << "Searched time stamp: " << tLidar << std::endl;
   s_itr = imuBuffer_.lower_bound(tLidar);
 }
 
-void ImuManager::getClosestKeyAndTimestamp(double tLidar, double& tInGraph, gtsam::Key& key) {
-  auto upperIterator = timeToKeyBuffer_.upper_bound(tLidar);
+bool ImuManager::getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tK, double& tInGraph,
+                                           gtsam::Key& key) {
+  auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
   auto lowerIterator = upperIterator;
   --lowerIterator;
 
   // Keep key which is closer to tLidar
-  tInGraph =
-      std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->first : upperIterator->first;
-  key = std::abs(tLidar - lowerIterator->first) < std::abs(upperIterator->first - tLidar) ? lowerIterator->second : upperIterator->second;
+  tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
+  key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
+
+  if (verboseLevel_ >= 2) {
+    std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << " " << callingName << std::setprecision(14)
+              << " searched time step: " << tK << std::endl;
+    std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << " " << callingName << std::setprecision(14)
+              << " Found time step: " << tInGraph << std::endl;
+    std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << " Delay: " << tInGraph - tK << " s" << std::endl;
+  }
+
+  // Check for error and warn user
+  double timeDeviation = std::abs(tInGraph - tK);
+  if (timeDeviation > maxSearchDeviation) {
+    std::cerr << YELLOW_START << "FG-ImuManager " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
+              << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << std::endl;
+    return false;
+  }
+
+  return true;
 }
 
 bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr) {
   // Check if timestamps are in correct order
   if (ts_start >= ts_end) {
-    std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup Timestamps are not correct ts_start(" << std::fixed << ts_start << ") >= ts_end("
-              << ts_end << ")\n";
+    std::cerr << YELLOW_START << "FG-ImuManager" << RED_START << " IMU Lookup Timestamps are not correct ts_start(" << std::fixed
+              << ts_start << ") >= ts_end(" << ts_end << ")\n";
     return false;
   }
 
@@ -54,7 +72,8 @@ bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const d
 
   // Check if it is first value in the buffer which means there is no value before to interpolate with
   if (s_itr == imuBuffer_.begin()) {
-    std::cout << "\033[33mIMU-Manager\033[0m Lookup requires first message of IMU buffer, cannot Interpolate back, "
+    std::cerr << YELLOW_START << "FG-ImuManager" << RED_START
+              << " Lookup requires first message of IMU buffer, cannot Interpolate back, "
                  "Lookup Start/End: "
               << std::fixed << ts_start << "/" << ts_end << ", Buffer Start/End: " << imuBuffer_.begin()->first << "/"
               << imuBuffer_.rbegin()->first << std::endl;
@@ -63,23 +82,25 @@ bool ImuManager::getIMUBufferIteratorsInInterval(const double& ts_start, const d
 
   // Check if lookup start time is ahead of buffer start time
   if (s_itr == imuBuffer_.end()) {
-    std::cout << "\033[33mIMU-Manager\033[0m IMU Lookup start time ahead latest IMU message in the buffer, lookup: " << ts_start
+    std::cerr << YELLOW_START << "FG-ImuManager" << RED_START
+              << " IMU Lookup start time ahead latest IMU message in the buffer, lookup: " << ts_start
               << ", latest IMU: " << imuBuffer_.rbegin()->first << std::endl;
     return false;
   }
 
   // Check if last value is valid
   if (e_itr == imuBuffer_.end()) {
-    std::cout << "\033[33mIMU-Manager\033[0m Lookup is past IMU buffer, with lookup Start/End: " << std::fixed << ts_start << "/" << ts_end
-              << " and latest IMU: " << imuBuffer_.rbegin()->first << std::endl;
+    std::cerr << YELLOW_START << "FG-ImuManager" << RED_START << " Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
+              << ts_start << "/" << ts_end << " and latest IMU: " << imuBuffer_.rbegin()->first << std::endl;
     e_itr = imuBuffer_.end();
     --e_itr;
   }
 
   // Check if two IMU messages are different
   if (s_itr == e_itr) {
-    std::cout << "\033[33mIMU-Manager\033[0m Not Enough IMU values between timestamps , with Start/End: " << std::fixed << ts_start << "/"
-              << ts_end << ", with diff: " << ts_end - ts_start << std::endl;
+    std::cerr << YELLOW_START << "FG-ImuManager" << RED_START
+              << " Not Enough IMU values between timestamps , with Start/End: " << std::fixed << ts_start << "/" << ts_end
+              << ", with diff: " << ts_end - ts_start << std::endl;
     return false;
   }
 
@@ -125,11 +146,12 @@ bool ImuManager::estimateAttitudeFromImu(const double initTs, const std::string&
       gyrBias = initGyrMean;
 
       // Calculate robot initial orientation using gravity vector.
-      std::cout << "\033[33mFGF-IMU-Manager\033[0m Gravity Magnitude: " << gravityMagnitude << std::endl;
-      std::cout << "\033[33mFGF-IMU-Manager\033[0m Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
+      std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << " Gravity Magnitude: " << gravityMagnitude << std::endl;
+      std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
                 << " - Gravity Unit Vector(x,y,z): " << gUnitVec.transpose() << std::endl;
-      std::cout << "\033[33mFGF-IMU-Manager\033[0m Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
-      std::cout << "\033[33mFGF-IMU-Manager\033[0m Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
+      std::cout << YELLOW_START << "FG-ImuManager" << GREEN_START
+                << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
+      std::cout << YELLOW_START << "FG-ImuManager" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
     } else {
       return false;
     }

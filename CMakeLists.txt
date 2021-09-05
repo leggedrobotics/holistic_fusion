@@ -16,10 +16,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   nodelet
   message_filters
-  geodetic_utils
+  #geodetic_utils
   signal_logger
   excavator_model
   m545_description_ros
+  robot_utils
 )
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
@@ -30,7 +31,7 @@ find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
 
-find_package(PCL REQUIRED)
+find_package(PCL REQUIRED COMPONENTS common io)
 message("PCL Version:" ${PCL_VERSION})
 message("PCL Path:" ${PCL_DIR})
 
@@ -45,6 +46,9 @@ include_directories(
   ${PCL_INCLUDE_DIRS}
   ${Python3_INCLUDE_DIRS}
 )
+
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 add_message_files(
   DIRECTORY msg
@@ -78,6 +82,9 @@ add_subdirectory(src/lib)
 
 add_executable(${PROJECT_NAME}_node src/fg_filtering_node.cpp include/fg_filtering/Datatypes.hpp)
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+
+add_executable(leicamap_publisher_node src/pointcloud_publisher_node.cpp)
+target_link_libraries(leicamap_publisher_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
