@@ -106,12 +106,12 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
     alignImu_(imuTimeK);
   }  // Notification that waiting for GNSS
   else if (!initedGnssFlag_ && usingGnssFlag_) {
-    std::cout << "\033[33mFactorGraphFiltering\033[0m Waiting for GNSS to provide global yaw." << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
   }  // Initialize graph at next iteration step
   else if (imuAlignedFlag_ && !initedGraphFlag_) {
-    std::cout << "\033[33mFactorGraphFiltering\033[0m \033[92mInitializing the graph...\033[0m" << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "Initializing the graph..." << std::endl;
     initGraph_(imuTimeK);
-    std::cout << "\033[33mFactorGraphFiltering\033[0m \033[92m...graph is initialized.\033[0m" << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "...graph is initialized." << std::endl;
   }
   // Add measurement to graph
   else if (initedGraphFlag_) {
@@ -129,7 +129,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
       // Log
       signalLogger_.publishLogger(T_O_Ik.pose(), graphMgr_.getIMUBias());
     } else {
-      if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_START) {
+      if (gnssCovarianceViolatedFlag_ || !usingGnssFlag_) {
         // Add zero motion factor in the very beginning to make biases converge
         graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
         {
@@ -252,28 +252,42 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
 
 void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
                                          const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
+  // Static method variables
+  static gtsam::Point3 accumulatedLeftCoordinates__(0.0, 0.0, 0.0);
+  static gtsam::Point3 accumulatedRightCoordinates__(0.0, 0.0, 0.0);
+
+  // Increase counter
   ++gnssCallbackCounter_;
-  // First callback --> set position to zero
-  if (gnssCallbackCounter_ <= 1) {
-    initGnss_(leftGnssMsgPtr, rightGnssMsgPtr);
+
+  // Wait until measurements got accumulated
+  if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
+    accumulatedLeftCoordinates__ += gtsam::Point3(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+    accumulatedRightCoordinates__ += gtsam::Point3(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
     return;
   }
-  // Check whether graph was already initialized
+  // Set reference
+  else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
+    initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
+              accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
+    return;
+  }
+  // Check whether graph was already initialized, otherwise wait
   else if (!initedGraphFlag_) {
     return;
   }
 
-  // Convert ros messages
+  // Convert to cartesian coordinates
   gtsam::Point3 leftPosition, rightPosition;
   convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
 
   // Read covariance
-  bool covarianceViolated = leftGnssMsgPtr->position_covariance[0] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                            leftGnssMsgPtr->position_covariance[4] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                            leftGnssMsgPtr->position_covariance[8] > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
+  gnssCovarianceViolatedFlag_ = leftGnssMsgPtr->position_covariance[0] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                leftGnssMsgPtr->position_covariance[4] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                leftGnssMsgPtr->position_covariance[8] > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
 
   // Write to grpah and perform logic
-  if (!covarianceViolated && usingGnssFlag_) {
+  if (!gnssCovarianceViolatedFlag_ && usingGnssFlag_) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition);
     graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
@@ -302,7 +316,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       const std::lock_guard<std::mutex> lidarUnaryLock(lidarUnaryMutex_);
       addLidarUnaryFlag_ = true;
     }
-    if (covarianceViolated) {
+    if (gnssCovarianceViolatedFlag_) {
       ROS_ERROR_STREAM("Covariance is too big, not using GNSS estimate.");
     } else if (!usingGnssFlag_) {
       ROS_WARN("Received GNSS message, but usage is set to false.");
@@ -357,27 +371,17 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   }
 }
 
-void FactorGraphFiltering::initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
-                                     const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
+void FactorGraphFiltering::initGnss_(const gtsam::Point3& leftGnssCoordinates, const gtsam::Point3& rightGnssCoordinates) {
   // Initialize GNSS converter
   if (usingGnssReferenceFlag_) {
-    // geodeticConverterLeft_.initialiseReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_);
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
-    // geodeticConverterLeft_.initialiseReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
-    gnssSensor_.setReference(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, 0.0);
+    gnssSensor_.setReference(leftGnssCoordinates(0), leftGnssCoordinates(1), leftGnssCoordinates(2), 0.0);
   }
-  // Check whether successful
-  //  if (geodeticConverterLeft_.isInitialised()) {
-  //    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Left GNSS position was initialized." << COLOR_END <<
-  //    std::endl;
-  //  } else {
-  //    ROS_ERROR("Left GNSS position could not be initialized.");
-  //  }
 
   // Get Positions
   gtsam::Point3 leftPosition, rightPosition;
-  convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
+  convertNavSatToPositions(leftGnssCoordinates, rightGnssCoordinates, leftPosition, rightPosition);
 
   // Get heading (assuming that connection between antennas is perpendicular to heading)
   gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
@@ -597,28 +601,19 @@ void FactorGraphFiltering::convertNavSatToPositions(const sensor_msgs::NavSatFix
                                                     const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
                                                     gtsam::Point3& rightPosition) {
   /// Left
-  std::unique_ptr<double> leftEastPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftNorthPtr = std::make_unique<double>();
-  std::unique_ptr<double> leftUpPtr = std::make_unique<double>();
-  //  geodeticConverterLeft_.geodetic2Enu(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude, leftEastPtr.get(),
-  //                                      leftNorthPtr.get(), leftUpPtr.get());
-  // leftPosition = gtsam::Point3(*leftEastPtr, *leftNorthPtr, *leftUpPtr);
   leftPosition = gnssSensor_.gpsToCartesian(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
 
   /// Right
-  auto rightEastPtr = std::make_unique<double>();
-  auto rightNorthPtr = std::make_unique<double>();
-  auto rightUpPtr = std::make_unique<double>();
-  //  geodeticConverterLeft_.geodetic2Enu(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude,
-  //  rightEastPtr.get(),
-  //                                      rightNorthPtr.get(), rightUpPtr.get());
-  //  rightPosition = gtsam::Point3(*rightEastPtr, *rightNorthPtr, *rightUpPtr);
   rightPosition = gnssSensor_.gpsToCartesian(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
+}
 
-  // Rotate them to local coordinate frame
-  //  gtsam::Rot3 R_W_ENU = gtsam::Rot3::Yaw(gnssReferenceHeading_);
-  //  leftPosition = R_W_ENU * leftPosition;
-  //  rightPosition = R_W_ENU * rightPosition;
+void FactorGraphFiltering::convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
+                                                    gtsam::Point3& leftPosition, gtsam::Point3& rightPosition) {
+  /// Left
+  leftPosition = gnssSensor_.gpsToCartesian(leftGnssCoordinate(0), leftGnssCoordinate(1), leftGnssCoordinate(2));
+
+  /// Right
+  rightPosition = gnssSensor_.gpsToCartesian(rightGnssCoordinate(0), rightGnssCoordinate(1), rightGnssCoordinate(2));
 }
 
 gtsam::Vector3 FactorGraphFiltering::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition) {

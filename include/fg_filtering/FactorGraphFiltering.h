@@ -44,10 +44,10 @@
 
 namespace fg_filtering {
 
-// Defined constants
+// Defined macros
 #define ROS_QUEUE_SIZE 100
 #define NUM_LIDAR_CALLBACKS_UNTIL_START 3
-#define NUM_GNSS_CALLBACKS_UNTIL_START 3
+#define NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT 20
 #define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.1
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
@@ -94,7 +94,7 @@ class FactorGraphFiltering {
   //// Set Imu Attitude
   void alignImu_(const ros::Time& imuTimeK);
   //// Initialize GNSS pose
-  void initGnss_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  void initGnss_(const gtsam::Point3& leftGnssCoordinates, const gtsam::Point3& rightGnssCoordinates);
   //// Initialize the graph
   void initGraph_(const ros::Time& timeStamp_k);
   //// Updating the factor graph
@@ -107,6 +107,8 @@ class FactorGraphFiltering {
   void convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
                                 const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
                                 gtsam::Point3& rightPosition);
+  void convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
+                                gtsam::Point3& leftPosition, gtsam::Point3& rightPosition);
   //// Geometric transformation to IMU in world frame
   gtsam::Vector3 transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition);
   //// Get the robot heading from the two GNSS positions
@@ -145,6 +147,7 @@ class FactorGraphFiltering {
   bool initedGraphFlag_ = false;
   bool optimizeGraphFlag_ = false;
   bool usingGnssFlag_ = true;
+  bool gnssCovarianceViolatedFlag_ = false;
   bool usingCompslamFlag_ = true;
   bool addLidarUnaryFlag_ = false;
   bool usingLidarUnaryFlag_ = true;

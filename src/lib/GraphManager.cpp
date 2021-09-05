@@ -148,7 +148,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar")) {
-    std::cerr << YELLOW_START << "GRAPH MANAGER" << COLOR_END << " PoseBetween factor not added to graph." << std::endl;
+    std::cerr << YELLOW_START << "FG-GraphManager" << COLOR_END << " PoseBetween factor not added to graph." << std::endl;
     return closestLidarKeyK;
   }
 
@@ -172,7 +172,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
 
   // Print summary
   if (verboseLevel_ > 0) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
               << " LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
               << std::endl;
   }
@@ -186,7 +186,7 @@ void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * lidarRate_);
   if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
-    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
     return;
   }
 
@@ -207,7 +207,7 @@ void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose
 
   // Print summary
   if (verboseLevel_ > 0) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -218,7 +218,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * gnssRate_);
   if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
-    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
+    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
     return;
   }
 
@@ -239,15 +239,15 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
 
   // Print summary
   if (verboseLevel_ > 0) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START << ", GNSS factor added to key "
-              << closestKey << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << ", GNSS factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
 void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw) {
   // Print information
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
               << ", GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << "," << heading.y() << ","
               << heading.z() << std::endl;
   }
@@ -282,7 +282,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vecto
 
   // Print summary
   if (verboseLevel_ > 0) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " Key where GNSS factor is added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -293,7 +293,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
 
   // Check external motion
   if (pose.translation().norm() > zeroMotionTh_) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_
               << ", Not adding zero motion factor due to too big motion." << std::endl;
     return false;
   }
@@ -313,7 +313,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
                                                           gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
 
   if (verboseLevel_ > 0) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Current key " << stateKey_
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_
               << GREEN_START " Zero Motion Factor added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
   }
   return true;
@@ -342,7 +342,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   double currentTime;
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Initialization took "
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Initialization took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
@@ -368,7 +368,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 2
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " First mutex block took "
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " First mutex block took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
@@ -383,7 +383,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 3
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Optimization of the graph took "
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Optimization of the graph took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
@@ -396,7 +396,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 4
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Calculation of the estimate took "
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Calculation of the estimate took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
@@ -414,7 +414,7 @@ gtsam::NavState GraphManager::updateGraphAndState() {
   /// Timing 5
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
-    std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Second mutex block took "
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Second mutex block took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
   }
 
@@ -444,7 +444,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
-    std::cerr << YELLOW_START << "GraphManager" << RED_START << " Distance of " << name
+    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Distance of " << name
               << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
               << " which is larger than the maximum admissible distance of " << maxTimestampDistance << std::endl;
     return false;
@@ -454,7 +454,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
 void GraphManager::updateImuIntegrators_(const IMUMap& imuMeas) {
   if (imuMeas.size() < 2) {
-    std::cerr << YELLOW_START << "GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
+    std::cerr << YELLOW_START << "FG-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
               << std::endl;
     return;
   }
