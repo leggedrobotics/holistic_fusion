@@ -32,6 +32,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", ROS_QUEUE_SIZE);
   pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", ROS_QUEUE_SIZE);
   excavatorStatePublisher_ = node.advertise<m545_msgs::M545State>("/m545_state", ROS_QUEUE_SIZE);
+  imuMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::ImuMultiplot>("/fg_filtering/imuMultiplot", ROS_QUEUE_SIZE);
+  lidarMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::LidarMultiplot>("/fg_filtering/lidarMultiplot", ROS_QUEUE_SIZE);
   /// Messages
   odomPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   optimizationPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -143,6 +145,13 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
       publishState_(imuTimeK, gtsam::NavState(T_W_I0_, gtsam::Velocity3(0.0, 0.0, 0.0)), Eigen::Vector3d(0.0, 0.0, 0.0));
     }
   }
+  // Plotting in rqt_multiplot
+  fg_filtering_log_msgs::ImuMultiplot imuMultiplot;
+  imuMultiplot.time_stamp = imuTimeK.toSec();
+  imuMultiplot.roll_velocity = angularVel(0);
+  imuMultiplot.pitch_velocity = angularVel(1);
+  imuMultiplot.yaw_velocity = angularVel(2);
+  imuMultiplotPublisher_.publish(imuMultiplot);
 }
 
 void FactorGraphFiltering::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
@@ -182,25 +191,26 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   // Set initial compslam pose after third callback (because first compslam pose is wrong)
   ++lidarCallbackCounter_;
   if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
-    compslamTimeK_ = odomLidarPtr->header.stamp;
+    compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
     tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
     return;
   }
   // Set LiDAR time
   compslamTimeKm1 = compslamTimeK_;
-  compslamTimeK_ = odomLidarPtr->header.stamp;
+  compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
+
+  /// Delta pose
+  gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
 
   if (initedGraphFlag_) {
     // Add LiDAR measurement as delta factor
     if (!addLidarUnaryFlag_) {
       /// Reset LiDAR Unary factor intiialization
       lidarUnaryFactorInitialized__ = false;
-      /// Delta pose
-      gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
-      gtsam::Pose3 lidarDeltaPose(T_Ikm1_Ik);
+
       // Write the lidar odom delta to the graph
-      lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactor(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), lidarDeltaPose);
+      lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactor(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
 
       // Write current compslam pose to latest delta pose
       tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
@@ -249,6 +259,13 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     // Set last pose for the next iteration
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
   }
+  // Plotting in rqt_multiplot
+  fg_filtering_log_msgs::LidarMultiplot lidarMultiplot;
+  lidarMultiplot.time_stamp = compslamTimeK_.toSec();
+  lidarMultiplot.delta_roll = 10.0 * T_Ikm1_Ik.rotation().roll();
+  lidarMultiplot.delta_pitch = 10.0 * T_Ikm1_Ik.rotation().pitch();
+  lidarMultiplot.delta_yaw = 10.0 * T_Ikm1_Ik.rotation().yaw();
+  lidarMultiplotPublisher_.publish(lidarMultiplot);
 }
 
 void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
@@ -775,6 +792,9 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   if (privateNode.getParam("graph_params/gnssRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - GNSS rate: " << dParam);
     graphMgr_.setGnssRate(dParam);
+  }
+  if (privateNode.getParam("graph_params/imuTimeOffset", dParam)) {
+    imuTimeOffset_ = dParam;
   }
   if (privateNode.getParam("graph_params/smootherLag", dParam)) {
     graphMgr_.setSmootherLag(dParam);

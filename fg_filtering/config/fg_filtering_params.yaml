@@ -5,10 +5,10 @@ common_params:
 
 #Factor Graph
 graph_params:
+  imuRate: 100                             #Rate of IMU input (Hz)
   lidarRate: 10
   gnssRate: 20
-  imuRate: 100                             #Rate of IMU input (Hz)
-  imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
+  imuTimeOffset: 0.035 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
   smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
@@ -29,8 +29,8 @@ noise_params:
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ### LiDAR
-  poseBetweenNoise: [2.0e-01, 2.0e-01, 2.0e-01, 5.0e-00, 5.0e-00, 5.0e-00] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
-  poseUnaryNoise: [2.0, 2.0, 0.5, 0.1, 0.1, 0.5] # ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 2.0e-01, 2.0e-01, 2.0e-01, 5.0e-00, 5.0e-00, 5.0e-00 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseUnaryNoise: [ 2.0, 2.0, 0.5, 0.1, 0.1, 0.5 ] # ORDER RPY(rad) - XYZ(meters)
   ### GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
   gnssHeadingUnaryNoise: 1.0 # x,y,z of heading vector

@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   excavator_model
   m545_description_ros
   robot_utils
+  fg_filtering_log_msgs
 )
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
@@ -49,12 +50,6 @@ include_directories(
 
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-
-add_message_files(
-  DIRECTORY msg
-  FILES
-  OptStatus.msg
-)
 
 generate_messages(
   DEPENDENCIES

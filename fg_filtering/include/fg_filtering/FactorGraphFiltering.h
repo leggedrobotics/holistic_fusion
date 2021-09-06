@@ -39,6 +39,8 @@
 #include "excavator_model/ActuatorConversions.hpp"
 #include "excavator_model/ConversionTraits.hpp"
 #include "excavator_model/ExcavatorState.hpp"
+#include "fg_filtering_log_msgs/ImuMultiplot.h"
+#include "fg_filtering_log_msgs/LidarMultiplot.h"
 #include "m545_description/M545Measurements.hpp"
 #include "m545_description_ros/ConversionTraits.hpp"
 
@@ -159,6 +161,7 @@ class FactorGraphFiltering {
   /// Times
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
+  double imuTimeOffset_ = 0.0;
 
   /// Containers
   //// Transformations
@@ -195,6 +198,8 @@ class FactorGraphFiltering {
   ros::Publisher pubLeftGnssPath_;
   ros::Publisher pubRightGnssPath_;
   ros::Publisher excavatorStatePublisher_;
+  ros::Publisher imuMultiplotPublisher_;
+  ros::Publisher lidarMultiplotPublisher_;
 
   /// Services
   ros::ServiceServer toggleGnssUsageService_;
