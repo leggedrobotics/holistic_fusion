@@ -155,6 +155,10 @@ class FactorGraphFiltering {
   bool usingLidarUnaryFlag_ = true;
   bool usingGnssReferenceFlag_ = true;
 
+  /// Thresholds
+  double gnssOutlierThreshold_ = 1.0;
+  double graphUpdateThreshold_ = 0.2;
+
   /// Strings
   std::string imuGravityDirection_;
 

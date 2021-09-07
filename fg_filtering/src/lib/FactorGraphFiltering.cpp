@@ -88,6 +88,11 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
   const ros::Time imuTimeK = imuMsgPtr->header.stamp;
+  // Define variables for timing
+  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
+  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
+  // Timing
+  startLoopTime = std::chrono::high_resolution_clock::now();
 
   // Filter out imu messages with same time stamp
   if (imuTimeK == imuTimeKm1_) {
@@ -101,11 +106,10 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
 
-  // Add to buffer
-  graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
-
   // If IMU not yet aligned
   if (!imuAlignedFlag_ && (initedGnssFlag_ || !usingGnssFlag_)) {
+    // Add to buffer
+    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     alignImu_(imuTimeK);
   }  // Notification that waiting for GNSS
   else if (!initedGnssFlag_ && usingGnssFlag_) {
@@ -119,7 +123,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   // Add measurement to graph
   else if (initedGraphFlag_) {
     // Add IMU factor and get propagated state
-    gtsam::NavState T_O_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec());
+    gtsam::NavState T_O_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel);
     // Write information to global variable
     tf_T_O_Ik_.setData(pose3ToTf(T_O_Ik.pose()));
     tf_T_O_Ik_.frame_id_ = staticTransformsPtr_->getOdomFrame();
@@ -129,6 +133,11 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
       Eigen::Vector3d correctedAngularVel = graphMgr_.getIMUBias().correctGyroscope(angularVel);
       // Publish
       publishState_(imuTimeK, T_O_Ik, correctedAngularVel);
+      endLoopTime = std::chrono::high_resolution_clock::now();
+      if (verboseLevel_) {
+        std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "Start of IMU callback until publishing took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+      }
       // Log
       signalLogger_.publishLogger(T_O_Ik.pose(), graphMgr_.getIMUBias());
     } else {
@@ -194,6 +203,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
     tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
+    tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
     return;
   }
   // Set LiDAR time
@@ -208,15 +218,15 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     if (!addLidarUnaryFlag_) {
       /// Reset LiDAR Unary factor intiialization
       lidarUnaryFactorInitialized__ = false;
-
-      // Write the lidar odom delta to the graph
-      lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactor(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
-
       // Write current compslam pose to latest delta pose
       tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
     }
+
+    // Write the lidar odom delta to the graph
+    lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactor(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
+
     // Add lidar measurement as unary factor
-    else {
+    if (addLidarUnaryFlag_) {
       if (!lidarUnaryFactorInitialized__) {
         lidarUnaryFactorInitialized__ = true;
         T_O_ILatestDelta_Graph__ = graphMgr_.calculateStateAtKey(lastDeltaMeasurementKey__).pose();
@@ -224,15 +234,10 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
       }
       /// Delta pose
       gtsam::Pose3 T_ILatestDelta_Ik(computeDeltaPose(tf_compslam_T_O_ILatestDelta__, tf_compslam_T_O_Ik));
-      std::cout << "Compslam Pose 1: " << tf_compslam_T_O_ILatestDelta__.getOrigin().x() << ","
-                << tf_compslam_T_O_ILatestDelta__.getOrigin().y() << "," << tf_compslam_T_O_ILatestDelta__.getOrigin().z() << std::endl;
-      std::cout << "Compslam Pose 2: " << tf_compslam_T_O_Ik.getOrigin().x() << "," << tf_compslam_T_O_Ik.getOrigin().y() << ","
-                << tf_compslam_T_O_Ik.getOrigin().z() << std::endl;
-      std::cout << "Delta Pose: " << T_ILatestDelta_Ik << std::endl;
       gtsam::Pose3 T_O_Ik = T_O_ILatestDelta_Graph__ * T_ILatestDelta_Ik;
-      std::cout << "Predicted Pose: " << T_O_Ik << std::endl;
       graphMgr_.addPoseUnaryFactor(compslamTimeK_.toSec(), T_O_Ik);
     }
+
     // Performed in any case
     {
       // Mutex for optimizeGraph Flag
@@ -780,7 +785,7 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     throw std::runtime_error("Rosparam 'launch/using_compslam' must be set.");
   }
 
-  // Factor Graph
+  // Factor Graph Parameters
   if (privateNode.getParam("graph_params/imuRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
     graphMgr_.setImuRate(dParam);
@@ -813,6 +818,13 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
     usingLidarUnaryFlag_ = bParam;
   }
 
+  // Outlier Parameters
+  if (privateNode.getParam("outlier_params/gnssOutlierThreshold", dParam)) {
+    gnssOutlierThreshold_ = dParam;
+  }
+  if (privateNode.getParam("outlier_params/graphUpdateThreshold", dParam)) {
+    graphUpdateThreshold_ = dParam;
+  }
   // Noise Parameters
   /// Accelerometer
   if (privateNode.getParam("noise_params/accNoiseDensity", dParam)) {

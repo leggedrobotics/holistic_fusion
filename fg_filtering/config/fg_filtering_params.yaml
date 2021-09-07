@@ -10,15 +10,18 @@ graph_params:
   gnssRate: 20
   imuTimeOffset: 0.035 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
   smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
-  additonalIterations: 1                  #Additional iterations of graph optimizer after update with new factors
+  additonalIterations: 0                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false
-  usingLidarUnary: false
+  usingLidarUnary: true
+outlier_params:
+  gnssOutlierThreshold: 1 # in meters, if jumping more than this, it is considered as abscent gnss, occures between two gnss measurements
+  graphUpdateThreshold: 0.2 # in meters, if jumping more than this, it is added to map->odom, and prediction model is used for odom->robot, occures between 2 imu messages
 ## Noise Parameters
 noise_params:
   ### IMU
   #### Accelerometer
-  accNoiseDensity: 7.225e-07                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+  accNoiseDensity: 7.225e-7                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
   accBiasRandomWalk: 1.0e-06               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
   #### Gyro
@@ -29,18 +32,18 @@ noise_params:
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ### LiDAR
-  poseBetweenNoise: [ 2.0e-01, 2.0e-01, 2.0e-01, 5.0e-00, 5.0e-00, 5.0e-00 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
-  poseUnaryNoise: [ 2.0, 2.0, 0.5, 0.1, 0.1, 0.5 ] # ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 10.0, 10.0, 0.5, 2.0, 2.0, 2.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseUnaryNoise: [ 1000.0, 1000.0, 1000.0, 5.0, 5.0, 5.0 ] # ORDER RPY(rad) - XYZ(meters)
   ### GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
   gnssHeadingUnaryNoise: 1.0 # x,y,z of heading vector
 # Relinearization
 relinearization_params:
-  positionReLinTh: 5.0e-03                    #Position linearization threshold
-  rotationReLinTh: 1.0e-03                    #Rotation linearization threshold
-  velocityReLinTh: 1.0e-03                     #Linear Velocity linearization threshold
-  accBiasReLinTh: 1.0e-04                      #Accelerometer bias linearization threshold
-  gyrBiasReLinTh: 1.0e-04                      #Gyroscope bias linearization threshold
+  positionReLinTh: 5.0e-10                    #Position linearization threshold
+  rotationReLinTh: 1.0e-10                    #Rotation linearization threshold
+  velocityReLinTh: 1.0e-10                     #Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-10                      #Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-10                      #Gyroscope bias linearization threshold
   relinearizeSkip: 1
   enableRelinearization: true
   evaluateNonlinearError: false

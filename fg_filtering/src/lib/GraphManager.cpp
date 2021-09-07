@@ -88,9 +88,10 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   return true;
 }
 
-gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
+gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc,
+                                                      const Eigen::Vector3d& angularVel) {
   // Write current time
-  stateTime_ = imuTime_k;
+  stateTime_ = imuTimeK;
 
   {
     // Operating on graph data --> acquire mutex
@@ -100,11 +101,16 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
     gtsam::Key oldKey = stateKey_;
     gtsam::Key newKey = newStateKey_();
 
-    // Add to key buffer
-    imuBuffer_.addToKeyBuffer(imuTime_k, newKey);
-    // Get last two measurements from buffer
+    // Buffers
+    /// Add to measurement buffer
+    addToIMUBuffer(imuTimeK, linearAcc, angularVel);
+    /// Add to key buffer
+    imuBuffer_.addToKeyBuffer(imuTimeK, newKey);
+    /// Add to IMU pose buffer
+    imuBuffer_.addImuPoseToBuffer(imuTimeK, imuPropagatedState_.pose());
+
+    // Get last two measurements from buffer to determine dt
     IMUMap imuMeas;
-    /// Two measurements to determine dt
     imuBuffer_.getLastTwoMeasurements(imuMeas);
 
     // Update IMU preintegrator
@@ -126,11 +132,8 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTime_k) {
     newGraphValues_.insert(valuesEstimate);
 
     // Add timestamp for fixed lag smoother
-    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTime_k, newGraphKeysTimestampsMap_);
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, newGraphKeysTimestampsMap_);
   }
-
-  // Add to IMU pose buffer
-  imuBuffer_.addImuPoseToBuffer(imuTime_k, imuPropagatedState_.pose());
 
   // Return copy of propagated state (for publishing)
   return imuPropagatedState_;
@@ -153,7 +156,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
       gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise_[0], poseBetweenNoise_[1], poseBetweenNoise_[2],
                                            poseBetweenNoise_[3], poseBetweenNoise_[4], poseBetweenNoise_[5])
                                               .finished());  // rad,rad,rad,m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.3), poseBetweenNoise);
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.1), poseBetweenNoise);
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
@@ -181,18 +184,22 @@ void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * lidarRate_);
-  if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
-    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-    return;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+      return;
+    }
   }
 
   auto poseUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseUnaryNoise_[0], poseUnaryNoise_[1], poseUnaryNoise_[2],
                                                              poseUnaryNoise_[3], poseUnaryNoise_[4], poseUnaryNoise_[5])
                                                                 .finished());  // rad,rad,rad,x,y,z
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.3), poseUnaryNoise);
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), poseUnaryNoise);
 
   // Unary factor
-  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(stateKey_), unaryPose, tukeyErrorFunction);
+  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, tukeyErrorFunction);
 
   // Write to graph
   {
@@ -213,9 +220,13 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * gnssRate_);
-  if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
-    std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
-    return;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
+      return;
+    }
   }
 
   // Create noise model
@@ -240,11 +251,11 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
   }
 }
 
-void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw) {
+void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const gtsam::Vector3& heading, double measuredYaw) {
   // Print information
   if (verboseLevel_ > 2) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
-              << ", GNSS heading measurement at time stamp " << gnssTime << " is: " << heading.x() << "," << heading.y() << ","
+              << ", GNSS heading measurement at time stamp " << gnssTimeK << " is: " << heading.x() << "," << heading.y() << ","
               << heading.z() << std::endl;
   }
 
@@ -252,7 +263,14 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vecto
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * gnssRate_);
-  imuBuffer_.getClosestKeyAndTimestamp("gnss heading", maxSearchDeviation, gnssTime, closestGraphTime, closestKey);
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Heading", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << std::endl;
+      return;
+    }
+  }
 
   // Create noise model
   //  auto gnssHeadingUnaryNoise =
@@ -431,11 +449,15 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  if (!imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1)) {
-    return false;
-  }
-  if (!imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK)) {
-    return false;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1)) {
+      return false;
+    }
+    if (!imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK)) {
+      return false;
+    }
   }
 
   // Check
@@ -449,7 +471,6 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
     std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Distance of " << name
               << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
               << " which is larger than the maximum admissible distance of " << maxTimestampDistance << std::endl;
-    return false;
   }
   return true;
 }

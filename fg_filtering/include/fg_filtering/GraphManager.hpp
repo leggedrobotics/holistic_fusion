@@ -40,7 +40,7 @@ class GraphManager {
   // Change Graph
   bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-  gtsam::NavState addImuFactorAndGetState(const double imuTime_k);
+  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel);
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose);
   void addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
@@ -127,6 +127,7 @@ class GraphManager {
   gtsam::ISAM2Params isamParams_;
   /// Data buffers for callbacks to add information via member functions
   gtsam::NonlinearFactorGraph newGraphFactors_;
+  gtsam::NonlinearFactorGraph newLocalFallbackGraphFactors_;
   gtsam::Values newGraphValues_;
   std::map<gtsam::Key, double> newGraphKeysTimestampsMap_;
   /// Buffer Preintegrator
