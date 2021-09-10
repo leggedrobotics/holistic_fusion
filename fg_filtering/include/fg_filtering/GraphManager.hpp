@@ -40,13 +40,18 @@ class GraphManager {
   // Change Graph
   bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel);
+  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
+                                          bool& relocalizationFlag);
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose);
   void addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
+
+  // Service calls
+  void activateGlobalGraph();
+  void activateFallbackGraph();
 
   // Update graph and get new state
   gtsam::NavState updateGraphAndState();
@@ -121,15 +126,28 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> mainGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
-
   fg_filtering::State graphState_;
   gtsam::ISAM2Params isamParams_;
-  /// Data buffers for callbacks to add information via member functions
-  gtsam::NonlinearFactorGraph newGraphFactors_;
-  gtsam::NonlinearFactorGraph newLocalFallbackGraphFactors_;
-  gtsam::Values newGraphValues_;
-  std::map<gtsam::Key, double> newGraphKeysTimestampsMap_;
+  // Graph Pointers
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalGraphPtr_;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackGraphPtr_;
+  /// Data buffers
+  gtsam::NonlinearFactorGraph globalFactorsBuffer_;
+  gtsam::NonlinearFactorGraph fallbackFactorsBuffer_;
+  ;
+  /// Graph names
+  std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
+
+  /// Selector
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeGraphPtr_ = globalGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
+  gtsam::NonlinearFactorGraph& activeFactorsBuffer_ = globalFactorsBuffer_;
+  /// Counter
+  int numOptimizationsSinceGraphSwitching_ = 0;
+  bool sentRelocalizationCommandAlready_ = true;
+
+  // Values and timestamp map --> same for both graphs
+  gtsam::Values graphValuesBuffer_;
+  std::map<gtsam::Key, double> graphKeysTimestampsMapBuffer_;
   /// Buffer Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
   /// Step Preintegrator
@@ -140,6 +158,7 @@ class GraphManager {
   // Member variables
   /// Mutex
   std::mutex operateOnGraphDataMutex_;
+  std::mutex consistentActiveGraphMutex_;
   /// Propagated state (at IMU frequency)
   gtsam::NavState imuPropagatedState_;
   /// IMU Preintegration

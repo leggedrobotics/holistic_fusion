@@ -34,7 +34,6 @@ class HeadingFactorYaw : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   gtsam::Vector evaluateError(const gtsam::Pose3& W_T_I, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const override {
     // Transform state
     gtsam::Vector1 predictedYaw(W_T_I.rotation().yaw());
-    std::cout << "Predicted yaw: " << predictedYaw << ", measured yaw: " << measuredYaw_ << std::endl;
 
     // Jacobian
     if (H_Ptr) {
@@ -42,7 +41,7 @@ class HeadingFactorYaw : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
     }
 
     // Compute error
-    gtsam::Vector1 difference = predictedYaw - measuredYaw_;
+    gtsam::Vector1 difference = predictedYaw - gtsam::Vector1(measuredYaw_);
     if (difference(0) > M_PI) {
       difference = difference - gtsam::Vector1(2 * M_PI);
     } else if (difference(0) < -M_PI) {
@@ -135,13 +134,12 @@ class HeadingFactorHeadingVector : public gtsam::NoiseModelFactor1<gtsam::Pose3>
     // Transform state
     double predictedYaw = W_T_I.rotation().yaw();
 
+    // std::cout << "Yaw in heading factor evaluate error: " << 180 / M_PI * predictedYaw << std::endl;
+
     // Rotate x-pointing vector using current state estimate
     // gtsam::Point3 predictedHeading = gtsam::Rot3::Yaw(predictedYaw).rotate(gtsam::Point3(1.0, 0.0, 0.0));
     gtsam::Point3 predictedHeading =
-        gtsam::Pose3(gtsam::Rot3::Yaw(predictedYaw), gtsam::Point3(0.0, 0.0, 0.0)).transformFrom(gtsam::Point3(1.0, 0.0, 0.0), H_Ptr);
-
-    std::cout << "Jacobian matrix: " << *H_Ptr << std::endl;
-    std::cout << "Predicted heading: " << predictedHeading << ", measured heading: " << measuredHeading_ << std::endl;
+        gtsam::Pose3(gtsam::Rot3::Yaw(predictedYaw), gtsam::Point3(0.0, 0.0, 0.0)).transformFrom(gtsam::Point3(0.0, 0.0, 1.0), H_Ptr);
 
     return (predictedHeading - measuredHeading_);
   }

@@ -255,15 +255,15 @@ inline tf::Transform pose3ToTf(const gtsam::Pose3& T) {
   return tf_T;
 }
 
-inline gtsam::Pose3 tFToPose3(const tf::Transform& tf_T) {
+inline gtsam::Pose3 tfToPose3(const tf::Transform& tf_T) {
   return gtsam::Pose3(gtsam::Rot3(tf_T.getRotation().w(), tf_T.getRotation().x(), tf_T.getRotation().y(), tf_T.getRotation().z()),
                       gtsam::Vector3(tf_T.getOrigin().x(), tf_T.getOrigin().y(), tf_T.getOrigin().z()));
 }
 
 // Transformations need to be in same coordinate frame
 gtsam::Pose3 computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
-  gtsam::Pose3 T_km1 = tFToPose3(tf_T_km1);
-  gtsam::Pose3 T_k = tFToPose3(tf_T_k);
+  gtsam::Pose3 T_km1 = tfToPose3(tf_T_km1);
+  gtsam::Pose3 T_k = tfToPose3(tf_T_k);
   gtsam::Pose3 T_km1_inv = T_km1.inverse();
   return T_km1_inv * T_k;
 }

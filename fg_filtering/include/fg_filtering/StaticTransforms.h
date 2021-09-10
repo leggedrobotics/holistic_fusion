@@ -13,6 +13,8 @@ class StaticTransforms {
   StaticTransforms(ros::NodeHandle& privateNode);
 
   // Setters
+  void setMapFrame(const std::string& s) { mapFrame_ = s; }
+
   void setOdomFrame(const std::string& s) { odomFrame_ = s; }
 
   void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
@@ -33,6 +35,8 @@ class StaticTransforms {
 
   // Getters
   /// Frames
+  std::string getMapFrame() { return mapFrame_; }
+
   std::string getOdomFrame() { return odomFrame_; }
 
   std::string getBaseLinkFrame() { return baseLinkFrame_; }
@@ -84,6 +88,7 @@ class StaticTransforms {
   /// Description
   std::string urdfDescription_;
   /// Frames
+  std::string mapFrame_;
   std::string odomFrame_;
   std::string baseLinkFrame_;
   std::string imuCabinFrame_;

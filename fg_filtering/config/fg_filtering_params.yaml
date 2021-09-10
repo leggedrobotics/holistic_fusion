@@ -1,12 +1,12 @@
 #Common
 common_params:
-  verbosity: 0                         #Debug Output, 0-disable, higher for more verbose output
+  verbosity: 0                         #Debug Output, 0: only important events, 1: optimization duration, 2: added factors
   logPlots: true
 
 #Factor Graph
 graph_params:
   imuRate: 100                             #Rate of IMU input (Hz)
-  lidarRate: 10
+  lidarRate: 5
   gnssRate: 20
   imuTimeOffset: 0.035 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
   smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
@@ -15,8 +15,8 @@ graph_params:
   enableDetailedResults: false
   usingLidarUnary: true
 outlier_params:
-  gnssOutlierThreshold: 1 # in meters, if jumping more than this, it is considered as abscent gnss, occures between two gnss measurements
-  graphUpdateThreshold: 0.2 # in meters, if jumping more than this, it is added to map->odom, and prediction model is used for odom->robot, occures between 2 imu messages
+  gnssOutlierThreshold: 0.3 # in meters, if jumping more than this, it is considered as abscent gnss, occures between two gnss measurements
+  #graphUpdateThreshold: 0.2 # in meters, if jumping more than this, it is added to map->odom, and prediction model is used for odom->robot, occures between 2 imu messages
 ## Noise Parameters
 noise_params:
   ### IMU
@@ -32,8 +32,8 @@ noise_params:
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ### LiDAR
-  poseBetweenNoise: [ 10.0, 10.0, 0.5, 2.0, 2.0, 2.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
-  poseUnaryNoise: [ 1000.0, 1000.0, 1000.0, 5.0, 5.0, 5.0 ] # ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseUnaryNoise: [ 1000.0, 1000.0, 0.5, 2.0, 2.0, 2.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ### GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
   gnssHeadingUnaryNoise: 1.0 # x,y,z of heading vector
