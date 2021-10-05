@@ -33,7 +33,7 @@ noise_params:
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ### LiDAR
   poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
-  poseUnaryNoise: [ 1000.0, 1000.0, 0.5, 2.0, 2.0, 2.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  poseUnaryNoise: [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ### GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
   gnssHeadingUnaryNoise: 1.0 # x,y,z of heading vector

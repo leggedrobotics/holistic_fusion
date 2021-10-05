@@ -31,7 +31,6 @@
 #include "fg_filtering/SignalLogger.h"
 #include "fg_filtering/StaticTransforms.h"
 #include "fg_filtering/geometry/math_utils.h"
-//#include "geodetic_utils/geodetic_conv.hpp"
 #include "kindr/Core"
 #include "robot_utils/sensors/GNSS.hpp"
 
@@ -166,6 +165,7 @@ class FactorGraphFiltering {
   /// Times
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
+  ros::Time imuTimeK_;
   double imuTimeOffset_ = 0.0;
 
   /// Containers
@@ -202,6 +202,7 @@ class FactorGraphFiltering {
   ros::Publisher pubOdometryCabin_;
   ros::Publisher pubOdometryLidar_;
   ros::Publisher pubWorldLidar_;
+  ros::Publisher pubWorldImu_;
   ros::Publisher pubLaserImuBias_;
   ros::Publisher pubOdomPath_;
   ros::Publisher pubOptimizationPath_;
@@ -247,6 +248,7 @@ class FactorGraphFiltering {
 
   // Signal Logger
   SignalLogger signalLogger_;
+  SignalLoggerGnss signalLoggerGnss_;
 
   /// Counter
   long lidarCallbackCounter_ = 0;  // number of processed lidar frames

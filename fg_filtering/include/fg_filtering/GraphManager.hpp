@@ -54,7 +54,7 @@ class GraphManager {
   void activateFallbackGraph();
 
   // Update graph and get new state
-  gtsam::NavState updateGraphAndState();
+  gtsam::NavState updateGraphAndState(double& currentTime);
 
   // Compute state at specific key
   gtsam::NavState calculateStateAtKey(const gtsam::Key& key);
@@ -154,6 +154,8 @@ class GraphManager {
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
   ImuManager imuBuffer_;
+  gtsam::Vector6 lastImuVector_;
+  bool firstImuCallback_ = true;
 
   // Member variables
   /// Mutex

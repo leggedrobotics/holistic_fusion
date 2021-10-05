@@ -78,6 +78,9 @@ add_subdirectory(src/lib)
 add_executable(${PROJECT_NAME}_node src/fg_filtering_node.cpp include/fg_filtering/Datatypes.hpp)
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
+add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)
+target_link_libraries(${PROJECT_NAME}_tsif_node ${PROJECT_NAME})
+
 add_executable(leicamap_publisher_node src/pointcloud_publisher_node.cpp)
 target_link_libraries(leicamap_publisher_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
