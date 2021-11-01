@@ -6,7 +6,7 @@ common_params:
 #Factor Graph
 graph_params:
   imuRate: 100                             #Rate of IMU input (Hz)
-  lidarRate: 10
+  lidarRate: 5
   gnssRate: 20
   imuTimeOffset: 0.035 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
   smootherLag: 6.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
