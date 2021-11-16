@@ -4,7 +4,6 @@
 
 // C++
 #include <map>
-#include <mutex>
 
 // Eigen
 #include <Eigen/Dense>
@@ -26,36 +25,33 @@ namespace fg_filtering {
 #define RED_START "\033[31m"
 #define COLOR_END "\033[0m"
 
-class ImuManager {
+class ImuBuffer {
  public:
   // Constructor
-  ImuManager() : imuRate_(DEFAULT_IMU_RATE) {
+  ImuBuffer() : imuRate_(DEFAULT_IMU_RATE) {
     // Reset IMU Buffer
-    imuBuffer_.clear();
+    timeToImuBuffer_.clear();
   }
 
   // Destructor
-  ~ImuManager() = default;
+  ~ImuBuffer() = default;
 
   // Setters
   inline void setImuRate(double d) { imuRate_ = d; }
+  inline void setImuBufferLength(int i) { imuBufferLength_ = i; }
   inline void setVerboseLevel(int i) { verboseLevel_ = i; }
 
   // Add to buffers
   void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ);
-  inline void addToKeyBuffer(double ts, gtsam::Key key) { timeToKeyBuffer_[ts] = key; }
-  inline void addImuPoseToBuffer(double ts, const gtsam::Pose3& pose) { imuPosesInGraphBuffer_[ts] = pose; }
+  void addToKeyBuffer(double ts, gtsam::Key key);
 
   // Getters
   inline double getImuRate() { return imuRate_; }
-  void getLastTwoMeasurements(IMUMap& imuMap);
-  void getClosestIMUBufferIteratorToTime(const double& tLidar, IMUMapItr& s_itr);
+  void getLastTwoMeasurements(TimeToImuMap& imuMap);
   bool getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tLidar, double& tInGraph,
                                  gtsam::Key& key);
-  inline void getCorrespondingImuGraphPose(const double& tLidar, gtsam::Pose3& pose) {
-    pose = imuPosesInGraphBuffer_.lower_bound(tLidar)->second;
-  }
-  bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, IMUMapItr& s_itr, IMUMapItr& e_itr);
+  bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, TimeToImuMap::iterator& s_itr,
+                                       TimeToImuMap::iterator& e_itr);
 
   // Public member functions
   /// Determine initial IMU pose w.r.t to gravity vector pointing up
@@ -63,21 +59,11 @@ class ImuManager {
                                double& gravity_magnitude, Eigen::Vector3d& gyrBias);
 
  private:
-  // Methods
-  bool getInterpolatedImuMeasurements_(const double& ts_start, const double& ts_end, IMUMap& interpolatedIMUMap);
-
-  static gtsam::Vector6 interpolateIMUMeasurement_(const double& ts1, const gtsam::Vector6& meas1, const double& ts2, const double& ts3,
-                                                   const gtsam::Vector6& meas3);
-
-  static gtsam::Vector6 extrapolateIMUMeasurement_(const double& ts1, const gtsam::Vector6& meas1, const double& ts2,
-                                                   const gtsam::Vector6& meas2, const double& ts3);
-
   // Member variables
-  std::mutex imuBufferMutex_;  // Mutex for reading writing IMU buffer
-  IMUMap imuBuffer_;           // IMU buffer
+  TimeToImuMap timeToImuBuffer_;  // IMU buffer
   TimeToKeyMap timeToKeyBuffer_;
-  GraphIMUPoseMap imuPosesInGraphBuffer_;
   double imuRate_;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and init attitude
+  int imuBufferLength_;
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
   int verboseLevel_ = 0;
 };

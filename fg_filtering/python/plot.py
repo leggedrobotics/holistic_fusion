@@ -11,8 +11,7 @@ print("Hello guys, calling from the Python side. Waiting for the logging to be f
 print("...waited long enough, let's plot!")
 
 # Plotting
-list_of_files = glob.glob(os.getenv("HOME") + "/.ros/fg_filtering*.csv")
-print(list_of_files)
+list_of_files = glob.glob(os.getenv("HOME") + "/.ros/FG_FILTERING*.csv")
 latestCSVFile = max(list_of_files, key=os.path.getctime)
 print("Latest CSV file is: " + latestCSVFile)
 

@@ -29,7 +29,7 @@ class SignalLogger {
   void setup(ros::NodeHandle& nh) {
     // configure logger
     double window_time = 6000.0;
-    std::string logger_name = "FG_FILTERING_ICRA_LOG";
+    std::string logger_name = "FG_FILTERING_LOG";
     // signal logger ros
     signal_logger::setSignalLoggerRos(&nh);
     // Options

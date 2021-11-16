@@ -24,7 +24,7 @@
 
 // Catkin workspace
 #include "fg_filtering/GraphState.hpp"
-#include "fg_filtering/ImuManager.hpp"
+#include "fg_filtering/ImuBuffer.hpp"
 
 namespace fg_filtering {
 #define GREEN_START "\033[92m"
@@ -49,7 +49,7 @@ class GraphManager {
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
 
-  // Service calls
+  // Graph selection
   void activateGlobalGraph();
   void activateFallbackGraph();
 
@@ -92,6 +92,7 @@ class GraphManager {
   inline void setGnssPositionUnaryNoise(double v) { gnssPositionUnaryNoise_ = v; }
   inline void setGnssHeadingUnaryNoise(double v) { gnssHeadingUnaryNoise_ = v; }
   inline void setImuRate(double d) { imuBuffer_.setImuRate(d); }
+  inline void setImuBufferLength(int i) { imuBuffer_.setImuBufferLength(i); }
   inline void setLidarRate(double d) { lidarRate_ = d; }
   inline void setGnssRate(double d) { gnssRate_ = d; }
   inline void setVerboseLevel(int verbose) {
@@ -109,7 +110,7 @@ class GraphManager {
  private:
   // Methods
   /// Update IMU integrators
-  void updateImuIntegrators_(const IMUMap& imuMeas);
+  void updateImuIntegrators_(const TimeToImuMap& imuMeas);
   /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
                       const std::string& name = "lidar");
@@ -128,16 +129,15 @@ class GraphManager {
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   fg_filtering::State graphState_;
   gtsam::ISAM2Params isamParams_;
-  // Graph Pointers
+
+  // Graphs
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalGraphPtr_;
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackGraphPtr_;
   /// Data buffers
   gtsam::NonlinearFactorGraph globalFactorsBuffer_;
   gtsam::NonlinearFactorGraph fallbackFactorsBuffer_;
-  ;
   /// Graph names
   std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
-
   /// Selector
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeGraphPtr_ = globalGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
   gtsam::NonlinearFactorGraph& activeFactorsBuffer_ = globalFactorsBuffer_;
@@ -153,7 +153,7 @@ class GraphManager {
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
-  ImuManager imuBuffer_;
+  ImuBuffer imuBuffer_;  // Need to get rid of this
   gtsam::Vector6 lastImuVector_;
   bool firstImuCallback_ = true;
 

@@ -10,23 +10,17 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
-  eigen_conversions
   tf_conversions
   message_generation
   std_srvs
   nodelet
   message_filters
-  #geodetic_utils
   signal_logger
   excavator_model
   m545_description_ros
   robot_utils
   fg_filtering_log_msgs
 )
-
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-message("Python Version:" ${Python3_VERSION})
-  message("Python Path:" ${Python3_INCLUDE_DIRS})
 
 find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
@@ -40,49 +34,44 @@ find_package(GTSAM REQUIRED)
 message("GTSAM version: ${GTSAM_VERSION}")
 message("GTSAM path: ${GTSAM_DIR}")
 
-include_directories(
-  include
-	${catkin_INCLUDE_DIRS}
-  ${GTSAM_INCLUDE_DIR}
-  ${PCL_INCLUDE_DIRS}
-  ${Python3_INCLUDE_DIRS}
-)
-
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+#generate_messages(
+#  DEPENDENCIES
+#  std_msgs
+#)
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions eigen_conversions tf_conversions message_runtime nodelet message_filters
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters
   DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
 
-## Compile as C++14, supported in ROS Kinetic and newer
-# set_property(TARGET invz_player PROPERTY CXX_STANDARD 17)
+###########
+## Build ##
+###########
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Turn on if needed otherwise makes multiScanRegistration node crash
-# if(NOT CMAKE_CROSSCOMPILING)
-#   add_definitions(-march=native)
-# endif()
+include_directories(
+        include
+        ${catkin_INCLUDE_DIRS}
+        ${GTSAM_INCLUDE_DIR}
+        ${PCL_INCLUDE_DIRS}
+        ${Python3_INCLUDE_DIRS}
+)
 
-add_subdirectory(src/lib)
+add_library(${PROJECT_NAME}
+        src/lib/FactorGraphFiltering.cpp src/lib/GraphManager.cpp src/lib/StaticTransforms.cpp src/lib/ImuBuffer.cpp)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
-add_executable(${PROJECT_NAME}_node src/fg_filtering_node.cpp include/fg_filtering/Datatypes.hpp)
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+#add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)
+#target_link_libraries(${PROJECT_NAME}_tsif_node ${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)
-target_link_libraries(${PROJECT_NAME}_tsif_node ${PROJECT_NAME})
-
-add_executable(leicamap_publisher_node src/pointcloud_publisher_node.cpp)
-target_link_libraries(leicamap_publisher_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(leicamap_publisher_node src/pointcloud_publisher_node.cpp)
+#target_link_libraries(leicamap_publisher_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
@@ -101,7 +90,7 @@ endif(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 ## Install ##
 #############
 
-install(TARGETS ${PROJECT_NAME}_node
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

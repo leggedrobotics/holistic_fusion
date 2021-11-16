@@ -899,19 +899,23 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Factor Graph Parameters
-  if (privateNode.getParam("graph_params/imuRate", dParam)) {
+  if (privateNode.getParam("sensor_params/imuRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
     graphMgr_.setImuRate(dParam);
   }
-  if (privateNode.getParam("graph_params/lidarRate", dParam)) {
+  if (privateNode.getParam("sensor_params/imuBufferLength", iParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - IMU buffer length: " << iParam);
+    graphMgr_.setImuBufferLength(iParam);
+  }
+  if (privateNode.getParam("sensor_params/lidarRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - LiDAR rate: " << dParam);
     graphMgr_.setLidarRate(dParam);
   }
-  if (privateNode.getParam("graph_params/gnssRate", dParam)) {
+  if (privateNode.getParam("sensor_params/gnssRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - GNSS rate: " << dParam);
     graphMgr_.setGnssRate(dParam);
   }
-  if (privateNode.getParam("graph_params/imuTimeOffset", dParam)) {
+  if (privateNode.getParam("sensor_params/imuTimeOffset", dParam)) {
     imuTimeOffset_ = dParam;
   }
   if (privateNode.getParam("graph_params/smootherLag", dParam)) {

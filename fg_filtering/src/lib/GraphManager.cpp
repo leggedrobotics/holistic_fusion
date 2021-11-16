@@ -110,40 +110,25 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc,
                                                       const Eigen::Vector3d& angularVel, bool& relocalizationFlag) {
   // Write current time
-  double imuTimeKm1 = stateTime_;
   stateTime_ = imuTimeK;
 
   {
     // Operating on graph data --> acquire mutex
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
-    // Buffers
-    /// Add to measurement buffer
-    // addToIMUBuffer(imuTimeK, linearAcc, angularVel);
-    // imuBuffer_.getLastTwoMeasurements(imuMeas);
-    /// Add to key buffer
-    /// Add to IMU pose buffer
-    // imuBuffer_.addImuPoseToBuffer(imuTimeK, imuPropagatedState_.pose());
-
-    // Get last two measurements from buffer to determine dt
-    gtsam::Vector6 imuVector;
-    imuVector << linearAcc(0), linearAcc(1), linearAcc(2), angularVel(0), angularVel(1), angularVel(2);
-    IMUMap imuMeas;
-    imuMeas[imuTimeKm1] = lastImuVector_;
-    imuMeas[imuTimeK] = imuVector;
-
-    lastImuVector_ = imuVector;
-    if (firstImuCallback_) {
-      firstImuCallback_ = false;
-      return gtsam::NavState();
-    }
-
     // Get new key
     gtsam::Key oldKey = stateKey_;
     gtsam::Key newKey = newStateKey_();
 
-    // Write to imu buffer
+    // Buffers
+    /// Add to measurement buffer
+    addToIMUBuffer(imuTimeK, linearAcc, angularVel);
+    /// Add to key buffer
     imuBuffer_.addToKeyBuffer(imuTimeK, newKey);
+
+    // Get last two measurements from buffer to determine dt
+    TimeToImuMap imuMeas;
+    imuBuffer_.getLastTwoMeasurements(imuMeas);
 
     // Update IMU preintegrator
     updateImuIntegrators_(imuMeas);
@@ -433,7 +418,6 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   std::map<gtsam::Key, double> newGraphKeysTimestampsMap;
   gtsam::Key currentKey;
   /// Timing 1
-  // double currentTime;
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (verboseLevel_ > 2) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Initialization took "
@@ -575,7 +559,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   return true;
 }
 
-void GraphManager::updateImuIntegrators_(const IMUMap& imuMeas) {
+void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   if (imuMeas.size() < 2) {
     std::cerr << YELLOW_START << "FG-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
               << std::endl;
