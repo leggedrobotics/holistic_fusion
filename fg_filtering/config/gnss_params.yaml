@@ -1,5 +1,5 @@
 gnss:
-  use_reference: true
+  use_reference: false
   reference_latitude: 47.4801402 # Wangen a.A.: 47.234593265310046, default: 47.4084860363, Oberglatt: 47.4801402
   reference_longitude: 8.49975325 # Wangen a.A.: 7.681415329904487, default 8.50435818058, Oberglatt: ...
   reference_altitude: 474.9 #475.2 # Wangen a.A.: 472.58400000000074, default: 565.0, Oberglatt: ...
