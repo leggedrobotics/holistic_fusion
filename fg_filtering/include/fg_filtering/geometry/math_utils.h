@@ -261,7 +261,7 @@ inline gtsam::Pose3 tfToPose3(const tf::Transform& tf_T) {
 }
 
 // Transformations need to be in same coordinate frame
-gtsam::Pose3 computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
+inline gtsam::Pose3 computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform& tf_T_k) {
   gtsam::Pose3 T_km1 = tfToPose3(tf_T_km1);
   gtsam::Pose3 T_k = tfToPose3(tf_T_k);
   gtsam::Pose3 T_km1_inv = T_km1.inverse();
