@@ -1,6 +1,6 @@
 #include "fg_filtering/ImuBuffer.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 // Public --------------------------------------------------------
 void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
@@ -174,4 +174,4 @@ bool ImuBuffer::estimateAttitudeFromImu(const double initTs, const std::string& 
   }
   return true;
 }
-}  // namespace fg_filtering
+}  // namespace compslam_se

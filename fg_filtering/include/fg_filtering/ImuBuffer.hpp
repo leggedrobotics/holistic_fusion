@@ -18,7 +18,7 @@
 // Catkin workspace
 #include "fg_filtering/Datatypes.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
@@ -68,5 +68,6 @@ class ImuBuffer {
   int verboseLevel_ = 0;
 };
 
-}  // namespace fg_filtering
+}  // namespace compslam_se
+
 #endif

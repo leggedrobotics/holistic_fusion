@@ -1,6 +1,6 @@
 #include "fg_filtering/GraphManager.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 // Public --------------------------------------------------------------------
 
@@ -310,8 +310,8 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const gtsam::Vect
   //  fg_filtering::HeadingFactorMatrix gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading,
   //  measuredYaw,
   //                                                           tukeyErrorFunction);
-  fg_filtering::HeadingFactorHeadingVector gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading, measuredYaw,
-                                                                  tukeyErrorFunction);
+  HeadingFactorHeadingVector gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading, measuredYaw,
+                                                    tukeyErrorFunction);
 
   // Write to graph
   {
@@ -585,4 +585,4 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   }
 }
 
-}  // namespace fg_filtering
+}  // namespace compslam_se

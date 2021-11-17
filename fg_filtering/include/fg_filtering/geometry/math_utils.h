@@ -6,7 +6,7 @@
 #include "fg_filtering/geometry/Angle.h"
 #include "fg_filtering/geometry/Vector3.h"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 /** \brief Convert the given radian angle to degrees.
  *
@@ -268,6 +268,6 @@ gtsam::Pose3 computeDeltaPose(const tf::Transform& tf_T_km1, const tf::Transform
   return T_km1_inv * T_k;
 }
 
-}  // end namespace fg_filtering
+}  // end namespace compslam_se
 
 #endif  // FG_FILTERING_MATH_UTILS_H

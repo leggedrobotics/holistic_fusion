@@ -43,7 +43,7 @@
 #include "m545_description/M545Measurements.hpp"
 #include "m545_description_ros/ConversionTraits.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -261,6 +261,6 @@ class FactorGraphFiltering {
   bool logPlots_ = false;
 };
 
-}  // end namespace fg_filtering
+}  // end namespace compslam_se
 
 #endif  // FG_FILTERING_H

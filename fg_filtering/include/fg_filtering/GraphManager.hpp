@@ -26,7 +26,8 @@
 #include "fg_filtering/GraphState.hpp"
 #include "fg_filtering/ImuBuffer.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
+
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
@@ -102,7 +103,7 @@ class GraphManager {
   /// Getters
   Eigen::Vector3d& getInitGyrBiasReference() { return gyrBiasPrior_; }
   auto iterations() const { return additonalIterations_; }
-  const fg_filtering::State& getGraphState() { return graphState_; }
+  const State& getGraphState() { return graphState_; }
   const gtsam::Key getStateKey() { return stateKey_; }
   const gtsam::imuBias::ConstantBias getIMUBias() { return graphState_.imuBias(); }
   gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
@@ -127,7 +128,7 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  fg_filtering::State graphState_;
+  State graphState_;
   gtsam::ISAM2Params isamParams_;
 
   // Graphs
@@ -196,6 +197,6 @@ class GraphManager {
   // Verbose
   int verboseLevel_ = 0;
 };
-}  // namespace fg_filtering
+}  // namespace compslam_se
 
 #endif

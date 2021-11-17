@@ -3,7 +3,7 @@
 
 #include <pcl/point_types.h>
 
-namespace fg_filtering {
+namespace compslam_se {
 
 /** \brief Vector4f decorator for convenient handling.
  *
@@ -62,6 +62,6 @@ class Vector3 : public Eigen::Vector4f {
   }
 };
 
-}  // end namespace fg_filtering
+}  // end namespace compslam_se
 
 #endif  // LOAM_VECTOR3_H

@@ -6,7 +6,7 @@
 // Catkin ws
 #include "excavator_model/ExcavatorModel.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 class StaticTransforms {
  public:
@@ -123,6 +123,6 @@ class StaticTransforms {
   tf::Transform getTransformFromID(const unsigned int bodyId);
 };
 
-}  // namespace fg_filtering
+}  // namespace compslam_se
 
 #endif  // MENZI_SIM_STATICTRANSFORMS_H

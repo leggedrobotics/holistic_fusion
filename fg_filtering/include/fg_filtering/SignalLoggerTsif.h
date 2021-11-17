@@ -10,7 +10,7 @@
 // Workspace
 #include "signal_logger/signal_logger.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 class SignalLoggerTsif {
  public:
@@ -130,6 +130,6 @@ class SignalLoggerTsif {
   double _latencyInMs;
 };
 
-}  // namespace fg_filtering
+}  // namespace compslam_se
 
 #endif

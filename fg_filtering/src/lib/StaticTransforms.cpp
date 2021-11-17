@@ -4,7 +4,7 @@
 
 #include "fg_filtering/StaticTransforms.h"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 StaticTransforms::StaticTransforms(ros::NodeHandle& privateNode) {
   ROS_INFO("Static Transforms container initializing...");
@@ -133,4 +133,4 @@ tf::Transform StaticTransforms::getTransformFromID(const unsigned int bodyId) {
   return tf_T;
 }
 
-}  // namespace fg_filtering
+}  // namespace compslam_se

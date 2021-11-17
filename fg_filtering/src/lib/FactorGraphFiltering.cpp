@@ -1,6 +1,6 @@
 #include "fg_filtering/FactorGraphFiltering.h"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 // Public -----------------------------------------------------------
 /// Constructor -----------
@@ -1083,4 +1083,4 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   }
 }
 
-}  // end namespace fg_filtering
+}  // namespace compslam_se

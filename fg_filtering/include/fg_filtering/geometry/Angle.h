@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-namespace fg_filtering {
+namespace compslam_se {
 
 /** \brief Class for holding an angle.
  *
@@ -56,6 +56,6 @@ class Angle {
   float _sin;     ///< sine of the angle
 };
 
-}  // end namespace fg_filtering
+}  // end namespace compslam_se
 
 #endif  // LOAM_ANGLE_H

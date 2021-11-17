@@ -64,7 +64,7 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-        src/lib/FactorGraphFiltering.cpp src/lib/GraphManager.cpp src/lib/StaticTransforms.cpp src/lib/ImuBuffer.cpp)
+        src/lib/FactorGraphFiltering.cpp src/lib/GraphManager.cpp src/lib/StaticTransforms.cpp src/lib/ImuBuffer.cpp include/fg_filtering/StateEstimationInterface.h)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
 #add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)

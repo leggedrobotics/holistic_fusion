@@ -6,7 +6,7 @@
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-namespace fg_filtering {
+namespace compslam_se {
 
 /**
  * Factor to estimate rotation given robot heading
@@ -149,6 +149,6 @@ class HeadingFactorHeadingVector : public gtsam::NoiseModelFactor1<gtsam::Pose3>
   const gtsam::Vector1 measuredYaw_;
 };
 
-}  // namespace fg_filtering
+}  // namespace compslam_se
 
 #endif  // YAWFACTOR_H

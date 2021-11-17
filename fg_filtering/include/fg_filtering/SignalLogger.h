@@ -10,7 +10,7 @@
 // Workspace
 #include "signal_logger/signal_logger.hpp"
 
-namespace fg_filtering {
+namespace compslam_se {
 
 class SignalLogger {
  public:
@@ -305,6 +305,6 @@ class SignalLoggerGnss {
   Eigen::Vector3d _worldPositionLogMeas;
 };
 
-}  // namespace fg_filtering
+}  // namespace compslam_se
 
 #endif
