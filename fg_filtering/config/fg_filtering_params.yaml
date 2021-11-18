@@ -9,7 +9,7 @@ sensor_params:
   imuBufferLength: 200
   lidarRate: 5
   gnssRate: 20
-  imuTimeOffset: 0.035 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
+  imuTimeOffset: 0.00 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
 # Factor Graph
 graph_params:
@@ -17,7 +17,7 @@ graph_params:
   additonalIterations: 0                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false
-  usingLidarUnary: false
+  usingLidarUnary: true
 
 # Outliere Rejection
 outlier_params:
@@ -27,12 +27,12 @@ outlier_params:
 noise_params:
   ## IMU
   ### Accelerometer
-  accNoiseDensity: 7.225e-7                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
-  accBiasRandomWalk: 1.0e-06               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
+  accNoiseDensity: 7.225e-04                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+  accBiasRandomWalk: 1.0e-03               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
   ### Gyro
-  gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
-  gyrBiasRandomWalk: 9.33e-08              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+  gyrNoiseDensity: 1.71e-05               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
+  gyrBiasRandomWalk: 9.33e-05              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
   gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
   ### Preintegration
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06

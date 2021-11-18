@@ -55,8 +55,8 @@ class ImuBuffer {
 
   // Public member functions
   /// Determine initial IMU pose w.r.t to gravity vector pointing up
-  bool estimateAttitudeFromImu(const double imu_pose_init_ts, const std::string& imuGravityDirection, gtsam::Rot3& init_attitude,
-                               double& gravity_magnitude, Eigen::Vector3d& gyrBias);
+  bool estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& init_attitude, double& gravity_magnitude,
+                               Eigen::Vector3d& gyrBias);
 
  private:
   // Member variables

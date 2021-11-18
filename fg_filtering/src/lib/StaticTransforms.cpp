@@ -31,8 +31,8 @@ StaticTransforms::StaticTransforms(ros::NodeHandle& privateNode) {
 void StaticTransforms::findTransformations() {
   ROS_WARN("Looking up transformations in URDF model...");
   // Cabin IMU
-  const unsigned int imuCabinBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_CABIN_link").c_str());
-  const unsigned int imuRooftopId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("imu_box_link").c_str());
+  const unsigned int imuCabinBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuCabinFrame()).c_str());
+  const unsigned int imuRooftopId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuRooftopFrame()).c_str());
   if (imuCabinBodyId != std::numeric_limits<unsigned int>::max()) {
     ROS_WARN("Found Body IMU_CABIN.");
     tf_T_Ic_C_ = getTransformFromID(imuCabinBodyId);
@@ -49,7 +49,7 @@ void StaticTransforms::findTransformations() {
   ROS_WARN_STREAM("IMU frame with respect to cabin frame: t=[" << tf_T_C_Ic_.getOrigin().x() << ", " << tf_T_C_Ic_.getOrigin().y() << ", "
                                                                << tf_T_C_Ic_.getOrigin().z() << "]");
   // LiDAR
-  const unsigned int lidarBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("os_lidar").c_str());
+  const unsigned int lidarBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getLidarFrame()).c_str());
   if (lidarBodyId != std::numeric_limits<unsigned int>::max()) {
     tf_T_L_C_ = getTransformFromID(lidarBodyId);
     tf_T_C_L_ = tf_T_L_C_.inverse();
@@ -61,7 +61,7 @@ void StaticTransforms::findTransformations() {
     return;
   }
   // Left GNSS
-  const unsigned int gnssLeftBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("GNSS_L").c_str());
+  const unsigned int gnssLeftBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getLeftGnssFrame()).c_str());
   if (gnssLeftBodyId != std::numeric_limits<unsigned int>::max()) {
     tf_T_GnssL_C_ = getTransformFromID(gnssLeftBodyId);
     tf_T_Cabin_GnssL_ = tf_T_GnssL_C_.inverse();
@@ -73,7 +73,7 @@ void StaticTransforms::findTransformations() {
     return;
   }
   // Right GNSS
-  const unsigned int gnssRightBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("GNSS_R").c_str());
+  const unsigned int gnssRightBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getRightGnssFrame()).c_str());
   if (gnssRightBodyId != std::numeric_limits<unsigned int>::max()) {
     tf_T_GnssR_C_ = getTransformFromID(gnssRightBodyId);
     tf_T_C_GnssR_ = tf_T_GnssR_C_.inverse();
@@ -105,7 +105,7 @@ void StaticTransforms::findTransformations() {
   ROS_WARN("...found all transformations.");
 
   // Base IMU
-  const unsigned int imuBaseBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string("IMU_base_link").c_str());
+  const unsigned int imuBaseBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuBaseFrame()).c_str());
   if (imuBaseBodyId != std::numeric_limits<unsigned int>::max()) {
     ROS_WARN("Found Body IMU_BASE.");
     tf_T_Ib_B_ = getTransformFromID(imuBaseBodyId);

@@ -62,9 +62,9 @@ class GraphManager {
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
-  inline bool estimateAttitudeFromImu(const double init_ts, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
-                                      double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
-    return imuBuffer_.estimateAttitudeFromImu(init_ts, imuGravityDirection, initAttitude, gravityMagnitude, gyrBias);
+  inline bool estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& initAttitude, double& gravityMagnitude,
+                                      Eigen::Vector3d& gyrBias) {
+    return imuBuffer_.estimateAttitudeFromImu(imuGravityDirection, initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
   inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {

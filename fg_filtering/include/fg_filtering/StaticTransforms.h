@@ -43,6 +43,8 @@ class StaticTransforms {
 
   std::string getImuCabinFrame() { return imuCabinFrame_; }
 
+  std::string getImuRooftopFrame() { return imuRooftopFrame_; }
+
   std::string getImuBaseFrame() { return imuBaseFrame_; }
 
   std::string getLidarFrame() { return lidarFrame_; }

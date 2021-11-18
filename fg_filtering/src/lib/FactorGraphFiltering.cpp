@@ -124,9 +124,9 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
   }  // Initialize graph at next iteration step
   else if (!initedGraphFlag_ && imuAlignedFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "Initializing the graph..." << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Initializing the graph..." << COLOR_END << std::endl;
     initGraph_(imuTimeK);
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "...graph is initialized." << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "...graph is initialized." << COLOR_END << std::endl;
   }
   // Add measurement to graph
   else if (initedGraphFlag_) {
@@ -459,8 +459,7 @@ void FactorGraphFiltering::measurementsCallback_(const m545_msgs::M545Measuremen
 /// Worker Functions -----------------------
 void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imuAttitude;
-  if (graphMgr_.estimateAttitudeFromImu(imuTimeK.toSec(), imuGravityDirection_, imuAttitude, gravityConstant_,
-                                        graphMgr_.getInitGyrBiasReference())) {
+  if (graphMgr_.estimateAttitudeFromImu(imuGravityDirection_, imuAttitude, gravityConstant_, graphMgr_.getInitGyrBiasReference())) {
     gtsam::Rot3 yawR_W_I0 = yawR_W_C0_ * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
     R_W_I0_ = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitude.pitch(), imuAttitude.roll());
     imuAttitudeRoll_ = imuAttitude.roll();
@@ -470,6 +469,9 @@ void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
     std::cout << YELLOW_START << "FactorGraphFiltering"
               << GREEN_START " Yaw in IMU frame that is used for initializing the graph: " << 180 / M_PI * yawR_W_I0.yaw() << "(deg)."
               << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+              << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << R_W_I0_.ypr().transpose() * (180.0 / M_PI) << COLOR_END
+              << std::endl;
     imuAlignedFlag_ = true;
   } else {
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITNG FOR MORE..."

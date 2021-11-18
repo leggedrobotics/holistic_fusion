@@ -129,15 +129,12 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
   return true;
 }
 
-bool ImuBuffer::estimateAttitudeFromImu(const double initTs, const std::string& imuGravityDirection, gtsam::Rot3& initAttitude,
-                                        double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
+bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& initAttitude, double& gravityMagnitude,
+                                        Eigen::Vector3d& gyrBias) {
   // Get timestamp of first message for lookup
   if (timeToImuBuffer_.size() < (imuRate_ * imuPoseInitWaitSecs_)) {
     return false;
   } else {
-    // Get IMU Message iterators in the interval
-    double prev_ts = initTs - imuPoseInitWaitSecs_;
-
     // Accumulate Acceleration part of IMU Messages
     Eigen::Vector3d initAccMean(0.0, 0.0, 0.0), initGyrMean(0.0, 0.0, 0.0);
     for (auto& itr : timeToImuBuffer_) {
@@ -169,7 +166,7 @@ bool ImuBuffer::estimateAttitudeFromImu(const double initTs, const std::string& 
     std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
               << " - Gravity Unit Vector(x,y,z): " << gUnitVec.transpose() << std::endl;
     std::cout << YELLOW_START << "FG-ImuBuffer" << GREEN_START
-              << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << std::endl;
+              << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
     std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
   }
   return true;
