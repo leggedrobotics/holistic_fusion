@@ -89,8 +89,28 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
 void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
-  // Static variables
+  // Static Members
   static gtsam::Pose3 T_O_Ikm1__;
+  static bool startTimeSetFlag__ = false;
+  static std::chrono::time_point<std::chrono::high_resolution_clock> timeAtStart__;
+  usingGnssFlag_ = true;
+
+  // Initialize timing
+  if (!startTimeSetFlag__) {
+    timeAtStart__ = std::chrono::high_resolution_clock::now();
+    startTimeSetFlag__ = true;
+  }
+
+  // Look at current time and if no message has arrived skip GNSS Initialization
+  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
+  currentTime = std::chrono::high_resolution_clock::now();
+  unsigned int durationSinceStart = std::chrono::duration_cast<std::chrono::seconds>(currentTime - timeAtStart__).count();
+  if (!initedGnssFlag_ && (durationSinceStart > 10 || !usingGnssFlag_)) {
+    std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START
+              << " Waited for 10 seconds, not enough GNSS messages arrived. Initialize global yaw to 0." << COLOR_END << std::endl;
+    yawR_W_C0_ = gtsam::Rot3::Yaw(0);
+    initedGnssFlag_ = true;
+  }
 
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
@@ -115,14 +135,15 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
 
   // If IMU not yet aligned
-  if (!imuAlignedFlag_ && (initedGnssFlag_ || !usingGnssFlag_)) {
+  if (!initedGnssFlag_ && usingGnssFlag_) {
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
+  }  // Align IMU if yaw from GPS is here
+  else if (!imuAlignedFlag_) {
     // Add to buffer
     graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     alignImu_(imuTimeK);
   }  // Notification that waiting for GNSS
-  else if (!initedGnssFlag_ && usingGnssFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
-  }  // Initialize graph at next iteration step
+     // Initialize graph at next iteration step
   else if (!initedGraphFlag_ && imuAlignedFlag_) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Initializing the graph..." << COLOR_END << std::endl;
     initGraph_(imuTimeK);
@@ -328,6 +349,9 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   }
   // Set reference
   else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
+    if (initedGnssFlag_) {
+      std::runtime_error("Now enough GNSS messages have arrived for initializing. But yaw has already been intiialized.");
+    }
     initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
               accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
     // Convert to cartesian coordinates
@@ -335,7 +359,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, lastLeftPosition__, rightDummyPosition);
     return;
   }
-  // Check whether graph was already initialized, otherwise wait
+  // Check whether graph was already initialized, otherwise leave callback
   else if (!initedGraphFlag_) {
     return;
   }
