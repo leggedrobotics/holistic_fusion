@@ -71,6 +71,11 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
     std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
   }
+  else {
+
+    yawR_W_C0_ = gtsam::Rot3::Yaw(0);
+    initedGnssFlag_ = true;
+  }
   /// Subscribe to measurements
   subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>(
       "/measurement_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::measurementsCallback_, this, ros::TransportHints().tcpNoDelay());
@@ -93,7 +98,6 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   static gtsam::Pose3 T_O_Ikm1__;
   static bool startTimeSetFlag__ = false;
   static std::chrono::time_point<std::chrono::high_resolution_clock> timeAtStart__;
-  usingGnssFlag_ = true;
 
   // Initialize timing
   if (!startTimeSetFlag__) {
@@ -105,7 +109,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
   currentTime = std::chrono::high_resolution_clock::now();
   unsigned int durationSinceStart = std::chrono::duration_cast<std::chrono::seconds>(currentTime - timeAtStart__).count();
-  if (!initedGnssFlag_ && (durationSinceStart > 10 || !usingGnssFlag_)) {
+  if (!initedGnssFlag_ && durationSinceStart > 10) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START
               << " Waited for 10 seconds, not enough GNSS messages arrived. Initialize global yaw to 0." << COLOR_END << std::endl;
     yawR_W_C0_ = gtsam::Rot3::Yaw(0);
