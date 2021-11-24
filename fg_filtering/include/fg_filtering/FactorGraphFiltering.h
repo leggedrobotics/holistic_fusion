@@ -7,8 +7,6 @@
 #include <thread>
 
 // ROS
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/node_handle.h>
@@ -24,6 +22,10 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
+#include "m545_msgs/M545ActuatorStates.h"
+#include "m545_msgs/M545Measurements.h"
+#include "m545_msgs/M545State.h"
+
 // Workspace
 #include "fg_filtering/GraphManager.hpp"
 #include "fg_filtering/SignalLogger.h"
@@ -32,8 +34,14 @@
 #include "kindr/Core"
 #include "robot_utils/sensors/GNSS.hpp"
 
+// Menzi
+#include "excavator_model/ActuatorConversions.hpp"
+#include "excavator_model/ConversionTraits.hpp"
+#include "excavator_model/ExcavatorState.hpp"
 #include "fg_filtering_log_msgs/ImuMultiplot.h"
 #include "fg_filtering_log_msgs/LidarMultiplot.h"
+#include "m545_description/M545Measurements.hpp"
+#include "m545_description_ros/ConversionTraits.hpp"
 
 namespace compslam_se {
 
@@ -81,6 +89,8 @@ class FactorGraphFiltering {
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   //// GNSS Callback
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
+  //// Measurement Callback
+  void measurementsCallback_(const m545_msgs::M545Measurements::ConstPtr& measurementsMsg);
 
   /// Worker functions
   //// Set Imu Attitude
@@ -199,13 +209,15 @@ class FactorGraphFiltering {
   ros::Publisher pubCompslamPath_;
   ros::Publisher pubLeftGnssPath_;
   ros::Publisher pubRightGnssPath_;
-  ros::Publisher poseStampedPublisher_;
-  ros::Publisher twistStampedPublisher_;
+  ros::Publisher excavatorStatePublisher_;
   ros::Publisher imuMultiplotPublisher_;
   ros::Publisher lidarMultiplotPublisher_;
 
   /// Services
   ros::ServiceServer toggleGnssUsageService_;
+
+  /// State to be published
+  excavator_model::ExcavatorState estExcavatorState_;
 
   /// Messages
   nav_msgs::PathPtr odomPathPtr_;
@@ -226,6 +238,13 @@ class FactorGraphFiltering {
   //// Exact sync for gnss
   typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
   boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
+
+  /// Stored Messages
+  m545_description::M545Measurements measurements_;
+
+  // Message Converter
+  m545_description_ros::ConversionTraits<m545_description::M545Measurements, m545_msgs::M545Measurements> measurementConverter_;
+  excavator_model::ConversionTraits<excavator_model::ExcavatorState, m545_msgs::M545State> stateConverter_;
 
   // Signal Logger
   SignalLogger signalLogger_;

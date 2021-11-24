@@ -9,15 +9,15 @@
 
 namespace compslam_se {
 
-class SegmentPair final {
+class ElementToRoot final {
  public:
   /// Constructor
-  explicit SegmentPair(const KDL::Segment& p_segment, const std::string& p_root, const std::string& p_tip)
-      : segment(p_segment), root(p_root), tip(p_tip) {}
+  explicit ElementToRoot(const tf::Transform& T, const std::string& rootName_, const std::string& elementName_)
+      : T_root_element(T), rootName(rootName_), elementName(elementName_) {}
 
-  KDL::Segment segment;  ///< The KDL segment
-  std::string root;      ///< The name of the root element to which this link is attached
-  std::string tip;       ///< The name of the element
+  tf::Transform T_root_element;  ///< The KDL segment
+  std::string rootName;          ///< The name of the root element to which this link is attached
+  std::string elementName;       ///< The name of the element
 };
 
 class StaticTransforms {
@@ -78,17 +78,13 @@ class StaticTransforms {
 
   const tf::Transform& T_C_Ic() { return tf_T_C_Ic_; }
 
-  const tf::Transform& T_C_GnssL() { return tf_T_Cabin_GnssL_; }
+  const tf::Transform& T_C_GnssL() { return tf_T_C_GnssL_; }
 
   const tf::Transform& T_C_GnssR() { return tf_T_C_GnssR_; }
 
   const tf::Transform& T_GnssL_C() { return tf_T_GnssL_C_; }
 
   const tf::Transform& T_GnssR_C() { return tf_T_GnssR_C_; }
-
-  const tf::Transform& T_C_B() { return tf_T_C_B_; }
-
-  const tf::Transform& T_B_C() { return tf_T_B_C_; }
 
   const tf::Transform& T_B_Ib() { return tf_T_B_Ib_; }
 
@@ -115,6 +111,7 @@ class StaticTransforms {
 
   // Robot Models
   urdf::Model urdfModel_;
+  KDL::Tree tree_;
 
   // Transformations
   tf::Transform tf_T_L_C_;
@@ -123,27 +120,22 @@ class StaticTransforms {
   tf::Transform tf_T_Ic_C_;
   tf::Transform tf_T_C_Ic_;
   tf::Transform tf_T_GnssL_C_;
-  tf::Transform tf_T_Cabin_GnssL_;
+  tf::Transform tf_T_C_GnssL_;
   tf::Transform tf_T_GnssR_C_;
   tf::Transform tf_T_C_GnssR_;
-  tf::Transform tf_T_B_C_;
-  tf::Transform tf_T_C_B_;
   tf::Transform tf_T_Ib_B_;
   tf::Transform tf_T_B_Ib_;
   double BC_Z_offset_;
 
   /// A map of dynamic segment names to SegmentPair structures
-  std::map<std::string, SegmentPair> segments_;
-
-  /// A map of fixed segment names to SegmentPair structures
-  std::map<std::string, SegmentPair> segments_fixed_;
+  std::map<std::string, ElementToRoot> segments_;
 
   /// A pointer to the parsed URDF model
   std::unique_ptr<urdf::Model> model_;
 
   // Methods
   tf::Transform kdlToTransform(const KDL::Frame& k);
-  void addChildren(const KDL::SegmentMap::const_iterator segment);
+  void getRootTransformations(const KDL::SegmentMap::const_iterator element, std::string rootName = "");
 };
 
 }  // namespace compslam_se
