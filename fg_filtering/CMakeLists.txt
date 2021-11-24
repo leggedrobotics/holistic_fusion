@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   signal_logger
   robot_utils
   fg_filtering_log_msgs
+  kdl_parser
 )
 
 find_package(Eigen3 REQUIRED)
@@ -40,7 +41,7 @@ add_definitions(${PCL_DEFINITIONS})
 #)
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters kdl_parser
   DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
