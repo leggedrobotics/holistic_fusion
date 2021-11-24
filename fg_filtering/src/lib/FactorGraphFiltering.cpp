@@ -35,7 +35,7 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", ROS_QUEUE_SIZE);
   pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", ROS_QUEUE_SIZE);
   poseStampedPublisher_ = node.advertise<geometry_msgs::PoseStamped>("/estimated_pose", ROS_QUEUE_SIZE);
-  poseStampedPublisher_ = node.advertise<geometry_msgs::TwistStamped>("/estimated_twist", ROS_QUEUE_SIZE);
+  twistStampedPublisher_ = node.advertise<geometry_msgs::TwistStamped>("/estimated_twist", ROS_QUEUE_SIZE);
   imuMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::ImuMultiplot>("/fg_filtering/imuMultiplot", ROS_QUEUE_SIZE);
   lidarMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::LidarMultiplot>("/fg_filtering/lidarMultiplot", ROS_QUEUE_SIZE);
   /// Messages
