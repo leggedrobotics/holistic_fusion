@@ -2,11 +2,23 @@
 #define MENZI_SIM_STATICTRANSFORMS_H
 
 // ROS
+#include <urdf/model.h>
+#include <Eigen/Eigen>
+#include <kdl/tree.hpp>
 #include "tf/tf.h"
-// Catkin ws
-#include "excavator_model/ExcavatorModel.hpp"
 
 namespace compslam_se {
+
+class SegmentPair final {
+ public:
+  /// Constructor
+  explicit SegmentPair(const KDL::Segment& p_segment, const std::string& p_root, const std::string& p_tip)
+      : segment(p_segment), root(p_root), tip(p_tip) {}
+
+  KDL::Segment segment;  ///< The KDL segment
+  std::string root;      ///< The name of the root element to which this link is attached
+  std::string tip;       ///< The name of the element
+};
 
 class StaticTransforms {
  public:
@@ -103,7 +115,6 @@ class StaticTransforms {
 
   // Robot Models
   urdf::Model urdfModel_;
-  std::unique_ptr<excavator_model::ExcavatorModel> excavatorModelPtr_;
 
   // Transformations
   tf::Transform tf_T_L_C_;
@@ -121,8 +132,18 @@ class StaticTransforms {
   tf::Transform tf_T_B_Ib_;
   double BC_Z_offset_;
 
+  /// A map of dynamic segment names to SegmentPair structures
+  std::map<std::string, SegmentPair> segments_;
+
+  /// A map of fixed segment names to SegmentPair structures
+  std::map<std::string, SegmentPair> segments_fixed_;
+
+  /// A pointer to the parsed URDF model
+  std::unique_ptr<urdf::Model> model_;
+
   // Methods
-  tf::Transform getTransformFromID(const unsigned int bodyId);
+  tf::Transform kdlToTransform(const KDL::Frame& k);
+  void addChildren(const KDL::SegmentMap::const_iterator segment);
 };
 
 }  // namespace compslam_se

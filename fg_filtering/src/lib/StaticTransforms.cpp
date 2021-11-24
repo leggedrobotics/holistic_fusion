@@ -3,6 +3,8 @@
 //
 
 #include "fg_filtering/StaticTransforms.h"
+#include <kdl/tree.hpp>
+#include <kdl_parser/kdl_parser.hpp>
 
 namespace compslam_se {
 
@@ -24,112 +26,78 @@ StaticTransforms::StaticTransforms(ros::NodeHandle& privateNode) {
   // load excavator model from URDF
   double timeStep;
   urdfModel_.initParam(urdfDescriptionName);
-  excavatorModelPtr_ = std::make_unique<excavator_model::ExcavatorModel>(timeStep);
-  excavatorModelPtr_->initModelFromUrdf(urdfDescription_.c_str());
+
+  // Initialize the KDL tree
+  KDL::Tree tree;
+  if (!kdl_parser::treeFromUrdfModel(urdfModel_, tree)) {
+    throw std::runtime_error("Failed to extract kdl tree from robot description");
+  }
+
+  KDL::SegmentMap segments_map = tree.getSegments();
+
+  // walk the tree and add segments to segments_
+  segments_.clear();
+  segments_fixed_.clear();
+  addChildren(tree.getRootSegment());
+}
+
+void StaticTransforms::addChildren(const KDL::SegmentMap::const_iterator segment) {
+  const std::string& root = GetTreeElementSegment(segment->second).getName();
+
+  std::vector<KDL::SegmentMap::const_iterator> children = GetTreeElementChildren(segment->second);
+  for (unsigned int i = 0; i < children.size(); i++) {
+    const KDL::Segment& child = GetTreeElementSegment(children[i]->second);
+    SegmentPair s(GetTreeElementSegment(children[i]->second), root, child.getName());
+    if (child.getJoint().getType() == KDL::Joint::None) {
+      if (urdfModel_.getJoint(child.getJoint().getName()) &&
+          urdfModel_.getJoint(child.getJoint().getName())->type == urdf::Joint::FLOATING) {
+      } else {
+        segments_fixed_.insert(make_pair(child.getJoint().getName(), s));
+      }
+    } else {
+      segments_.insert(make_pair(child.getJoint().getName(), s));
+    }
+    addChildren(children[i]);
+  }
 }
 
 void StaticTransforms::findTransformations() {
   ROS_WARN("Looking up transformations in URDF model...");
-  // Cabin IMU
-  const unsigned int imuCabinBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuCabinFrame()).c_str());
-  const unsigned int imuRooftopId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuRooftopFrame()).c_str());
-  if (imuCabinBodyId != std::numeric_limits<unsigned int>::max()) {
-    ROS_WARN("Found Body IMU_CABIN.");
-    tf_T_Ic_C_ = getTransformFromID(imuCabinBodyId);
-    tf_T_C_Ic_ = tf_T_Ic_C_.inverse();
-  } else if (imuRooftopId != std::numeric_limits<unsigned int>::max()) {
-    ROS_WARN("Did not find Body IMU_CABIN. But found IMU in roofbox.");
-    imuCabinFrame_ = imuRooftopFrame_;
-    tf_T_Ic_C_ = getTransformFromID(imuRooftopId);
-    tf_T_C_Ic_ = tf_T_Ic_C_.inverse();
-  } else {
-    ROS_ERROR("Neither found Body IMU_CABIN nor rooftop imu!");
-    return;
-  }
-  ROS_WARN_STREAM("IMU frame with respect to cabin frame: t=[" << tf_T_C_Ic_.getOrigin().x() << ", " << tf_T_C_Ic_.getOrigin().y() << ", "
-                                                               << tf_T_C_Ic_.getOrigin().z() << "]");
-  // LiDAR
-  const unsigned int lidarBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getLidarFrame()).c_str());
-  if (lidarBodyId != std::numeric_limits<unsigned int>::max()) {
-    tf_T_L_C_ = getTransformFromID(lidarBodyId);
-    tf_T_C_L_ = tf_T_L_C_.inverse();
-    tf_T_L_Ic_ = tf_T_L_C_ * tf_T_C_Ic_;
-    ROS_WARN_STREAM("IMU frame with respect to LiDAR frame: t=[" << tf_T_L_Ic_.getOrigin().x() << ", " << tf_T_L_Ic_.getOrigin().y() << ", "
-                                                                 << tf_T_L_Ic_.getOrigin().z() << "]");
-  } else {
-    ROS_ERROR("Did not find LiDAR!");
-    return;
-  }
-  // Left GNSS
-  const unsigned int gnssLeftBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getLeftGnssFrame()).c_str());
-  if (gnssLeftBodyId != std::numeric_limits<unsigned int>::max()) {
-    tf_T_GnssL_C_ = getTransformFromID(gnssLeftBodyId);
-    tf_T_Cabin_GnssL_ = tf_T_GnssL_C_.inverse();
-    ROS_WARN_STREAM("Left GNSS with respect to Cabin frame: t=[" << tf_T_Cabin_GnssL_.getOrigin().x() << ", "
-                                                                 << tf_T_Cabin_GnssL_.getOrigin().y() << ", "
-                                                                 << tf_T_Cabin_GnssL_.getOrigin().z() << "]");
-  } else {
-    ROS_ERROR("Did not find left GNSS!");
-    return;
-  }
-  // Right GNSS
-  const unsigned int gnssRightBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getRightGnssFrame()).c_str());
-  if (gnssRightBodyId != std::numeric_limits<unsigned int>::max()) {
-    tf_T_GnssR_C_ = getTransformFromID(gnssRightBodyId);
-    tf_T_C_GnssR_ = tf_T_GnssR_C_.inverse();
-    ROS_WARN_STREAM("Right GNSS to Cabin translation: [" << tf_T_C_GnssR_.getOrigin().x() << ", " << tf_T_C_GnssR_.getOrigin().y() << ", "
-                                                         << tf_T_C_GnssR_.getOrigin().z() << "]");
-  } else {
-    ROS_ERROR("Did not find right GNSS!");
-    return;
-  }
-  // Base to cabin
-  Eigen::Vector3d B_t_B_C = excavatorModelPtr_->getPositionBodyToBody(
-      excavator_model::RD::BodyEnum::BASE, excavator_model::RD::BodyEnum::CABIN, excavator_model::RD::CoordinateFrameEnum::BASE);
-  Eigen::Matrix3d R_B_C;
-  R_B_C.setIdentity();
-  Eigen::Quaterniond q_B_C(R_B_C);
-  tf_T_B_C_.setRotation(tf::Quaternion(q_B_C.x(), q_B_C.y(), q_B_C.z(), q_B_C.w()));
-  tf_T_B_C_.setOrigin(tf::Vector3(B_t_B_C.x(), B_t_B_C.y(), B_t_B_C.z()));
-  tf_T_C_B_ = tf_T_B_C_.inverse();
-  // Base to cabin 2
-  std::shared_ptr<const urdf::Joint> cabinJoint = urdfModel_.getJoint("J_TURN");
-  if (cabinJoint) {
-    BC_Z_offset_ = cabinJoint->parent_to_joint_origin_transform.position.z;
-  } else {
-    throw std::runtime_error("[M545 tf publisher] Did not find cabin turn joint in model.");
-  }
-  ROS_WARN_STREAM("Offset from method 1: " << tf_T_B_C_.getOrigin().z());
-  ROS_WARN_STREAM("Offset from method 2: " << BC_Z_offset_);
 
-  ROS_WARN("...found all transformations.");
-
-  // Base IMU
-  const unsigned int imuBaseBodyId = excavatorModelPtr_->getRbdlModel().GetBodyId(std::string(getImuBaseFrame()).c_str());
-  if (imuBaseBodyId != std::numeric_limits<unsigned int>::max()) {
-    ROS_WARN("Found Body IMU_BASE.");
-    tf_T_Ib_B_ = getTransformFromID(imuBaseBodyId);
-    tf_T_B_Ib_ = tf_T_Ib_B_.inverse();
-  } else {
-    ROS_ERROR("Did not find base imu!");
-    return;
+  for (const std::pair<const std::string, SegmentPair>& seg : segments_fixed_) {
+    if (seg.second.tip == getImuRooftopFrame()) {
+      tf_T_Ic_C_ = kdlToTransform(seg.second.segment.pose(0));
+      tf_T_C_Ic_ = tf_T_Ic_C_.inverse();
+      ROS_WARN_STREAM("IMU frame with respect to cabin frame: t=[" << tf_T_C_Ic_.getOrigin().x() << ", " << tf_T_C_Ic_.getOrigin().y()
+                                                                   << ", " << tf_T_C_Ic_.getOrigin().z() << "]");
+    } else if (seg.second.tip == getLidarFrame()) {
+      tf_T_L_C_ = kdlToTransform(seg.second.segment.pose(0));
+      tf_T_C_L_ = tf_T_L_C_.inverse();
+      tf_T_L_Ic_ = tf_T_L_C_ * tf_T_C_Ic_;
+      ROS_WARN_STREAM("IMU frame with respect to LiDAR frame: t=[" << tf_T_L_Ic_.getOrigin().x() << ", " << tf_T_L_Ic_.getOrigin().y()
+                                                                   << ", " << tf_T_L_Ic_.getOrigin().z() << "]");
+    } else if (seg.second.tip == getLeftGnssFrame()) {
+      tf_T_GnssL_C_ = kdlToTransform(seg.second.segment.pose(0));
+      tf_T_Cabin_GnssL_ = tf_T_GnssL_C_.inverse();
+      ROS_WARN_STREAM("Left GNSS with respect to Cabin frame: t=[" << tf_T_Cabin_GnssL_.getOrigin().x() << ", "
+                                                                   << tf_T_Cabin_GnssL_.getOrigin().y() << ", "
+                                                                   << tf_T_Cabin_GnssL_.getOrigin().z() << "]");
+    } else if (seg.second.tip == getRightGnssFrame()) {
+      tf_T_GnssR_C_ = kdlToTransform(seg.second.segment.pose(0));
+      tf_T_C_GnssR_ = tf_T_GnssR_C_.inverse();
+      ROS_WARN_STREAM("Right GNSS to Cabin translation: [" << tf_T_C_GnssR_.getOrigin().x() << ", " << tf_T_C_GnssR_.getOrigin().y() << ", "
+                                                           << tf_T_C_GnssR_.getOrigin().z() << "]");
+    }
   }
-  ROS_WARN_STREAM("Base IMU frame with respect to base frame: t=[" << tf_T_B_Ib_.getOrigin().x() << ", " << tf_T_B_Ib_.getOrigin().y()
-                                                                   << ", " << tf_T_B_Ib_.getOrigin().z() << "]");
 }
 
-tf::Transform StaticTransforms::getTransformFromID(const unsigned int bodyId) {
+tf::Transform StaticTransforms::kdlToTransform(const KDL::Frame& k) {
   tf::Transform tf_T;
-  Eigen::Vector3d fixed_t_fixed_body = excavatorModelPtr_->getRbdlModel()
-                                           .mFixedBodies[bodyId - excavatorModelPtr_->getRbdlModel().fixed_body_discriminator]
-                                           ->mParentTransform.r;
-  Eigen::Matrix3d R_body_fixed = excavatorModelPtr_->getRbdlModel()
-                                     .mFixedBodies[bodyId - excavatorModelPtr_->getRbdlModel().fixed_body_discriminator]
-                                     ->mParentTransform.E;
-  Eigen::Vector3d body_t_body_fixed = R_body_fixed * (-fixed_t_fixed_body);
-  Eigen::Quaterniond q_body_fixed(R_body_fixed);
-  tf_T.setRotation(tf::Quaternion(q_body_fixed.x(), q_body_fixed.y(), q_body_fixed.z(), q_body_fixed.w()));
-  tf_T.setOrigin(tf::Vector3(body_t_body_fixed.x(), body_t_body_fixed.y(), body_t_body_fixed.z()));
+  tf_T.setOrigin(tf::Vector3(k.p.x(), k.p.y(), k.p.z()));
+  double qx, qy, qz, qw;
+  k.M.GetQuaternion(qx, qy, qz, qw);
+  tf_T.setRotation(tf::Quaternion(qx, qy, qz, qw));
+
   return tf_T;
 }
 
