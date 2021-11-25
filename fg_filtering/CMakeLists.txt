@@ -42,7 +42,7 @@ add_definitions(${PCL_DEFINITIONS})
 #)
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters kdl_parser
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters kdl_parser signal_logger robot_utils
   DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
