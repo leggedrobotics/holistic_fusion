@@ -16,8 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   message_filters
   signal_logger
-  excavator_model
-  m545_description_ros
   robot_utils
   fg_filtering_log_msgs
   kdl_parser

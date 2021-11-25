@@ -20,17 +20,11 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
   // Publishers
   /// advertise odometry topic
-  pubOdometryCabin_ = node.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_cabin", ROS_QUEUE_SIZE);
-  pubOdometryLidar_ = node.advertise<nav_msgs::Odometry>("/fg_filtering/transform_odom_lidar", ROS_QUEUE_SIZE);
-  pubWorldLidar_ = node.advertise<nav_msgs::Odometry>("/fg_filtering/transform_world_lidar", ROS_QUEUE_SIZE);
-  pubWorldImu_ = node.advertise<nav_msgs::Odometry>("/fg_filtering/transform_world_imu", ROS_QUEUE_SIZE);
-  pubOdomPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/odom_path", ROS_QUEUE_SIZE);
   pubOptimizationPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/optimization_path", ROS_QUEUE_SIZE);
   pubCompslamPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/compslam_path", ROS_QUEUE_SIZE);
   pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", ROS_QUEUE_SIZE);
   pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", ROS_QUEUE_SIZE);
   pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", ROS_QUEUE_SIZE);
-  excavatorStatePublisher_ = node.advertise<m545_msgs::M545State>("/m545_state", ROS_QUEUE_SIZE);
   imuMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::ImuMultiplot>("/fg_filtering/imuMultiplot", ROS_QUEUE_SIZE);
   lidarMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::LidarMultiplot>("/fg_filtering/lidarMultiplot", ROS_QUEUE_SIZE);
   /// Messages
@@ -65,12 +59,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     gnssExactSyncPtr_.reset(
         new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(ROS_QUEUE_SIZE), subGnssLeft_, subGnssRight_));
     gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
-    std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
   }
-  /// Subscribe to measurements
-  subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>(
-      "/measurement_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::measurementsCallback_, this, ros::TransportHints().tcpNoDelay());
-  std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized Measurements subscriber." << std::endl;
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&FactorGraphFiltering::optimizeGraph_, this);
@@ -465,11 +455,6 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
-void FactorGraphFiltering::measurementsCallback_(const m545_msgs::M545Measurements::ConstPtr& measurementsMsgPtr) {
-  // Converting measurement message to measurement
-  measurements_ = measurementConverter_.convert(*measurementsMsgPtr);
-}
-
 /// Worker Functions -----------------------
 void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imuAttitude;
@@ -622,127 +607,6 @@ void FactorGraphFiltering::optimizeGraph_() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
-}
-
-void FactorGraphFiltering::publishState_(ros::Time imuTimeK, const gtsam::Pose3& T_W_O, const gtsam::NavState& T_O_Ik,
-                                         const Eigen::Vector3d& I_w_W_I) {
-  // Used transforms
-  tf::Transform tf_T_I_C = staticTransformsPtr_->T_Ic_C();
-  tf::Transform tf_T_I_L = staticTransformsPtr_->T_Ic_C() * staticTransformsPtr_->T_C_L();
-
-  // Lookup chassis to cabin turn
-  const double turnJointPosition = measurements_.actuatorStates_[m545_description::M545Topology::ActuatorEnum::TURN].position_;
-  Eigen::AngleAxisd C_C_B(-turnJointPosition, Eigen::Vector3d(0.0, 0.0, 1.0));
-  tf::Transform tf_T_C_B;
-  tf_T_C_B = pose3ToTf(C_C_B.toRotationMatrix());
-  tf_T_C_B.setOrigin(tf::Vector3(0.0, 0.0, -staticTransformsPtr_->BC_z_offset()));
-
-  // Lookup / compute remaining relative transformations and rotations
-  tf::Transform R_B_C = tf::Transform(tf_T_C_B.getRotation()).inverse();
-  tf::Transform R_C_Ic = tf::Transform(staticTransformsPtr_->T_C_Ic().getRotation());
-  tf::Transform R_B_Ib = tf::Transform(staticTransformsPtr_->T_B_Ib().getRotation());
-  tf::Vector3 B_t_Ic_C = R_B_C * (R_C_Ic * staticTransformsPtr_->T_Ic_C().getOrigin());
-  tf::Vector3 B_t_C_B = R_B_C * tf_T_C_B.getOrigin();
-
-  // Pose
-  /// From Eigen to TF
-  tf::Transform tf_T_O_I = pose3ToTf(T_O_Ik.pose());
-  tf::Transform tf_T_W_O = pose3ToTf(T_W_O);
-  /// Transform
-  tf::Transform tf_T_O_C = tf_T_O_I * tf_T_I_C;
-  tf::Transform tf_T_O_L = tf_T_O_I * tf_T_I_L;
-  tf::Transform tf_T_W_L = tf_T_W_O * tf_T_O_L;
-  /// Get odom-->base_link transformation from odom-->cabin
-  tf::Transform tf_T_O_B = tf_T_O_C * tf_T_C_B;
-
-  // Angular Velocity
-  tf::Vector3 C_w_W_Ic = R_C_Ic * tf::Vector3(I_w_W_I(0), I_w_W_I(1), I_w_W_I(2));
-  tf::Vector3 B_w_W_Ic = R_B_C * C_w_W_Ic;
-  /// Only along z-axis the angular velocity can be different to rotation in cabin frame
-  tf::Vector3& B_w_W_B = B_w_W_Ic;  // alias
-  B_w_W_B.setZ((R_B_Ib * tf::Vector3(latestImuBaseAngularVel_(0), latestImuBaseAngularVel_(1), latestImuBaseAngularVel_(2))).z());
-
-  // Linear Velocity
-  Eigen::Vector3d Ic_v_W_Ic = T_O_Ik.bodyVelocity();
-  tf::Vector3 C_v_W_Ic = R_C_Ic * tf::Vector3(Ic_v_W_Ic(0), Ic_v_W_Ic(1), Ic_v_W_Ic(2));
-  tf::Vector3 B_v_W_Ic = R_B_C * C_v_W_Ic;
-  /// Compute velocity of base in world --> need "velocity composition rule"
-  tf::Vector3 B_t_Ic_B = B_t_Ic_C + B_t_C_B;
-  tf::Vector3 B_v_W_B = B_v_W_Ic + B_w_W_Ic.cross(B_t_Ic_B);
-  tf::Transform R_W_B = tf::Transform(tf_T_O_B.getRotation());
-  tf::Vector3 W_v_W_B = R_W_B * B_v_W_B;
-
-  // Set m545_state
-  /// Time and status
-  std::chrono::steady_clock::time_point chronoTimeK = std::chrono::steady_clock::time_point(chrono::nanoseconds(imuTimeK.toNSec()));
-  estExcavatorState_.setTime(chronoTimeK);
-  estExcavatorState_.setSequence(measurements_.sequence_);
-  estExcavatorState_.setStatus(excavator_model::ExcavatorState::Status::STATUS_OK);
-  /// Joint States
-  excavator_model::ActuatorConversions::jointStateFromActuatorState(measurements_, estExcavatorState_);
-  /// Map to odom
-  gtsam::Point3 W_t_W_O = T_W_O.translation();
-  gtsam::Quaternion q_W_O = T_W_O.rotation().toQuaternion();
-  estExcavatorState_.setMapToOdomTransform(kindr::HomTransformQuatD(
-      kindr::Position3D(W_t_W_O.x(), W_t_W_O.y(), W_t_W_O.z()), kindr::RotationQuaternionD(q_W_O.w(), q_W_O.x(), q_W_O.y(), q_W_O.z())));
-  /// Pose odom to base
-  estExcavatorState_.setPositionWorldToBaseInWorldFrame(
-      kindr::Position3D(tf_T_O_B.getOrigin().getX(), tf_T_O_B.getOrigin().getY(), tf_T_O_B.getOrigin().getZ()));
-  estExcavatorState_.setOrientationBaseToWorld(kindr::RotationQuaternionPD(tf_T_O_B.getRotation().w(), tf_T_O_B.getRotation().x(),
-                                                                           tf_T_O_B.getRotation().y(), tf_T_O_B.getRotation().z()));
-  /// Angular Velocity
-  estExcavatorState_.setAngularVelocityBaseInBaseFrame(kindr::LocalAngularVelocityD(B_w_W_B.x(), B_w_W_B.y(), B_w_W_B.z()));
-  /// Linear Velocity
-  estExcavatorState_.setLinearVelocityBaseInWorldFrame(kindr::Velocity3D(W_v_W_B.x(), W_v_W_B.y(), W_v_W_B.z()));
-  /// Transform to ROS msg
-  m545_msgs::M545State excavatorStateMsg;
-  excavatorStateMsg = stateConverter_.convert(estExcavatorState_);
-  excavatorStatePublisher_.publish(excavatorStateMsg);
-
-  // Publish odometry message for odom->cabin with 100 Hz
-  nav_msgs::OdometryPtr odomCabinMsgPtr(new nav_msgs::Odometry);
-  odomCabinMsgPtr->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  odomCabinMsgPtr->child_frame_id = staticTransformsPtr_->getCabinFrame();
-  odomCabinMsgPtr->header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_O_C, odomCabinMsgPtr->pose.pose);
-  pubOdometryCabin_.publish(odomCabinMsgPtr);
-
-  // Publish odometry message for odom->lidar with 100 Hz
-  nav_msgs::OdometryPtr odomLidarMsgPtr(new nav_msgs::Odometry);
-  odomLidarMsgPtr->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  odomLidarMsgPtr->child_frame_id = staticTransformsPtr_->getLidarFrame();
-  odomLidarMsgPtr->header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_O_L, odomLidarMsgPtr->pose.pose);
-  pubOdometryLidar_.publish(odomLidarMsgPtr);
-
-  // Publish odometry message for map->lidar with 100 Hz
-  nav_msgs::OdometryPtr worldLidarMsgPtr(new nav_msgs::Odometry);
-  worldLidarMsgPtr->header.frame_id = staticTransformsPtr_->getMapFrame();
-  worldLidarMsgPtr->child_frame_id = staticTransformsPtr_->getLidarFrame();
-  worldLidarMsgPtr->header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_W_L, worldLidarMsgPtr->pose.pose);
-  pubWorldLidar_.publish(worldLidarMsgPtr);
-
-  // Publish odometry message for map->imu with 100 Hz
-  nav_msgs::OdometryPtr worldImuMsgPtr(new nav_msgs::Odometry);
-  worldImuMsgPtr->header.frame_id = staticTransformsPtr_->getMapFrame();
-  worldImuMsgPtr->child_frame_id = staticTransformsPtr_->getImuCabinFrame();
-  worldImuMsgPtr->header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_W_Ik_, worldImuMsgPtr->pose.pose);
-  pubWorldImu_.publish(worldImuMsgPtr);
-
-  // Publish path for cabin frame
-  /// Pose
-  geometry_msgs::PoseStamped poseStamped;
-  poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
-  poseStamped.header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_O_C, poseStamped.pose);
-  /// Path
-  odomPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  odomPathPtr_->header.stamp = imuTimeK;
-  odomPathPtr_->poses.push_back(poseStamped);
-  /// Publish
-  pubOdomPath_.publish(odomPathPtr_);
 }
 
 /// Utility -------------------------
