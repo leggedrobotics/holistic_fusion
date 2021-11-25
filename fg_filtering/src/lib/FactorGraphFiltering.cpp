@@ -71,11 +71,6 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
     gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
     std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
   }
-  else {
-
-    yawR_W_C0_ = gtsam::Rot3::Yaw(0);
-    initedGnssFlag_ = true;
-  }
   /// Subscribe to measurements
   subMeasurements_ = node.subscribe<m545_msgs::M545Measurements>(
       "/measurement_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::measurementsCallback_, this, ros::TransportHints().tcpNoDelay());
@@ -345,27 +340,22 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   ++gnssCallbackCounter_;
 
   // Wait until measurements got accumulated
-  if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
-    accumulatedLeftCoordinates__ += gtsam::Point3(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
-    accumulatedRightCoordinates__ += gtsam::Point3(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
-    return;
-  }
-  // Set reference
-  else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
-    if (initedGnssFlag_) {
-      std::runtime_error("Now enough GNSS messages have arrived for initializing. But yaw has already been intiialized.");
+  if (!initedGnssFlag_) {
+    if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
+      accumulatedLeftCoordinates__ += gtsam::Point3(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
+      accumulatedRightCoordinates__ += gtsam::Point3(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
+      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+      return;
     }
-    initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
-              accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
-    // Convert to cartesian coordinates
-    gtsam::Point3 rightDummyPosition;
-    convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, lastLeftPosition__, rightDummyPosition);
-    return;
-  }
-  // Check whether graph was already initialized, otherwise leave callback
-  else if (!initedGraphFlag_) {
-    return;
+    // Set reference
+    else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
+      initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
+                accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
+      // Convert to cartesian coordinates
+      gtsam::Point3 rightDummyPosition;
+      convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, lastLeftPosition__, rightDummyPosition);
+      return;
+    }
   }
 
   // Convert to cartesian coordinates

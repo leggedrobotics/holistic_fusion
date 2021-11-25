@@ -177,7 +177,7 @@ class FactorGraphFiltering {
   // tf::StampedTransform tf_T_O_Ik_;
   tf::StampedTransform tf_T_W_Ik_;
   //// Attitude Parameters
-  gtsam::Rot3 yawR_W_C0_;
+  gtsam::Rot3 yawR_W_C0_ = gtsam::Rot3::Yaw(0);
   gtsam::Rot3 R_W_I0_;
   gtsam::Pose3 T_W_I0_;
   tf::Transform tf_T_W_I0_;        // Initial IMU pose (in graph)
