@@ -45,26 +45,28 @@ void StaticTransforms::getRootTransformations(const KDL::SegmentMap::const_itera
   if (rootName == "") {
     rootName = elementName;
   }
-  ROS_WARN_STREAM("Root of KDL tree: " << rootName);
-
+  // Iterate through children
   std::vector<KDL::SegmentMap::const_iterator> children = GetTreeElementChildren(element->second);
   for (unsigned int i = 0; i < children.size(); i++) {
     // Go through children
     const KDL::SegmentMap::const_iterator child = children[i];
     // Get kinematic chain from current child to root
     KDL::Chain chain;
-    ROS_WARN_STREAM("Child name: " << child->second.segment.getName());
     tree_.getChain(rootName, child->second.segment.getName(), chain);
     // Compute trafo to root
-    KDL::Frame frameToRoot = chain.getSegment(0).getFrameToTip();
-    double x, y, z, w;
-    frameToRoot.M.GetQuaternion(x, y, z, w);
-    tf::Quaternion q(x, y, z, w);
-    tf::Vector3 t(frameToRoot.p[0], frameToRoot.p[1], frameToRoot.p[2]);
+    tf::Transform T_root_element = tf::Transform::getIdentity();
+    for (int i = 0; i < chain.getNrOfSegments(); ++i) {
+      KDL::Frame frameToRoot = chain.getSegment(i).getFrameToTip();
+      double x, y, z, w;
+      frameToRoot.M.GetQuaternion(x, y, z, w);
+      tf::Quaternion q(x, y, z, w);
+      tf::Vector3 t(frameToRoot.p[0], frameToRoot.p[1], frameToRoot.p[2]);
+      T_root_element = T_root_element * tf::Transform(q, t);
+    }
     // Write into buffer
-    ElementToRoot T_root_element(tf::Transform(q, t), rootName, child->second.segment.getName());
+    ElementToRoot elementToRoot(T_root_element, rootName, child->second.segment.getName());
     // Insert into segments
-    segments_.insert(std::make_pair(child->second.segment.getName(), T_root_element));
+    segments_.insert(std::make_pair(child->second.segment.getName(), elementToRoot));
     // Call recursively
     getRootTransformations(child, rootName);
   }
@@ -72,39 +74,45 @@ void StaticTransforms::getRootTransformations(const KDL::SegmentMap::const_itera
 
 void StaticTransforms::findTransformations() {
   ROS_WARN("Looking up transformations in URDF model...");
-
+  // Variable needed for conversion
+  tf::Transform tf_T_C_B;
+  // Get offset between cabin and base
+  std::shared_ptr<const urdf::Joint> cabinJoint = urdfModel_.getJoint("J_TURN");
+  if (cabinJoint) {
+    BC_Z_offset_ = cabinJoint->parent_to_joint_origin_transform.position.z;
+    tf_T_C_B = tf::Transform(tf::Quaternion::getIdentity(), tf::Vector3(0.0, 0.0, BC_Z_offset_)).inverse();
+    ROS_WARN_STREAM("Cabin to Base translation: " << BC_Z_offset_);
+  } else {
+    throw std::runtime_error("[M545 tf publisher] Did not find cabin turn joint in model.");
+  }
   // Get static transforms within cabin
   for (const std::pair<const std::string, ElementToRoot>& seg : segments_) {
     if (seg.second.elementName == getImuRooftopFrame()) {
-      tf_T_C_Ic_ = seg.second.T_root_element;
+      tf::Transform tf_T_B_Ic = seg.second.T_root_element;
+      tf_T_C_Ic_ = tf_T_C_B * tf_T_B_Ic;
       tf_T_Ic_C_ = tf_T_C_Ic_.inverse();
       ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_C_Ic_.getOrigin().x() << ", "
                                              << tf_T_C_Ic_.getOrigin().y() << ", " << tf_T_C_Ic_.getOrigin().z() << "]");
     } else if (seg.second.elementName == getLidarFrame()) {
-      tf_T_C_L_ = seg.second.T_root_element;
+      tf::Transform tf_T_B_L = seg.second.T_root_element;
+      tf_T_C_L_ = tf_T_C_B * tf_T_B_L;
       tf_T_L_C_ = tf_T_C_L_.inverse();
       tf_T_L_Ic_ = tf_T_L_C_ * tf_T_C_Ic_;
       ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_L_Ic_.getOrigin().x() << ", "
                                              << tf_T_L_Ic_.getOrigin().y() << ", " << tf_T_L_Ic_.getOrigin().z() << "]");
     } else if (seg.second.elementName == getLeftGnssFrame()) {
-      tf_T_C_GnssL_ = seg.second.T_root_element;
+      tf::Transform tf_T_B_GnssL = seg.second.T_root_element;
+      tf_T_C_GnssL_ = tf_T_C_B * tf_T_B_GnssL;
       tf_T_GnssL_C_ = tf_T_C_GnssL_.inverse();
       ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_C_GnssL_.getOrigin().x()
                                              << ", " << tf_T_C_GnssL_.getOrigin().y() << ", " << tf_T_C_GnssL_.getOrigin().z() << "]");
     } else if (seg.second.elementName == getRightGnssFrame()) {
-      tf_T_C_GnssR_ = seg.second.T_root_element;
+      tf::Transform tf_T_B_GnssR = seg.second.T_root_element;
+      tf_T_C_GnssR_ = tf_T_C_B * tf_T_B_GnssR;
       tf_T_GnssR_C_ = tf_T_C_GnssR_.inverse();
       ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": [" << tf_T_C_GnssR_.getOrigin().x() << ", "
                                              << tf_T_C_GnssR_.getOrigin().y() << ", " << tf_T_C_GnssR_.getOrigin().z() << "]");
     }
-  }
-  // Get offset between cabin and base
-  std::shared_ptr<const urdf::Joint> cabinJoint = urdfModel_.getJoint("J_TURN");
-  if (cabinJoint) {
-    BC_Z_offset_ = cabinJoint->parent_to_joint_origin_transform.position.z;
-    ROS_WARN_STREAM("Cabin to Base translation: " << BC_Z_offset_);
-  } else {
-    throw std::runtime_error("[M545 tf publisher] Did not find cabin turn joint in model.");
   }
 }
 
