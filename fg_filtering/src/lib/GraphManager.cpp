@@ -52,6 +52,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
   // Initial estimate
   gtsam::Values valuesEstimate;
+  std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Initial Pose: " << initialPose << std::endl;
   valuesEstimate.insert(gtsam::symbol_shorthand::X(stateKey_), initialPose);
   valuesEstimate.insert(gtsam::symbol_shorthand::V(stateKey_), gtsam::Vector3(0, 0, 0));
   valuesEstimate.insert(gtsam::symbol_shorthand::B(stateKey_), *imuBiasPriorPtr_);
@@ -156,6 +157,8 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
     if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ == 1) {
       relocalizationFlag = true;
       sentRelocalizationCommandAlready_ = true;
+    } else {
+      relocalizationFlag = false;
     }
 
     // Return copy of propagated state (for publishing)
@@ -163,7 +166,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   }
 }
 
-gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose) {
+gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose) {
   // Find corresponding keys in graph
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
   double maxLidarTimestampDistance = 1.0 / lidarRate_ + 2.0 * maxSearchDeviation;
@@ -203,7 +206,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
   return closestLidarKeyK;
 }
 
-void GraphManager::addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose3& unaryPose) {
+void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const gtsam::Pose3& unaryPose) {
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
@@ -329,9 +332,6 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const gtsam::Vect
 }
 
 bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
-  // Operating on graph data --> acquire mutex during whole method
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-
   // Check external motion
   if (pose.translation().norm() > zeroMotionTh_) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_
@@ -346,6 +346,8 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   }
 
   // Global
+  /// Operating on graph data --> acquire mutex during whole method
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   /// Add Zero Pose Factor
   globalFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
                                                               gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
@@ -398,9 +400,9 @@ void GraphManager::activateFallbackGraph() {
   const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
   if (activeGraphPtr_ != fallbackGraphPtr_) {
     *fallbackGraphPtr_ = *globalGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << std::endl;
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << COLOR_END << std::endl;
     activeGraphPtr_ = fallbackGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated fallback graph pointer." << std::endl;
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated fallback graph pointer." << COLOR_END << std::endl;
     // Reset counter
     numOptimizationsSinceGraphSwitching_ = 0;
   }

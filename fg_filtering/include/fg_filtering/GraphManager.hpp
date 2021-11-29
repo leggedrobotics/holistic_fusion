@@ -43,8 +43,8 @@ class GraphManager {
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
   gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                           bool& relocalizationFlag);
-  gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose);
-  void addPoseUnaryFactor(const double lidarTimeK, const gtsam::Pose3& pose);
+  gtsam::Key addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose);
+  void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const gtsam::Vector3& heading, double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);

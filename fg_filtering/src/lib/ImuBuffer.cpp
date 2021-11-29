@@ -71,7 +71,7 @@ bool ImuBuffer::getClosestKeyAndTimestamp(const std::string& callingName, double
   double timeDeviation = std::abs(tInGraph - tK);
   if (timeDeviation > maxSearchDeviation) {
     std::cerr << YELLOW_START << "FG-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
-              << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << std::endl;
+              << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << COLOR_END << std::endl;
     return false;
   }
 

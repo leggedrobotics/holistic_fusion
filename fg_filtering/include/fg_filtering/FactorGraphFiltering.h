@@ -82,7 +82,7 @@ class FactorGraphFiltering {
 
   /// Worker functions
   //// Set Imu Attitude
-  void alignImu_(const ros::Time& imuTimeK);
+  bool alignImu_(const ros::Time& imuTimeK);
   //// Initialize GNSS pose
   void initGnss_(const gtsam::Point3& leftGnssCoordinates, const gtsam::Point3& rightGnssCoordinates);
   //// Initialize the graph
@@ -133,16 +133,18 @@ class FactorGraphFiltering {
   GraphManager graphMgr_;
 
   /// Flags
-  bool imuAlignedFlag_ = false;
-  bool initedGnssFlag_ = false;
-  bool initedGraphFlag_ = false;
-  bool optimizeGraphFlag_ = false;
+  //// Configuration
   bool usingGnssFlag_ = true;
-  bool gnssCovarianceViolatedFlag_ = false;
-  bool usingCompslamFlag_ = true;
-  bool addLidarUnaryFlag_ = false;
   bool usingLidarUnaryFlag_ = true;
+  bool usingCompslamFlag_ = true;
   bool usingGnssReferenceFlag_ = true;
+  //// Initialization
+  bool foundInitialYawFlag_ = false;
+  bool initedGraphFlag_ = false;
+  //// During operation
+  bool optimizeGraphFlag_ = false;
+  bool gnssCovarianceViolatedFlag_ = false;
+  bool addLidarUnaryFlag_ = false;
 
   /// Thresholds
   double gnssOutlierThreshold_ = 1.0;
@@ -157,23 +159,22 @@ class FactorGraphFiltering {
   ros::Time imuTimeK_;
   double imuTimeOffset_ = 0.0;
 
+  /// Rates
+  int imuRate_ = 100;
+
   /// Containers
   //// Transformations
   ///// Compslam
   tf::Transform tf_compslam_T_I0_O_;
-  ///// Current global transformation
-  gtsam::Pose3 T_W_O_;  //!
-  // tf::StampedTransform tf_T_O_Ik_;
   tf::StampedTransform tf_T_W_Ik_;
   //// Attitude Parameters
-  gtsam::Rot3 yawR_W_C0_ = gtsam::Rot3::Yaw(0);
-  gtsam::Rot3 R_W_I0_;
-  gtsam::Pose3 T_W_I0_;
   tf::Transform tf_T_W_I0_;        // Initial IMU pose (in graph)
   gtsam::Point3 W_t_W_GnssL0_;     // initial global position of left GNSS
   double gravityConstant_ = 9.81;  // Will be overwritten
-  double imuAttitudeRoll_;
+  double globalAttitudeYaw_W_C0_;
   double imuAttitudePitch_;
+  double imuAttitudeRoll_;
+
   //// Base IMU measurments
   Eigen::Vector3d latestImuBaseLinearAcc_;
   Eigen::Vector3d latestImuBaseAngularVel_;

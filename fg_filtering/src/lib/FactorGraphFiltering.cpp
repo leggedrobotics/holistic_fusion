@@ -60,11 +60,16 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
         new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(ROS_QUEUE_SIZE), subGnssLeft_, subGnssRight_));
     gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
+  } else {
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+              << " GNSS usage is set to false. Hence, lidar unary factors are activated." << COLOR_END << std::endl;
+    addLidarUnaryFlag_ = true;
   }
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&FactorGraphFiltering::optimizeGraph_, this);
-  std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized thread for optimizing the graph in parallel." << std::endl;
+  std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized thread for optimizing the graph in parallel."
+            << std::endl;
 
   // Services
   toggleGnssUsageService_ = node.advertiseService("fg_filtering/toggle_gnss_usage", &FactorGraphFiltering::toggleGnssFlag_, this);
@@ -77,25 +82,14 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   // Static Members
   static gtsam::Pose3 T_O_Ikm1__;
-  static bool startTimeSetFlag__ = false;
-  static std::chrono::time_point<std::chrono::high_resolution_clock> timeAtStart__;
+  static gtsam::NavState T_O_Ik__;
+  static gtsam::Pose3 T_W_O__;
+  static Eigen::Vector3d w_O_Ik_corrected__;
+  static bool alignedImuFlag__ = false;
+  static int imuCabinCallbackCounter__ = -1;
 
-  // Initialize timing
-  if (!startTimeSetFlag__) {
-    timeAtStart__ = std::chrono::high_resolution_clock::now();
-    startTimeSetFlag__ = true;
-  }
-
-  // Look at current time and if no message has arrived skip GNSS Initialization
-  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
-  currentTime = std::chrono::high_resolution_clock::now();
-  unsigned int durationSinceStart = std::chrono::duration_cast<std::chrono::seconds>(currentTime - timeAtStart__).count();
-  if (!initedGnssFlag_ && durationSinceStart > 10) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START
-              << " Waited for 10 seconds, not enough GNSS messages arrived. Initialize global yaw to 0." << COLOR_END << std::endl;
-    yawR_W_C0_ = gtsam::Rot3::Yaw(0);
-    initedGnssFlag_ = true;
-  }
+  // Increase counter
+  ++imuCabinCallbackCounter__;
 
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
@@ -115,41 +109,50 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
     imuTimeKm1_ = imuTimeK;
   }
 
-  // Write measurement to vectors
+  // Loop variables
+  gtsam::NavState T_W_Ik;
+  bool relocalizationFlag = false;
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
 
   // If IMU not yet aligned
-  if (!initedGnssFlag_ && usingGnssFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting for GNSS to provide global yaw." << std::endl;
-  }  // Align IMU if yaw from GPS is here
-  else if (!imuAlignedFlag_) {
-    // Add to buffer
+  if (!alignedImuFlag__) {
+    // Add measurement to buffer
     graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
-    alignImu_(imuTimeK);
-  }  // Notification that waiting for GNSS
-     // Initialize graph at next iteration step
-  else if (!initedGraphFlag_ && imuAlignedFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Initializing the graph..." << COLOR_END << std::endl;
+    // Add to buffer
+    if (alignImu_(imuTimeK)) {
+      gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(0.0);
+      gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+      gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+      T_O_Ik__ = gtsam::NavState(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0)), gtsam::Velocity3(0.0, 0.0, 0.0));
+      w_O_Ik_corrected__ = Eigen::Vector3d(0.0, 0.0, 0.0);
+      alignedImuFlag__ = true;
+    } else if (imuCabinCallbackCounter__ % imuRate_ == 0) {
+      // Add measurement to buffer
+      graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
+                << std::endl;
+    }
+    return;
+  } else if (!foundInitialYawFlag_) {
+    // Add measurement to buffer
+    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+    if (imuCabinCallbackCounter__ % imuRate_ == 0) {
+      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " IMU callback waiting for initialization of global yaw."
+                << std::endl;
+    }
+    T_W_Ik = T_O_Ik__;
+  } else if (!initedGraphFlag_) {
+    // Add measurement to buffer
+    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     initGraph_(imuTimeK);
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << "...graph is initialized." << COLOR_END << std::endl;
-  }
-  // Add measurement to graph
-  else if (initedGraphFlag_) {
-    // Estimate
-    gtsam::NavState T_O_Ik;
-    Eigen::Vector3d correctedAngularVel;
-
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
+    T_W_Ik = T_O_Ik__;
+  } else {
     // Add IMU factor and get propagated state
-    bool relocalizationFlag = false;
-    gtsam::NavState T_W_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
-    endLoopTime = std::chrono::high_resolution_clock::now();
+    T_W_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
     imuAttitudeRoll_ = T_W_Ik.pose().rotation().roll();
     imuAttitudePitch_ = T_W_Ik.pose().rotation().pitch();
-
-    // Write information to global variable
-    tf_T_W_Ik_.setData(pose3ToTf(T_W_Ik.pose()));
-    tf_T_W_Ik_.stamp_ = imuTimeK;
 
     // If relocalization happens --> write to map->odom
     if (relocalizationFlag) {
@@ -157,54 +160,48 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
       std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Relocalization is needed. Publishing to map->odom."
                 << std::endl;
       // For this computation step assume T_O_Ik ~ T_O_Ikm1
-      tf::Transform tf_T_W_O = pose3ToTf(T_W_Ik.pose()) * pose3ToTf(T_O_Ikm1__).inverse();
-      // T_W_O_ = T_W_Ik.pose() * T_O_Ikm1__.inverse();
-      T_W_O_ = tfToPose3(tf_T_W_O);
-      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " T_W_O_ is now " << T_W_O_ << std::endl;
-      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " T_W_Ik: " << T_W_Ik.pose() << ", T_O_Ikm1__: " << T_O_Ikm1__
-                << std::endl;
+      T_W_O__ = T_W_Ik.pose() * T_O_Ikm1__.inverse();
+      tf::Transform tf_T_W_O = pose3ToTf(T_W_O__);
     }
-    // Convert global pose to local odom-robot update
-    T_O_Ik = gtsam::NavState(T_W_O_.inverse() * T_W_Ik.pose(), T_W_O_.inverse().rotation() * T_W_Ik.velocity());
-    // Angular Velocity
-    correctedAngularVel = graphMgr_.getIMUBias().correctGyroscope(angularVel);
-
-    // Only at very beginning --> zero velocity
-    if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
-      T_O_Ik = gtsam::NavState(T_W_I0_, gtsam::Velocity3(0.0, 0.0, 0.0));
-      correctedAngularVel = Eigen::Vector3d(0.0, 0.0, 0.0);
-      //        if (gnssCovarianceViolatedFlag_ || !usingGnssFlag_) {
-      //          // Add zero motion factor in the very beginning to make biases converge
-      //          graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
-      //          {
-      //            // Mutex for optimizeGraph Flag
-      //            const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      //            optimizeGraphFlag_ = true;
-      //          }
-      //        }
-    }  // end lidar callback counter
-
-    // Publish
-    publishState_(imuTimeK, T_W_O_, T_O_Ik, correctedAngularVel);
-    if (verboseLevel_ > 1) {
-      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Start of IMU callback until publishing took "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+    // Estimate state
+    if (lidarCallbackCounter_ > NUM_LIDAR_CALLBACKS_UNTIL_START) {
+      T_O_Ik__ = gtsam::NavState(T_W_O__.inverse() * T_W_Ik.pose(), T_W_O__.inverse().rotation() * T_W_Ik.velocity());
+      w_O_Ik_corrected__ = graphMgr_.getIMUBias().correctGyroscope(angularVel);
+    } else {
+      graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
+      {
+        // Mutex for optimizeGraph Flag
+        const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+        optimizeGraphFlag_ = true;
+      }
     }
-    T_O_Ikm1__ = T_O_Ik.pose();
-    // Log
-    signalLogger_.publishLogger(imuTimeK.sec, imuTimeK.nsec, T_W_O_ * T_O_Ik.pose(), T_O_Ik.pose(), T_O_Ik.velocity(),
-                                std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count(),
-                                graphMgr_.getIMUBias());
+  }
 
-    // Plotting in rqt_multiplot
-    fg_filtering_log_msgs::ImuMultiplot imuMultiplot;
-    imuMultiplot.time_stamp = imuTimeK.toSec();
-    imuMultiplot.roll_velocity = angularVel(0);
-    imuMultiplot.pitch_velocity = angularVel(1);
-    imuMultiplot.yaw_velocity = angularVel(2);
-    imuMultiplotPublisher_.publish(imuMultiplot);
+  // Timing
+  endLoopTime = std::chrono::high_resolution_clock::now();
 
-  }  // end inited graph flag condition
+  // Write information to global variable
+  tf_T_W_Ik_.setData(pose3ToTf(T_W_Ik.pose()));
+  tf_T_W_Ik_.stamp_ = imuTimeK;
+
+  // Publish
+  publishState_(imuTimeK, T_W_O__, T_O_Ik__, w_O_Ik_corrected__);
+
+  // Write for next iteration
+  T_O_Ikm1__ = T_O_Ik__.pose();
+
+  // Log
+  signalLogger_.publishLogger(imuTimeK.sec, imuTimeK.nsec, T_W_O__ * T_O_Ik__.pose(), T_O_Ik__.pose(), T_O_Ik__.velocity(),
+                              std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count(),
+                              graphMgr_.getIMUBias());
+
+  // Plotting in rqt_multiplot
+  fg_filtering_log_msgs::ImuMultiplot imuMultiplot;
+  imuMultiplot.time_stamp = imuTimeK.toSec();
+  imuMultiplot.roll_velocity = angularVel(0);
+  imuMultiplot.pitch_velocity = angularVel(1);
+  imuMultiplot.yaw_velocity = angularVel(2);
+  imuMultiplotPublisher_.publish(imuMultiplot);
 }
 
 void FactorGraphFiltering::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
@@ -232,6 +229,14 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   static tf::Transform tf_compslam_T_O_ILatestDelta__;
   static gtsam::Pose3 T_O_ILatestDelta_Graph__;
 
+  // Check whether global yaw was already provided (e.g. by GNSS)
+  if (!foundInitialYawFlag_) {
+    globalAttitudeYaw_W_C0_ = 0.0;
+    foundInitialYawFlag_ = true;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+              << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
+  }
+
   // Output of compslam --> predicts absolute motion in lidar frame
   tf::Transform tf_compslam_T_O_Lk, tf_compslam_T_O_Ck;
   tf::Transform tf_compslam_T_O_Ik;
@@ -244,12 +249,14 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   // Set initial compslam pose after third callback (because first compslam pose is wrong)
   ++lidarCallbackCounter_;
   if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
     compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
     tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
     return;
   }
+
   // Set LiDAR time
   compslamTimeKm1 = compslamTimeK_;
   compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
@@ -264,9 +271,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
       lidarUnaryFactorInitialized__ = false;
       // Write current compslam pose to latest delta pose
       tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
-    }
-    // Add lidar measurement as unary factor
-    else {
+    } else {
       if (!lidarUnaryFactorInitialized__) {
         lidarUnaryFactorInitialized__ = true;
         // Calculate state still from globalGraph
@@ -276,10 +281,10 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
       /// Delta pose
       gtsam::Pose3 T_ILatestDelta_Ik(computeDeltaPose(tf_compslam_T_O_ILatestDelta__, tf_compslam_T_O_Ik));
       gtsam::Pose3 T_O_Ik = T_O_ILatestDelta_Graph__ * T_ILatestDelta_Ik;
-      graphMgr_.addPoseUnaryFactor(compslamTimeK_.toSec(), T_O_Ik);
+      graphMgr_.addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), T_O_Ik);
     }
-    // In any case: write the lidar odom delta to the graph
-    lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactor(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
+    // In any case: write the lidar odom delta to global graph
+    lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -305,6 +310,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     // Set last pose for the next iteration
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
   }
+
   // Plotting in rqt_multiplot
   fg_filtering_log_msgs::LidarMultiplot lidarMultiplot;
   lidarMultiplot.time_stamp = compslamTimeK_.toSec();
@@ -325,8 +331,13 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Increase counter
   ++gnssCallbackCounter_;
 
+  if (!usingGnssFlag_) {
+    ROS_WARN("Received GNSS message, but usage is set to false.");
+    return;
+  }
+
   // Wait until measurements got accumulated
-  if (!initedGnssFlag_) {
+  if (!foundInitialYawFlag_) {
     if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
       accumulatedLeftCoordinates__ += gtsam::Point3(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
       accumulatedRightCoordinates__ += gtsam::Point3(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
@@ -379,7 +390,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   lastLeftPosition__ = leftPosition;
 
   // Case: GNSS is good --> Write to graph and perform logic
-  if (!gnssCovarianceViolatedFlag_ && usingGnssFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
     if (graphMgr_.getStateKey() == 0) {
@@ -423,32 +434,25 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     const std::lock_guard<std::mutex> lidarUnaryLock(lidarUnaryMutex_);
     addLidarUnaryFlag_ = true;
   }
-  if (!usingGnssFlag_) {
-    ROS_WARN("Received GNSS message, but usage is set to false.");
-  }
 
   // Publish path
   /// Left
-  //// Pose
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
   pose.header.stamp = leftGnssMsgPtr->header.stamp;
   pose.pose.position.x = leftPosition(0);
   pose.pose.position.y = leftPosition(1);
   pose.pose.position.z = leftPosition(2);
-  //// Path
   leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
   leftGnssPathPtr_->header.stamp = leftGnssMsgPtr->header.stamp;
   leftGnssPathPtr_->poses.push_back(pose);
   pubLeftGnssPath_.publish(leftGnssPathPtr_);
   /// Right
-  //// Pose
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
   pose.header.stamp = rightGnssMsgPtr->header.stamp;
   pose.pose.position.x = rightPosition(0);  // + tf_T_C_GR.getOrigin().x();
   pose.pose.position.y = rightPosition(1);  // + tf_T_C_GR.getOrigin().y();
   pose.pose.position.z = rightPosition(2);  // + tf_T_C_GR.getOrigin().z();
-  //// Path
   rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
   rightGnssPathPtr_->header.stamp = rightGnssMsgPtr->header.stamp;
   rightGnssPathPtr_->poses.push_back(pose);
@@ -456,25 +460,18 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 }
 
 /// Worker Functions -----------------------
-void FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
+bool FactorGraphFiltering::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imuAttitude;
+  static int alignImuCounter__ = -1;
+  ++alignImuCounter__;
   if (graphMgr_.estimateAttitudeFromImu(imuGravityDirection_, imuAttitude, gravityConstant_, graphMgr_.getInitGyrBiasReference())) {
-    gtsam::Rot3 yawR_W_I0 = yawR_W_C0_ * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-    R_W_I0_ = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitude.pitch(), imuAttitude.roll());
     imuAttitudeRoll_ = imuAttitude.roll();
     imuAttitudePitch_ = imuAttitude.pitch();
-    std::cout << "\033[33mFactorGraphFiltering\033[0m Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_
-              << std::endl;
-    std::cout << YELLOW_START << "FactorGraphFiltering"
-              << GREEN_START " Yaw in IMU frame that is used for initializing the graph: " << 180 / M_PI * yawR_W_I0.yaw() << "(deg)."
-              << COLOR_END << std::endl;
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
-              << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << R_W_I0_.ypr().transpose() * (180.0 / M_PI) << COLOR_END
-              << std::endl;
-    imuAlignedFlag_ = true;
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END
+              << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
+    return true;
   } else {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITNG FOR MORE..."
-              << std::endl;
+    return false;
   }
 }
 
@@ -497,7 +494,7 @@ void FactorGraphFiltering::initGnss_(const gtsam::Point3& leftGnssCoordinates, c
 
   // Get initial global yaw
   double yaw_W_C0 = computeYawFromHeadingVector_(W_t_heading);
-  yawR_W_C0_ = gtsam::Rot3::Yaw(yaw_W_C0);
+  globalAttitudeYaw_W_C0_ = yaw_W_C0;
   std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Initial global yaw of cabin is: " << 180 / M_PI * yaw_W_C0
             << std::endl;
 
@@ -505,27 +502,47 @@ void FactorGraphFiltering::initGnss_(const gtsam::Point3& leftGnssCoordinates, c
   W_t_W_GnssL0_ = leftPosition;
 
   // Set flag to true
-  initedGnssFlag_ = true;
+  foundInitialYawFlag_ = true;
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
 void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
+  // Calculate initial attitude;
+  gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
+  gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+  gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+
+  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+            << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << R_W_I0.ypr().transpose() * (180.0 / M_PI) << COLOR_END
+            << std::endl;
+
   // Gravity
   graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
   // Initialize first node
   //// Initial orientation as quaternion
-  tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0_, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
+  tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
   /// Add initial IMU translation based on intial orientation
-  T_W_I0_ = gtsam::Pose3(R_W_I0_, transformGnssPointToImuFrame_(W_t_W_GnssL0_, tf_q_W_I0));
+  gtsam::Pose3 T_W_I0;
+  if (usingGnssFlag_) {
+    T_W_I0 = gtsam::Pose3(R_W_I0, transformGnssPointToImuFrame_(W_t_W_GnssL0_, tf_q_W_I0));
+  } else {
+    T_W_I0 = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0));
+    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized position to 0,0,0 because no GNSS is present."
+              << std::endl;
+  }
   /// Initialize graph node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0_);
+  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
+  if (!usingGnssFlag_) {
+    graphMgr_.activateFallbackGraph();
+  }
   // Read initial pose from graph
-  T_W_I0_ = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
-  ROS_WARN_STREAM("INIT t(x,y,z): " << T_W_I0_.translation().transpose()
-                                    << ", RPY(deg): " << T_W_I0_.rotation().rpy().transpose() * (180.0 / M_PI) << "\n");
-  ROS_WARN_STREAM("Factor graph key of very first node: " << graphMgr_.getStateKey() << std::endl);
+  T_W_I0 = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
+  std::cout << YELLOW_START << "FactorGraphFiltering " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
+            << ", RPY(deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Factor graph key of very first node: " << graphMgr_.getStateKey()
+            << std::endl;
   // Write in tf member variable
-  tf_T_W_I0_ = pose3ToTf(T_W_I0_);
+  tf_T_W_I0_ = pose3ToTf(T_W_I0);
   // Initialize global pose
   tf_T_W_Ik_.setData(tf_T_W_I0_);
   tf_T_W_Ik_.frame_id_ = staticTransformsPtr_->getMapFrame();
@@ -782,6 +799,7 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   if (privateNode.getParam("sensor_params/imuRate", dParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
     graphMgr_.setImuRate(dParam);
+    imuRate_ = int(dParam);
   }
   if (privateNode.getParam("sensor_params/imuBufferLength", iParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - IMU buffer length: " << iParam);
