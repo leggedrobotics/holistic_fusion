@@ -167,14 +167,14 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
     if (lidarCallbackCounter_ > NUM_LIDAR_CALLBACKS_UNTIL_START) {
       T_O_Ik__ = gtsam::NavState(T_W_O__.inverse() * T_W_Ik.pose(), T_W_O__.inverse().rotation() * T_W_Ik.velocity());
       w_O_Ik_corrected__ = graphMgr_.getIMUBias().correctGyroscope(angularVel);
-    } else {
-      graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
-      {
-        // Mutex for optimizeGraph Flag
-        const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-        optimizeGraphFlag_ = true;
-      }
-    }
+    }  // else {
+       //      graphMgr_.addZeroMotionFactor(0.02, imuTimeKm1.toSec(), imuTimeK.toSec(), gtsam::Pose3::identity());
+       //      {
+       //        // Mutex for optimizeGraph Flag
+       //        const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+       //        optimizeGraphFlag_ = true;
+       //      }
+    //}
   }
 
   // Timing
