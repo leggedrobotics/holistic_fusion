@@ -86,14 +86,37 @@ void StaticTransforms::findTransformations() {
     throw std::runtime_error("[M545 tf publisher] Did not find cabin turn joint in model.");
   }
   // Get static transforms within cabin
+  bool IccPresent = false;
   for (const std::pair<const std::string, ElementToRoot>& seg : segments_) {
     if (seg.second.elementName == getImuRooftopFrame()) {
-      tf::Transform tf_T_B_Ic = seg.second.T_root_element;
-      tf_T_C_Ic_ = tf_T_C_B * tf_T_B_Ic;
-      tf_T_Ic_C_ = tf_T_C_Ic_.inverse();
-      ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_C_Ic_.getOrigin().x() << ", "
-                                             << tf_T_C_Ic_.getOrigin().y() << ", " << tf_T_C_Ic_.getOrigin().z() << "]");
-    } else if (seg.second.elementName == getLidarFrame()) {
+      tf::Transform tf_T_B_Icr = seg.second.T_root_element;
+      tf_T_C_Icr_ = tf_T_C_B * tf_T_B_Icr;
+      tf_T_Icr_C_ = tf_T_C_Icr_.inverse();
+      ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_C_Icr_.getOrigin().x() << ", "
+                                             << tf_T_C_Icr_.getOrigin().y() << ", " << tf_T_C_Icr_.getOrigin().z() << "]");
+    } else if (seg.second.elementName == getImuCabinFrame()) {
+      tf::Transform tf_T_B_Icc = seg.second.T_root_element;
+      tf_T_C_Icc_ = tf_T_C_B * tf_T_B_Icc;
+      tf_T_Icc_C_ = tf_T_C_Icc_.inverse();
+      ROS_WARN_STREAM(seg.second.elementName << " with respect to " << seg.second.rootName << ": t=[" << tf_T_C_Icc_.getOrigin().x() << ", "
+                                             << tf_T_C_Icc_.getOrigin().y() << ", " << tf_T_C_Icc_.getOrigin().z() << "]");
+      IccPresent = true;
+    }
+  }
+  // Check which IMU is present
+  if (IccPresent) {
+    tf_T_Ic_C_ = tf_T_Icc_C_;
+    tf_T_C_Ic_ = tf_T_C_Icc_;
+    ROS_WARN("Cabin IMU is present.");
+  } else {
+    tf_T_Ic_C_ = tf_T_Icr_C_;
+    tf_T_C_Ic_ = tf_T_C_Icr_;
+    ROS_WARN("Only rooftop IMU is present.");
+  }
+
+  // Go through remaining transformations
+  for (const std::pair<const std::string, ElementToRoot>& seg : segments_) {
+    if (seg.second.elementName == getLidarFrame()) {
       tf::Transform tf_T_B_L = seg.second.T_root_element;
       tf_T_C_L_ = tf_T_C_B * tf_T_B_L;
       tf_T_L_C_ = tf_T_C_L_.inverse();

@@ -118,7 +118,11 @@ class StaticTransforms {
   tf::Transform tf_T_C_L_;
   tf::Transform tf_T_L_Ic_;
   tf::Transform tf_T_Ic_C_;
+  tf::Transform tf_T_Icr_C_;
+  tf::Transform tf_T_Icc_C_;
   tf::Transform tf_T_C_Ic_;
+  tf::Transform tf_T_C_Icr_;
+  tf::Transform tf_T_C_Icc_;
   tf::Transform tf_T_GnssL_C_;
   tf::Transform tf_T_C_GnssL_;
   tf::Transform tf_T_GnssR_C_;
