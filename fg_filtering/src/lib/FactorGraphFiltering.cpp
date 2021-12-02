@@ -232,6 +232,9 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   // Check whether global yaw was already provided (e.g. by GNSS)
   if (!foundInitialYawFlag_) {
     globalAttitudeYaw_W_C0_ = 0.0;
+    if (usingLidarUnaryFlag_) {
+      graphMgr_.activateFallbackGraph();
+    }
     foundInitialYawFlag_ = true;
     std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
               << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
@@ -284,7 +287,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
       graphMgr_.addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), T_O_Ik);
     }
     // In any case: write the lidar odom delta to global graph
-    // lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
+    lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -421,7 +424,6 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     {
       // Mutex for changing LiDAR constraint mode
       const std::lock_guard<std::mutex> lidaryUnaryLock(lidarUnaryMutex_);
-      addLidarUnaryFlag_ = false;
       graphMgr_.activateGlobalGraph();
 
       // signalLoggerGnss_.publishLogger(leftGnssMsgPtr->header.stamp.sec, leftGnssMsgPtr->header.stamp.nsec, W_t_W_I);
@@ -432,7 +434,6 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     graphMgr_.activateFallbackGraph();
     // Mutex for changing LiDAR constraint mode
     const std::lock_guard<std::mutex> lidarUnaryLock(lidarUnaryMutex_);
-    addLidarUnaryFlag_ = true;
   }
 
   // Publish path
@@ -532,7 +533,7 @@ void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   }
   /// Initialize graph node
   graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
-  if (!usingGnssFlag_) {
+  if (!usingGnssFlag_ && usingLidarUnaryFlag_) {
     graphMgr_.activateFallbackGraph();
   }
   // Read initial pose from graph

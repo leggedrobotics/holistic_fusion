@@ -9,7 +9,7 @@ sensor_params:
   imuBufferLength: 200
   lidarRate: 5
   gnssRate: 20
-  imuTimeOffset: 0.00 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
+  imuTimeOffset: 0.0 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
 # Factor Graph
 graph_params:
@@ -28,17 +28,17 @@ noise_params:
   ## IMU
   ### Accelerometer
   accNoiseDensity: 7.225e-07                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
-  accBiasRandomWalk: 1.0e-06               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
+  accBiasRandomWalk: 1.0e-01               #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
   ### Gyro
   gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
-  gyrBiasRandomWalk: 9.33e-08              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+  gyrBiasRandomWalk: 9.33e-01              #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
   gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
   ### Preintegration
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ## LiDAR
-  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
   poseUnaryNoise: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position

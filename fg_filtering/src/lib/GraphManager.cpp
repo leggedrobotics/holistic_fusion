@@ -169,6 +169,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
 gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const gtsam::Pose3& pose) {
   // Find corresponding keys in graph
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
   double maxLidarTimestampDistance = 1.0 / lidarRate_ + 2.0 * maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
@@ -183,11 +184,11 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
       gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise_[0], poseBetweenNoise_[1], poseBetweenNoise_[2],
                                            poseBetweenNoise_[3], poseBetweenNoise_[4], poseBetweenNoise_[5])
                                               .finished());  // rad,rad,rad,m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(0.1), poseBetweenNoise);
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), poseBetweenNoise);
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
-                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, tukeyErrorFunction);
+                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, errorFunction);
 
   // Write to graph
   {
@@ -211,7 +212,7 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * lidarRate_);
-  maxSearchDeviation += maxSearchDeviation * 0.1;
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -224,10 +225,10 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   auto poseUnaryNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseUnaryNoise_[0], poseUnaryNoise_[1], poseUnaryNoise_[2],
                                                              poseUnaryNoise_[3], poseUnaryNoise_[4], poseUnaryNoise_[5])
                                                                 .finished());  // rad,rad,rad,x,y,z
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), poseUnaryNoise);
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), poseUnaryNoise);
 
   // Unary factor
-  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, tukeyErrorFunction);
+  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, errorFunction);
 
   // Write to graph
   {
@@ -248,7 +249,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const gtsam::Vec
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * gnssRate_);
-  maxSearchDeviation += maxSearchDeviation * 0.1;
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -293,7 +294,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const gtsam::Vect
   double closestGraphTime;
   gtsam::Key closestKey;
   double maxSearchDeviation = 1 / (2 * gnssRate_);
-  maxSearchDeviation += maxSearchDeviation * 0.1;
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -538,7 +539,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  maxSearchDeviation += maxSearchDeviation * 0.1;
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
