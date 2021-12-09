@@ -4,10 +4,13 @@
 // ROS
 #include <urdf/model.h>
 #include <Eigen/Eigen>
-#include <kdl/tree.hpp>
 #include "tf/tf.h"
 
 namespace compslam_se {
+
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define COLOR_END "\033[0m"
 
 class ElementToRoot final {
  public:
@@ -22,7 +25,8 @@ class ElementToRoot final {
 
 class StaticTransforms {
  public:
-  StaticTransforms(ros::NodeHandle& privateNode);
+  // Constructor
+  StaticTransforms() { std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl; }
 
   // Setters
   void setMapFrame(const std::string& s) { mapFrame_ = s; }
@@ -91,9 +95,9 @@ class StaticTransforms {
   double BC_z_offset() { return BC_Z_offset_; }
 
   // Functionality
-  void findTransformations();
+  virtual void findTransformations() = 0;
 
- private:
+ protected:
   // Names
   /// Description
   std::string urdfDescription_;
@@ -111,7 +115,6 @@ class StaticTransforms {
 
   // Robot Models
   urdf::Model urdfModel_;
-  KDL::Tree tree_;
 
   // Transformations
   tf::Transform tf_T_L_C_;
@@ -136,10 +139,6 @@ class StaticTransforms {
 
   /// A pointer to the parsed URDF model
   std::unique_ptr<urdf::Model> model_;
-
-  // Methods
-  tf::Transform kdlToTransform(const KDL::Frame& k);
-  void getRootTransformations(const KDL::SegmentMap::const_iterator element, std::string rootName = "");
 };
 
 }  // namespace compslam_se

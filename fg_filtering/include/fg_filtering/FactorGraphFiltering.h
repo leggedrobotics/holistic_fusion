@@ -11,7 +11,6 @@
 #include <nav_msgs/Path.h>
 #include <ros/node_handle.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/NavSatFix.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <tf/transform_broadcaster.h>
@@ -69,17 +68,14 @@ class FactorGraphFiltering {
   // Log data
   void logSignals() { signalLogger_.~SignalLogger(); }
 
+  // Access functions
+  void addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
+  void addOdometryMeasurement(const tf::Transform& tf_compslam_T_O_Lk, const ros::Time& odometryTimeK);
+  void addGnssMeasurements(const gtsam::Point3& leftGnssCoord, const gtsam::Point3& rightGnssCoord, const Eigen::Vector3d& covarianceXYZ,
+                           const ros::Time& gnssTimeK);
+
  protected:
   // Methods -------------
-  /// Callbacks
-  //// IMU Callback Functions for handling incoming IMU messages -------------
-  void imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
-  void imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
-  //// LiDAR Odometry Callback
-  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  //// GNSS Callback
-  void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-
   /// Worker functions
   //// Set Imu Attitude
   bool alignImu_(const ros::Time& imuTimeK);
@@ -95,9 +91,9 @@ class FactorGraphFiltering {
 
   /// Utility functions
   //// Convert GNSS readings to vectors
-  void convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
-                                const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
-                                gtsam::Point3& rightPosition);
+  // void convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
+  //                              const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
+  //                              gtsam::Point3& rightPosition);
   void convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
                                 gtsam::Point3& leftPosition, gtsam::Point3& rightPosition);
   //// Geometric transformation to IMU in world frame
@@ -121,7 +117,6 @@ class FactorGraphFiltering {
 
   // Mutex
   std::mutex optimizeGraphMutex_;
-  std::mutex accessImuBaseMutex_;
   std::mutex lidarUnaryMutex_;
 
   // Member variables -------------
@@ -175,10 +170,6 @@ class FactorGraphFiltering {
   double imuAttitudePitch_;
   double imuAttitudeRoll_;
 
-  //// Base IMU measurments
-  Eigen::Vector3d latestImuBaseLinearAcc_;
-  Eigen::Vector3d latestImuBaseAngularVel_;
-
   /// Reference position
   double gnssReferenceLatitude_;
   double gnssReferenceLongitude_;
@@ -186,7 +177,7 @@ class FactorGraphFiltering {
   double gnssReferenceHeading_;
 
   /// Static transforms
-  StaticTransforms* staticTransformsPtr_;
+  StaticTransforms* staticTransformsPtr_ = NULL;
 
   /// Publishers
   ros::Publisher pubLaserImuBias_;
@@ -206,18 +197,6 @@ class FactorGraphFiltering {
   nav_msgs::PathPtr compslamPathPtr_;
   nav_msgs::PathPtr leftGnssPathPtr_;
   nav_msgs::PathPtr rightGnssPathPtr_;
-
-  /// Subscribers
-  ros::Subscriber subImuCabin_;
-  ros::Subscriber subImuBase_;
-  ros::Subscriber subLidarOdometry_;
-  tf::TransformListener tfListener_;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssLeft_;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssRight_;
-
-  //// Exact sync for gnss
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> _gnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<_gnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
 
   // Signal Logger
   SignalLogger signalLogger_;

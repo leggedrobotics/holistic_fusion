@@ -5,15 +5,18 @@ namespace compslam_se {
 // Public -----------------------------------------------------------
 /// Constructor -----------
 FactorGraphFiltering::FactorGraphFiltering() {
-  std::cout << "\033[33mFactorGraphFiltering\033[0m FactorGraphFiltering instance created." << std::endl;
+  std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " FactorGraphFiltering instance created." << std::endl;
 }
 
 /// Setup ------------
 bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
   // Get ROS params and set extrinsics
-  staticTransformsPtr_ = new StaticTransforms(privateNode);
   readParams_(privateNode);
-  staticTransformsPtr_->findTransformations();
+  if (staticTransformsPtr_ != NULL) {
+    staticTransformsPtr_->findTransformations();
+  } else {
+    std::runtime_error("staticTransformsPtr must be set by the inheriting class.");
+  }
 
   // Geodetic Converter
   // geodeticConverterLeft_ = geodetic_converter::GeodeticConverter();
@@ -38,34 +41,6 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
   signalLogger_.setup(node);
   // signalLoggerGnss_.setup(node);
 
-  // Subscribers
-  /// subscribe to remapped IMU topic
-  subImuCabin_ = node.subscribe<sensor_msgs::Imu>("/imu_topic_cabin", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuCabinCallback_, this,
-                                                  ros::TransportHints().tcpNoDelay());
-  std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized IMU cabin subscriber." << std::endl;
-  subImuBase_ = node.subscribe<sensor_msgs::Imu>("/imu_topic_base", ROS_QUEUE_SIZE, &FactorGraphFiltering::imuBaseCallback_, this,
-                                                 ros::TransportHints().tcpNoDelay());
-  std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized IMU base subscriber." << std::endl;
-  /// subscribe to remapped LiDAR odometry topic
-  if (usingCompslamFlag_) {
-    subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>(
-        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &FactorGraphFiltering::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
-    std::cout << "\033[33mFactorGraphFiltering\033[0m Initialized LiDAR Odometry subscriber." << std::endl;
-  }
-  /// subscribe to gnss topics using ROS exact sync policy in a single callback
-  if (usingGnssFlag_) {
-    subGnssLeft_.subscribe(node, "/gnss_topic_left", ROS_QUEUE_SIZE);
-    subGnssRight_.subscribe(node, "/gnss_topic_right", ROS_QUEUE_SIZE);
-    gnssExactSyncPtr_.reset(
-        new message_filters::Synchronizer<_gnssExactSyncPolicy>(_gnssExactSyncPolicy(ROS_QUEUE_SIZE), subGnssLeft_, subGnssRight_));
-    gnssExactSyncPtr_->registerCallback(boost::bind(&FactorGraphFiltering::gnssCallback_, this, _1, _2));
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized GNSS subscriber (for both GNSS topics)." << std::endl;
-  } else {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
-              << " GNSS usage is set to false. Hence, lidar unary factors are activated." << COLOR_END << std::endl;
-    addLidarUnaryFlag_ = true;
-  }
-
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&FactorGraphFiltering::optimizeGraph_, this);
   std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized thread for optimizing the graph in parallel."
@@ -79,7 +54,8 @@ bool FactorGraphFiltering::setup(ros::NodeHandle& node, ros::NodeHandle& private
 
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
-void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
+void FactorGraphFiltering::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
+                                             const ros::Time& imuTimeK) {
   // Static Members
   static gtsam::Pose3 T_O_Ikm1__;
   static gtsam::NavState T_O_Ik__;
@@ -93,8 +69,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
 
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
-  const ros::Time imuTimeK = imuMsgPtr->header.stamp;
-  imuTimeK_ = imuMsgPtr->header.stamp;
+  imuTimeK_ = imuTimeK;
   // Define variables for timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
@@ -112,8 +87,6 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   // Loop variables
   gtsam::NavState T_W_Ik;
   bool relocalizationFlag = false;
-  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
-  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
 
   // If IMU not yet aligned
   if (!alignedImuFlag__) {
@@ -204,24 +177,7 @@ void FactorGraphFiltering::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& i
   imuMultiplotPublisher_.publish(imuMultiplot);
 }
 
-void FactorGraphFiltering::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
-  // Timing
-  const ros::Time imuTimeK = imuMsgPtr->header.stamp;
-
-  // Write measurement to vectors
-  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
-  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-
-  // Write to latest measurement variable
-  {
-    // Mutex for Base IMU measurements
-    const std::lock_guard<std::mutex> optimizeGraphLock(accessImuBaseMutex_);
-    latestImuBaseLinearAcc_ = linearAcc;
-    latestImuBaseAngularVel_ = angularVel;
-  }
-}
-
-void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+void FactorGraphFiltering::addOdometryMeasurement(const tf::Transform& tf_compslam_T_O_Lk, const ros::Time& odometryTimeK) {
   // Static variables
   static bool lidarUnaryFactorInitialized__ = false;
   static tf::Transform tf_compslam_T_O_Ikm1__;
@@ -241,9 +197,8 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   }
 
   // Output of compslam --> predicts absolute motion in lidar frame
-  tf::Transform tf_compslam_T_O_Lk, tf_compslam_T_O_Ck;
+  tf::Transform tf_compslam_T_O_Ck;
   tf::Transform tf_compslam_T_O_Ik;
-  odomMsgToTf(*odomLidarPtr, tf_compslam_T_O_Lk);
   ros::Time compslamTimeKm1;
 
   // Transform message to Imu frame
@@ -253,7 +208,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   ++lidarCallbackCounter_;
   if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
-    compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
+    compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
     tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
@@ -262,7 +217,7 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
 
   // Set LiDAR time
   compslamTimeKm1 = compslamTimeK_;
-  compslamTimeK_ = odomLidarPtr->header.stamp + ros::Duration(imuTimeOffset_);
+  compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
 
   /// Delta pose
   gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
@@ -301,11 +256,11 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
     // Visualization of Compslam pose
     geometry_msgs::PoseStamped poseStamped;
     poseStamped.header.frame_id = staticTransformsPtr_->getMapFrame();
-    poseStamped.header.stamp = odomLidarPtr->header.stamp;
+    poseStamped.header.stamp = odometryTimeK;
     tf::poseTFToMsg(tf_compslam_T_O_Ck, poseStamped.pose);
     /// Path
     compslamPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-    compslamPathPtr_->header.stamp = odomLidarPtr->header.stamp;
+    compslamPathPtr_->header.stamp = odometryTimeK;
     compslamPathPtr_->poses.push_back(poseStamped);
     /// Publish
     pubCompslamPath_.publish(compslamPathPtr_);
@@ -323,8 +278,8 @@ void FactorGraphFiltering::lidarOdometryCallback_(const nav_msgs::Odometry::Cons
   lidarMultiplotPublisher_.publish(lidarMultiplot);
 }
 
-void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
-                                         const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr) {
+void FactorGraphFiltering::addGnssMeasurements(const gtsam::Point3& leftGnssCoord, const gtsam::Point3& rightGnssCoord,
+                                               const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK) {
   // Static method variables
   static gtsam::Point3 accumulatedLeftCoordinates__(0.0, 0.0, 0.0);
   static gtsam::Point3 accumulatedRightCoordinates__(0.0, 0.0, 0.0);
@@ -342,8 +297,8 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Wait until measurements got accumulated
   if (!foundInitialYawFlag_) {
     if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
-      accumulatedLeftCoordinates__ += gtsam::Point3(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
-      accumulatedRightCoordinates__ += gtsam::Point3(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
+      accumulatedLeftCoordinates__ += leftGnssCoord;
+      accumulatedRightCoordinates__ += rightGnssCoord;
       std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
       return;
     }
@@ -353,19 +308,19 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
                 accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
       // Convert to cartesian coordinates
       gtsam::Point3 rightDummyPosition;
-      convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, lastLeftPosition__, rightDummyPosition);
+      convertNavSatToPositions(leftGnssCoord, rightGnssCoord, lastLeftPosition__, rightDummyPosition);
       return;
     }
   }
 
   // Convert to cartesian coordinates
   gtsam::Point3 leftPosition, rightPosition;
-  convertNavSatToPositions(leftGnssMsgPtr, rightGnssMsgPtr, leftPosition, rightPosition);
+  convertNavSatToPositions(leftGnssCoord, rightGnssCoord, leftPosition, rightPosition);
 
   // Read covariance
-  bool gnssCovarianceViolatedFlag = leftGnssMsgPtr->position_covariance[0] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                                    leftGnssMsgPtr->position_covariance[4] > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                                    leftGnssMsgPtr->position_covariance[8] > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
+  bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
   if (gnssCovarianceViolatedFlag && !gnssCovarianceViolatedFlag_) {
     std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START << " GNSS measurments now ABSENT due to too big covariance."
               << std::endl;
@@ -399,7 +354,7 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     if (graphMgr_.getStateKey() == 0) {
       return;
     }
-    graphMgr_.addGnssPositionUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_W_I);
+    graphMgr_.addGnssPositionUnaryFactor(gnssTimeK.toSec(), W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
@@ -440,22 +395,22 @@ void FactorGraphFiltering::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   /// Left
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
-  pose.header.stamp = leftGnssMsgPtr->header.stamp;
+  pose.header.stamp = gnssTimeK;
   pose.pose.position.x = leftPosition(0);
   pose.pose.position.y = leftPosition(1);
   pose.pose.position.z = leftPosition(2);
   leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-  leftGnssPathPtr_->header.stamp = leftGnssMsgPtr->header.stamp;
+  leftGnssPathPtr_->header.stamp = gnssTimeK;
   leftGnssPathPtr_->poses.push_back(pose);
   pubLeftGnssPath_.publish(leftGnssPathPtr_);
   /// Right
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
-  pose.header.stamp = rightGnssMsgPtr->header.stamp;
+  pose.header.stamp = gnssTimeK;
   pose.pose.position.x = rightPosition(0);  // + tf_T_C_GR.getOrigin().x();
   pose.pose.position.y = rightPosition(1);  // + tf_T_C_GR.getOrigin().y();
   pose.pose.position.z = rightPosition(2);  // + tf_T_C_GR.getOrigin().z();
   rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-  rightGnssPathPtr_->header.stamp = rightGnssMsgPtr->header.stamp;
+  rightGnssPathPtr_->header.stamp = gnssTimeK;
   rightGnssPathPtr_->poses.push_back(pose);
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
@@ -628,16 +583,6 @@ void FactorGraphFiltering::optimizeGraph_() {
 }
 
 /// Utility -------------------------
-void FactorGraphFiltering::convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
-                                                    const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
-                                                    gtsam::Point3& rightPosition) {
-  /// Left
-  leftPosition = gnssSensor_.gpsToCartesian(leftGnssMsgPtr->latitude, leftGnssMsgPtr->longitude, leftGnssMsgPtr->altitude);
-
-  /// Right
-  rightPosition = gnssSensor_.gpsToCartesian(rightGnssMsgPtr->latitude, rightGnssMsgPtr->longitude, rightGnssMsgPtr->altitude);
-}
-
 void FactorGraphFiltering::convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
                                                     gtsam::Point3& leftPosition, gtsam::Point3& rightPosition) {
   /// Left
