@@ -390,9 +390,9 @@ void GraphManager::activateGlobalGraph() {
   const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
   if (activeGraphPtr_ != globalGraphPtr_) {
     *fallbackGraphPtr_ = *globalGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << std::endl;
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << COLOR_END << std::endl;
     activeGraphPtr_ = globalGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer." << std::endl;
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer." << COLOR_END << std::endl;
     // Reset counter
     numOptimizationsSinceGraphSwitching_ = 0;
     sentRelocalizationCommandAlready_ = false;
@@ -473,8 +473,19 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     }
     // Otherwise optimize fallback graph and add factors also to global graph
     else if (activeGraphPtr_ == fallbackGraphPtr_) {
+      static bool calledException__ = false;
       activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-      globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+      if (!calledException__) {
+        try {
+          globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+        } catch (const std::exception& e) {
+          std::cout << YELLOW_START << "FG-GraphManager" << RED_START
+                    << " Exception was thrown while optimizing the global graph. Continuing, as fallback graph is active." << COLOR_END
+                    << std::endl;
+          calledException__ = true;
+        }
+      }
+
     } else {
       std::runtime_error("Active graph pointer is neither pointing to the global-, nor to the fallback graph.");
     }
@@ -543,10 +554,9 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1)) {
-      return false;
-    }
-    if (!imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK)) {
+    bool successKm1 = imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1);
+    bool successK = imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK);
+    if (!successKm1 || !successK) {
       return false;
     }
   }
@@ -561,7 +571,7 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   if (keyTimestampDistance > maxTimestampDistance) {
     std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Distance of " << name
               << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
-              << " which is larger than the maximum admissible distance of " << maxTimestampDistance << std::endl;
+              << " which is larger than the maximum admissible distance of " << maxTimestampDistance << COLOR_END << std::endl;
   }
   return true;
 }

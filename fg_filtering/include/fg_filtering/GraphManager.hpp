@@ -108,6 +108,16 @@ class GraphManager {
   const gtsam::imuBias::ConstantBias getIMUBias() { return graphState_.imuBias(); }
   gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
+  // Status
+  bool globalGraphActiveFlag() {
+    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+    return activeGraphPtr_ == globalGraphPtr_;
+  }
+  bool fallbackGraphActiveFlag() {
+    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+    return activeGraphPtr_ == fallbackGraphPtr_;
+  }
+
  private:
   // Methods
   /// Update IMU integrators

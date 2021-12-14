@@ -17,7 +17,7 @@ graph_params:
   additonalIterations: 0                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: false
-  usingLidarUnary: true
+  usingFallbackGraph: true
 
 # Outliere Rejection
 outlier_params:
@@ -38,7 +38,7 @@ noise_params:
   integrationNoiseDensity: 1.0         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreint: 1.0                 #covariance of bias used for preintegration, default: 1.0e-2
   ## LiDAR
-  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
   poseUnaryNoise: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## GNSS
   gnssPositionUnaryNoise: 1.0 # x, y, z of global position
@@ -53,6 +53,6 @@ relinearization_params:
   gyrBiasReLinTh: 1.0e-10                      #Gyroscope bias linearization threshold
   relinearizeSkip: 1
   enableRelinearization: true
-  evaluateNonlinearError: false
+  evaluateNonlinearError: true
   cacheLinearizedFactors: true
   enablePartialRelinearizationCheck: true

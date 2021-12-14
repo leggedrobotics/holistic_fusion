@@ -182,27 +182,30 @@ void FactorGraphFiltering::addOdometryMeasurement(const tf::Transform& tf_compsl
   static bool lidarUnaryFactorInitialized__ = false;
   static tf::Transform tf_compslam_T_O_Ikm1__;
   static gtsam::Key lastDeltaMeasurementKey__;
-  static tf::Transform tf_compslam_T_O_ILatestDelta__;
-  static gtsam::Pose3 T_O_ILatestDelta_Graph__;
+  static tf::Transform tf_compslam_T_O_Ij__;
+  static gtsam::Pose3 T_O_Ij_Graph__;
 
   // Check whether global yaw was already provided (e.g. by GNSS)
-  if (!foundInitialYawFlag_) {
-    globalAttitudeYaw_W_C0_ = 0.0;
-    if (usingLidarUnaryFlag_) {
-      graphMgr_.activateFallbackGraph();
+  {
+    // Locking
+    const std::lock_guard<std::mutex> initGraphLock(initGraphMutex_);
+    // Check
+    if (!foundInitialYawFlag_) {
+      globalAttitudeYaw_W_C0_ = 0.0;
+      foundInitialYawFlag_ = true;
+      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+                << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
     }
-    foundInitialYawFlag_ = true;
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
-              << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
   }
 
-  // Output of compslam --> predicts absolute motion in lidar frame
-  tf::Transform tf_compslam_T_O_Ck;
-  tf::Transform tf_compslam_T_O_Ik;
-  ros::Time compslamTimeKm1;
-
   // Transform message to Imu frame
-  tf_compslam_T_O_Ik = tf_compslam_T_O_Lk * staticTransformsPtr_->T_L_Ic();
+  const tf::Transform tf_compslam_T_O_Ik = tf_compslam_T_O_Lk * staticTransformsPtr_->T_L_Ic();
+  const tf::Transform tf_compslam_T_I0_Ik = tf_compslam_T_I0_O_ * tf_compslam_T_O_Ik;
+  const tf::Transform tf_compslam_T_O_Ck = tf_T_W_I0_ * tf_compslam_T_I0_Ik * staticTransformsPtr_->T_Ic_C();
+
+  // Timing
+  const ros::Time compslamTimeKm1 = compslamTimeK_;
+  compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
 
   // Set initial compslam pose after third callback (because first compslam pose is wrong)
   ++lidarCallbackCounter_;
@@ -210,48 +213,39 @@ void FactorGraphFiltering::addOdometryMeasurement(const tf::Transform& tf_compsl
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
     compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
-    tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
+    tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
     return;
   }
 
-  // Set LiDAR time
-  compslamTimeKm1 = compslamTimeK_;
-  compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
-
-  /// Delta pose
-  gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
-
   if (initedGraphFlag_) {
-    // Add LiDAR measurement as delta factor
-    if (!addLidarUnaryFlag_) {
+    if (graphMgr_.globalGraphActiveFlag()) {
       /// Reset LiDAR Unary factor intiialization
       lidarUnaryFactorInitialized__ = false;
       // Write current compslam pose to latest delta pose
-      tf_compslam_T_O_ILatestDelta__ = tf_compslam_T_O_Ik;
-    } else {
+      tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
+    }  //
+    else if (graphMgr_.fallbackGraphActiveFlag()) {
       if (!lidarUnaryFactorInitialized__) {
-        lidarUnaryFactorInitialized__ = true;
         // Calculate state still from globalGraph
-        T_O_ILatestDelta_Graph__ = graphMgr_.calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+        T_O_Ij_Graph__ = graphMgr_.calculateStateAtKey(lastDeltaMeasurementKey__).pose();
         std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
+        lidarUnaryFactorInitialized__ = true;
       }
       /// Delta pose
-      gtsam::Pose3 T_ILatestDelta_Ik(computeDeltaPose(tf_compslam_T_O_ILatestDelta__, tf_compslam_T_O_Ik));
-      gtsam::Pose3 T_O_Ik = T_O_ILatestDelta_Graph__ * T_ILatestDelta_Ik;
+      gtsam::Pose3 T_Ij_Ik(computeDeltaPose(tf_compslam_T_O_Ij__, tf_compslam_T_O_Ik));
+      gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
       graphMgr_.addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), T_O_Ik);
     }
     // In any case: write the lidar odom delta to global graph
+    /// Delta pose
+    gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
     lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-
-    // Direct compslam estimate for base
-    tf::Transform tf_compslam_T_I0_Ik = tf_compslam_T_I0_O_ * tf_compslam_T_O_Ik;
-    tf_compslam_T_O_Ck = tf_T_W_I0_ * tf_compslam_T_I0_Ik * staticTransformsPtr_->T_Ic_C();
 
     // Visualization of Compslam pose
     geometry_msgs::PoseStamped poseStamped;
@@ -267,15 +261,15 @@ void FactorGraphFiltering::addOdometryMeasurement(const tf::Transform& tf_compsl
 
     // Set last pose for the next iteration
     tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
-  }
 
-  // Plotting in rqt_multiplot
-  fg_filtering_log_msgs::LidarMultiplot lidarMultiplot;
-  lidarMultiplot.time_stamp = compslamTimeK_.toSec();
-  lidarMultiplot.delta_roll = 10.0 * T_Ikm1_Ik.rotation().roll();
-  lidarMultiplot.delta_pitch = 10.0 * T_Ikm1_Ik.rotation().pitch();
-  lidarMultiplot.delta_yaw = 10.0 * T_Ikm1_Ik.rotation().yaw();
-  lidarMultiplotPublisher_.publish(lidarMultiplot);
+    // Plotting in rqt_multiplot
+    fg_filtering_log_msgs::LidarMultiplot lidarMultiplot;
+    lidarMultiplot.time_stamp = compslamTimeK_.toSec();
+    lidarMultiplot.delta_roll = 10.0 * T_Ikm1_Ik.rotation().roll();
+    lidarMultiplot.delta_pitch = 10.0 * T_Ikm1_Ik.rotation().pitch();
+    lidarMultiplot.delta_yaw = 10.0 * T_Ikm1_Ik.rotation().yaw();
+    lidarMultiplotPublisher_.publish(lidarMultiplot);
+  }
 }
 
 void FactorGraphFiltering::addGnssMeasurements(const gtsam::Point3& leftGnssCoord, const gtsam::Point3& rightGnssCoord,
@@ -291,25 +285,33 @@ void FactorGraphFiltering::addGnssMeasurements(const gtsam::Point3& leftGnssCoor
 
   if (!usingGnssFlag_) {
     ROS_WARN("Received GNSS message, but usage is set to false.");
+    if (usingFallbackGraphFlag_) {
+      graphMgr_.activateFallbackGraph();
+    }
     return;
   }
 
   // Wait until measurements got accumulated
-  if (!foundInitialYawFlag_) {
-    if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
-      accumulatedLeftCoordinates__ += leftGnssCoord;
-      accumulatedRightCoordinates__ += rightGnssCoord;
-      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
-      return;
-    }
-    // Set reference
-    else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
-      initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
-                accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
-      // Convert to cartesian coordinates
-      gtsam::Point3 rightDummyPosition;
-      convertNavSatToPositions(leftGnssCoord, rightGnssCoord, lastLeftPosition__, rightDummyPosition);
-      return;
+  {
+    // Locking
+    const std::lock_guard<std::mutex> initGraphLock(initGraphMutex_);
+    if (!foundInitialYawFlag_) {
+      if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
+        accumulatedLeftCoordinates__ += leftGnssCoord;
+        accumulatedRightCoordinates__ += rightGnssCoord;
+        std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << "NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+        return;
+      }
+      // Set reference
+      else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
+        initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
+                  accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
+        // Convert to cartesian coordinates
+        gtsam::Point3 rightDummyPosition;
+        convertNavSatToPositions(leftGnssCoord, rightGnssCoord, lastLeftPosition__, rightDummyPosition);
+        foundInitialYawFlag_ = true;
+        return;
+      }
     }
   }
 
@@ -376,19 +378,11 @@ void FactorGraphFiltering::addGnssMeasurements(const gtsam::Point3& leftGnssCoor
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-    {
-      // Mutex for changing LiDAR constraint mode
-      const std::lock_guard<std::mutex> lidaryUnaryLock(lidarUnaryMutex_);
-      graphMgr_.activateGlobalGraph();
-
-      // signalLoggerGnss_.publishLogger(leftGnssMsgPtr->header.stamp.sec, leftGnssMsgPtr->header.stamp.nsec, W_t_W_I);
-    }
+    graphMgr_.activateGlobalGraph();
   }
   // Case: GNSS is bad --> Do not write to graph, set flags for lidar unary factor to true
-  else if (usingLidarUnaryFlag_) {
+  else if (usingFallbackGraphFlag_) {
     graphMgr_.activateFallbackGraph();
-    // Mutex for changing LiDAR constraint mode
-    const std::lock_guard<std::mutex> lidarUnaryLock(lidarUnaryMutex_);
   }
 
   // Publish path
@@ -456,9 +450,6 @@ void FactorGraphFiltering::initGnss_(const gtsam::Point3& leftGnssCoordinates, c
 
   // Get initial GNSS position
   W_t_W_GnssL0_ = leftPosition;
-
-  // Set flag to true
-  foundInitialYawFlag_ = true;
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
@@ -488,7 +479,7 @@ void FactorGraphFiltering::initGraph_(const ros::Time& timeStamp_k) {
   }
   /// Initialize graph node
   graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
-  if (!usingGnssFlag_ && usingLidarUnaryFlag_) {
+  if (!usingGnssFlag_ && usingFallbackGraphFlag_) {
     graphMgr_.activateFallbackGraph();
   }
   // Read initial pose from graph
@@ -774,9 +765,9 @@ void FactorGraphFiltering::readParams_(const ros::NodeHandle& privateNode) {
   if (privateNode.getParam("graph_params/enableDetailedResults", bParam)) {
     graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
   }
-  if (privateNode.getParam("graph_params/usingLidarUnary", bParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - useUnaryLidar: " << bParam);
-    usingLidarUnaryFlag_ = bParam;
+  if (privateNode.getParam("graph_params/usingFallbackGraph", bParam)) {
+    ROS_INFO_STREAM("FactorGraphFiltering - usingFallbackGraph: " << bParam);
+    usingFallbackGraphFlag_ = bParam;
   }
 
   // Outlier Parameters

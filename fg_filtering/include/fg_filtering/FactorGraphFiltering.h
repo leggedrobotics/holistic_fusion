@@ -116,8 +116,8 @@ class FactorGraphFiltering {
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
   // Mutex
+  std::mutex initGraphMutex_;
   std::mutex optimizeGraphMutex_;
-  std::mutex lidarUnaryMutex_;
 
   // Member variables -------------
   /// Geodetic Converter
@@ -130,7 +130,7 @@ class FactorGraphFiltering {
   /// Flags
   //// Configuration
   bool usingGnssFlag_ = true;
-  bool usingLidarUnaryFlag_ = true;
+  bool usingFallbackGraphFlag_ = true;
   bool usingCompslamFlag_ = true;
   bool usingGnssReferenceFlag_ = true;
   //// Initialization
@@ -139,7 +139,6 @@ class FactorGraphFiltering {
   //// During operation
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
-  bool addLidarUnaryFlag_ = false;
 
   /// Thresholds
   double gnssOutlierThreshold_ = 1.0;
