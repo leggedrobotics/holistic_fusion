@@ -3,6 +3,7 @@
 
 // C++
 #include <mutex>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 
@@ -15,25 +16,22 @@
 #include <std_srvs/SetBool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
-#include <tf/transform_listener.h>
-// ROS msgs
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/exact_time.h>
-#include <message_filters/synchronizer.h>
 
-// Workspace
+// Package
 #include "fg_filtering/GraphManager.hpp"
+#include "fg_filtering/InterfacePrediction.h"
 #include "fg_filtering/SignalLogger.h"
 #include "fg_filtering/StaticTransforms.h"
+#include "fg_filtering/geometry/eigen_conversions.h"
 #include "fg_filtering/geometry/math_utils.h"
+
+// Workspace
 #include "kindr/Core"
 #include "robot_utils/sensors/GNSS.hpp"
 
 // Menzi
 #include "fg_filtering_log_msgs/ImuMultiplot.h"
 #include "fg_filtering_log_msgs/LidarMultiplot.h"
-
-namespace compslam_se {
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -45,34 +43,37 @@ namespace compslam_se {
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
 
+namespace compslam_se {
+
 /** \brief Implementation of the factor graph based filtering.
  *
  */
-class FactorGraphFiltering {
+class CompslamSe {
  public:
   // Constructor
-  FactorGraphFiltering();
+  CompslamSe();
   // Destructor --> log signals
-  ~FactorGraphFiltering() { signalLogger_.~SignalLogger(); };
+  ~CompslamSe() { signalLogger_.~SignalLogger(); };
 
   // Setup
-  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, StaticTransforms* staticTransformsPtr);
+
+  // Adderfunctions
+  bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
+                         InterfacePrediction*& predictionPtr);
+  void addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros::Time& odometryTimeK);
+  void addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
+                           const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK);
 
   /// Setters
   void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
-  void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = sParam; }
+  void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = std::move(sParam); }
 
   // Getters
   bool getLogPlots() { return logPlots_; }
 
   // Log data
   void logSignals() { signalLogger_.~SignalLogger(); }
-
-  // Access functions
-  void addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
-  void addOdometryMeasurement(const tf::Transform& tf_compslam_T_O_Lk, const ros::Time& odometryTimeK);
-  void addGnssMeasurements(const gtsam::Point3& leftGnssCoord, const gtsam::Point3& rightGnssCoord, const Eigen::Vector3d& covarianceXYZ,
-                           const ros::Time& gnssTimeK);
 
  protected:
   // Methods -------------
@@ -85,15 +86,8 @@ class FactorGraphFiltering {
   void initGraph_(const ros::Time& timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
-  //// Publish state in imu callback
-  virtual void publishState_(ros::Time imuTimeK, const gtsam::Pose3& T_W_O, const gtsam::NavState& currentState,
-                             const Eigen::Vector3d& I_w) = 0;
 
   /// Utility functions
-  //// Convert GNSS readings to vectors
-  // void convertNavSatToPositions(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
-  //                              const sensor_msgs::NavSatFix::ConstPtr& rightGnssMsgPtr, gtsam::Point3& leftPosition,
-  //                              gtsam::Point3& rightPosition);
   void convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
                                 gtsam::Point3& leftPosition, gtsam::Point3& rightPosition);
   //// Geometric transformation to IMU in world frame
@@ -109,10 +103,6 @@ class FactorGraphFiltering {
   void readParams_(const ros::NodeHandle& privateNode);
 
   // Threads
-  /// Thread 1: Callback for compslam odometry
-  /// Thread 2: Callback for IMU data, also publishes the state at exactly 100 Hz
-  /// Thread 3: Dual callback for both GNSS topics
-  /// Thread 4: Measurement callback
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
   // Mutex
@@ -120,8 +110,6 @@ class FactorGraphFiltering {
   std::mutex optimizeGraphMutex_;
 
   // Member variables -------------
-  /// Geodetic Converter
-  // geodetic_converter::GeodeticConverter geodeticConverterLeft_;
   robot_utils::GNSS gnssSensor_;
 
   /// Factor graph
@@ -156,14 +144,12 @@ class FactorGraphFiltering {
   /// Rates
   int imuRate_ = 100;
 
-  /// Containers
-  //// Transformations
-  ///// Compslam
+  /// Transformations
   tf::Transform tf_compslam_T_I0_O_;
   tf::StampedTransform tf_T_W_Ik_;
-  //// Attitude Parameters
-  tf::Transform tf_T_W_I0_;        // Initial IMU pose (in graph)
-  gtsam::Point3 W_t_W_GnssL0_;     // initial global position of left GNSS
+  tf::Transform tf_T_W_I0_;     // Initial IMU pose (in graph)
+  gtsam::Point3 W_t_W_GnssL0_;  // initial global position of left GNSS
+  /// Attitudes
   double gravityConstant_ = 9.81;  // Will be overwritten
   double globalAttitudeYaw_W_C0_;
   double imuAttitudePitch_;
@@ -191,7 +177,6 @@ class FactorGraphFiltering {
   ros::ServiceServer toggleGnssUsageService_;
 
   /// Messages
-  nav_msgs::PathPtr odomPathPtr_;
   nav_msgs::PathPtr optimizationPathPtr_;
   nav_msgs::PathPtr compslamPathPtr_;
   nav_msgs::PathPtr leftGnssPathPtr_;

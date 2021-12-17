@@ -1,7 +1,7 @@
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "fg_filtering/FactorGraphFiltering.h"
+#include "fg_filtering/CompslamSe.h"
 #include "m545_msgs/M545State.h"
 #include "nav_msgs/Odometry.h"
 
