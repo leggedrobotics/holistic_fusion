@@ -1,6 +1,6 @@
 // Package
-#include "fg_filtering/CompslamSeInterface.h"
-#include "fg_filtering/CompslamSe.h"
+#include "compslam_se/CompslamSeInterface.h"
+#include "compslam_se/CompslamSe.h"
 
 namespace compslam_se {
 

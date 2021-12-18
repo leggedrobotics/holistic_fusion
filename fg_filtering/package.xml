@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>fg_filtering</name>
+  <name>compslam_se</name>
   <version>0.0.0</version>
 
   <description>
@@ -30,7 +30,6 @@
   <build_depend>pcl</build_depend>
   <build_depend>signal_logger</build_depend>
   <build_depend>fg_filtering_log_msgs</build_depend>
-  <build_depend>kdl_parser</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
@@ -42,6 +41,7 @@
   <run_depend>pcl_conversions</run_depend>
   <run_depend>eigen_conversions</run_depend>
   <run_depend>tf_conversions</run_depend>
+  <run_depend>message_generation</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>std_srvs</run_depend>
   <run_depend>nodelet</run_depend>

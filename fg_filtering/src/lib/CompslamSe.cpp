@@ -1,16 +1,16 @@
-#include "fg_filtering/CompslamSe.h"
+#include "compslam_se/CompslamSe.h"
 
 namespace compslam_se {
 
 // Public -----------------------------------------------------------
 /// Constructor -----------
 CompslamSe::CompslamSe() {
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Instance created." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Instance created." << COLOR_END << std::endl;
 }
 
 /// Setup ------------
 bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, StaticTransforms* staticTransformsPtr) {
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
   // Get ROS params and set extrinsics
   staticTransformsPtr_ = staticTransformsPtr;
   if (staticTransformsPtr_) {
@@ -41,13 +41,12 @@ bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, Stat
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&CompslamSe::optimizeGraph_, this);
-  std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized thread for optimizing the graph in parallel."
-            << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized thread for optimizing the graph in parallel." << std::endl;
 
   // Services
   toggleGnssUsageService_ = node.advertiseService("fg_filtering/toggle_gnss_usage", &CompslamSe::toggleGnssFlag_, this);
 
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
 }
 
@@ -106,7 +105,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     } else if (imuCabinCallbackCounter__ % imuRate_ == 0) {
       // Add measurement to buffer
       graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
-      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
+      std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
                 << std::endl;
     }
     return false;
@@ -114,15 +113,14 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     // Add measurement to buffer
     graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     if (imuCabinCallbackCounter__ % imuRate_ == 0) {
-      std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " IMU callback waiting for initialization of global yaw."
-                << std::endl;
+      std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " IMU callback waiting for initialization of global yaw." << std::endl;
     }
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
   } else if (!initedGraphFlag_) {
     // Add measurement to buffer
     graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     initGraph_(imuTimeK);
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
   } else {
     // Add IMU factor and get propagated state
@@ -133,8 +131,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     // If relocalization happens --> write to map->odom
     if (relocalizationFlag) {
       // Print
-      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Relocalization is needed. Publishing to map->odom."
-                << std::endl;
+      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << std::endl;
       // For this computation step assume T_O_Ik ~ T_O_Ikm1
       T_W_O__ = (T_W_Ik.pose().matrix() * T_O_Ikm1__.inverse());
       tf::Transform tf_T_W_O = matrix4ToTf(T_W_O__);
@@ -192,7 +189,7 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros
     if (!foundInitialYawFlag_) {
       globalAttitudeYaw_W_C0_ = 0.0;
       foundInitialYawFlag_ = true;
-      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+      std::cout << YELLOW_START << "CompslamSe" << GREEN_START
                 << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
     }
   }
@@ -210,7 +207,7 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros
   // Set initial compslam pose after third callback (because first compslam pose is wrong)
   ++lidarCallbackCounter_;
   if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
     compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
     tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
     tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
@@ -229,7 +226,7 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros
       if (!lidarUnaryFactorInitialized__) {
         // Calculate state still from globalGraph
         T_O_Ij_Graph__ = graphMgr_.calculateStateAtKey(lastDeltaMeasurementKey__).pose();
-        std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
+        std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
         lidarUnaryFactorInitialized__ = true;
       }
       /// Delta pose
@@ -299,7 +296,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
       if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
         accumulatedLeftCoordinates__ += leftGnssCoord;
         accumulatedRightCoordinates__ += rightGnssCoord;
-        std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+        std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
         return;
       }
       // Set reference
@@ -324,11 +321,10 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
                                     covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
   if (gnssCovarianceViolatedFlag && !gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START << " GNSS measurments now ABSENT due to too big covariance."
-              << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS measurments now ABSENT due to too big covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = gnssCovarianceViolatedFlag;
   } else if (!gnssCovarianceViolatedFlag && gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " GNSS returned. Low covariance." << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS returned. Low covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = gnssCovarianceViolatedFlag;
   }
 
@@ -336,12 +332,12 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   if ((lastLeftPosition__ - leftPosition).norm() < gnssOutlierThreshold_) {
     ++gnssNotJumpingCounter__;
     if (gnssNotJumpingCounter__ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
+      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
                 << std::endl;
     }
   } else {
     if (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "FactorGraphFiltering" << RED_START << " GNSS was jumping: Distance is "
+      std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is "
                 << (lastLeftPosition__ - leftPosition).norm() << "m, larger than allowed " << gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << std::endl;
     }
@@ -364,9 +360,6 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
     double yaw_W_C = computeYawFromHeadingVector_(W_t_heading);
     gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
     gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-    // std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Yaw that will be added as heading measurement "
-    //          << 180 / M_PI * yawR_W_I.yaw() << "(deg)." << std::endl;
-    // graphMgr_.addGnssHeadingUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), W_t_heading, yawR_W_I.yaw());
 
     // Unary factor
     gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
@@ -380,7 +373,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
     }
     graphMgr_.activateGlobalGraph();
   }
-  // Case: GNSS is bad --> Do not write to graph, set flags for lidar unary factor to true
+  // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
   else if (usingFallbackGraphFlag_) {
     graphMgr_.activateFallbackGraph();
   }
@@ -417,7 +410,7 @@ bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
   if (graphMgr_.estimateAttitudeFromImu(imuGravityDirection_, imuAttitude, gravityConstant_, graphMgr_.getInitGyrBiasReference())) {
     imuAttitudeRoll_ = imuAttitude.roll();
     imuAttitudePitch_ = imuAttitude.pitch();
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END
+    std::cout << YELLOW_START << "CompslamSe" << COLOR_END
               << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
     return true;
   } else {
@@ -439,14 +432,12 @@ void CompslamSe::initGnss_(const gtsam::Point3& leftGnssCoordinates, const gtsam
 
   // Get heading (assuming that connection between antennas is perpendicular to heading)
   gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Heading read from the GNSS is the following: " << W_t_heading
-            << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Heading read from the GNSS is the following: " << W_t_heading << std::endl;
 
   // Get initial global yaw
   double yaw_W_C0 = computeYawFromHeadingVector_(W_t_heading);
   globalAttitudeYaw_W_C0_ = yaw_W_C0;
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Initial global yaw of cabin is: " << 180 / M_PI * yaw_W_C0
-            << std::endl;
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of cabin is: " << 180 / M_PI * yaw_W_C0 << std::endl;
 
   // Get initial GNSS position
   W_t_W_GnssL0_ = leftPosition;
@@ -459,7 +450,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
 
-  std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START
+  std::cout << YELLOW_START << "CompslamSe" << GREEN_START
             << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << R_W_I0.ypr().transpose() * (180.0 / M_PI) << COLOR_END
             << std::endl;
 
@@ -474,8 +465,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
     T_W_I0 = gtsam::Pose3(R_W_I0, transformGnssPointToImuFrame_(W_t_W_GnssL0_, tf_q_W_I0));
   } else {
     T_W_I0 = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0));
-    std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized position to 0,0,0 because no GNSS is present."
-              << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized position to 0,0,0 because no GNSS is present." << std::endl;
   }
   /// Initialize graph node
   graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
@@ -484,9 +474,9 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   }
   // Read initial pose from graph
   T_W_I0 = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
-  std::cout << YELLOW_START << "FactorGraphFiltering " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
+  std::cout << YELLOW_START << "CompslamSe " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
             << ", RPY(deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
-  std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Factor graph key of very first node: " << graphMgr_.getStateKey()
+  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Factor graph key of very first node: " << graphMgr_.getStateKey()
             << std::endl;
   // Write in tf member variable
   tf_T_W_I0_ = pose3ToTf(T_W_I0);
@@ -499,8 +489,6 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
 }
 
 void CompslamSe::optimizeGraph_() {
-  // Preallocation
-  int numLidarFactors = 0;
   // Pose Stamped
   geometry_msgs::PoseStamped T_W_C;
   T_W_C.header.frame_id = staticTransformsPtr_->getMapFrame();
@@ -532,7 +520,7 @@ void CompslamSe::optimizeGraph_() {
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (verboseLevel_ > 0) {
-        std::cout << YELLOW_START << "FactorGraphFiltering" << GREEN_START << " Whole optimization loop took "
+        std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Whole optimization loop took "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
                   << COLOR_END << std::endl;
       }
@@ -642,112 +630,112 @@ void CompslamSe::readParams_(const ros::NodeHandle& privateNode) {
   // Set frames
   /// Map
   if (privateNode.getParam("extrinsics/mapFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - Map frame set to: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - Map frame set to: " << sParam);
     staticTransformsPtr_->setMapFrame(sParam);
   }
   /// Odom
   if (privateNode.getParam("extrinsics/odomFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - Odom frame set to: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - Odom frame set to: " << sParam);
     staticTransformsPtr_->setOdomFrame(sParam);
   } else {
-    ROS_WARN("FactorGraphFiltering - Odom frame not set");
+    ROS_WARN("CompslamSe - Odom frame not set");
   }
   /// base_link
   if (privateNode.getParam("extrinsics/baseLinkFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - base_link frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - base_link frame: " << sParam);
     staticTransformsPtr_->setBaseLinkFrame(sParam);
   } else
-    ROS_WARN("FactorGraphFiltering - IMU frame not set for preintegrator");
+    ROS_WARN("CompslamSe - IMU frame not set for preintegrator");
   /// IMU
   //// Cabin IMU
   if (privateNode.getParam("extrinsics/imuCabinFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU Cabin frame for preintegrator and tf: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - IMU Cabin frame for preintegrator and tf: " << sParam);
     staticTransformsPtr_->setImuCabinFrame(sParam);
   } else
-    ROS_WARN("FactorGraphFiltering - IMU Cabin frame not set for preintegrator");
+    ROS_WARN("CompslamSe - IMU Cabin frame not set for preintegrator");
   if (privateNode.getParam("extrinsics/imuRooftopFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU Rooftop frame for preintegrator and tf: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - IMU Rooftop frame for preintegrator and tf: " << sParam);
     staticTransformsPtr_->setImuRooftopFrame(sParam);
   } else
-    ROS_WARN("FactorGraphFiltering - IMU Rooftop frame not set for preintegrator");
+    ROS_WARN("CompslamSe - IMU Rooftop frame not set for preintegrator");
   //// Base IMU
   if (privateNode.getParam("extrinsics/imuBaseFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU Base frame for state publishing: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - IMU Base frame for state publishing: " << sParam);
     staticTransformsPtr_->setImuBaseFrame(sParam);
   } else
-    ROS_WARN("FactorGraphFiltering - IMU base frame not set for state publishing");
+    ROS_WARN("CompslamSe - IMU base frame not set for state publishing");
   /// LiDAR frame
   if (privateNode.getParam("extrinsics/lidarFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - LiDAR frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - LiDAR frame: " << sParam);
     staticTransformsPtr_->setLidarFrame(sParam);
   } else {
-    ROS_WARN("FactorGraphFiltering - LiDAR frame not set");
+    ROS_WARN("CompslamSe - LiDAR frame not set");
   }
   /// Cabin frame
   if (privateNode.getParam("extrinsics/cabinFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - cabin frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - cabin frame: " << sParam);
     staticTransformsPtr_->setCabinFrame(sParam);
   } else {
-    ROS_WARN("FactorGraphFiltering - cabin frame not set");
+    ROS_WARN("CompslamSe - cabin frame not set");
   }
   /// Left GNSS frame
   if (privateNode.getParam("extrinsics/leftGnssFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - left GNSS frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - left GNSS frame: " << sParam);
     staticTransformsPtr_->setLeftGnssFrame(sParam);
   } else {
-    ROS_WARN("FactorGraphFiltering - left GNSS frame not set");
+    ROS_WARN("CompslamSe - left GNSS frame not set");
   }
   /// Right GNSS frame
   if (privateNode.getParam("extrinsics/rightGnssFrame", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - right GNSS frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - right GNSS frame: " << sParam);
     staticTransformsPtr_->setRightGnssFrame(sParam);
   } else {
-    ROS_WARN("FactorGraphFiltering - right GNSS frame not set");
+    ROS_WARN("CompslamSe - right GNSS frame not set");
   }
 
   // IMU gravity definition
   if (privateNode.getParam("launch/imu_gravity_direction", sParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - gravity direction of IMU: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - gravity direction of IMU: " << sParam);
     setImuGravityDirection(sParam);
   } else {
-    ROS_ERROR("FactorGraphFiltering - gravity direction of imu not set");
+    ROS_ERROR("CompslamSe - gravity direction of imu not set");
     throw std::runtime_error("Rosparam 'launch/imu_gravity_direction' must be set.");
   }
 
   // Using GNSS
   if (privateNode.getParam("launch/using_gps", bParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - using GNSS: " << bParam);
+    ROS_INFO_STREAM("CompslamSe - using GNSS: " << bParam);
     usingGnssFlag_ = bParam;
   } else {
-    ROS_ERROR("FactorGraphFiltering - using GNSS not set.");
+    ROS_ERROR("CompslamSe - using GNSS not set.");
     throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
   }
 
   // Using Compslam
   if (privateNode.getParam("launch/using_compslam", bParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - using Compslam: " << bParam);
+    ROS_INFO_STREAM("CompslamSe - using Compslam: " << bParam);
     usingCompslamFlag_ = bParam;
   } else {
-    ROS_ERROR("FactorGraphFiltering - using Compslam not set.");
+    ROS_ERROR("CompslamSe - using Compslam not set.");
     throw std::runtime_error("Rosparam 'launch/using_compslam' must be set.");
   }
 
   // Factor Graph Parameters
   if (privateNode.getParam("sensor_params/imuRate", dParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU rate for preintegrator: " << dParam);
+    ROS_INFO_STREAM("CompslamSe - IMU rate for preintegrator: " << dParam);
     graphMgr_.setImuRate(dParam);
     imuRate_ = int(dParam);
   }
   if (privateNode.getParam("sensor_params/imuBufferLength", iParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - IMU buffer length: " << iParam);
+    ROS_INFO_STREAM("CompslamSe - IMU buffer length: " << iParam);
     graphMgr_.setImuBufferLength(iParam);
   }
   if (privateNode.getParam("sensor_params/lidarRate", dParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - LiDAR rate: " << dParam);
+    ROS_INFO_STREAM("CompslamSe - LiDAR rate: " << dParam);
     graphMgr_.setLidarRate(dParam);
   }
   if (privateNode.getParam("sensor_params/gnssRate", dParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - GNSS rate: " << dParam);
+    ROS_INFO_STREAM("CompslamSe - GNSS rate: " << dParam);
     graphMgr_.setGnssRate(dParam);
   }
   if (privateNode.getParam("sensor_params/imuTimeOffset", dParam)) {
@@ -766,7 +754,7 @@ void CompslamSe::readParams_(const ros::NodeHandle& privateNode) {
     graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
   }
   if (privateNode.getParam("graph_params/usingFallbackGraph", bParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - usingFallbackGraph: " << bParam);
+    ROS_INFO_STREAM("CompslamSe - usingFallbackGraph: " << bParam);
     usingFallbackGraphFlag_ = bParam;
   }
 

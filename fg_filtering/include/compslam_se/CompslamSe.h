@@ -18,20 +18,18 @@
 #include <tf/transform_datatypes.h>
 
 // Package
-#include "fg_filtering/GraphManager.hpp"
-#include "fg_filtering/InterfacePrediction.h"
-#include "fg_filtering/SignalLogger.h"
-#include "fg_filtering/StaticTransforms.h"
-#include "fg_filtering/geometry/eigen_conversions.h"
-#include "fg_filtering/geometry/math_utils.h"
+#include "compslam_se/GraphManager.hpp"
+#include "compslam_se/InterfacePrediction.h"
+#include "compslam_se/SignalLogger.h"
+#include "compslam_se/StaticTransforms.h"
+#include "compslam_se/geometry/eigen_conversions.h"
+#include "compslam_se/geometry/math_utils.h"
+#include "fg_filtering_log_msgs/ImuMultiplot.h"
+#include "fg_filtering_log_msgs/LidarMultiplot.h"
 
 // Workspace
 #include "kindr/Core"
 #include "robot_utils/sensors/GNSS.hpp"
-
-// Menzi
-#include "fg_filtering_log_msgs/ImuMultiplot.h"
-#include "fg_filtering_log_msgs/LidarMultiplot.h"
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100

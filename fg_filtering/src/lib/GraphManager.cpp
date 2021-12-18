@@ -1,4 +1,4 @@
-#include "fg_filtering/GraphManager.hpp"
+#include "compslam_se/GraphManager.hpp"
 
 namespace compslam_se {
 

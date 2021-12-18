@@ -1,4 +1,4 @@
-#include "fg_filtering/ImuBuffer.hpp"
+#include "compslam_se/ImuBuffer.hpp"
 
 namespace compslam_se {
 

@@ -15,8 +15,8 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 
-// Catkin workspace
-#include "fg_filtering/Datatypes.hpp"
+// Package
+#include "compslam_se/Datatypes.hpp"
 
 namespace compslam_se {
 

@@ -20,11 +20,11 @@
 #include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-#include "fg_filtering/factors/HeadingFactor.h"
+#include "compslam_se/factors/HeadingFactor.h"
 
 // Catkin workspace
-#include "fg_filtering/GraphState.hpp"
-#include "fg_filtering/ImuBuffer.hpp"
+#include "compslam_se/GraphState.hpp"
+#include "compslam_se/ImuBuffer.hpp"
 
 namespace compslam_se {
 

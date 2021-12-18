@@ -3,8 +3,8 @@
 
 #include <cmath>
 
-#include "fg_filtering/geometry/Angle.h"
-#include "fg_filtering/geometry/Vector3.h"
+#include "compslam_se/geometry/Angle.h"
+#include "compslam_se/geometry/Vector3.h"
 
 namespace compslam_se {
 

@@ -5,7 +5,7 @@
 #include <Eigen/Eigen>
 
 // Workspace
-#include "fg_filtering/StaticTransforms.h"
+#include "compslam_se/StaticTransforms.h"
 
 namespace compslam_se {
 
