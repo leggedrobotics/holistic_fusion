@@ -9,16 +9,24 @@ CompslamSe::CompslamSe() {
 }
 
 /// Setup ------------
-bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, StaticTransforms* staticTransformsPtr) {
+bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, GraphConfig* graphConfigPtr,
+                       StaticTransforms* staticTransformsPtr) {
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
-  // Get ROS params and set extrinsics
+
+  // Graph Config
+  graphConfigPtr_ = graphConfigPtr;
   staticTransformsPtr_ = staticTransformsPtr;
-  if (staticTransformsPtr_) {
-    readParams_(privateNode);
-    staticTransformsPtr_->findTransformations();
-  } else {
-    throw std::runtime_error("CompslamSE: staticTransformsPtr must be set correctly by the inheriting class.");
-  }
+
+  graphMgrPtr_ = new GraphManager(graphConfigPtr);
+
+  // Configs
+  graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;
+  graphMgrPtr_->getIsamParamsReference().setEnableDetailedResults(graphConfigPtr_->enableDetailedResults);
+  graphMgrPtr_->getIsamParamsReference().setRelinearizeSkip(graphConfigPtr_->relinearizeSkip);
+  graphMgrPtr_->getIsamParamsReference().setEnableRelinearization(graphConfigPtr_->enableRelinearization);
+  graphMgrPtr_->getIsamParamsReference().setEvaluateNonlinearError(graphConfigPtr_->evaluateNonlinearError);
+  graphMgrPtr_->getIsamParamsReference().setCacheLinearizedFactors(graphConfigPtr_->cacheLinearizedFactors);
+  graphMgrPtr_->getIsamParamsReference().setEnablePartialRelinearizationCheck(graphConfigPtr_->enablePartialRelinearizationCheck);
 
   // Publishers
   /// advertise odometry topic
@@ -92,7 +100,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   // If IMU not yet aligned
   if (!alignedImuFlag__) {
     // Add measurement to buffer
-    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     // Add to buffer
     if (alignImu_(imuTimeK)) {
       gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(0.0);
@@ -102,29 +110,29 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
       I_v_W_I__ = gtsam::Velocity3(0.0, 0.0, 0.0);
       I_w_W_I__ = Eigen::Vector3d(0.0, 0.0, 0.0);
       alignedImuFlag__ = true;
-    } else if (imuCabinCallbackCounter__ % imuRate_ == 0) {
+    } else if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       // Add measurement to buffer
-      graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+      graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
       std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
                 << std::endl;
     }
     return false;
   } else if (!foundInitialYawFlag_) {
     // Add measurement to buffer
-    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
-    if (imuCabinCallbackCounter__ % imuRate_ == 0) {
+    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+    if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " IMU callback waiting for initialization of global yaw." << std::endl;
     }
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
   } else if (!initedGraphFlag_) {
     // Add measurement to buffer
-    graphMgr_.addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     initGraph_(imuTimeK);
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
   } else {
     // Add IMU factor and get propagated state
-    T_W_Ik = graphMgr_.addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
+    T_W_Ik = graphMgrPtr_->addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
     imuAttitudeRoll_ = T_W_Ik.pose().rotation().roll();
     imuAttitudePitch_ = T_W_Ik.pose().rotation().pitch();
 
@@ -140,7 +148,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     if (lidarCallbackCounter_ > NUM_LIDAR_CALLBACKS_UNTIL_START) {
       T_O_Ik__ = T_W_O__.inverse() * T_W_Ik.pose().matrix();
       I_v_W_I__ = T_W_O__.block<3, 3>(0, 0).inverse() * T_W_Ik.velocity();
-      I_w_W_I__ = graphMgr_.getIMUBias().correctGyroscope(angularVel);
+      I_w_W_I__ = graphMgrPtr_->getIMUBias().correctGyroscope(angularVel);
     }
   }
 
@@ -157,23 +165,11 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   // Write for next iteration
   T_O_Ikm1__ = T_O_Ik__;
 
-  //  // Log
-  //  signalLogger_.publishLogger(imuTimeK.sec, imuTimeK.nsec, gtsam::Pose3(T_W_O__ * T_O_Ik__), gtsam::Pose3(T_O_Ik__), I_v_W_I__,
-  //                              std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count(),
-  //                              graphMgr_.getIMUBias());
-  //
-  //  // Plotting in rqt_multiplot
-  //  fg_filtering_log_msgs::ImuMultiplot imuMultiplot;
-  //  imuMultiplot.time_stamp = imuTimeK.toSec();
-  //  imuMultiplot.roll_velocity = angularVel(0);
-  //  imuMultiplot.pitch_velocity = angularVel(1);
-  //  imuMultiplot.yaw_velocity = angularVel(2);
-  //  imuMultiplotPublisher_.publish(imuMultiplot);
-
   return true;
 }
 
-void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros::Time& odometryTimeK) {
+void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const double rate, const std::vector<double>& poseBetweenNoise,
+                                        const ros::Time& odometryTimeK) {
   // Static variables
   static bool lidarUnaryFactorInitialized__ = false;
   static tf::Transform tf_compslam_T_O_Ikm1__;
@@ -216,28 +212,29 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros
   }
 
   if (initedGraphFlag_) {
-    if (graphMgr_.globalGraphActiveFlag()) {
+    if (graphMgrPtr_->globalGraphActiveFlag()) {
       /// Reset LiDAR Unary factor intiialization
       lidarUnaryFactorInitialized__ = false;
       // Write current compslam pose to latest delta pose
       tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
     }  //
-    else if (graphMgr_.fallbackGraphActiveFlag()) {
+    else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
       if (!lidarUnaryFactorInitialized__) {
         // Calculate state still from globalGraph
-        T_O_Ij_Graph__ = graphMgr_.calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+        T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
         std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
         lidarUnaryFactorInitialized__ = true;
       }
       /// Delta pose
       gtsam::Pose3 T_Ij_Ik(computeDeltaPose(tf_compslam_T_O_Ij__, tf_compslam_T_O_Ik));
       gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
-      graphMgr_.addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), T_O_Ik);
+      graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), rate, poseBetweenNoise, T_O_Ik);
     }
     // In any case: write the lidar odom delta to global graph
     /// Delta pose
     gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
-    lastDeltaMeasurementKey__ = graphMgr_.addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), T_Ikm1_Ik);
+    lastDeltaMeasurementKey__ =
+        graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), rate, poseBetweenNoise, T_Ikm1_Ik);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -270,7 +267,8 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros
 }
 
 void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
-                                     const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK) {
+                                     const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                     double positionUnaryNoise) {
   // Static method variables
   static gtsam::Point3 accumulatedLeftCoordinates__(0.0, 0.0, 0.0);
   static gtsam::Point3 accumulatedRightCoordinates__(0.0, 0.0, 0.0);
@@ -283,7 +281,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   if (!usingGnssFlag_) {
     ROS_WARN("Received GNSS message, but usage is set to false.");
     if (usingFallbackGraphFlag_) {
-      graphMgr_.activateFallbackGraph();
+      graphMgrPtr_->activateFallbackGraph();
     }
     return;
   }
@@ -329,7 +327,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   }
 
   // GNSS jumping?
-  if ((lastLeftPosition__ - leftPosition).norm() < gnssOutlierThreshold_) {
+  if ((lastLeftPosition__ - leftPosition).norm() < 1.0) {  // gnssOutlierThreshold_) {
     ++gnssNotJumpingCounter__;
     if (gnssNotJumpingCounter__ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
@@ -338,7 +336,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   } else {
     if (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is "
-                << (lastLeftPosition__ - leftPosition).norm() << "m, larger than allowed " << gnssOutlierThreshold_
+                << (lastLeftPosition__ - leftPosition).norm() << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << std::endl;
     }
     gnssNotJumpingCounter__ = 0;
@@ -349,10 +347,10 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
-    if (graphMgr_.getStateKey() == 0) {
+    if (graphMgrPtr_->getStateKey() == 0) {
       return;
     }
-    graphMgr_.addGnssPositionUnaryFactor(gnssTimeK.toSec(), W_t_W_I);
+    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
 
     // Heading factor
     /// Get heading (assuming that connection between antennas is perpendicular to heading)
@@ -364,18 +362,18 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
     // Unary factor
     gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     gtsam::Pose3 T_W_I_approx = gtsam::Pose3(R_W_I_approx, W_t_W_I);
-    // graphMgr_.addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
+    // graphMgrPtr_->addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
 
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-    graphMgr_.activateGlobalGraph();
+    graphMgrPtr_->activateGlobalGraph();
   }
   // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
   else if (usingFallbackGraphFlag_) {
-    graphMgr_.activateFallbackGraph();
+    graphMgrPtr_->activateFallbackGraph();
   }
 
   // Publish path
@@ -407,7 +405,8 @@ bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
   gtsam::Rot3 imuAttitude;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
-  if (graphMgr_.estimateAttitudeFromImu(imuGravityDirection_, imuAttitude, gravityConstant_, graphMgr_.getInitGyrBiasReference())) {
+  if (graphMgrPtr_->estimateAttitudeFromImu(graphConfigPtr_->imuGravityDirection, imuAttitude, gravityConstant_,
+                                            graphMgrPtr_->getInitGyrBiasReference())) {
     imuAttitudeRoll_ = imuAttitude.roll();
     imuAttitudePitch_ = imuAttitude.pitch();
     std::cout << YELLOW_START << "CompslamSe" << COLOR_END
@@ -455,7 +454,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
             << std::endl;
 
   // Gravity
-  graphMgr_.initImuIntegrators(gravityConstant_, imuGravityDirection_);
+  graphMgrPtr_->initImuIntegrators(gravityConstant_, graphConfigPtr_->imuGravityDirection);
   // Initialize first node
   //// Initial orientation as quaternion
   tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
@@ -468,15 +467,15 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
     std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized position to 0,0,0 because no GNSS is present." << std::endl;
   }
   /// Initialize graph node
-  graphMgr_.initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
+  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
   if (!usingGnssFlag_ && usingFallbackGraphFlag_) {
-    graphMgr_.activateFallbackGraph();
+    graphMgrPtr_->activateFallbackGraph();
   }
   // Read initial pose from graph
-  T_W_I0 = gtsam::Pose3(graphMgr_.getGraphState().navState().pose().matrix());
+  T_W_I0 = gtsam::Pose3(graphMgrPtr_->getGraphState().navState().pose().matrix());
   std::cout << YELLOW_START << "CompslamSe " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
             << ", RPY(deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
-  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Factor graph key of very first node: " << graphMgr_.getStateKey()
+  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Factor graph key of very first node: " << graphMgrPtr_->getStateKey()
             << std::endl;
   // Write in tf member variable
   tf_T_W_I0_ = pose3ToTf(T_W_I0);
@@ -516,10 +515,10 @@ void CompslamSe::optimizeGraph_() {
       // Get result
       startLoopTime = std::chrono::high_resolution_clock::now();
       double currentTime;
-      gtsam::NavState optimizedNavState = graphMgr_.updateGraphAndState(currentTime);
+      gtsam::NavState optimizedNavState = graphMgrPtr_->updateGraphAndState(currentTime);
       endLoopTime = std::chrono::high_resolution_clock::now();
 
-      if (verboseLevel_ > 0) {
+      if (graphConfigPtr_->verboseLevel > 0) {
         std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Whole optimization loop took "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
                   << COLOR_END << std::endl;
@@ -547,12 +546,12 @@ void CompslamSe::optimizeGraph_() {
       sensor_msgs::Imu imuBiasMsg;
       imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuCabinFrame();
       imuBiasMsg.header.stamp = compslamTimeK_;
-      imuBiasMsg.linear_acceleration.x = graphMgr_.getIMUBias().accelerometer()(0);
-      imuBiasMsg.linear_acceleration.y = graphMgr_.getIMUBias().accelerometer()(1);
-      imuBiasMsg.linear_acceleration.z = graphMgr_.getIMUBias().accelerometer()(2);
-      imuBiasMsg.angular_velocity.x = graphMgr_.getIMUBias().gyroscope()(0);
-      imuBiasMsg.angular_velocity.y = graphMgr_.getIMUBias().gyroscope()(1);
-      imuBiasMsg.angular_velocity.z = graphMgr_.getIMUBias().gyroscope()(2);
+      imuBiasMsg.linear_acceleration.x = graphMgrPtr_->getIMUBias().accelerometer()(0);
+      imuBiasMsg.linear_acceleration.y = graphMgrPtr_->getIMUBias().accelerometer()(1);
+      imuBiasMsg.linear_acceleration.z = graphMgrPtr_->getIMUBias().accelerometer()(2);
+      imuBiasMsg.angular_velocity.x = graphMgrPtr_->getIMUBias().gyroscope()(0);
+      imuBiasMsg.angular_velocity.y = graphMgrPtr_->getIMUBias().gyroscope()(1);
+      imuBiasMsg.angular_velocity.z = graphMgrPtr_->getIMUBias().gyroscope()(2);
       pubLaserImuBias_.publish(imuBiasMsg);
     }  // else just sleep for a short amount of time before polling again
     else {
@@ -617,293 +616,6 @@ bool CompslamSe::toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs
   usingGnssFlag_ = !usingGnssFlag_;
   ROS_WARN_STREAM("GNSS usage was toggled to " << usingGnssFlag_);
   return true;
-}
-
-/// Commodity -----------------------
-void CompslamSe::readParams_(const ros::NodeHandle& privateNode) {
-  // Variables for parameter fetching
-  double dParam;
-  int iParam;
-  bool bParam;
-  std::string sParam;
-
-  // Set frames
-  /// Map
-  if (privateNode.getParam("extrinsics/mapFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - Map frame set to: " << sParam);
-    staticTransformsPtr_->setMapFrame(sParam);
-  }
-  /// Odom
-  if (privateNode.getParam("extrinsics/odomFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - Odom frame set to: " << sParam);
-    staticTransformsPtr_->setOdomFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - Odom frame not set");
-  }
-  /// base_link
-  if (privateNode.getParam("extrinsics/baseLinkFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - base_link frame: " << sParam);
-    staticTransformsPtr_->setBaseLinkFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU frame not set for preintegrator");
-  /// IMU
-  //// Cabin IMU
-  if (privateNode.getParam("extrinsics/imuCabinFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Cabin frame for preintegrator and tf: " << sParam);
-    staticTransformsPtr_->setImuCabinFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU Cabin frame not set for preintegrator");
-  if (privateNode.getParam("extrinsics/imuRooftopFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Rooftop frame for preintegrator and tf: " << sParam);
-    staticTransformsPtr_->setImuRooftopFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU Rooftop frame not set for preintegrator");
-  //// Base IMU
-  if (privateNode.getParam("extrinsics/imuBaseFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Base frame for state publishing: " << sParam);
-    staticTransformsPtr_->setImuBaseFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU base frame not set for state publishing");
-  /// LiDAR frame
-  if (privateNode.getParam("extrinsics/lidarFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - LiDAR frame: " << sParam);
-    staticTransformsPtr_->setLidarFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - LiDAR frame not set");
-  }
-  /// Cabin frame
-  if (privateNode.getParam("extrinsics/cabinFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - cabin frame: " << sParam);
-    staticTransformsPtr_->setCabinFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - cabin frame not set");
-  }
-  /// Left GNSS frame
-  if (privateNode.getParam("extrinsics/leftGnssFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - left GNSS frame: " << sParam);
-    staticTransformsPtr_->setLeftGnssFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - left GNSS frame not set");
-  }
-  /// Right GNSS frame
-  if (privateNode.getParam("extrinsics/rightGnssFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - right GNSS frame: " << sParam);
-    staticTransformsPtr_->setRightGnssFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - right GNSS frame not set");
-  }
-
-  // IMU gravity definition
-  if (privateNode.getParam("launch/imu_gravity_direction", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - gravity direction of IMU: " << sParam);
-    setImuGravityDirection(sParam);
-  } else {
-    ROS_ERROR("CompslamSe - gravity direction of imu not set");
-    throw std::runtime_error("Rosparam 'launch/imu_gravity_direction' must be set.");
-  }
-
-  // Using GNSS
-  if (privateNode.getParam("launch/using_gps", bParam)) {
-    ROS_INFO_STREAM("CompslamSe - using GNSS: " << bParam);
-    usingGnssFlag_ = bParam;
-  } else {
-    ROS_ERROR("CompslamSe - using GNSS not set.");
-    throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
-  }
-
-  // Using Compslam
-  if (privateNode.getParam("launch/using_compslam", bParam)) {
-    ROS_INFO_STREAM("CompslamSe - using Compslam: " << bParam);
-    usingCompslamFlag_ = bParam;
-  } else {
-    ROS_ERROR("CompslamSe - using Compslam not set.");
-    throw std::runtime_error("Rosparam 'launch/using_compslam' must be set.");
-  }
-
-  // Factor Graph Parameters
-  if (privateNode.getParam("sensor_params/imuRate", dParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU rate for preintegrator: " << dParam);
-    graphMgr_.setImuRate(dParam);
-    imuRate_ = int(dParam);
-  }
-  if (privateNode.getParam("sensor_params/imuBufferLength", iParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU buffer length: " << iParam);
-    graphMgr_.setImuBufferLength(iParam);
-  }
-  if (privateNode.getParam("sensor_params/lidarRate", dParam)) {
-    ROS_INFO_STREAM("CompslamSe - LiDAR rate: " << dParam);
-    graphMgr_.setLidarRate(dParam);
-  }
-  if (privateNode.getParam("sensor_params/gnssRate", dParam)) {
-    ROS_INFO_STREAM("CompslamSe - GNSS rate: " << dParam);
-    graphMgr_.setGnssRate(dParam);
-  }
-  if (privateNode.getParam("sensor_params/imuTimeOffset", dParam)) {
-    imuTimeOffset_ = dParam;
-  }
-  if (privateNode.getParam("graph_params/smootherLag", dParam)) {
-    graphMgr_.setSmootherLag(dParam);
-  }
-  if (privateNode.getParam("graph_params/additonalIterations", iParam)) {
-    graphMgr_.setIterations(iParam);
-  }
-  if (privateNode.getParam("graph_params/findUnusedFactorSlots", bParam)) {
-    graphMgr_.getIsamParamsReference().findUnusedFactorSlots = bParam;
-  }
-  if (privateNode.getParam("graph_params/enableDetailedResults", bParam)) {
-    graphMgr_.getIsamParamsReference().setEnableDetailedResults(bParam);
-  }
-  if (privateNode.getParam("graph_params/usingFallbackGraph", bParam)) {
-    ROS_INFO_STREAM("CompslamSe - usingFallbackGraph: " << bParam);
-    usingFallbackGraphFlag_ = bParam;
-  }
-
-  // Outlier Parameters
-  if (privateNode.getParam("outlier_params/gnssOutlierThreshold", dParam)) {
-    gnssOutlierThreshold_ = dParam;
-  }
-  //  if (privateNode.getParam("outlier_params/graphUpdateThreshold", dParam)) {
-  //    graphUpdateThreshold_ = dParam;
-  //  }
-  // Noise Parameters
-  /// Accelerometer
-  if (privateNode.getParam("noise_params/accNoiseDensity", dParam)) {
-    graphMgr_.setAccNoiseDensity(dParam);
-  }
-  if (privateNode.getParam("noise_params/accBiasRandomWalk", dParam)) {
-    graphMgr_.setAccBiasRandomWalk(dParam);
-  }
-  if (privateNode.getParam("noise_params/accBiasPrior", dParam)) {
-    graphMgr_.setAccBiasPrior(dParam);
-  }
-  /// Gyro
-  if (privateNode.getParam("noise_params/gyrNoiseDensity", dParam)) {
-    graphMgr_.setGyroNoiseDensity(dParam);
-  }
-  if (privateNode.getParam("noise_params/gyrBiasRandomWalk", dParam)) {
-    graphMgr_.setGyrBiasRandomWalk(dParam);
-  }
-  if (privateNode.getParam("noise_params/gyrBiasPrior", dParam)) {
-    graphMgr_.setGyrBiasPrior(Eigen::Vector3d(dParam, dParam, dParam));
-  }
-  /// Preintegration
-  if (privateNode.getParam("noise_params/integrationNoiseDensity", dParam)) {
-    graphMgr_.setIntegrationNoiseDensity(dParam);
-  }
-  if (privateNode.getParam("noise_params/biasAccOmegaPreint", dParam)) {
-    graphMgr_.setBiasAccOmegaPreint(dParam);
-  }
-  /// LiDAR
-  std::vector<double> poseBetweenNoise;  // roll,pitch,yaw,x,y,z
-  if (privateNode.getParam("noise_params/poseBetweenNoise", poseBetweenNoise)) {
-    ROS_WARN_STREAM("Set pose between noise to " << poseBetweenNoise[0] << "," << poseBetweenNoise[1] << "," << poseBetweenNoise[2] << ","
-                                                 << poseBetweenNoise[3] << "," << poseBetweenNoise[4] << "," << poseBetweenNoise[5]);
-    graphMgr_.setPoseBetweenNoise(poseBetweenNoise);
-  } else {
-    std::runtime_error("poseBetweenNoise needs to be set in config file.");
-  }
-  std::vector<double> poseUnaryNoise;  // roll,pitch,yaw,x,y,z
-  if (privateNode.getParam("noise_params/poseUnaryNoise", poseUnaryNoise)) {
-    ROS_WARN_STREAM("Set pose unary noise to " << poseUnaryNoise[0] << "," << poseUnaryNoise[1] << "," << poseUnaryNoise[2] << ","
-                                               << poseUnaryNoise[3] << "," << poseUnaryNoise[4] << "," << poseUnaryNoise[5]);
-    graphMgr_.setPoseUnaryNoise(poseUnaryNoise);
-  } else {
-    std::runtime_error("poseUnaryNoise needs to be set in config file.");
-  }
-  /// GNSS
-  if (privateNode.getParam("noise_params/gnssPositionUnaryNoise", dParam)) {
-    ROS_WARN_STREAM("Set gnssPositionUnaryNoise to " << dParam);
-    graphMgr_.setGnssPositionUnaryNoise(dParam);
-  } else {
-    std::runtime_error("gnssPositionUnaryNoise needs to be set in config file.");
-  }
-  if (privateNode.getParam("noise_params/gnssHeadingUnaryNoise", dParam)) {
-    ROS_WARN_STREAM("Set gnssHeadingUnaryNoise to " << dParam);
-    graphMgr_.setGnssHeadingUnaryNoise(dParam);
-  } else {
-    std::runtime_error("gnssHeadingUnaryNoise needs to be set in config file.");
-  }
-
-  // Relinearization
-  if (privateNode.getParam("relinearization_params/positionReLinTh", dParam)) {
-    graphMgr_.setPositionReLinTh(dParam);
-  }
-  if (privateNode.getParam("relinearization_params/rotationReLinTh", dParam)) {
-    graphMgr_.setRotationReLinTh(dParam);
-  }
-  if (privateNode.getParam("relinearization_params/velocityReLinTh", dParam)) {
-    graphMgr_.setVelocityReLinTh(dParam);
-  }
-  if (privateNode.getParam("relinearization_params/accBiasReLinTh", dParam)) {
-    graphMgr_.setAccBiasReLinTh(dParam);
-  }
-  if (privateNode.getParam("relinearization_params/gyrBiasReLinTh", dParam)) {
-    graphMgr_.setGyrBiasReLinTh(dParam);
-  }
-  if (privateNode.getParam("relinearization_params/relinearizeSkip", iParam)) {
-    graphMgr_.getIsamParamsReference().setRelinearizeSkip(iParam);
-  }
-  if (privateNode.getParam("relinearization_params/enableRelinearization", bParam)) {
-    graphMgr_.getIsamParamsReference().setEnableRelinearization(bParam);
-  }
-  if (privateNode.getParam("relinearization_params/evaluateNonlinearError", bParam)) {
-    graphMgr_.getIsamParamsReference().setEvaluateNonlinearError(bParam);
-  }
-  if (privateNode.getParam("relinearization_params/cacheLinearizedFactors", bParam)) {
-    graphMgr_.getIsamParamsReference().setCacheLinearizedFactors(bParam);
-  }
-  if (privateNode.getParam("relinearization_params/enablePartialRelinearizationCheck", bParam)) {
-    graphMgr_.getIsamParamsReference().setEnablePartialRelinearizationCheck(bParam);
-  }
-
-  // Common Parameters
-  if (privateNode.getParam("common_params/verbosity", iParam)) {
-    ROS_INFO("Set fg_filtering-Verbosity: %d", iParam);
-    setVerboseLevel(iParam);
-    graphMgr_.setVerboseLevel(iParam);
-  } else {
-    setVerboseLevel(0);
-    graphMgr_.setVerboseLevel(0);
-  }
-  // Common Parameters
-  if (privateNode.getParam("common_params/logPlots", bParam)) {
-    ROS_INFO("Plotting of plots at end is set to: %d", bParam);
-    logPlots_ = bParam;
-  } else {
-    logPlots_ = false;
-  }
-
-  // GNSS parameters
-  if (privateNode.getParam("gnss/use_reference", bParam)) {
-    ROS_INFO("Using the GNSS reference is set to: %d", bParam);
-    usingGnssReferenceFlag_ = bParam;
-  } else {
-    std::runtime_error("Must set gnss/use_reference.");
-  }
-  if (privateNode.getParam("gnss/reference_latitude", dParam)) {
-    ROS_INFO_STREAM("Reference latitude of the scene is given as: " << dParam);
-    gnssReferenceLatitude_ = dParam;
-  } else if (usingGnssReferenceFlag_) {
-    std::runtime_error("GNSS reference latitude must be provided.");
-  }
-  if (privateNode.getParam("gnss/reference_longitude", dParam)) {
-    ROS_INFO_STREAM("Reference longitude of the scene is given as: " << dParam);
-    gnssReferenceLongitude_ = dParam;
-  } else if (usingGnssReferenceFlag_) {
-    std::runtime_error("GNSS reference longitude must be provided.");
-  }
-  if (privateNode.getParam("gnss/reference_altitude", dParam)) {
-    ROS_INFO_STREAM("Reference altitude of the scene is given as: " << dParam);
-    gnssReferenceAltitude_ = dParam;
-  } else if (usingGnssReferenceFlag_) {
-    std::runtime_error("GNSS reference altitude must be provided.");
-  }
-  if (privateNode.getParam("gnss/reference_heading", dParam)) {
-    ROS_INFO_STREAM("Reference heading of the scene is given as: " << dParam);
-    gnssReferenceHeading_ = dParam;
-  } else if (usingGnssReferenceFlag_) {
-    std::runtime_error("GNSS reference heading must be provided.");
-  }
 }
 
 }  // namespace compslam_se
