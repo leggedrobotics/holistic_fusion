@@ -1,6 +1,6 @@
 // Package
-#include "fg_filtering/CompslamSeInterface.h"
-#include "fg_filtering/CompslamSe.h"
+#include "compslam_se/CompslamSeInterface.h"
+#include "compslam_se/CompslamSe.h"
 
 namespace compslam_se {
 
@@ -10,12 +10,25 @@ CompslamSeInterface::CompslamSeInterface() {
 }
 
 // Protected ------------------------------------------------------------------------------------
-
 bool CompslamSeInterface::setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
+  // Get ROS params and set extrinsics
+  if (staticTransformsPtr_ && graphConfigPtr_) {
+    readParams_(privateNode);
+    staticTransformsPtr_->findTransformations();
+  } else {
+    throw std::runtime_error("CompslamSeInterface: staticTransformsPtr and graphConfigPtr must be set correctly by the inheriting class.");
+  }
+
   compslamSePtr_ = new CompslamSe();
-  compslamSePtr_->setup(node, privateNode, staticTransformsPtr_);
+  compslamSePtr_->setup(node, privateNode, graphConfigPtr_, staticTransformsPtr_);
+  if (usingGnssReferenceFlag_) {
+    compslamSePtr_->setGnssReferenceLatitude(gnssReferenceLatitude_);
+    compslamSePtr_->setGnssReferenceAltitude(gnssReferenceAltitude_);
+    compslamSePtr_->setGnssReferenceLongitude(gnssReferenceLongitude_);
+    compslamSePtr_->setGnssReferenceHeading(gnssReferenceHeading_);
+  }
 
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
@@ -32,13 +45,15 @@ void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, c
   }
 }
 
-void CompslamSeInterface::addOdometryMeasurement_(const Eigen::Matrix4d& T_O_Lk, const ros::Time& odometryTimeK) {
-  compslamSePtr_->addOdometryMeasurement(T_O_Lk, odometryTimeK);
+void CompslamSeInterface::addOdometryMeasurement_(const Eigen::Matrix4d& T_O_Lk, const double rate, std::vector<double> poseBetweenNoise,
+                                                  const ros::Time& odometryTimeK) {
+  compslamSePtr_->addOdometryMeasurement(T_O_Lk, rate, poseBetweenNoise, odometryTimeK);
 }
 
 void CompslamSeInterface::addGnssMeasurements_(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
-                                               const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK) {
-  compslamSePtr_->addGnssMeasurements(leftGnssCoord, rightGnssCoord, covarianceXYZ, gnssTimeK);
+                                               const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                               const double positionUnaryNoise) {
+  compslamSePtr_->addGnssMeasurements(leftGnssCoord, rightGnssCoord, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
 
 }  // end namespace compslam_se

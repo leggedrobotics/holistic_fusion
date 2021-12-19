@@ -18,20 +18,19 @@
 #include <tf/transform_datatypes.h>
 
 // Package
-#include "fg_filtering/GraphManager.hpp"
-#include "fg_filtering/InterfacePrediction.h"
-#include "fg_filtering/SignalLogger.h"
-#include "fg_filtering/StaticTransforms.h"
-#include "fg_filtering/geometry/eigen_conversions.h"
-#include "fg_filtering/geometry/math_utils.h"
+#include "compslam_se/GraphManager.hpp"
+#include "compslam_se/InterfacePrediction.h"
+#include "compslam_se/SignalLogger.h"
+#include "compslam_se/StaticTransforms.h"
+#include "compslam_se/config/GraphConfig.h"
+#include "compslam_se/geometry/eigen_conversions.h"
+#include "compslam_se/geometry/math_utils.h"
+#include "fg_filtering_log_msgs/ImuMultiplot.h"
+#include "fg_filtering_log_msgs/LidarMultiplot.h"
 
 // Workspace
 #include "kindr/Core"
 #include "robot_utils/sensors/GNSS.hpp"
-
-// Menzi
-#include "fg_filtering_log_msgs/ImuMultiplot.h"
-#include "fg_filtering_log_msgs/LidarMultiplot.h"
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -56,24 +55,26 @@ class CompslamSe {
   ~CompslamSe() { signalLogger_.~SignalLogger(); };
 
   // Setup
-  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, StaticTransforms* staticTransformsPtr);
+  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
 
   // Adderfunctions
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
                          InterfacePrediction*& predictionPtr);
-  void addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const ros::Time& odometryTimeK);
+  void addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const double rate, const std::vector<double>& poseBetweenNoise,
+                              const ros::Time& odometryTimeK);
   void addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
-                           const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK);
-
-  /// Setters
-  void setVerboseLevel(int verbose) { verboseLevel_ = verbose; }
-  void setImuGravityDirection(std::string sParam) { imuGravityDirection_ = std::move(sParam); }
+                           const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate, double positionUnaryNoise);
 
   // Getters
   bool getLogPlots() { return logPlots_; }
 
   // Log data
   void logSignals() { signalLogger_.~SignalLogger(); }
+
+  void setGnssReferenceLatitude(double latitude) { gnssReferenceLatitude_ = latitude; }
+  void setGnssReferenceLongitude(double longitude) { gnssReferenceLongitude_ = longitude; }
+  void setGnssReferenceAltitude(double altitude) { gnssReferenceAltitude_ = altitude; }
+  void setGnssReferenceHeading(double heading) { gnssReferenceHeading_ = heading; }
 
  protected:
   // Methods -------------
@@ -99,9 +100,6 @@ class CompslamSe {
   //// Toggle GNSS Service Method
   bool toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/);
 
-  // Commodity functions
-  void readParams_(const ros::NodeHandle& privateNode);
-
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
@@ -112,8 +110,12 @@ class CompslamSe {
   // Member variables -------------
   robot_utils::GNSS gnssSensor_;
 
-  /// Factor graph
-  GraphManager graphMgr_;
+  // Factor graph
+  GraphManager* graphMgrPtr_ = NULL;
+  StaticTransforms* staticTransformsPtr_ = NULL;
+
+  // Graph Config
+  GraphConfig* graphConfigPtr_ = NULL;
 
   /// Flags
   //// Configuration
@@ -128,21 +130,11 @@ class CompslamSe {
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
 
-  /// Thresholds
-  double gnssOutlierThreshold_ = 1.0;
-  // double graphUpdateThreshold_ = 0.2;
-
-  /// Strings
-  std::string imuGravityDirection_;
-
   /// Times
   ros::Time compslamTimeK_;
   ros::Time imuTimeKm1_;
   ros::Time imuTimeK_;
   double imuTimeOffset_ = 0.0;
-
-  /// Rates
-  int imuRate_ = 100;
 
   /// Transformations
   tf::Transform tf_compslam_T_I0_O_;
@@ -160,9 +152,6 @@ class CompslamSe {
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;
   double gnssReferenceHeading_;
-
-  /// Static transforms
-  StaticTransforms* staticTransformsPtr_ = NULL;
 
   /// Publishers
   ros::Publisher pubLaserImuBias_;
@@ -189,9 +178,6 @@ class CompslamSe {
   /// Counter
   long lidarCallbackCounter_ = 0;  // number of processed lidar frames
   long gnssCallbackCounter_ = 0;
-
-  /// Verbose
-  int verboseLevel_ = 0;
 
   /// Logging
   bool logPlots_ = false;

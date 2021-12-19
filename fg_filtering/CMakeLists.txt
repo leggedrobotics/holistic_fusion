@@ -1,11 +1,10 @@
-cmake_minimum_required(VERSION 3.12)
-project(fg_filtering)
+cmake_minimum_required(VERSION 3.16)
+project(compslam_se)
 
-find_package(catkin REQUIRED COMPONENTS
+set(CATKIN_PACKAGE_DEPENDENCIES
   geometry_msgs
   nav_msgs
   sensor_msgs
-  #m545_msgs
   roscpp
   rospy
   std_msgs
@@ -18,7 +17,10 @@ find_package(catkin REQUIRED COMPONENTS
   signal_logger
   robot_utils
   fg_filtering_log_msgs
-  kdl_parser
+  )
+
+find_package(catkin REQUIRED COMPONENTS
+  ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
 find_package(Eigen3 REQUIRED)
@@ -42,7 +44,7 @@ add_definitions(${PCL_DEFINITIONS})
 #)
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf pcl_conversions tf_conversions message_runtime nodelet message_filters kdl_parser signal_logger robot_utils
+  CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
   DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
@@ -63,7 +65,7 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-  src/lib/CompslamSeInterface.cpp src/lib/CompslamSe.cpp src/lib/GraphManager.cpp src/lib/ImuBuffer.cpp include/fg_filtering/CompslamSeInterface.h)
+  src/lib/CompslamSeInterface.cpp src/lib/CompslamSe.cpp src/lib/GraphManager.cpp src/lib/ImuBuffer.cpp include/compslam_se/CompslamSeInterface.h)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
 #add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)
