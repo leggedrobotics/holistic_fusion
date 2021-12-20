@@ -20,13 +20,16 @@ class CompslamSeInterface {
   // Setup
   bool setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
+  // Required for initialization
+  bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
+
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
   void addOdometryMeasurement_(const Eigen::Matrix4d& T_O_Lk, const double rate, std::vector<double> poseBetweenNoise,
                                const ros::Time& odometryTimeK);
-  void addGnssMeasurements_(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
-                            const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                            const double positionUnaryNoise);
+  void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
+                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                   const double positionUnaryNoise);
 
   // Publish
   virtual void publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
@@ -48,16 +51,6 @@ class CompslamSeInterface {
   int verboseLevel_ = 0;
   /// Logging
   bool logPlots_ = false;
-
-  /// Flags
-  bool usingGnssReferenceFlag_ = false;
-  bool usingGnssFlag_ = true;
-  bool usingCompslamFlag_ = true;
-  /// GNSS Reference
-  double gnssReferenceLatitude_ = 0.0;
-  double gnssReferenceLongitude_ = 0.0;
-  double gnssReferenceAltitude_ = 0.0;
-  double gnssReferenceHeading_ = 0.0;
 };
 
 }  // namespace compslam_se

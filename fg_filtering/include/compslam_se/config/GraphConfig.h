@@ -50,9 +50,8 @@ struct GraphConfig {
   // Eigen
   Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
   Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
-
 };
 
-} // namespace compslam_se
+}  // namespace compslam_se
 
-#endif // GRAPHCONFIG_H
+#endif  // GRAPHCONFIG_H
