@@ -24,6 +24,10 @@ bool CompslamSeInterface::initYawAndPosition_(const double yaw, const Eigen::Vec
   return compslamSePtr_->initYawAndPosition(yaw, position);
 }
 
+bool CompslamSeInterface::areYawAndPositionInited_() {
+  return compslamSePtr_->areYawAndPositionInited();
+}
+
 void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                              const ros::Time& imuTimeK) {
   InterfacePrediction* predictionPtr;

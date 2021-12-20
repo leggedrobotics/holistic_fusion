@@ -55,15 +55,19 @@ bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, Grap
   return true;
 }
 
+bool CompslamSe::areYawAndPositionInited() {
+  return foundInitialYawAndPositionFlag_;
+}
+
 bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& position) {
   // Locking
-  const std::lock_guard<std::mutex> initGraphLock(initYawMutex_);
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
   if (!alignedImuFlag_) {
     std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
               << std::endl;
     return false;
   }
-  if (!foundInitialYawAndPositionFlag_) {
+  if (!areYawAndPositionInited()) {
     globalAttitudeYaw_W_C0_ = yaw;
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial yaw has been set." << COLOR_END << std::endl;
     gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
@@ -197,18 +201,6 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const dou
   static gtsam::Key lastDeltaMeasurementKey__;
   static tf::Transform tf_compslam_T_O_Ij__;
   static gtsam::Pose3 T_O_Ij_Graph__;
-
-  // Check whether global yaw was already provided (e.g. by GNSS)
-  {
-    // Check
-    if (!foundInitialYawAndPositionFlag_) {
-      globalAttitudeYaw_W_C0_ = 0.0;
-      globalPosition_W_I0_ = Eigen::Vector3d(0.0, 0.0, 0.0);
-      foundInitialYawAndPositionFlag_ = true;
-      std::cout << YELLOW_START << "CompslamSe" << GREEN_START
-                << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
-    }
-  }
 
   // Transform message to Imu frame
   tf::Transform tf_compslam_T_O_Lk = matrix4ToTf(T_O_Lk);

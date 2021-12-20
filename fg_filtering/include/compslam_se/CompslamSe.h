@@ -56,6 +56,7 @@ class CompslamSe {
 
   // Required Initialization
   bool initYawAndPosition(const double yaw, const Eigen::Vector3d& position);
+  bool areYawAndPositionInited();
 
   // Adderfunctions
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
@@ -92,7 +93,7 @@ class CompslamSe {
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
   // Mutex
-  std::mutex initYawMutex_;
+  std::mutex initYawAndPositionMutex_;
   std::mutex optimizeGraphMutex_;
 
   // Factor graph
