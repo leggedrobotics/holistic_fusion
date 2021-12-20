@@ -4,6 +4,11 @@ namespace compslam_se {
 
 // Public --------------------------------------------------------
 void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
+  // Check that imuBufferLength was set
+  if (imuBufferLength_ < 0) {
+    throw std::runtime_error("CSEImuBuffer: imuBufferLength has to be set by the user.");
+  }
+
   // Convert to gtsam type
   gtsam::Vector6 imuMeas;
   imuMeas << accX, accY, accZ, gyrX, gyrY, gyrZ;
@@ -131,6 +136,11 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
 
 bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& initAttitude, double& gravityMagnitude,
                                         Eigen::Vector3d& gyrBias) {
+  // Make sure that imuBuffer is long enough
+  if (imuBufferLength_ < (imuRate_ * imuPoseInitWaitSecs_)) {
+    throw std::runtime_error("ImuBufferLength is not large enough for initialization. Must be at least 1 second.");
+  }
+
   // Get timestamp of first message for lookup
   if (timeToImuBuffer_.size() < (imuRate_ * imuPoseInitWaitSecs_)) {
     return false;

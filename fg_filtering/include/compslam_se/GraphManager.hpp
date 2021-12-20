@@ -36,7 +36,7 @@ namespace compslam_se {
 
 class GraphManager {
  public:
-  GraphManager(GraphConfig* graphConfigPtr) : graphConfigPtr_(graphConfigPtr){};
+  GraphManager(GraphConfig* graphConfigPtr);
   ~GraphManager(){};
 
   // Change Graph
