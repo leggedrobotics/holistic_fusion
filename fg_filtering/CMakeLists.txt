@@ -15,7 +15,6 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   nodelet
   message_filters
   signal_logger
-  robot_utils
   fg_filtering_log_msgs
   )
 

@@ -51,11 +51,33 @@ bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, Grap
   optimizeGraphThread_ = std::thread(&CompslamSe::optimizeGraph_, this);
   std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized thread for optimizing the graph in parallel." << std::endl;
 
-  // Services
-  toggleGnssUsageService_ = node.advertiseService("fg_filtering/toggle_gnss_usage", &CompslamSe::toggleGnssFlag_, this);
-
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
+}
+
+bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& position) {
+  // Locking
+  const std::lock_guard<std::mutex> initGraphLock(initYawMutex_);
+  if (!alignedImuFlag_) {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
+              << std::endl;
+    return false;
+  }
+  if (!foundInitialYawAndPositionFlag_) {
+    globalAttitudeYaw_W_C0_ = yaw;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial yaw has been set." << COLOR_END << std::endl;
+    gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
+    gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+    gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+    tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
+    globalPosition_W_I0_ = transformGnssPointToImuFrame_(position, tf_q_W_I0);
+    foundInitialYawAndPositionFlag_ = true;
+    return true;
+  } else {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END
+              << std::endl;
+    return false;
+  }
 }
 
 // Private ---------------------------------------------------------------
@@ -70,7 +92,6 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   static Eigen::Vector3d I_w_W_I__ = Eigen::Vector3d();
   /// Other
   static Eigen::Matrix4d T_O_Ikm1__;
-  static bool alignedImuFlag__ = false;
   static int imuCabinCallbackCounter__ = -1;
 
   // Increase counter
@@ -98,7 +119,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   bool relocalizationFlag = false;
 
   // If IMU not yet aligned
-  if (!alignedImuFlag__) {
+  if (!alignedImuFlag_) {
     // Add measurement to buffer
     graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     // Add to buffer
@@ -109,7 +130,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
       T_O_Ik__ = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0)).matrix();
       I_v_W_I__ = gtsam::Velocity3(0.0, 0.0, 0.0);
       I_w_W_I__ = Eigen::Vector3d(0.0, 0.0, 0.0);
-      alignedImuFlag__ = true;
+      alignedImuFlag_ = true;
     } else if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       // Add measurement to buffer
       graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
@@ -117,7 +138,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
                 << std::endl;
     }
     return false;
-  } else if (!foundInitialYawFlag_) {
+  } else if (!foundInitialYawAndPositionFlag_) {
     // Add measurement to buffer
     graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
@@ -179,12 +200,11 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const dou
 
   // Check whether global yaw was already provided (e.g. by GNSS)
   {
-    // Locking
-    const std::lock_guard<std::mutex> initGraphLock(initGraphMutex_);
     // Check
-    if (!foundInitialYawFlag_) {
+    if (!foundInitialYawAndPositionFlag_) {
       globalAttitudeYaw_W_C0_ = 0.0;
-      foundInitialYawFlag_ = true;
+      globalPosition_W_I0_ = Eigen::Vector3d(0.0, 0.0, 0.0);
+      foundInitialYawAndPositionFlag_ = true;
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START
                 << " LiDAR odometry callback is setting global cabin yaw to 0 (as it was not set so far)." << COLOR_END << std::endl;
     }
@@ -266,53 +286,10 @@ void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const dou
   }
 }
 
-void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const Eigen::Vector3d& rightGnssCoord,
-                                     const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                                     double positionUnaryNoise) {
-  // Static method variables
-  static gtsam::Point3 accumulatedLeftCoordinates__(0.0, 0.0, 0.0);
-  static gtsam::Point3 accumulatedRightCoordinates__(0.0, 0.0, 0.0);
-  static int gnssNotJumpingCounter__ = REQUIRED_GNSS_NUM_NOT_JUMPED;
-  static gtsam::Point3 lastLeftPosition__;
-
-  // Increase counter
-  ++gnssCallbackCounter_;
-
-  if (!usingGnssFlag_) {
-    ROS_WARN("Received GNSS message, but usage is set to false.");
-    if (usingFallbackGraphFlag_) {
-      graphMgrPtr_->activateFallbackGraph();
-    }
-    return;
-  }
-
-  // Wait until measurements got accumulated
-  {
-    // Locking
-    const std::lock_guard<std::mutex> initGraphLock(initGraphMutex_);
-    if (!foundInitialYawFlag_) {
-      if (gnssCallbackCounter_ <= NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT) {
-        accumulatedLeftCoordinates__ += leftGnssCoord;
-        accumulatedRightCoordinates__ += rightGnssCoord;
-        std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
-        return;
-      }
-      // Set reference
-      else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT + 1) {
-        initGnss_(accumulatedLeftCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT,
-                  accumulatedRightCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT);
-        // Convert to cartesian coordinates
-        gtsam::Point3 rightDummyPosition;
-        convertNavSatToPositions(leftGnssCoord, rightGnssCoord, lastLeftPosition__, rightDummyPosition);
-        foundInitialYawFlag_ = true;
-        return;
-      }
-    }
-  }
-
-  // Convert to cartesian coordinates
-  gtsam::Point3 leftPosition, rightPosition;
-  convertNavSatToPositions(leftGnssCoord, rightGnssCoord, leftPosition, rightPosition);
+void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
+                                            const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                            double positionUnaryNoise) {
+  static int gnssNotJumpingCounter__ = 0;
 
   // Read covariance
   bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
@@ -327,7 +304,7 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   }
 
   // GNSS jumping?
-  if ((lastLeftPosition__ - leftPosition).norm() < 1.0) {  // gnssOutlierThreshold_) {
+  if ((lastPosition - position).norm() < 1.0) {  // gnssOutlierThreshold_) {
     ++gnssNotJumpingCounter__;
     if (gnssNotJumpingCounter__ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
@@ -335,35 +312,21 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
     }
   } else {
     if (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is "
-                << (lastLeftPosition__ - leftPosition).norm() << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
+      std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is " << (lastPosition - position).norm()
+                << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << std::endl;
     }
     gnssNotJumpingCounter__ = 0;
   }
-  lastLeftPosition__ = leftPosition;
 
   // Case: GNSS is good --> Write to graph and perform logic
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
-    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
+    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(position, tf_T_W_Ik_.getRotation());
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
     }
     graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
-
-    // Heading factor
-    /// Get heading (assuming that connection between antennas is perpendicular to heading)
-    gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-    double yaw_W_C = computeYawFromHeadingVector_(W_t_heading);
-    gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
-    gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-
-    // Unary factor
-    gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
-    gtsam::Pose3 T_W_I_approx = gtsam::Pose3(R_W_I_approx, W_t_W_I);
-    // graphMgrPtr_->addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
-
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -381,9 +344,9 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
   pose.header.stamp = gnssTimeK;
-  pose.pose.position.x = leftPosition(0);
-  pose.pose.position.y = leftPosition(1);
-  pose.pose.position.z = leftPosition(2);
+  pose.pose.position.x = position(0);
+  pose.pose.position.y = position(1);
+  pose.pose.position.z = position(2);
   leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
   leftGnssPathPtr_->header.stamp = gnssTimeK;
   leftGnssPathPtr_->poses.push_back(pose);
@@ -391,14 +354,52 @@ void CompslamSe::addGnssMeasurements(const Eigen::Vector3d& leftGnssCoord, const
   /// Right
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
   pose.header.stamp = gnssTimeK;
-  pose.pose.position.x = rightPosition(0);  // + tf_T_C_GR.getOrigin().x();
-  pose.pose.position.y = rightPosition(1);  // + tf_T_C_GR.getOrigin().y();
-  pose.pose.position.z = rightPosition(2);  // + tf_T_C_GR.getOrigin().z();
+  pose.pose.position.x = position(0);  // + tf_T_C_GR.getOrigin().x();
+  pose.pose.position.y = position(1);  // + tf_T_C_GR.getOrigin().y();
+  pose.pose.position.z = position(2);  // + tf_T_C_GR.getOrigin().z();
   rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
   rightGnssPathPtr_->header.stamp = gnssTimeK;
   rightGnssPathPtr_->poses.push_back(pose);
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
+
+// void CompslamSe::addGnssYawMeasurement(const double yaw, const double lastYaw,
+//                                            const Eigen::Vector3d& covarianceYaw, const ros::Time& gnssTimeK, const double rate,
+//                                            double yawUnaryNoise) {
+//  // Case: GNSS is good --> Write to graph and perform logic
+//  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+//    // Position factor --> only use left GNSS
+//    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
+//    if (graphMgrPtr_->getStateKey() == 0) {
+//      return;
+//    }
+//    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
+//
+//    // Heading factor
+//    /// Get heading (assuming that connection between antennas is perpendicular to heading)
+//    gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
+//    double yaw_W_C = computeYawFromHeadingVector_(W_t_heading);
+//    gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
+//    gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+//
+//    // Unary factor
+//    gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+//    gtsam::Pose3 T_W_I_approx = gtsam::Pose3(R_W_I_approx, W_t_W_I);
+//    // graphMgrPtr_->addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
+//
+//    {
+//      // Mutex for optimizeGraph Flag
+//      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+//      optimizeGraphFlag_ = true;
+//    }
+//    graphMgrPtr_->activateGlobalGraph();
+//  }
+//    // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
+//  else if (usingFallbackGraphFlag_) {
+//    graphMgrPtr_->activateFallbackGraph();
+//  }
+//
+//}
 
 /// Worker Functions -----------------------
 bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
@@ -415,31 +416,6 @@ bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
   } else {
     return false;
   }
-}
-
-void CompslamSe::initGnss_(const gtsam::Point3& leftGnssCoordinates, const gtsam::Point3& rightGnssCoordinates) {
-  // Initialize GNSS converter
-  if (usingGnssReferenceFlag_) {
-    gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
-  } else {
-    gnssSensor_.setReference(leftGnssCoordinates(0), leftGnssCoordinates(1), leftGnssCoordinates(2), 0.0);
-  }
-
-  // Get Positions
-  gtsam::Point3 leftPosition, rightPosition;
-  convertNavSatToPositions(leftGnssCoordinates, rightGnssCoordinates, leftPosition, rightPosition);
-
-  // Get heading (assuming that connection between antennas is perpendicular to heading)
-  gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Heading read from the GNSS is the following: " << W_t_heading << std::endl;
-
-  // Get initial global yaw
-  double yaw_W_C0 = computeYawFromHeadingVector_(W_t_heading);
-  globalAttitudeYaw_W_C0_ = yaw_W_C0;
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of cabin is: " << 180 / M_PI * yaw_W_C0 << std::endl;
-
-  // Get initial GNSS position
-  W_t_W_GnssL0_ = leftPosition;
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
@@ -460,15 +436,12 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
   /// Add initial IMU translation based on intial orientation
   gtsam::Pose3 T_W_I0;
-  if (usingGnssFlag_) {
-    T_W_I0 = gtsam::Pose3(R_W_I0, transformGnssPointToImuFrame_(W_t_W_GnssL0_, tf_q_W_I0));
-  } else {
-    T_W_I0 = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0));
-    std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized position to 0,0,0 because no GNSS is present." << std::endl;
-  }
+
+  T_W_I0 = gtsam::Pose3(R_W_I0, globalPosition_W_I0_);
+
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
-  if (!usingGnssFlag_ && usingFallbackGraphFlag_) {
+  if (false && usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
   // Read initial pose from graph
@@ -560,16 +533,6 @@ void CompslamSe::optimizeGraph_() {
   }
 }
 
-/// Utility -------------------------
-void CompslamSe::convertNavSatToPositions(const gtsam::Point3& leftGnssCoordinate, const gtsam::Point3& rightGnssCoordinate,
-                                          gtsam::Point3& leftPosition, gtsam::Point3& rightPosition) {
-  /// Left
-  leftPosition = gnssSensor_.gpsToCartesian(leftGnssCoordinate(0), leftGnssCoordinate(1), leftGnssCoordinate(2));
-
-  /// Right
-  rightPosition = gnssSensor_.gpsToCartesian(rightGnssCoordinate(0), rightGnssCoordinate(1), rightGnssCoordinate(2));
-}
-
 gtsam::Vector3 CompslamSe::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition, const tf::Quaternion& tf_q_W_I) {
   /// Translation in robot frame
   tf::Vector3 tf_W_t_W_GnssL(gnssPosition(0), gnssPosition(1), gnssPosition(2));
@@ -587,35 +550,6 @@ gtsam::Vector3 CompslamSe::transformGnssPointToImuFrame_(const gtsam::Point3& gn
   tf::Vector3 tf_W_t_W_I = tf_W_t_W_GnssL + tf_W_t_GnssL_I;
 
   return gtsam::Vector3(tf_W_t_W_I.x(), tf_W_t_W_I.y(), tf_W_t_W_I.z());
-}
-
-gtsam::Point3 CompslamSe::getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition) {
-  // Compute connecting unity vector
-  gtsam::Point3 W_t_GnssR_GnssL = (leftPosition - rightPosition).normalized();
-  W_t_GnssR_GnssL = W_t_GnssR_GnssL;
-  // Compute forward pointing vector
-  gtsam::Point3 zUnityVector(0.0, 0.0, -1.0);
-  gtsam::Point3 W_t_heading = zUnityVector.cross(W_t_GnssR_GnssL).normalized();
-
-  return W_t_heading;
-}
-
-double CompslamSe::computeYawFromHeadingVector_(const gtsam::Point3& headingVector) {
-  double yaw = atan2(headingVector(1), headingVector(0));
-  // Compute angle
-  if (yaw > M_PI) {
-    return yaw - (2 * M_PI);
-  } else if (yaw < -M_PI) {
-    return yaw + (2 * M_PI);
-  } else {
-    return yaw;
-  }
-}
-
-bool CompslamSe::toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/) {
-  usingGnssFlag_ = !usingGnssFlag_;
-  ROS_WARN_STREAM("GNSS usage was toggled to " << usingGnssFlag_);
-  return true;
 }
 
 }  // namespace compslam_se
