@@ -4,6 +4,12 @@ namespace compslam_se {
 
 // Public --------------------------------------------------------------------
 
+GraphManager::GraphManager(GraphConfig* graphConfigPtr) : graphConfigPtr_(graphConfigPtr) {
+  imuBuffer_.setImuRate(graphConfigPtr_->imuRate);
+  imuBuffer_.setImuBufferLength(graphConfigPtr_->imuBufferLength);
+  imuBuffer_.setVerboseLevel(graphConfigPtr_->verboseLevel);
+}
+
 bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
   // Gravity direction definition
   if (imuGravityDirection == "up") {

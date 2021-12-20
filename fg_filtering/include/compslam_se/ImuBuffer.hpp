@@ -62,8 +62,8 @@ class ImuBuffer {
   // Member variables
   TimeToImuMap timeToImuBuffer_;  // IMU buffer
   TimeToKeyMap timeToKeyBuffer_;
-  double imuRate_;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and init attitude
-  int imuBufferLength_;
+  double imuRate_ = -1;  // Rate of IMU input (Hz) - Used to calculate minimum measurements needed to calculate gravity and init attitude
+  int imuBufferLength_ = -1;
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
   int verboseLevel_ = 0;
 };
