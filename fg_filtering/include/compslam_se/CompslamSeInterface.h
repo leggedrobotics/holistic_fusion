@@ -22,6 +22,7 @@ class CompslamSeInterface {
 
   // Required for initialization
   bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
+  bool areYawAndPositionInited_();
 
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);

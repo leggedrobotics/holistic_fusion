@@ -6,7 +6,7 @@ namespace compslam_se {
 void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
   // Check that imuBufferLength was set
   if (imuBufferLength_ < 0) {
-    throw std::runtime_error("CSEImuBuffer: imuBufferLength has to be set by the user.");
+    throw std::runtime_error("CSeImuBuffer: imuBufferLength has to be set by the user.");
   }
 
   // Convert to gtsam type
