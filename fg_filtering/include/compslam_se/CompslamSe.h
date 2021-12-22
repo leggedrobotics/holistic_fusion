@@ -22,8 +22,10 @@
 #include "compslam_se/SignalLogger.h"
 #include "compslam_se/StaticTransforms.h"
 #include "compslam_se/config/GraphConfig.h"
-#include "compslam_se/geometry/eigen_conversions.h"
+#include "compslam_se/geometry/conversions.h"
 #include "compslam_se/geometry/math_utils.h"
+#include "compslam_se/measurements/DeltaMeasurement6D.h"
+#include "compslam_se/measurements/UnaryMeasurement6D.h"
 #include "fg_filtering_log_msgs/ImuMultiplot.h"
 #include "fg_filtering_log_msgs/LidarMultiplot.h"
 
@@ -33,7 +35,6 @@
 // Defined macros
 #define ROS_QUEUE_SIZE 100
 #define REQUIRED_GNSS_NUM_NOT_JUMPED 20
-#define NUM_LIDAR_CALLBACKS_UNTIL_START 5
 #define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.1  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
@@ -61,8 +62,10 @@ class CompslamSe {
   // Adderfunctions
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
                          InterfacePrediction*& predictionPtr);
-  void addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const double rate, const std::vector<double>& poseBetweenNoise,
-                              const ros::Time& odometryTimeK);
+  void addOdometryMeasurement(const DeltaMeasurement6D& delta);
+  void addOdometryMeasurement(const UnaryMeasurement6D& unary);
+  void addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                              const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                   double positionUnaryNoise);
@@ -98,10 +101,10 @@ class CompslamSe {
 
   // Factor graph
   GraphManager* graphMgrPtr_ = NULL;
-  StaticTransforms* staticTransformsPtr_ = NULL;
 
   // Graph Config
   GraphConfig* graphConfigPtr_ = NULL;
+  StaticTransforms* staticTransformsPtr_ = NULL;
 
   /// Flags
   //// Configuration
@@ -111,6 +114,7 @@ class CompslamSe {
   bool alignedImuFlag_ = false;
   bool foundInitialYawAndPositionFlag_ = false;
   bool initedGraphFlag_ = false;
+  bool receivedOdometryFlag_ = false;
   //// During operation
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
@@ -152,7 +156,6 @@ class CompslamSe {
   SignalLoggerGnss signalLoggerGnss_;
 
   /// Counter
-  long lidarCallbackCounter_ = 0;  // number of processed lidar frames
   long gnssCallbackCounter_ = 0;
 
   /// Logging

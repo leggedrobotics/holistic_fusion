@@ -1,12 +1,15 @@
 #ifndef COMPSLAM_SE_INTERFACE_H
 #define COMPSLAM_SE_INTERFACE_H
 
+#include <ros/node_handle.h>
 #include <ros/time.h>
 #include <Eigen/Eigen>
 
 // Workspace
 #include "compslam_se/StaticTransforms.h"
 #include "compslam_se/config/GraphConfig.h"
+#include "compslam_se/measurements/DeltaMeasurement6D.h"
+#include "compslam_se/measurements/UnaryMeasurement6D.h"
 
 namespace compslam_se {
 
@@ -26,8 +29,10 @@ class CompslamSeInterface {
 
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
-  void addOdometryMeasurement_(const Eigen::Matrix4d& T_O_Lk, const double rate, std::vector<double> poseBetweenNoise,
-                               const ros::Time& odometryTimeK);
+  void addOdometryMeasurement_(const DeltaMeasurement6D& delta);
+  void addOdometryMeasurement_(const UnaryMeasurement6D& unary);
+  void addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                               const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                    const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                    const double positionUnaryNoise);
@@ -44,10 +49,9 @@ class CompslamSeInterface {
   // Member Variables
   /// CompslamSe
   CompslamSe* compslamSePtr_ = NULL;
-  /// Static transforms
-  StaticTransforms* staticTransformsPtr_ = NULL;
   /// Graph Configuration
   GraphConfig* graphConfigPtr_ = NULL;
+  StaticTransforms* staticTransformsPtr_ = NULL;
   /// Verbosity
   int verboseLevel_ = 0;
   /// Logging

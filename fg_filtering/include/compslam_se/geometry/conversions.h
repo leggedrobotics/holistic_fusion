@@ -8,10 +8,16 @@ inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d&
   tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
   Eigen::Vector3d t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
   Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
-  Eigen::Matrix3d R();
   T.setIdentity();
   T.block<3, 3>(0, 0) = q.matrix();
   T.block<3, 1>(0, 3) = t;
+}
+
+inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T) {
+  tf::Quaternion tf_q;
+  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
+  tf::Vector3 tf_t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+  T = tf::Transform(tf_q, tf_t);
 }
 
 inline tf::Transform matrix3ToTf(const Eigen::Matrix3d& R) {
@@ -28,6 +34,15 @@ inline tf::Transform matrix4ToTf(const Eigen::Matrix4d& T) {
   tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
   tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
   return tf_T;
+}
+
+inline void tfToMatrix4(const tf::Transform& tf_T, Eigen::Matrix4d& T) {
+  tf::Quaternion tf_q = tf_T.getRotation();
+  Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
+  Eigen::Vector3d t(tf_T.getOrigin().getX(), tf_T.getOrigin().getY(), tf_T.getOrigin().getZ());
+  T.setIdentity();
+  T.block<3, 3>(0, 0) = q.matrix();
+  T.block<3, 1>(0, 3) = t;
 }
 
 }  // namespace compslam_se

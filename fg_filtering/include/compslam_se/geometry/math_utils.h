@@ -231,13 +231,13 @@ inline void invertHomogenousMatrix(const Eigen::Matrix4d& m_in, Eigen::Matrix4d&
   m_out.block<3, 1>(0, 3) = -R.transpose() * t;
 }
 
-inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
-  tf::Quaternion tf_q;
-  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
-  tf::Vector3 tf_t = tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
-  tf_T.setRotation(tf_q);
-  tf_T.setOrigin(tf_t);
-}
+// inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& tf_T) {
+//  tf::Quaternion tf_q;
+//  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
+//  tf::Vector3 tf_t = tf::Vector3(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+//  tf_T.setRotation(tf_q);
+//  tf_T.setOrigin(tf_t);
+//}
 
 inline tf::Transform pose3ToTf(const Eigen::Matrix3d& T) {
   Eigen::Quaterniond q(T);

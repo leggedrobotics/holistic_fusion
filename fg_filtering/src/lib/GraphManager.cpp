@@ -52,8 +52,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                   graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh)
                      .finished();
   isamParams_.relinearizeThreshold = relinTh;
-  isamParams_.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
-                                                       // poorly conditioned problems
+  isamParams_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
+                                                             // poorly conditioned problems
 
   // Create Prior factor and Initialize factor graph
   /// Prior factor noise
@@ -179,7 +179,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
 }
 
 gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                                           const std::vector<double>& poseBetweenNoise, const gtsam::Pose3& pose) {
+                                                           const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose) {
   // Find corresponding keys in graph
   double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
   maxSearchDeviation += 0.1 * maxSearchDeviation;
@@ -194,8 +194,8 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 
   // Create noise model
   assert(poseBetweenNoise.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2],
-                                                    poseBetweenNoise[3], poseBetweenNoise[4], poseBetweenNoise[5])
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise(0), poseBetweenNoise(1), poseBetweenNoise(2),
+                                                    poseBetweenNoise(3), poseBetweenNoise(4), poseBetweenNoise(5))
                                                        .finished());  // rad,rad,rad,m,m,m
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
 

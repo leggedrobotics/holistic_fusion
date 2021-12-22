@@ -39,9 +39,17 @@ void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, c
   }
 }
 
-void CompslamSeInterface::addOdometryMeasurement_(const Eigen::Matrix4d& T_O_Lk, const double rate, std::vector<double> poseBetweenNoise,
-                                                  const ros::Time& odometryTimeK) {
-  compslamSePtr_->addOdometryMeasurement(T_O_Lk, rate, poseBetweenNoise, odometryTimeK);
+void CompslamSeInterface::addOdometryMeasurement_(const DeltaMeasurement6D& delta) {
+  compslamSePtr_->addOdometryMeasurement(delta);
+}
+
+void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& unary) {
+  compslamSePtr_->addOdometryMeasurement(unary);
+}
+
+void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
+  compslamSePtr_->addOdometryMeasurement(odometryKm1, odometryK, poseBetweenNoise);
 }
 
 void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,

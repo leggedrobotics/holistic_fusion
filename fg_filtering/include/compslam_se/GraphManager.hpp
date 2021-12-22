@@ -45,7 +45,7 @@ class GraphManager {
   gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                           bool& relocalizationFlag);
   gtsam::Key addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                               const std::vector<double>& poseBetweenNoise, const gtsam::Pose3& pose);
+                                               const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose);
   void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const std::vector<double>& poseBetweenNoise,
                                          const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);

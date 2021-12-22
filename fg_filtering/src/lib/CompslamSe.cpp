@@ -170,7 +170,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
       tf::Transform tf_T_W_O = matrix4ToTf(T_W_O__);
     }
     // Estimate state
-    if (lidarCallbackCounter_ > NUM_LIDAR_CALLBACKS_UNTIL_START) {
+    if (receivedOdometryFlag_) {
       T_O_Ik__ = T_W_O__.inverse() * T_W_Ik.pose().matrix();
       I_v_W_I__ = T_W_O__.block<3, 3>(0, 0).inverse() * T_W_Ik.velocity();
       I_w_W_I__ = graphMgrPtr_->getIMUBias().correctGyroscope(angularVel);
@@ -193,88 +193,49 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   return true;
 }
 
-void CompslamSe::addOdometryMeasurement(const Eigen::Matrix4d& T_O_Lk, const double rate, const std::vector<double>& poseBetweenNoise,
-                                        const ros::Time& odometryTimeK) {
+void CompslamSe::addOdometryMeasurement(const DeltaMeasurement6D& delta) {}
+
+void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& unary) {
   // Static variables
   static bool lidarUnaryFactorInitialized__ = false;
-  static tf::Transform tf_compslam_T_O_Ikm1__;
-  static gtsam::Key lastDeltaMeasurementKey__;
-  static tf::Transform tf_compslam_T_O_Ij__;
-  static gtsam::Pose3 T_O_Ij_Graph__;
+  //  static tf::Transform tf_compslam_T_O_Ij__;
+  //  static gtsam::Pose3 T_O_Ij_Graph__;
+  //  tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
+  //  if (graphMgrPtr_->globalGraphActiveFlag()) {
+  //    /// Reset LiDAR Unary factor intiialization
+  //    lidarUnaryFactorInitialized__ = false;
+  //    // Write current compslam pose to latest delta pose
+  //    tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
+  //  }  //
+  //  else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
+  //    if (!lidarUnaryFactorInitialized__) {
+  //      // Calculate state still from globalGraph
+  //      T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+  //      std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
+  //      lidarUnaryFactorInitialized__ = true;
+  //    }
+  //    /// Delta pose
+  //    gtsam::Pose3 T_Ij_Ik(computeDeltaPose(tf_compslam_T_O_Ij__, tf_compslam_T_O_Ik));
+  //    gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
+  //    graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), rate, poseBetweenNoise, T_O_Ik);
+  //  }
+}
 
-  // Transform message to Imu frame
-  tf::Transform tf_compslam_T_O_Lk = matrix4ToTf(T_O_Lk);
-  const tf::Transform tf_compslam_T_O_Ik = tf_compslam_T_O_Lk * staticTransformsPtr_->T_L_Ic();
-  const tf::Transform tf_compslam_T_I0_Ik = tf_compslam_T_I0_O_ * tf_compslam_T_O_Ik;
-  const tf::Transform tf_compslam_T_O_Ck = tf_T_W_I0_ * tf_compslam_T_I0_Ik * staticTransformsPtr_->T_Ic_C();
-
-  // Timing
-  const ros::Time compslamTimeKm1 = compslamTimeK_;
-  compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
-
-  // Set initial compslam pose after third callback (because first compslam pose is wrong)
-  ++lidarCallbackCounter_;
-  if (lidarCallbackCounter_ < NUM_LIDAR_CALLBACKS_UNTIL_START) {
-    std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Waiting until enough LiDAR messages have arrived..." << std::endl;
-    compslamTimeK_ = odometryTimeK + ros::Duration(imuTimeOffset_);
-    tf_compslam_T_I0_O_ = tf_compslam_T_O_Ik.inverse();
-    tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
-    tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
-    return;
-  }
-
+void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                                        const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
   if (initedGraphFlag_) {
-    if (graphMgrPtr_->globalGraphActiveFlag()) {
-      /// Reset LiDAR Unary factor intiialization
-      lidarUnaryFactorInitialized__ = false;
-      // Write current compslam pose to latest delta pose
-      tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
-    }  //
-    else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
-      if (!lidarUnaryFactorInitialized__) {
-        // Calculate state still from globalGraph
-        T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
-        std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
-        lidarUnaryFactorInitialized__ = true;
-      }
-      /// Delta pose
-      gtsam::Pose3 T_Ij_Ik(computeDeltaPose(tf_compslam_T_O_Ij__, tf_compslam_T_O_Ik));
-      gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
-      graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), rate, poseBetweenNoise, T_O_Ik);
-    }
-    // In any case: write the lidar odom delta to global graph
     /// Delta pose
-    gtsam::Pose3 T_Ikm1_Ik = computeDeltaPose(tf_compslam_T_O_Ikm1__, tf_compslam_T_O_Ik);
-    lastDeltaMeasurementKey__ =
-        graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(compslamTimeKm1.toSec(), compslamTimeK_.toSec(), rate, poseBetweenNoise, T_Ikm1_Ik);
+    Eigen::Matrix4d T_Ikm1_Ik = odometryKm1.measurementPose.inverse() * odometryK.measurementPose;
+    gtsam::Key lastDeltaMeasurementKey__ = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(odometryKm1.time, odometryK.time, odometryK.rate,
+                                                                                           poseBetweenNoise, gtsam::Pose3(T_Ikm1_Ik));
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-
-    // Visualization of Compslam pose
-    geometry_msgs::PoseStamped poseStamped;
-    poseStamped.header.frame_id = staticTransformsPtr_->getMapFrame();
-    poseStamped.header.stamp = odometryTimeK;
-    tf::poseTFToMsg(tf_compslam_T_O_Ck, poseStamped.pose);
-    /// Path
-    compslamPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-    compslamPathPtr_->header.stamp = odometryTimeK;
-    compslamPathPtr_->poses.push_back(poseStamped);
-    /// Publish
-    pubCompslamPath_.publish(compslamPathPtr_);
-
-    // Set last pose for the next iteration
-    tf_compslam_T_O_Ikm1__ = tf_compslam_T_O_Ik;
-
-    // Plotting in rqt_multiplot
-    fg_filtering_log_msgs::LidarMultiplot lidarMultiplot;
-    lidarMultiplot.time_stamp = compslamTimeK_.toSec();
-    lidarMultiplot.delta_roll = 10.0 * T_Ikm1_Ik.rotation().roll();
-    lidarMultiplot.delta_pitch = 10.0 * T_Ikm1_Ik.rotation().pitch();
-    lidarMultiplot.delta_yaw = 10.0 * T_Ikm1_Ik.rotation().yaw();
-    lidarMultiplotPublisher_.publish(lidarMultiplot);
+  }
+  if (!receivedOdometryFlag_) {
+    receivedOdometryFlag_ = true;
   }
 }
 
