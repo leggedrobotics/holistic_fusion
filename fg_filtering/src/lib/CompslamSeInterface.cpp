@@ -50,4 +50,10 @@ void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& pos
   compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
 
+void CompslamSeInterface::addGnssHeadingMeasurement_(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK,
+                                                     const double rate, const double positionUnaryNoise) {
+  compslamSePtr_->addGnssHeadingMeasurement(heading, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
+}
+
+
 }  // end namespace compslam_se

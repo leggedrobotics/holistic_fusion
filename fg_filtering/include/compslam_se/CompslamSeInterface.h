@@ -31,6 +31,8 @@ class CompslamSeInterface {
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                    const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                    const double positionUnaryNoise);
+  void addGnssHeadingMeasurement_(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, 
+                                  const double rate, const double positionUnaryNoise);
 
   // Publish
   virtual void publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,

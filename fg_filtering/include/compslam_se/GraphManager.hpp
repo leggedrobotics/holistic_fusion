@@ -49,8 +49,7 @@ class GraphManager {
   void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const std::vector<double>& poseBetweenNoise,
                                          const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);
-  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise,
-                                 const gtsam::Vector3& measuredHeading, double measuredYaw);
+  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
 

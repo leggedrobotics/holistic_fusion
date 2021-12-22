@@ -355,43 +355,37 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
-// void CompslamSe::addGnssYawMeasurement(const double yaw, const double lastYaw,
-//                                            const Eigen::Vector3d& covarianceYaw, const ros::Time& gnssTimeK, const double rate,
-//                                            double yawUnaryNoise) {
-//  // Case: GNSS is good --> Write to graph and perform logic
-//  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-//    // Position factor --> only use left GNSS
-//    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
-//    if (graphMgrPtr_->getStateKey() == 0) {
-//      return;
-//    }
-//    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
-//
-//    // Heading factor
-//    /// Get heading (assuming that connection between antennas is perpendicular to heading)
-//    gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-//    double yaw_W_C = computeYawFromHeadingVector_(W_t_heading);
-//    gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
-//    gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-//
-//    // Unary factor
-//    gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
-//    gtsam::Pose3 T_W_I_approx = gtsam::Pose3(R_W_I_approx, W_t_W_I);
-//    // graphMgrPtr_->addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
-//
-//    {
-//      // Mutex for optimizeGraph Flag
-//      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-//      optimizeGraphFlag_ = true;
-//    }
-//    graphMgrPtr_->activateGlobalGraph();
-//  }
-//    // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
-//  else if (usingFallbackGraphFlag_) {
-//    graphMgrPtr_->activateFallbackGraph();
-//  }
-//
-//}
+void CompslamSe::addGnssHeadingMeasurement(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate, const double positionUnaryNoise) {
+
+  static int gnssNotJumpingCounter__ = 0;
+
+  bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
+  
+  // Case: GNSS is good --> Write to graph and perform logic
+  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+
+    if (graphMgrPtr_->getStateKey() == 0) {
+      return;
+    }
+ 
+    // Heading factor
+    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, heading);
+
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+    graphMgrPtr_->activateGlobalGraph();
+  }
+    // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
+  else if (usingFallbackGraphFlag_) {
+    graphMgrPtr_->activateFallbackGraph();
+  }
+
+}
 
 /// Worker Functions -----------------------
 bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
