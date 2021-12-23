@@ -33,6 +33,8 @@ class CompslamSeInterface {
                                    const double positionUnaryNoise);
   void addGnssHeadingMeasurement_(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, 
                                   const double rate, const double positionUnaryNoise);
+  void addWheelOdometryMeasurement_(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
+                                   const Eigen::Vector3d& linearVel, const Eigen::Vector3d& angularVel);
 
   // Publish
   virtual void publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,

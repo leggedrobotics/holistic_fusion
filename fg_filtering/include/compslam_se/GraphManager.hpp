@@ -14,6 +14,9 @@
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearISAM.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/slam/expressions.h>
+#include <gtsam/geometry/Pose3.h>
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
@@ -26,6 +29,7 @@
 #include "compslam_se/GraphState.hpp"
 #include "compslam_se/ImuBuffer.hpp"
 #include "compslam_se/config/GraphConfig.h"
+#include "compslam_se/geometry/wheel_odometry.h"
 
 namespace compslam_se {
 
@@ -52,8 +56,9 @@ class GraphManager {
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
+  void addWheelOdometryVelocityFactor(double gnssTimeK, const double rate, const std::vector<double>& woSpeedNoise, 
+                                      const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel);
 
-  // Graph selection
   void activateGlobalGraph();
   void activateFallbackGraph();
 
@@ -120,15 +125,15 @@ class GraphManager {
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalGraphPtr_;
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackGraphPtr_;
   /// Data buffers
-  gtsam::NonlinearFactorGraph globalFactorsBuffer_;
-  gtsam::NonlinearFactorGraph fallbackFactorsBuffer_;
+  gtsam::ExpressionFactorGraph globalFactorsBuffer_;
+  gtsam::ExpressionFactorGraph fallbackFactorsBuffer_;
   /// Config
   GraphConfig* graphConfigPtr_ = NULL;
   /// Graph names
   std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
   /// Selector
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeGraphPtr_ = globalGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
-  gtsam::NonlinearFactorGraph& activeFactorsBuffer_ = globalFactorsBuffer_;
+  gtsam::ExpressionFactorGraph& activeFactorsBuffer_ = globalFactorsBuffer_;
   /// Counter
   int numOptimizationsSinceGraphSwitching_ = 0;
   bool sentRelocalizationCommandAlready_ = true;

@@ -55,5 +55,12 @@ void CompslamSeInterface::addGnssHeadingMeasurement_(const double heading, const
   compslamSePtr_->addGnssHeadingMeasurement(heading, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
 
+// wheel odometry measurement must be in cabin frame
+void CompslamSeInterface::addWheelOdometryMeasurement_(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
+                                                       const Eigen::Vector3d& linearVel, const Eigen::Vector3d& angularVel) {
+
+  compslamSePtr_->addWheelOdometryMeasurement(woTimeK, rate, woSpeedNoise, linearVel, angularVel);
+}
+
 
 }  // end namespace compslam_se

@@ -357,14 +357,12 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
 
 void CompslamSe::addGnssHeadingMeasurement(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate, const double positionUnaryNoise) {
 
-  static int gnssNotJumpingCounter__ = 0;
-
   bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
-  
+
   // Case: GNSS is good --> Write to graph and perform logic
-  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+  if (!gnssCovarianceViolatedFlag) {
 
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
@@ -386,6 +384,25 @@ void CompslamSe::addGnssHeadingMeasurement(const double heading, const Eigen::Ve
   }
 
 }
+
+void CompslamSe::addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel) {
+
+  // transform from cabine frame to IMU frame
+  gtsam::Matrix3 IcWOSkew = gtsam::skewSymmetric(angularVel);
+  gtsam::Vector3 T_C_Ic = tfToPose3(staticTransformsPtr_->T_C_Ic()).translation();
+  gtsam::Rot3 R_C_Ic = gtsam::Pose3(graphMgrPtr_->getGraphState().navState().pose().matrix()).rotation();
+  gtsam::Vector3 linearVelIMU = R_C_Ic * (linearVel + IcWOSkew * T_C_Ic);
+
+  graphMgrPtr_->addWheelOdometryVelocityFactor(woTimeK.toSec(), rate, woSpeedNoise, linearVelIMU, angularVel);
+  
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
+
+}
+
 
 /// Worker Functions -----------------------
 bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
