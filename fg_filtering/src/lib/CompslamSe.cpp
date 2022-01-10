@@ -73,7 +73,7 @@ bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& pos
   }
   if (!areYawAndPositionInited()) {
     globalAttitudeYaw_W_C0_ = yaw;
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial yaw has been set." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial yaw has been set to " << yaw << "." << COLOR_END << std::endl;
     gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
     gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
@@ -251,8 +251,6 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
 void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                             const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                             double positionUnaryNoise) {
-  static int gnssNotJumpingCounter__ = 0;
-
   // Read covariance
   bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
@@ -267,22 +265,22 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
 
   // GNSS jumping?
   if ((lastPosition - position).norm() < 1.0) {  // gnssOutlierThreshold_) {
-    ++gnssNotJumpingCounter__;
-    if (gnssNotJumpingCounter__ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
+    ++gnssNotJumpingCounter_;
+    if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
                 << std::endl;
     }
   } else {
-    if (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
+    if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is " << (lastPosition - position).norm()
                 << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << std::endl;
     }
-    gnssNotJumpingCounter__ = 0;
+    gnssNotJumpingCounter_ = 0;
   }
 
   // Case: GNSS is good --> Write to graph and perform logic
-  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
     gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(position, tf_T_W_Ik_.getRotation());
     if (graphMgrPtr_->getStateKey() == 0) {
@@ -323,6 +321,21 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   rightGnssPathPtr_->header.stamp = gnssTimeK;
   rightGnssPathPtr_->poses.push_back(pose);
   pubRightGnssPath_.publish(rightGnssPathPtr_);
+}
+
+void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_C, const double gnssTimeK, const double rate, double headingUnaryNoise) {
+  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
+  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+  double yaw_W_I = yawR_W_I.yaw();
+  std::cout << "Yaw of imu (deg): " << 180 * yaw_W_I / M_PI << ", noise: " << headingUnaryNoise << std::endl;
+  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
+    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, yaw_W_I);
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
 }
 
 // void CompslamSe::addGnssYawMeasurement(const double yaw, const double lastYaw,

@@ -294,17 +294,16 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Print summary
   if (graphConfigPtr_->verboseLevel > 1) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
-              << ", GNSS factor added to key " << closestKey << COLOR_END << std::endl;
+              << ", GNSS position factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
 void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate, const double gnssHeadingUnaryNoise,
-                                             const gtsam::Vector3& measuredHeading, double measuredYaw) {
+                                             const double measuredYaw) {
   // Print information
   if (graphConfigPtr_->verboseLevel > 2) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
-              << ", GNSS heading measurement at time stamp " << gnssTimeK << " is: " << measuredHeading.x() << "," << measuredHeading.y()
-              << "," << measuredHeading.z() << std::endl;
+              << ", GNSS yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
   }
 
   // Find closest key in existing graph
@@ -324,18 +323,10 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Create noise model
   //  auto gnssHeadingUnaryNoise =
   //      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << gnssHeadingUnaryNoise_).finished());  // rad,rad,rad,m,m,m
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << gnssHeadingUnaryNoise, gnssHeadingUnaryNoise, gnssHeadingUnaryNoise).finished());  // rad,rad,rad,m,m,m
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << gnssHeadingUnaryNoise).finished());  // rad,rad,rad,m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
 
-  // Create unary factor and add it
-  //  fg_filtering::HeadingFactorYaw gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading, measuredYaw,
-  //                                                        tukeyErrorFunction);
-  //  fg_filtering::HeadingFactorMatrix gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading,
-  //  measuredYaw,
-  //                                                           tukeyErrorFunction);
-  HeadingFactorHeadingVector gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredHeading, measuredYaw,
-                                                    tukeyErrorFunction);
+  HeadingFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredYaw, tukeyErrorFunction);
 
   // Write to graph
   {
@@ -348,7 +339,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Print summary
   if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
-              << " Key where GNSS factor is added to key " << closestKey << COLOR_END << std::endl;
+              << " GNSS heading factor is added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 

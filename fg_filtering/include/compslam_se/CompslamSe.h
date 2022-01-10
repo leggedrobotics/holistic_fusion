@@ -72,6 +72,7 @@ class CompslamSe {
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                   double positionUnaryNoise);
+  void addGnssHeadingMeasurement(const double yaw, const double gnssTimeK, const double rate, double headingUnaryNoise);
 
   // Getters
   bool getLogPlots() { return logPlots_; }
@@ -160,6 +161,7 @@ class CompslamSe {
 
   /// Counter
   long gnssCallbackCounter_ = 0;
+  int gnssNotJumpingCounter_ = 0;
 
   /// Logging
   bool logPlots_ = false;

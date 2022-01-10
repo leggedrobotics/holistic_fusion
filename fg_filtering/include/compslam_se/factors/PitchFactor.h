@@ -1,5 +1,5 @@
-#ifndef COMPSLAM_SE_HEADING_FACTOR_H
-#define COMPSLAM_SE_HEADING_FACTOR_H
+#ifndef COMPSLAM_SE_PITCH_FACTOR_H
+#define COMPSLAM_SE_PITCH_FACTOR_H
 
 #include <string>
 
@@ -16,9 +16,9 @@
 namespace compslam_se {
 
 /**
- * Factor to estimate rotation given gnss robot heading
+ * Factor to estimate rotation given gnss robot pitch
  */
-class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class PitchFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
   /**
    * Constructor of factor that estimates nav to body rotation bRn
@@ -26,11 +26,11 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param measured magnetometer reading, a 3-vector
    * @param model of the additive Gaussian noise that is assumed
    */
-  HeadingFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model)
-      : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), yaw_(yaw) {}
+  PitchFactor(gtsam::Key j, double pitch, const gtsam::SharedNoiseModel& model)
+      : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), pitch_(pitch) {}
 
   // Destructor
-  virtual ~HeadingFactor() {}
+  virtual ~PitchFactor() {}
 
   /**
    * Evaluate error function
@@ -39,22 +39,22 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   gtsam::Vector evaluateError(const gtsam::Pose3& q, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
     // Jacobian
     if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 0.0, 1.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+      (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 1.0, 0.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
     }
 
     // calculate error
-    double yaw_error = q.rotation().yaw() - yaw_;
+    double pitch_error = q.rotation().pitch() - pitch_;
 
-    while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
-    while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
+    while (pitch_error < -M_PI) pitch_error += 2 * M_PI;
+    while (pitch_error > M_PI) pitch_error -= 2 * M_PI;
 
-    return gtsam::Vector1(yaw_error);
+    return gtsam::Vector1(pitch_error);
   }
 
  private:
-  double yaw_;  // yaw measurement
+  double pitch_;  // pitch measurement
 };
 
 }  // namespace compslam_se
 
-#endif  // COMPSLAM_SE_HEADING_FACTOR_H
+#endif  // COMPSLAM_SE_PITCH_FACTOR_H
