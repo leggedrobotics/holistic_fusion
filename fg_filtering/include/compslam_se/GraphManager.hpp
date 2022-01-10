@@ -46,7 +46,7 @@ class GraphManager {
                                           bool& relocalizationFlag);
   gtsam::Key addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
                                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose);
-  void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const std::vector<double>& poseBetweenNoise,
+  void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
                                          const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise,
@@ -91,7 +91,7 @@ class GraphManager {
   }
   bool fallbackGraphActiveFlag() {
     const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
-    return activeGraphPtr_ == fallbackGraphPtr_;
+    return activeGraphPtr_ == fallbackGraphPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
   }
 
  private:

@@ -27,6 +27,9 @@ class CompslamSeInterface {
   bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
   bool areYawAndPositionInited_();
 
+  // Graph Maniupulation
+  void activateFallbackGraph();
+
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
   void addOdometryMeasurement_(const DeltaMeasurement6D& delta);

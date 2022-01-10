@@ -59,6 +59,9 @@ class CompslamSe {
   bool initYawAndPosition(const double yaw, const Eigen::Vector3d& position);
   bool areYawAndPositionInited();
 
+  // Graph Manipulation
+  void activateFallbackGraph();
+
   // Adderfunctions
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
                          InterfacePrediction*& predictionPtr);

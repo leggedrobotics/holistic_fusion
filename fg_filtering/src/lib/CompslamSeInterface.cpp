@@ -28,6 +28,10 @@ bool CompslamSeInterface::areYawAndPositionInited_() {
   return compslamSePtr_->areYawAndPositionInited();
 }
 
+void CompslamSeInterface::activateFallbackGraph() {
+  compslamSePtr_->activateFallbackGraph();
+}
+
 void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                              const ros::Time& imuTimeK) {
   InterfacePrediction* predictionPtr;

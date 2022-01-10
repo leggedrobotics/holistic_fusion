@@ -189,7 +189,7 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar delta")) {
     std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Current key: " << stateKey_
               << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << std::endl;
-    return closestLidarKeyK;
+    // return closestLidarKeyK;
   }
 
   // Create noise model
@@ -220,8 +220,8 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
   return closestLidarKeyK;
 }
 
-void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const std::vector<double>& poseUnaryNoise,
-                                                     const gtsam::Pose3& unaryPose) {
+void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate,
+                                                     const Eigen::Matrix<double, 6, 1>& poseUnaryNoise, const gtsam::Pose3& unaryPose) {
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
@@ -232,13 +232,13 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
       std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-      return;
+      // return;
     }
   }
 
   assert(poseUnaryNoise.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5])
+      (gtsam::Vector(6) << poseUnaryNoise(0), poseUnaryNoise(1), poseUnaryNoise(2), poseUnaryNoise(3), poseUnaryNoise(4), poseUnaryNoise(5))
           .finished());  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
 
@@ -271,7 +271,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
       std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
-      return;
+      // return;
     }
   }
 
@@ -317,7 +317,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Heading", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
       std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << std::endl;
-      return;
+      // return;
     }
   }
 

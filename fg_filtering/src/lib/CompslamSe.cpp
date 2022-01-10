@@ -59,6 +59,10 @@ bool CompslamSe::areYawAndPositionInited() {
   return foundInitialYawAndPositionFlag_;
 }
 
+void CompslamSe::activateFallbackGraph() {
+  graphMgrPtr_->activateFallbackGraph();
+}
+
 bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& position) {
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -193,41 +197,46 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   return true;
 }
 
-void CompslamSe::addOdometryMeasurement(const DeltaMeasurement6D& delta) {}
+void CompslamSe::addOdometryMeasurement(const DeltaMeasurement6D& delta) {}  // TODO
 
-void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& unary) {
-  // Static variables
-  static bool lidarUnaryFactorInitialized__ = false;
-  //  static tf::Transform tf_compslam_T_O_Ij__;
-  //  static gtsam::Pose3 T_O_Ij_Graph__;
-  //  tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
-  //  if (graphMgrPtr_->globalGraphActiveFlag()) {
-  //    /// Reset LiDAR Unary factor intiialization
-  //    lidarUnaryFactorInitialized__ = false;
-  //    // Write current compslam pose to latest delta pose
-  //    tf_compslam_T_O_Ij__ = tf_compslam_T_O_Ik;
-  //  }  //
-  //  else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
-  //    if (!lidarUnaryFactorInitialized__) {
-  //      // Calculate state still from globalGraph
-  //      T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
-  //      std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
-  //      lidarUnaryFactorInitialized__ = true;
-  //    }
-  //    /// Delta pose
-  //    gtsam::Pose3 T_Ij_Ik(computeDeltaPose(tf_compslam_T_O_Ij__, tf_compslam_T_O_Ik));
-  //    gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
-  //    graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(compslamTimeK_.toSec(), rate, poseBetweenNoise, T_O_Ik);
-  //  }
-}
+void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& unary) {}  // TODO
 
 void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                         const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
+  // Static variables
+  static bool lidarUnaryFactorInitialized__ = false;
+  static Eigen::Matrix4d T_O_Ij__;
+  static gtsam::Pose3 T_O_Ij_Graph__;
+  static gtsam::Key lastDeltaMeasurementKey__;
+
+  // Start
   if (initedGraphFlag_) {
+    // Create Pseudo Unary Factor
+    if (graphMgrPtr_->globalGraphActiveFlag()) {
+      /// Reset LiDAR Unary factor intiialization
+      lidarUnaryFactorInitialized__ = false;
+      // Write current compslam pose to latest delta pose
+      T_O_Ij__ = odometryK.measurementPose;
+    }  //
+    else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
+      if (!lidarUnaryFactorInitialized__) {
+        // Calculate state still from globalGraph
+        std::cout << lastDeltaMeasurementKey__ << std::endl;
+        T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+        std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
+        lidarUnaryFactorInitialized__ = true;
+      }
+      /// Delta pose
+      gtsam::Pose3 T_Ij_Ik(T_O_Ij__.inverse() * odometryK.measurementPose);
+      gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
+      graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(odometryK.time, odometryK.rate, odometryK.measurementNoise, T_O_Ik);
+    }
     /// Delta pose
     Eigen::Matrix4d T_Ikm1_Ik = odometryKm1.measurementPose.inverse() * odometryK.measurementPose;
-    gtsam::Key lastDeltaMeasurementKey__ = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(odometryKm1.time, odometryK.time, odometryK.rate,
-                                                                                           poseBetweenNoise, gtsam::Pose3(T_Ikm1_Ik));
+    lastDeltaMeasurementKey__ = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(odometryKm1.time, odometryK.time, odometryK.rate,
+                                                                                poseBetweenNoise, gtsam::Pose3(T_Ikm1_Ik));
+
+    // Optimize
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
