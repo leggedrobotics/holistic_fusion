@@ -385,6 +385,36 @@ void CompslamSe::addGnssHeadingMeasurement(const double heading, const Eigen::Ve
 
 }
 
+void CompslamSe::addGnssPitchMeasurement(const double pitch, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate, const double positionUnaryNoise) {
+
+  bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
+                                    covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
+
+  // Case: GNSS is good --> Write to graph and perform logic
+  if (!gnssCovarianceViolatedFlag) {
+
+    if (graphMgrPtr_->getStateKey() == 0) {
+      return;
+    }
+ 
+    // Pitch factor
+    graphMgrPtr_->addGnssPitchUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, pitch);
+
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+    graphMgrPtr_->activateGlobalGraph();
+  }
+    // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
+  else if (usingFallbackGraphFlag_) {
+    graphMgrPtr_->activateFallbackGraph();
+  }
+
+}
+
 void CompslamSe::addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel) {
 
   // transform from cabine frame to IMU frame

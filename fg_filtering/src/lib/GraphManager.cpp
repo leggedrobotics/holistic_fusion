@@ -349,6 +349,50 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
 }
 
 
+void GraphManager::addGnssPitchUnaryFactor(double gnssTimeK, const double rate, const double gnssPitchUnaryNoise, double measuredPitch) {
+  // Print information
+  if (graphConfigPtr_->verboseLevel > 2) {
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
+              << ", GNSS pitch measurement at time stamp " << gnssTimeK << " is: " << measuredPitch << std::endl;
+  }
+
+  // Find closest key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  double maxSearchDeviation = 1 / (2 * rate);
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Pitch", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding gnss pitch constraint to graph." << std::endl;
+      return;
+    }
+  }
+
+  // Create noise model
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << gnssPitchUnaryNoise).finished());  // rad
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
+
+  // Create unary factor and add it
+  PitchFactor gnssPitchUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredPitch, tukeyErrorFunction);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    globalFactorsBuffer_.add(gnssPitchUnaryFactor);
+    fallbackFactorsBuffer_.add(gnssPitchUnaryFactor);
+  }
+
+  // Print summary
+  if (graphConfigPtr_->verboseLevel > 0) {
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << " Key where GNSS factor is added to key " << closestKey << COLOR_END << std::endl;
+  }
+}
+
+
 void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
                                                   const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel) {
 

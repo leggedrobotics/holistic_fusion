@@ -24,6 +24,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 #include "compslam_se/factors/HeadingFactor.h"
+#include "compslam_se/factors/PitchFactor.h"
 
 // Package
 #include "compslam_se/GraphState.hpp"
@@ -54,6 +55,7 @@ class GraphManager {
                                          const gtsam::Pose3& pose);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, double measuredYaw);
+  void addGnssPitchUnaryFactor(double gnssTime, const double rate, const double gnssPitchUnaryNoise, double measuredPitch);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
   bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
   void addWheelOdometryVelocityFactor(double gnssTimeK, const double rate, const std::vector<double>& woSpeedNoise, 

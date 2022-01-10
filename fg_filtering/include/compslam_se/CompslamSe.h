@@ -68,6 +68,8 @@ class CompslamSe {
                                   double positionUnaryNoise);
   void addGnssHeadingMeasurement(const double heading, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, 
                                  const double rate, const double positionUnaryNoise);
+  void addGnssPitchMeasurement(const double pitch, const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, 
+                               const double rate, const double positionUnaryNoise);
   void addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, 
                                    const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel);
 
