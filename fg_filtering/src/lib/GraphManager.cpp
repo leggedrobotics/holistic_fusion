@@ -399,7 +399,7 @@ void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double r
   static double lastWOTime = -1;       
   static gtsam::Key lastClosestKey = -1;
 
-  assert(woSpeedNoise.size() == 3 && "GraphManager.cpp: Wheel odometry noise vector must have dimension 3!");
+  assert(woSpeedNoise.size() == 4 && "GraphManager.cpp: Wheel odometry noise vector must have dimension 4!");
 
   // Find closest key in existing graph
   double closestGraphTime;
@@ -424,9 +424,9 @@ void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double r
 
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << woSpeedNoise[0], woSpeedNoise[1], 1.0).finished());  // m/s, m/s, m/s: have high noise in z (1.0)
+      (gtsam::Vector(3) << woSpeedNoise[0], woSpeedNoise[1], woSpeedNoise[2]).finished());  // m/s, m/s, m/s, rad/s: have high noise in z (e.g. 1.0)
   auto woYawNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(1) << woSpeedNoise[2]).finished());  // m/s, m/s, rad/s
+      (gtsam::Vector(1) << woSpeedNoise[3]).finished());  // m/s, m/s,, m/s, rad/s
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
 
   // add WO yaw
