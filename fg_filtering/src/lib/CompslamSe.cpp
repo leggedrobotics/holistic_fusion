@@ -551,7 +551,7 @@ void CompslamSe::optimizeGraph_() {
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;
       imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuCabinFrame();
-      imuBiasMsg.header.stamp = compslamTimeK_;
+      imuBiasMsg.header.stamp = imuTimeK_;
       imuBiasMsg.linear_acceleration.x = graphMgrPtr_->getIMUBias().accelerometer()(0);
       imuBiasMsg.linear_acceleration.y = graphMgrPtr_->getIMUBias().accelerometer()(1);
       imuBiasMsg.linear_acceleration.z = graphMgrPtr_->getIMUBias().accelerometer()(2);
