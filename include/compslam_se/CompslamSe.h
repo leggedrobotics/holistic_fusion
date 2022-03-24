@@ -26,8 +26,6 @@
 #include "compslam_se/geometry/math_utils.h"
 #include "compslam_se/measurements/DeltaMeasurement6D.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"
-#include "fg_filtering_log_msgs/ImuMultiplot.h"
-#include "fg_filtering_log_msgs/LidarMultiplot.h"
 
 // Workspace
 #include "kindr/Core"

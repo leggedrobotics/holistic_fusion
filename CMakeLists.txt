@@ -15,7 +15,6 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   nodelet
   message_filters
   signal_logger
-  fg_filtering_log_msgs
   )
 
 find_package(catkin REQUIRED COMPONENTS

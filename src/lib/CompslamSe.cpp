@@ -35,8 +35,6 @@ bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, Grap
   pubLaserImuBias_ = node.advertise<sensor_msgs::Imu>("/fg_filtering/imu_bias", ROS_QUEUE_SIZE);
   pubLeftGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_left", ROS_QUEUE_SIZE);
   pubRightGnssPath_ = node.advertise<nav_msgs::Path>("/fg_filtering/gnss_path_right", ROS_QUEUE_SIZE);
-  imuMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::ImuMultiplot>("/fg_filtering/imuMultiplot", ROS_QUEUE_SIZE);
-  lidarMultiplotPublisher_ = node.advertise<fg_filtering_log_msgs::LidarMultiplot>("/fg_filtering/lidarMultiplot", ROS_QUEUE_SIZE);
   /// Messages
   optimizationPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   compslamPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
