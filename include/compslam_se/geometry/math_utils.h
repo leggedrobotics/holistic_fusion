@@ -239,8 +239,8 @@ inline void invertHomogenousMatrix(const Eigen::Matrix4d& m_in, Eigen::Matrix4d&
 //  tf_T.setOrigin(tf_t);
 //}
 
-inline tf::Transform pose3ToTf(const Eigen::Matrix3d& T) {
-  Eigen::Quaterniond q(T);
+inline tf::Transform pose3ToTf(const Eigen::Matrix4d& T) {
+  Eigen::Quaterniond q(T.block<3, 3>(0, 0));
   tf::Transform tf_T;
   tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
   tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
