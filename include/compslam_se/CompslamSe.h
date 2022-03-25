@@ -127,10 +127,12 @@ class CompslamSe {
   ros::Time imuTimeK_;
   double imuTimeOffset_ = 0.0;
 
+ public:
   /// Transformations
   tf::Transform tf_compslam_T_I0_O_;
   tf::StampedTransform tf_T_W_Ik_;
   tf::Transform tf_T_W_I0_;  // Initial IMU pose (in graph)
+ protected:
   /// Attitudes
   double gravityConstant_ = 9.81;  // Will be overwritten
   double globalAttitudeYaw_W_C0_;
@@ -149,7 +151,11 @@ class CompslamSe {
 
   /// Messages
   nav_msgs::PathPtr optimizationPathPtr_;
+
+ public:
   nav_msgs::PathPtr compslamPathPtr_;
+
+ protected:
   nav_msgs::PathPtr leftGnssPathPtr_;
   nav_msgs::PathPtr rightGnssPathPtr_;
 

@@ -9,6 +9,11 @@ CompslamSeInterface::CompslamSeInterface() {
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Instance created." << COLOR_END << std::endl;
 }
 
+void CompslamSeInterface::init(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr) {
+  graphConfigPtr_ = graphConfigPtr;
+  staticTransformsPtr_ = staticTransformsPtr;
+};
+
 // Protected ------------------------------------------------------------------------------------
 bool CompslamSeInterface::setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;

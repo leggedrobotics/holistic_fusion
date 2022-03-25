@@ -19,14 +19,19 @@ class CompslamSeInterface {
  public:
   CompslamSeInterface();
 
- protected:
+  void init(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
+
   // Setup
   bool setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
   // Required for initialization
-  bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
   bool areYawAndPositionInited_();
+  bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
 
+  /// CompslamSe
+  CompslamSe* compslamSePtr_ = NULL;
+
+ protected:
   // Graph Maniupulation
   void activateFallbackGraph();
 
@@ -51,8 +56,6 @@ class CompslamSeInterface {
   // Data Manipulation
 
   // Member Variables
-  /// CompslamSe
-  CompslamSe* compslamSePtr_ = NULL;
   /// Graph Configuration
   GraphConfig* graphConfigPtr_ = NULL;
   StaticTransforms* staticTransformsPtr_ = NULL;
