@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Input Topics -->
+    <arg name="imu_topic_name"            default="/crl_rzr/xsens/imu/data" />
+    <arg name="lidar_odometry_topic_name" default="/crl_rzr/liopard/lio/odometry" />
+    <arg name="gnss_left_topic_name"      default="/m545_gnss_left" />
+    <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
+
+    <!-- Output Topics -->
+    <arg name="odometry_topic_name"       value="/fg_filtering/transform_world_lidar" />
+
+    <!-- Config -->
+    <arg name="extrinsics_from_urdf"      default="true" />
+    <arg name="using_gps"                 default="true" />
+    <arg name="using_compslam"            default="true" />
+    <arg name="imu_gravity_direction"     default="up" />
+
+    <!-- Description -->
+    <arg name="description_name"          default="/romo_description" />
+
+    <!-- Node -->
+    <node pkg="compslam_ros" type="compslam_ros_node" name="estimator_node" output="screen"> <!-- launch-prefix="gdb -args"-->
+        <!-- Launch Parameters -->
+        <param name="launch/description_name" type="string" value="$(arg description_name)"/>
+        <param name="launch/imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)"/>
+        <param name="launch/using_gps" type="bool" value="$(arg using_gps)"/>
+        <param name="launch/using_compslam" type="bool" value="$(arg using_compslam)"/>
+        <!-- Parameter files -->
+        <rosparam file="$(find compslam_ros)/config/graph_params.yaml" command="load"/>
+        <rosparam file="$(find compslam_ros)/config/gnss_params.yaml" command="load"/>
+        <rosparam file="$(find compslam_ros)/config/extrinsic_params.yaml" command="load"/>
+        <!-- Remapping of topics -->
+        <remap from="/imu_topic_cabin" to="$(arg imu_topic_name)" />
+        <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
+        <remap from="/gnss_topic_left" to="$(arg gnss_left_topic_name)" />
+        <remap from="/gnss_topic_right" to="$(arg gnss_right_topic_name)" />
+    </node>
+
+</launch>

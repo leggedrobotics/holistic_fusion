@@ -1,0 +1,12 @@
+#External Prior/Transform Input
+extrinsics:
+  mapFrame: map
+  odomFrame: odom
+  baseLinkFrame: BASE
+  lidarFrame: os_sensor                     #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+  imuCabinFrame: IMU_CABIN_link                 #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
+  imuRooftopFrame: imu_box_link #os_imu
+  imuBaseFrame: IMU_BASE_link
+  cabinFrame: CABIN
+  leftGnssFrame: GNSS_L
+  rightGnssFrame: GNSS_R
