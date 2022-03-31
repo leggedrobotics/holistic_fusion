@@ -2,18 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 project(compslam_se)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
-  roscpp
-  rospy
-  std_msgs
-  tf
-  tf_conversions
-  message_generation
-  std_srvs
-  nodelet
-  message_filters
   signal_logger
   )
 
@@ -65,12 +53,6 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/lib/CompslamSeInterface.cpp src/lib/CompslamSe.cpp src/lib/GraphManager.cpp src/lib/ImuBuffer.cpp include/compslam_se/CompslamSeInterface.h)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
-
-#add_executable(${PROJECT_NAME}_tsif_node src/log_tsif_node.cpp)
-#target_link_libraries(${PROJECT_NAME}_tsif_node ${PROJECT_NAME})
-
-#add_executable(leicamap_publisher_node src/pointcloud_publisher_node.cpp)
-#target_link_libraries(leicamap_publisher_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 

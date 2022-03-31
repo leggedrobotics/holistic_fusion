@@ -61,7 +61,7 @@ void CompslamSe::activateFallbackGraph() {
   graphMgrPtr_->activateFallbackGraph();
 }
 
-bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& position) {
+bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen::Vector3d& t_W_GnssL) {
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
   if (!alignedImuFlag_) {
@@ -70,13 +70,14 @@ bool CompslamSe::initYawAndPosition(const double yaw, const Eigen::Vector3d& pos
     return false;
   }
   if (!areYawAndPositionInited()) {
-    globalAttitudeYaw_W_C0_ = yaw;
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial yaw has been set to " << yaw << "." << COLOR_END << std::endl;
-    gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
-    gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+    globAttitude_W_I0_ = globAttitude_W_I0;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of has been set to " << globAttitude_W_I0 << "."
+              << COLOR_END << std::endl;
+    gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
+    // gtsam::Rot3 yawR_W_I0 = yawR_W_I0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
-    globalPosition_W_I0_ = transformGnssPointToImuFrame_(position, tf_q_W_I0);
+    globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_GnssL, tf_q_W_I0);
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
@@ -130,9 +131,9 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     // Add to buffer
     if (alignImu_(imuTimeK)) {
-      gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(0.0);
-      gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-      gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+      //      gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(0.0);
+      //      gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+      gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch_, imuAttitudeRoll_);
       T_O_Ik__ = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0)).matrix();
       I_v_W_I__ = gtsam::Velocity3(0.0, 0.0, 0.0);
       I_w_W_I__ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -281,7 +282,7 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   // Case: GNSS is good --> Write to graph and perform logic
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
-    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(position, tf_T_W_Ik_.getRotation());
+    gtsam::Point3 W_t_W_I = transformLeftGnssPointToImuFrame_(position, tf_T_W_Ik_.getRotation());
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
     }
@@ -322,12 +323,12 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
-void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_C, const double gnssTimeK, const double rate, double headingUnaryNoise) {
-  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
-  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-  double yaw_W_I = yawR_W_I.yaw();
+void CompslamSe::addGnssHeadingMeasurement(const double attitude_W_I, const double gnssTimeK, const double rate, double headingUnaryNoise) {
+  //  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
+  //  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+  //  double yaw_W_I = yawR_W_I.yaw();
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, yaw_W_I);
+    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, attitude_W_I);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -335,44 +336,6 @@ void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_C, const double gn
     }
   }
 }
-
-// void CompslamSe::addGnssYawMeasurement(const double yaw, const double lastYaw,
-//                                            const Eigen::Vector3d& covarianceYaw, const ros::Time& gnssTimeK, const double rate,
-//                                            double yawUnaryNoise) {
-//  // Case: GNSS is good --> Write to graph and perform logic
-//  if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter__ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-//    // Position factor --> only use left GNSS
-//    gtsam::Point3 W_t_W_I = transformGnssPointToImuFrame_(leftPosition, tf_T_W_Ik_.getRotation());
-//    if (graphMgrPtr_->getStateKey() == 0) {
-//      return;
-//    }
-//    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
-//
-//    // Heading factor
-//    /// Get heading (assuming that connection between antennas is perpendicular to heading)
-//    gtsam::Point3 W_t_heading = getRobotHeading_(leftPosition, rightPosition);
-//    double yaw_W_C = computeYawFromHeadingVector_(W_t_heading);
-//    gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
-//    gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
-//
-//    // Unary factor
-//    gtsam::Rot3 R_W_I_approx = gtsam::Rot3::Ypr(yawR_W_I.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
-//    gtsam::Pose3 T_W_I_approx = gtsam::Pose3(R_W_I_approx, W_t_W_I);
-//    // graphMgrPtr_->addPoseUnaryFactor(leftGnssMsgPtr->header.stamp.toSec(), T_W_I_approx);
-//
-//    {
-//      // Mutex for optimizeGraph Flag
-//      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-//      optimizeGraphFlag_ = true;
-//    }
-//    graphMgrPtr_->activateGlobalGraph();
-//  }
-//    // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
-//  else if (usingFallbackGraphFlag_) {
-//    graphMgrPtr_->activateFallbackGraph();
-//  }
-//
-//}
 
 /// Worker Functions -----------------------
 bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
@@ -394,8 +357,8 @@ bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
 void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   // Calculate initial attitude;
-  gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(globalAttitudeYaw_W_C0_);
-  gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+  gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
+  // gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
 
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START
@@ -410,7 +373,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   /// Add initial IMU translation based on intial orientation
   gtsam::Pose3 T_W_I0;
 
-  T_W_I0 = gtsam::Pose3(R_W_I0, globalPosition_W_I0_);
+  T_W_I0 = gtsam::Pose3(R_W_I0, globPosition_W_I0_);
 
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
@@ -475,22 +438,22 @@ void CompslamSe::optimizeGraph_() {
       long nanoseconds = long((currentTime - seconds) * 1e9);
       signalLogger_.publishOptimizedPosition(seconds, nanoseconds, T_W_I);
       tf_T_W_I = pose3ToTf(T_W_I);
-      tf_T_W_C = tf_T_W_I * staticTransformsPtr_->T_Ic_C();
 
-      // Publish path of optimized poses
-      /// Pose
-      T_W_C.header.stamp = compslamTimeK_;
-      tf::poseTFToMsg(tf_T_W_C, T_W_C.pose);
-      /// Path
-      optimizationPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-      optimizationPathPtr_->header.stamp = compslamTimeK_;
-      optimizationPathPtr_->poses.push_back(T_W_C);
-      /// Publish
-      pubOptimizationPath_.publish(optimizationPathPtr_);
+      // tf_T_W_C = tf_T_W_I * staticTransformsPtr_->T_Ic_C();
+      //      // Publish path of optimized poses
+      //      /// Pose
+      //      T_W_C.header.stamp = compslamTimeK_;
+      //      tf::poseTFToMsg(tf_T_W_C, T_W_C.pose);
+      //      /// Path
+      //      optimizationPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
+      //      optimizationPathPtr_->header.stamp = compslamTimeK_;
+      //      optimizationPathPtr_->poses.push_back(T_W_C);
+      //      /// Publish
+      //      pubOptimizationPath_.publish(optimizationPathPtr_);
 
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;
-      imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuCabinFrame();
+      imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuFrame();
       imuBiasMsg.header.stamp = compslamTimeK_;
       imuBiasMsg.linear_acceleration.x = graphMgrPtr_->getIMUBias().accelerometer()(0);
       imuBiasMsg.linear_acceleration.y = graphMgrPtr_->getIMUBias().accelerometer()(1);
@@ -506,13 +469,13 @@ void CompslamSe::optimizeGraph_() {
   }
 }
 
-gtsam::Vector3 CompslamSe::transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition, const tf::Quaternion& tf_q_W_I) {
+gtsam::Vector3 CompslamSe::transformLeftGnssPointToImuFrame_(const gtsam::Point3& t_W_GnssL, const tf::Quaternion& tf_q_W_I) {
   /// Translation in robot frame
-  tf::Vector3 tf_W_t_W_GnssL(gnssPosition(0), gnssPosition(1), gnssPosition(2));
-  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_C() * staticTransformsPtr_->T_C_Ic();
+  tf::Vector3 tf_W_t_W_GnssL(t_W_GnssL(0), t_W_GnssL(1), t_W_GnssL(2));
+  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_I();
   tf::Vector3 tf_GnssL_t_GnssL_I = tf_T_GnssL_I.getOrigin();
   /// Global rotation
-  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_Ic_C() * staticTransformsPtr_->T_C_GnssL();
+  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_GnssL_I().inverse();
   tf::Quaternion tf_q_W_GnssL = tf_q_W_I * tf_T_I_GnssL.getRotation();
   tf::Transform tf_R_W_GnssL = tf::Transform::getIdentity();
   tf_R_W_GnssL.setRotation(tf_q_W_GnssL);

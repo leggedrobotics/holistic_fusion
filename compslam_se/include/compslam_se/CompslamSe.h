@@ -90,7 +90,7 @@ class CompslamSe {
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
-  gtsam::Vector3 transformGnssPointToImuFrame_(const gtsam::Point3& gnssPosition, const tf::Quaternion& tf_q_W_I);
+  gtsam::Vector3 transformLeftGnssPointToImuFrame_(const gtsam::Point3& t_W_GnssL, const tf::Quaternion& tf_q_W_I);
   //// Get the robot heading from the two GNSS positions
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
 
@@ -133,8 +133,8 @@ class CompslamSe {
   tf::Transform tf_T_W_I0_;  // Initial IMU pose (in graph)
   /// Attitudes
   double gravityConstant_ = 9.81;  // Will be overwritten
-  double globalAttitudeYaw_W_C0_;
-  Eigen::Vector3d globalPosition_W_I0_;
+  double globAttitude_W_I0_;
+  Eigen::Vector3d globPosition_W_I0_;
   double imuAttitudePitch_;
   double imuAttitudeRoll_;
 

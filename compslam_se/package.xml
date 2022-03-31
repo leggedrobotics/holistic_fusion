@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package>
+  <name>compslam_se</name>
+  <version>0.0.0</version>
+
+  <description>
+    State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry and GNSS estimates.
+  </description>
+
+  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <license>BSD</license>
+  <author email="nubertj@ethz.ch">Julian Nubert</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>eigen_conversions</build_depend>
+  <build_depend>signal_logger</build_depend>
+  <run_depend>kdl_parser</run_depend>
+
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>eigen_conversions</run_depend>
+  <run_depend>signal_logger</run_depend>
+  <run_depend>kdl_parser</run_depend>
+
+</package>
