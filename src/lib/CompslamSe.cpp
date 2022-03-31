@@ -166,7 +166,8 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     // If relocalization happens --> write to map->odom
     if (relocalizationFlag) {
       // Print
-      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << std::endl;
+      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << COLOR_END
+                << std::endl;
       // For this computation step assume T_O_Ik ~ T_O_Ikm1
       T_W_O__ = (T_W_Ik.pose().matrix() * T_O_Ikm1__.inverse());
       tf::Transform tf_T_W_O = matrix4ToTf(T_W_O__);
@@ -325,7 +326,6 @@ void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_C, const double gn
   gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
   gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   double yaw_W_I = yawR_W_I.yaw();
-  std::cout << "Yaw of imu (deg): " << 180 * yaw_W_I / M_PI << ", noise: " << headingUnaryNoise << std::endl;
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, yaw_W_I);
     {

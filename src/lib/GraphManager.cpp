@@ -188,7 +188,7 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar delta")) {
     std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Current key: " << stateKey_
-              << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << std::endl;
+              << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << COLOR_END << std::endl;
     // return closestLidarKeyK;
   }
 
