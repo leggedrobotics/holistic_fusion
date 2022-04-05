@@ -14,9 +14,6 @@
 #include <sensor_msgs/NavSatFix.h>
 #include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
-#include "m545_msgs/M545ActuatorStates.h"
-#include "m545_msgs/M545Measurements.h"
-#include "m545_msgs/M545State.h"
 
 // Workspace
 #include "compslam_ros/GnssHandler.h"
@@ -37,15 +34,9 @@ class CompslamEstimator : public compslam_se::CompslamSeInterface {
 
  private:
   // Callbacks
-  void measurementsCallback_(const m545_msgs::M545Measurements::ConstPtr& measurementsMsgPtr);
   void imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   void imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-
-  /// Services
-  ros::ServiceServer toggleGnssUsageService_;
-  bool toggleGnssFlag_(std_srvs::Empty::Request& /*request*/, std_srvs::Empty::Response& /*response*/);
 
   // Publish State
   void publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic,
@@ -62,22 +53,13 @@ class CompslamEstimator : public compslam_se::CompslamSeInterface {
   // Mutex
   std::mutex accessImuBaseMutex_;
 
-  // Exact sync for gnss
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> gnssExactSyncPolicy_;
-  boost::shared_ptr<message_filters::Synchronizer<gnssExactSyncPolicy_>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
-
   /// Subscribers
-  ros::Subscriber subImuCabin_;
-  ros::Subscriber subImuBase_;
+  ros::Subscriber subImu_;
   ros::Subscriber subLidarOdometry_;
   tf::TransformListener tfListener_;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssLeft_;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> subGnssRight_;
-  ros::Subscriber subMeasurements_;
 
   // Publisher
-  ros::Publisher excavatorStatePublisher_;
-  ros::Publisher pubOdometryCabin_;
+  ros::Publisher pubOdometryImu_;
   ros::Publisher pubOdometryLidar_;
   ros::Publisher pubWorldLidar_;
   ros::Publisher pubWorldImu_;
@@ -102,10 +84,6 @@ class CompslamEstimator : public compslam_se::CompslamSeInterface {
   Eigen::Matrix<double, 6, 1> poseUnaryNoise_;
   double gnssPositionUnaryNoise_;
   double gnssHeadingUnaryNoise_;
-
-  /// Flags
-  bool usingGnssFlag_ = true;
-  bool usingCompslamFlag_ = true;
 
   /// GNSS
   m545_estimator::GnssHandler* gnssHandlerPtr_;

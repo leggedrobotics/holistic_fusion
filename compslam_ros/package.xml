@@ -28,6 +28,8 @@
   <build_depend>message_filters</build_depend>
   <build_depend>pcl</build_depend>
   <build_depend>signal_logger</build_depend>
+  <build_depend>compslam_se</build_depend>
+  <build_depend>robot_utils</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
@@ -47,23 +49,10 @@
   <run_depend>pcl</run_depend>
   <run_depend>signal_logger</run_depend>
   <run_depend>kdl_parser</run_depend>
+  <run_depend>compslam_se</run_depend>
+  <run_depend>robot_utils</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosbag</test_depend>
 
-  <build_depend>compslam_se</build_depend>
-  <build_depend>loam</build_depend>
-  <build_depend>asop_description</build_depend>
-  <build_depend>m545_estimator</build_depend>
-  <build_depend>m545_description</build_depend>
-  <build_depend>kdl_parser</build_depend>
-  <build_depend>robot_utils</build_depend>
-
-  <run_depend>compslam_se</run_depend>
-  <run_depend>loam</run_depend>
-  <run_depend>asop_description</run_depend>
-  <run_depend>m545_estimator</run_depend>
-  <run_depend>m545_description</run_depend>
-  <run_depend>kdl_parser</run_depend>
-  <run_depend>robot_utils</run_depend>
 </package>

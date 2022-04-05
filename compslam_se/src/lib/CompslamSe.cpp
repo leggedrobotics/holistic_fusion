@@ -156,6 +156,10 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     // Add measurement to buffer
     graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
     initGraph_(imuTimeK);
+    if (!graphConfigPtr_->usingGnssFlag) {
+      // TODO
+      // activateFallbackGraph();
+    }
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
   } else {
@@ -377,7 +381,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
 
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
-  if (false && usingFallbackGraphFlag_) {
+  if (graphConfigPtr_->usingGnssFlag && usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
   // Read initial pose from graph

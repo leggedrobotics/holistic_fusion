@@ -26,30 +26,14 @@ void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
   } else {
     ROS_WARN("CompslamSe - Odom frame not set");
   }
-  /// base_link
-  if (privateNode.getParam("extrinsics/baseLinkFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - base_link frame: " << sParam);
-    staticTransformsPtr_->setBaseLinkFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU frame not set for preintegrator");
+
   /// IMU
   //// Cabin IMU
-  if (privateNode.getParam("extrinsics/imuCabinFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Cabin frame for preintegrator and tf: " << sParam);
-    staticTransformsPtr_->setImuCabinFrame(sParam);
+  if (privateNode.getParam("extrinsics/imuFrame", sParam)) {
+    ROS_INFO_STREAM("CompslamSe - IMU frame for preintegrator and tf: " << sParam);
+    staticTransformsPtr_->setImuFrame(sParam);
   } else
     ROS_WARN("CompslamSe - IMU Cabin frame not set for preintegrator");
-  if (privateNode.getParam("extrinsics/imuRooftopFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Rooftop frame for preintegrator and tf: " << sParam);
-    staticTransformsPtr_->setImuRooftopFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU Rooftop frame not set for preintegrator");
-  //// Base IMU
-  if (privateNode.getParam("extrinsics/imuBaseFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - IMU Base frame for state publishing: " << sParam);
-    staticTransformsPtr_->setImuBaseFrame(sParam);
-  } else
-    ROS_WARN("CompslamSe - IMU base frame not set for state publishing");
   /// LiDAR frame
   if (privateNode.getParam("extrinsics/lidarFrame", sParam)) {
     ROS_INFO_STREAM("CompslamSe - LiDAR frame: " << sParam);
@@ -57,13 +41,7 @@ void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
   } else {
     ROS_WARN("CompslamSe - LiDAR frame not set");
   }
-  /// Cabin frame
-  if (privateNode.getParam("extrinsics/cabinFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - cabin frame: " << sParam);
-    staticTransformsPtr_->setCabinFrame(sParam);
-  } else {
-    ROS_WARN("CompslamSe - cabin frame not set");
-  }
+
   /// Left GNSS frame
   if (privateNode.getParam("extrinsics/leftGnssFrame", sParam)) {
     ROS_INFO_STREAM("CompslamSe - left GNSS frame: " << sParam);
@@ -88,19 +66,10 @@ void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
     throw std::runtime_error("Rosparam 'launch/imu_gravity_direction' must be set.");
   }
 
-  // Using GNSS
-  if (privateNode.getParam("launch/using_gps", bParam)) {
-    ROS_INFO_STREAM("CompslamSe - using GNSS: " << bParam);
-    usingGnssFlag_ = bParam;
-  } else {
-    ROS_ERROR("CompslamSe - using GNSS not set.");
-    throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
-  }
-
   // Using Compslam
   if (privateNode.getParam("launch/using_compslam", bParam)) {
     ROS_INFO_STREAM("CompslamSe - using Compslam: " << bParam);
-    usingCompslamFlag_ = bParam;
+    graphConfigPtr_->usingLioFlag = bParam;
   } else {
     ROS_ERROR("CompslamSe - using Compslam not set.");
     throw std::runtime_error("Rosparam 'launch/using_compslam' must be set.");
@@ -261,13 +230,13 @@ void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Using GNSS
   if (privateNode.getParam("launch/using_gps", bParam)) {
     ROS_INFO_STREAM("FactorGraphFiltering - using GNSS: " << bParam);
-    usingGnssFlag_ = bParam;
+    graphConfigPtr_->usingGnssFlag = bParam;
   } else {
     ROS_ERROR("FactorGraphFiltering - using GNSS not set.");
     throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
   }
   // GNSS parameters
-  if (usingGnssFlag_) {
+  if (graphConfigPtr_->usingGnssFlag) {
     if (privateNode.getParam("gnss/use_reference", bParam)) {
       ROS_INFO("Using the GNSS reference is set to: %d", bParam);
       gnssHandlerPtr_->usingGnssReferenceFlag = bParam;

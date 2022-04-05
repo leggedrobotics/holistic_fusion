@@ -1,12 +1,12 @@
 #Common
 common_params:
-  verbosity: 0                         #Debug Output, 0: only important events, 1: optimization duration, 2: added factors
+  verbosity: 4                         #Debug Output, 0: only important events, 1: optimization duration, 2: added factors
   logPlots: true
 
 # Sensor Params
 sensor_params:
-  imuRate: 100                             #Rate of IMU input (Hz)
-  imuBufferLength: 200
+  imuRate: 400                             #Rate of IMU input (Hz)
+  imuBufferLength: 800
   lidarRate: 5
   gnssRate: 20
   imuTimeOffset: 0.0 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot

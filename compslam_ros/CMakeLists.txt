@@ -15,13 +15,8 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   nodelet
   message_filters
   signal_logger
-
-  m545_description
-  m545_estimator
-  compslam_se
-  loam
-  kdl_parser
   robot_utils
+  compslam_se
 )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -65,7 +60,8 @@ include_directories(
 add_library(${PROJECT_NAME}
         src/lib/CompslamEstimator.cpp
         src/lib/readParams.cpp
-        src/lib/GnssHandler.cpp)
+        src/lib/GnssHandler.cpp
+        src/lib/StaticTransforms.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 # Executable
