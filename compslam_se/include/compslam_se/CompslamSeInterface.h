@@ -28,6 +28,7 @@ class CompslamSeInterface {
   bool areYawAndPositionInited_();
 
   // Graph Maniupulation
+
   void activateFallbackGraph();
 
   // Write measurements
