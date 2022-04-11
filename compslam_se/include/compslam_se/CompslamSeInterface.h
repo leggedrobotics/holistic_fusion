@@ -21,7 +21,7 @@ class CompslamSeInterface {
 
  protected:
   // Setup
-  bool setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+  bool setup_(ros::NodeHandle& node);
 
   // Required for initialization
   bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);

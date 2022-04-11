@@ -9,7 +9,7 @@ CompslamSe::CompslamSe() {
 }
 
 /// Setup ------------
-bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, GraphConfig* graphConfigPtr,
+bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr,
                        StaticTransforms* staticTransformsPtr) {
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 

@@ -475,27 +475,16 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
     // Perform update
-    // If currently using the global graph --> only add factors to global graph
-    if (activeGraphPtr_ == globalGraphPtr_) {
-      activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-    }
-    // Otherwise optimize fallback graph and add factors also to global graph
-    else if (activeGraphPtr_ == fallbackGraphPtr_) {
-      static bool calledException__ = false;
-      activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-      if (!calledException__) {
+    activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+    // If fallback, also optimize global (if possible)
+    if (activeGraphPtr_ == fallbackGraphPtr_) {
         try {
           globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
         } catch (const std::exception& e) {
           std::cout << YELLOW_START << "FG-GraphManager" << RED_START
-                    << " Exception was thrown while optimizing the global graph. Continuing, as fallback graph is active." << COLOR_END
+                    << " Exception was thrown while optimizing the global graph. Continuing, since fallback graph is active." << COLOR_END
                     << std::endl;
-          calledException__ = true;
         }
-      }
-
-    } else {
-      std::runtime_error("Active graph pointer is neither pointing to the global-, nor to the fallback graph.");
     }
 
     // Additional iterations

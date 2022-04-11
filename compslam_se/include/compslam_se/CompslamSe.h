@@ -51,7 +51,7 @@ class CompslamSe {
   ~CompslamSe() { signalLogger_.~SignalLogger(); };
 
   // Setup
-  bool setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
+  bool setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
 
   // Required Initialization
   bool initYawAndPosition(const double yaw, const Eigen::Vector3d& position);
