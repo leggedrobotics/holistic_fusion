@@ -26,6 +26,7 @@ class CompslamSeInterface {
 
   // Required for initialization
   bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
+  bool initYawAndPosition_(Eigen::Matrix4d T_O_I);
   bool areYawAndPositionInited_();
 
   // Graph Maniupulation
@@ -35,7 +36,7 @@ class CompslamSeInterface {
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
   void addOdometryMeasurement_(const DeltaMeasurement6D& delta);
-  void addOdometryMeasurement_(const UnaryMeasurement6D& unary);
+  void addUnaryPoseMeasurement_(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,

@@ -79,31 +79,38 @@ void CompslamEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPt
   const tf::Transform tf_compslam_T_O_Ik = tf_compslam_T_O_Lk * staticTransformsPtr_->T_L_I();
   Eigen::Matrix4d compslam_T_O_Ik;
   compslam_se::tfToMatrix4(tf_compslam_T_O_Ik, compslam_T_O_Ik);
-  // Transform to IMU frame
+
+  // Compute Pose Between Transformation
   const Eigen::Matrix4d compslam_T_I0_Ik = compslam_T_I0_O__ * compslam_T_O_Ik;
+
+  // Create Measurements
   double timeK = odomLidarPtr->header.stamp.toSec();
-  std::shared_ptr<compslam_se::UnaryMeasurement6D> odometryKPtr =
+  std::shared_ptr<compslam_se::UnaryMeasurement6D> poseBetweenKPtr =
       std::make_unique<compslam_se::UnaryMeasurement6D>("Lidar 6D", int(lidarRate_), timeK, compslam_T_I0_Ik, poseUnaryNoise_);
+  std::shared_ptr<compslam_se::UnaryMeasurement6D> poseUnaryKPtr =
+      std::make_unique<compslam_se::UnaryMeasurement6D>("Lidar 6D", int(lidarRate_), timeK, compslam_T_O_Ik, poseUnaryNoise_);
 
   // Set initial criterion
   if (lidarCallbackCounter__ == 0) {
     compslam_T_I0_O__ = compslam_T_O_Ik.inverse();
     return;
   } else if (lidarCallbackCounter__ == 1) {
-    odometryKm1Ptr__ = odometryKPtr;
+    odometryKm1Ptr__ = poseBetweenKPtr;
     return;
   }
 
-  compslam_se::CompslamSeInterface::addOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+  // compslam_se::CompslamSeInterface::addOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+  compslam_se::CompslamSeInterface::addUnaryPoseMeasurement_(*poseUnaryKPtr);
 
   if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || (secondsSinceStart_() > 15))) {
     std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
-              << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
-    compslam_se::CompslamSeInterface::initYawAndPosition_(0.0, Eigen::Vector3d(0.0, 0.0, 0.0));
+              << " LiDAR odometry callback is setting global cabin position and yaw to LiDAR Pose, as it was not set so far." << COLOR_END
+              << std::endl;
+    compslam_se::CompslamSeInterface::initYawAndPosition_(poseUnaryKPtr->measurementPose);
   }
 
   // Wrap up iteration
-  odometryKm1Ptr__ = odometryKPtr;
+  odometryKm1Ptr__ = poseBetweenKPtr;
 }
 
 void CompslamEstimator::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {

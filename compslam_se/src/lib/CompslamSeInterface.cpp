@@ -28,6 +28,10 @@ bool CompslamSeInterface::initYawAndPosition_(const double yaw, const Eigen::Vec
   return compslamSePtr_->initYawAndPosition(yaw, position);
 }
 
+bool CompslamSeInterface::initYawAndPosition_(Eigen::Matrix4d T_O_I) {
+  return compslamSePtr_->initYawAndPosition(T_O_I);
+}
+
 bool CompslamSeInterface::areYawAndPositionInited_() {
   return compslamSePtr_->areYawAndPositionInited();
 }
@@ -62,8 +66,8 @@ void CompslamSeInterface::addOdometryMeasurement_(const DeltaMeasurement6D& delt
   compslamSePtr_->addOdometryMeasurement(delta);
 }
 
-void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& unary) {
-  compslamSePtr_->addOdometryMeasurement(unary);
+void CompslamSeInterface::addUnaryPoseMeasurement_(const UnaryMeasurement6D& unary) {
+  compslamSePtr_->addUnaryPoseMeasurement(unary);
 }
 
 void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,

@@ -256,6 +256,45 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   }
 }
 
+void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, const double rate,
+                                                   const Eigen::Matrix<double, 6, 1>& poseUnaryNoise, const gtsam::Pose3& unaryPose) {
+  // Find closest key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  double maxSearchDeviation = 1 / (2 * rate);
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+      // return;
+    }
+  }
+
+  assert(poseUnaryNoise.size() == 6);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(6) << poseUnaryNoise(0), poseUnaryNoise(1), poseUnaryNoise(2), poseUnaryNoise(3), poseUnaryNoise(4), poseUnaryNoise(5))
+          .finished());  // rad,rad,rad,x,y,z
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
+
+  // Unary factor
+  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, errorFunction);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    globalFactorsBuffer_.add(poseUnaryFactor);
+  }
+
+  // Print summary
+  if (graphConfigPtr_->verboseLevel > 0) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
+  }
+}
+
 void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const double gnssPositionUnaryNoise,
                                               const gtsam::Vector3& position) {
   // Find closest key in existing graph

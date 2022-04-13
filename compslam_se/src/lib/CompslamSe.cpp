@@ -57,7 +57,12 @@ bool CompslamSe::areYawAndPositionInited() {
 }
 
 void CompslamSe::activateFallbackGraph() {
-  graphMgrPtr_->activateFallbackGraph();
+  if (graphConfigPtr_->usingFallbackGraphFlag) {
+    graphMgrPtr_->activateFallbackGraph();
+  } else {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Not activating fallback graph, disabled in config." << COLOR_END
+              << std::endl;
+  }
 }
 
 bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen::Vector3d& t_W_GnssL) {
@@ -69,14 +74,36 @@ bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen:
     return false;
   }
   if (!areYawAndPositionInited()) {
-    globAttitude_W_I0_ = globAttitude_W_I0;
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of has been set to " << globAttitude_W_I0 << "."
               << COLOR_END << std::endl;
     gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
     // gtsam::Rot3 yawR_W_I0 = yawR_W_I0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
+    // Set Member Variables
     globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_GnssL, tf_q_W_I0);
+    globAttitude_W_I0_ = globAttitude_W_I0;
+    foundInitialYawAndPositionFlag_ = true;
+    return true;
+  } else {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END
+              << std::endl;
+    return false;
+  }
+}
+
+bool CompslamSe::initYawAndPosition(Eigen::Matrix4d T_O_I) {
+  gtsam::Pose3 T_O_Ik(T_O_I);
+
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+  if (!alignedImuFlag_) {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
+              << std::endl;
+    return false;
+  }
+  if (!areYawAndPositionInited()) {
+    globPosition_W_I0_ = T_O_Ik.translation();
+    globAttitude_W_I0_ = T_O_Ik.rotation().yaw();
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
@@ -151,7 +178,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     initGraph_(imuTimeK);
     if (!graphConfigPtr_->usingGnssFlag) {
       // TODO
-      // activateFallbackGraph();
+      activateFallbackGraph();
     }
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
@@ -195,7 +222,24 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
 
 void CompslamSe::addOdometryMeasurement(const DeltaMeasurement6D& delta) {}  // TODO
 
-void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& unary) {}  // TODO
+void CompslamSe::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
+  gtsam::Pose3 T_O_Ik(unary.measurementPose);
+
+  if (initedGraphFlag_) {
+    graphMgrPtr_->addPoseUnaryFactorToGlobalGraph(unary.time, unary.rate, unary.measurementNoise, T_O_Ik);
+    graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(unary.time, unary.rate, unary.measurementNoise, T_O_Ik);
+
+    // Optimize
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
+  if (!receivedOdometryFlag_) {
+    receivedOdometryFlag_ = true;
+  }
+}
 
 void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                         const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
