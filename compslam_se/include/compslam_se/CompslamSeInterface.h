@@ -4,6 +4,7 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include <Eigen/Eigen>
+#include <thread>
 
 // Workspace
 #include "compslam_se/StaticTransforms.h"
@@ -57,10 +58,19 @@ class CompslamSeInterface {
   /// Graph Configuration
   GraphConfig* graphConfigPtr_ = NULL;
   StaticTransforms* staticTransformsPtr_ = NULL;
+
   /// Verbosity
   int verboseLevel_ = 0;
   /// Logging
   bool logPlots_ = false;
+
+ private:
+  // Threads
+  std::thread publishStateThread_;
+
+  // Functions
+  void publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+                                   const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I);
 };
 
 }  // namespace compslam_se

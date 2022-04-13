@@ -62,7 +62,7 @@ class CompslamSe {
 
   // Adderfunctions
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
-                         InterfacePrediction*& predictionPtr);
+                         std::shared_ptr<InterfacePrediction>& predictionPtr);
   void addOdometryMeasurement(const DeltaMeasurement6D& delta);
   void addOdometryMeasurement(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,

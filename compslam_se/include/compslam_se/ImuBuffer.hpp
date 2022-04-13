@@ -46,7 +46,8 @@ class ImuBuffer {
   void addToKeyBuffer(double ts, gtsam::Key key);
 
   // Getters
-  inline double getImuRate() { return imuRate_; }
+  inline double getImuRate() const { return imuRate_; }
+  inline double getLatestTimestampInBuffer() const { return tLatestInBuffer_; }
   void getLastTwoMeasurements(TimeToImuMap& imuMap);
   bool getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tLidar, double& tInGraph,
                                  gtsam::Key& key);
@@ -66,6 +67,7 @@ class ImuBuffer {
   int imuBufferLength_ = -1;
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
   int verboseLevel_ = 0;
+  double tLatestInBuffer_;
 };
 
 }  // namespace compslam_se

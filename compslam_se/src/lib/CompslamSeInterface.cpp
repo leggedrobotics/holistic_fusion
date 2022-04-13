@@ -13,6 +13,10 @@ CompslamSeInterface::CompslamSeInterface() {
 bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
+  if (!graphConfigPtr_ || !staticTransformsPtr_) {
+    std::runtime_error("CompslamSeInterface::setup_(): graphConfigPtr_ or staticTransformsPtr_ is not set.");
+  }
+
   compslamSePtr_ = new CompslamSe();
   compslamSePtr_->setup(node, graphConfigPtr_, staticTransformsPtr_);
 
@@ -41,12 +45,16 @@ void CompslamSeInterface::activateFallbackGraph() {
  */
 void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                              const ros::Time& imuTimeK) {
-  InterfacePrediction* predictionPtr;
+  static int imuCabinCallbackCounter__ = -1;
+
+  ++imuCabinCallbackCounter__;
+
+  std::shared_ptr<InterfacePrediction> predictionPtr;
+
   bool success = compslamSePtr_->addImuMeasurement(linearAcc, angularVel, imuTimeK, predictionPtr);
 
   if (success) {
-    publishState_(imuTimeK, predictionPtr->T_W_O, predictionPtr->T_O_Ik, predictionPtr->I_v_W_I, predictionPtr->I_w_W_I);
-    delete predictionPtr;
+    publishStateAndMeasureTime_(imuTimeK, predictionPtr->T_W_O, predictionPtr->T_O_Ik, predictionPtr->I_v_W_I, predictionPtr->I_w_W_I);
   }
 }
 
@@ -72,6 +80,23 @@ void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& pos
 void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const double gnssTimeK, const double rate,
                                                      const double yawUnaryNoise) {
   compslamSePtr_->addGnssHeadingMeasurement(yaw, gnssTimeK, rate, yawUnaryNoise);
+}
+
+void CompslamSeInterface::publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+                                                      const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) {
+  // Define variables for timing
+  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
+  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
+
+  startLoopTime = std::chrono::high_resolution_clock::now();
+  publishState_(imuTimeK, T_W_O, T_O_Ik, I_v_W_I, I_w_W_I);
+  endLoopTime = std::chrono::high_resolution_clock::now();
+  if (std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count() > (1e6 / graphConfigPtr_->imuRate / 2.0)) {
+    std::cout << YELLOW_START << "CSe-Interface" << RED_START << " Publishing state took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count()
+              << " microseconds, which is slower than double IMU-rate (" << (1e6 / graphConfigPtr_->imuRate / 2.0) << " microseconds)."
+              << COLOR_END << std::endl;
+  }
 }
 
 }  // end namespace compslam_se

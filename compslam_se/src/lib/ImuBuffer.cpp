@@ -15,6 +15,7 @@ void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ,
 
   // Add to buffer
   timeToImuBuffer_[ts] = imuMeas;
+  tLatestInBuffer_ = ts;
 
   // If IMU buffer is too large, remove first element
   if (timeToImuBuffer_.size() > imuBufferLength_) {
@@ -23,8 +24,8 @@ void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ,
 
   if (timeToImuBuffer_.size() > imuBufferLength_) {
     std::ostringstream errorStream;
-    errorStream << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains " << timeToImuBuffer_.size()
-                << " measurements instead of " << imuBufferLength_ << ".";
+    errorStream << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains "
+                << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
     throw std::runtime_error(errorStream.str());
   }
 }
@@ -39,8 +40,8 @@ void ImuBuffer::addToKeyBuffer(double ts, gtsam::Key key) {
 
   if (timeToKeyBuffer_.size() > imuBufferLength_) {
     std::ostringstream errorStream;
-    errorStream << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " Key Buffer has grown too large. It contains " << timeToKeyBuffer_.size()
-                << " measurements instead of " << imuBufferLength_ << ".";
+    errorStream << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Key Buffer has grown too large. It contains "
+                << timeToKeyBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
     throw std::runtime_error(errorStream.str());
   }
 }
@@ -65,17 +66,18 @@ bool ImuBuffer::getClosestKeyAndTimestamp(const std::string& callingName, double
   key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
 
   if (verboseLevel_ >= 2) {
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14) << " searched time step: " << tK
-              << std::endl;
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
+              << " searched time step: " << tK << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
               << " Found time step: " << tInGraph << std::endl;
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " Delay: " << tInGraph - tK << " s" << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Delay: " << tInGraph - tK << " s" << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_ << std::endl;
   }
 
   // Check for error and warn user
   double timeDeviation = std::abs(tInGraph - tK);
   if (timeDeviation > maxSearchDeviation) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
+    std::cerr << YELLOW_START << "CSe-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
               << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << COLOR_END << std::endl;
     return false;
   }
@@ -87,8 +89,8 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
                                                 TimeToImuMap::iterator& e_itr) {
   // Check if timestamps are in correct order
   if (ts_start >= ts_end) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer" << RED_START << " IMU Lookup Timestamps are not correct ts_start(" << std::fixed << ts_start
-              << ") >= ts_end(" << ts_end << ")\n";
+    std::cerr << YELLOW_START << "CSe-ImuBuffer" << RED_START << " IMU Lookup Timestamps are not correct ts_start(" << std::fixed
+              << ts_start << ") >= ts_end(" << ts_end << ")\n";
     return false;
   }
 
@@ -99,7 +101,7 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
 
   // Check if it is first value in the buffer which means there is no value before to interpolate with
   if (s_itr == timeToImuBuffer_.begin()) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer" << RED_START
+    std::cerr << YELLOW_START << "CSe-ImuBuffer" << RED_START
               << " Lookup requires first message of IMU buffer, cannot Interpolate back, "
                  "Lookup Start/End: "
               << std::fixed << ts_start << "/" << ts_end << ", Buffer Start/End: " << timeToImuBuffer_.begin()->first << "/"
@@ -109,7 +111,7 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
 
   // Check if lookup start time is ahead of buffer start time
   if (s_itr == timeToImuBuffer_.end()) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer" << RED_START
+    std::cerr << YELLOW_START << "CSe-ImuBuffer" << RED_START
               << " IMU Lookup start time ahead latest IMU message in the buffer, lookup: " << ts_start
               << ", latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
     return false;
@@ -117,7 +119,7 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
 
   // Check if last value is valid
   if (e_itr == timeToImuBuffer_.end()) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer" << RED_START << " Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
+    std::cerr << YELLOW_START << "CSe-ImuBuffer" << RED_START << " Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
               << ts_start << "/" << ts_end << " and latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
     e_itr = timeToImuBuffer_.end();
     --e_itr;
@@ -125,8 +127,9 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
 
   // Check if two IMU messages are different
   if (s_itr == e_itr) {
-    std::cerr << YELLOW_START << "FG-ImuBuffer" << RED_START << " Not Enough IMU values between timestamps , with Start/End: " << std::fixed
-              << ts_start << "/" << ts_end << ", with diff: " << ts_end - ts_start << std::endl;
+    std::cerr << YELLOW_START << "CSe-ImuBuffer" << RED_START
+              << " Not Enough IMU values between timestamps , with Start/End: " << std::fixed << ts_start << "/" << ts_end
+              << ", with diff: " << ts_end - ts_start << std::endl;
     return false;
   }
 
@@ -172,12 +175,12 @@ bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, 
     gyrBias = initGyrMean;
 
     // Calculate robot initial orientation using gravity vector.
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " Gravity Magnitude: " << gravityMagnitude << std::endl;
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Gravity Magnitude: " << gravityMagnitude << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
               << " - Gravity Unit Vector(x,y,z): " << gUnitVec.transpose() << std::endl;
-    std::cout << YELLOW_START << "FG-ImuBuffer" << GREEN_START
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << GREEN_START
               << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
-    std::cout << YELLOW_START << "FG-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
   }
   return true;
 }
