@@ -13,7 +13,7 @@ CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& pri
   readParams_(privateNode);
   staticTransformsPtr_->findTransformations();
 
-  bool success = compslam_se::CompslamSeInterface::setup_(node, privateNode);
+  bool success = compslam_se::CompslamSeInterface::setup_(node);
 
   // Publishers
   pubOdometryImu_ = node.advertise<nav_msgs::Odometry>("/compslam_se/transform_odom_imu", ROS_QUEUE_SIZE);
@@ -145,16 +145,16 @@ void CompslamEstimator::publishState_(ros::Time imuTimeK, const Eigen::Matrix4d&
 
   // Publish path for IMU frame
   /// Pose
-  geometry_msgs::PoseStamped poseStamped;
-  poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
-  poseStamped.header.stamp = imuTimeK;
-  tf::poseTFToMsg(tf_T_O_L, poseStamped.pose);
-  /// Path
-  odomPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  odomPathPtr_->header.stamp = imuTimeK;
-  odomPathPtr_->poses.push_back(poseStamped);
-  /// Publish
-  pubOdomPath_.publish(odomPathPtr_);
+  //  geometry_msgs::PoseStamped poseStamped;
+  //  poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
+  //  poseStamped.header.stamp = imuTimeK;
+  //  tf::poseTFToMsg(tf_T_O_L, poseStamped.pose);
+  //  /// Path
+  //  odomPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
+  //  odomPathPtr_->header.stamp = imuTimeK;
+  //  odomPathPtr_->poses.push_back(poseStamped);
+  //  /// Publish
+  //  pubOdomPath_.publish(odomPathPtr_);
 
   // Publish odometry message for map->lidar with 100 Hz
   nav_msgs::OdometryPtr worldLidarMsgPtr(new nav_msgs::Odometry);
