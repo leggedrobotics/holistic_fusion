@@ -4,6 +4,7 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include <Eigen/Eigen>
+#include <thread>
 
 // Workspace
 #include "compslam_se/StaticTransforms.h"
@@ -21,19 +22,21 @@ class CompslamSeInterface {
 
  protected:
   // Setup
-  bool setup_(ros::NodeHandle& node, ros::NodeHandle& privateNode);
+  bool setup_(ros::NodeHandle& node);
 
   // Required for initialization
   bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
+  bool initYawAndPosition_(Eigen::Matrix4d T_O_I);
   bool areYawAndPositionInited_();
 
   // Graph Maniupulation
+
   void activateFallbackGraph();
 
   // Write measurements
   void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
   void addOdometryMeasurement_(const DeltaMeasurement6D& delta);
-  void addOdometryMeasurement_(const UnaryMeasurement6D& unary);
+  void addUnaryPoseMeasurement_(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
@@ -56,10 +59,19 @@ class CompslamSeInterface {
   /// Graph Configuration
   GraphConfig* graphConfigPtr_ = NULL;
   StaticTransforms* staticTransformsPtr_ = NULL;
+
   /// Verbosity
   int verboseLevel_ = 0;
   /// Logging
   bool logPlots_ = false;
+
+ private:
+  // Threads
+  std::thread publishStateThread_;
+
+  // Functions
+  void publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+                                   const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I);
 };
 
 }  // namespace compslam_se

@@ -21,6 +21,8 @@ struct GraphConfig {
   bool enablePartialRelinearizationCheck = true;
   /// Flags
   bool usingFallbackGraphFlag = true;
+  bool usingGnssFlag = true;
+  bool usingLioFlag = true;
 
   // Integers
   int verboseLevel = 0;

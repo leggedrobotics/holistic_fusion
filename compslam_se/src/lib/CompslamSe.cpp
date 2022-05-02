@@ -9,8 +9,7 @@ CompslamSe::CompslamSe() {
 }
 
 /// Setup ------------
-bool CompslamSe::setup(ros::NodeHandle& node, ros::NodeHandle& privateNode, GraphConfig* graphConfigPtr,
-                       StaticTransforms* staticTransformsPtr) {
+bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr) {
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
@@ -58,7 +57,12 @@ bool CompslamSe::areYawAndPositionInited() {
 }
 
 void CompslamSe::activateFallbackGraph() {
-  graphMgrPtr_->activateFallbackGraph();
+  if (graphConfigPtr_->usingFallbackGraphFlag) {
+    graphMgrPtr_->activateFallbackGraph();
+  } else {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Not activating fallback graph, disabled in config." << COLOR_END
+              << std::endl;
+  }
 }
 
 bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen::Vector3d& t_W_GnssL) {
@@ -70,14 +74,36 @@ bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen:
     return false;
   }
   if (!areYawAndPositionInited()) {
-    globAttitude_W_I0_ = globAttitude_W_I0;
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of has been set to " << globAttitude_W_I0 << "."
               << COLOR_END << std::endl;
     gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
     // gtsam::Rot3 yawR_W_I0 = yawR_W_I0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
+    // Set Member Variables
     globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_GnssL, tf_q_W_I0);
+    globAttitude_W_I0_ = globAttitude_W_I0;
+    foundInitialYawAndPositionFlag_ = true;
+    return true;
+  } else {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END
+              << std::endl;
+    return false;
+  }
+}
+
+bool CompslamSe::initYawAndPosition(Eigen::Matrix4d T_O_I) {
+  gtsam::Pose3 T_O_Ik(T_O_I);
+
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+  if (!alignedImuFlag_) {
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
+              << std::endl;
+    return false;
+  }
+  if (!areYawAndPositionInited()) {
+    globPosition_W_I0_ = T_O_Ik.translation();
+    globAttitude_W_I0_ = T_O_Ik.rotation().yaw();
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
@@ -90,7 +116,7 @@ bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen:
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
 bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
-                                   InterfacePrediction*& predictionPtr) {
+                                   std::shared_ptr<InterfacePrediction>& predictionPtr) {
   // Static Members
   /// Prediction
   static Eigen::Matrix4d T_W_O__ = Eigen::Matrix4d::Identity();
@@ -107,11 +133,6 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   // Set IMU time
   const ros::Time imuTimeKm1 = imuTimeKm1_;
   imuTimeK_ = imuTimeK;
-  // Define variables for timing
-  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
-  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
-  // Timing
-  startLoopTime = std::chrono::high_resolution_clock::now();
 
   // Filter out imu messages with same time stamp
   if (imuTimeK == imuTimeKm1_) {
@@ -125,40 +146,45 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   gtsam::NavState T_W_Ik;
   bool relocalizationFlag = false;
 
-  // If IMU not yet aligned
+  // Add measurement to buffer
+  graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+
+  // If IMU not yet gravity aligned
   if (!alignedImuFlag_) {
-    // Add measurement to buffer
-    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
-    // Add to buffer
+    // Try to align
     if (alignImu_(imuTimeK)) {
-      //      gtsam::Rot3 yawR_W_C0 = gtsam::Rot3::Yaw(0.0);
-      //      gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
       gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch_, imuAttitudeRoll_);
       T_O_Ik__ = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0)).matrix();
       I_v_W_I__ = gtsam::Velocity3(0.0, 0.0, 0.0);
       I_w_W_I__ = Eigen::Vector3d(0.0, 0.0, 0.0);
       alignedImuFlag_ = true;
-    } else if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
-      // Add measurement to buffer
-      graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+    }
+    // Otherwise
+    else if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
                 << std::endl;
     }
     return false;
-  } else if (!foundInitialYawAndPositionFlag_) {
-    // Add measurement to buffer
-    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+  }
+  // Gravity Aligned but not yaw-aligned
+  else if (!foundInitialYawAndPositionFlag_) {
+    T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
     if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " IMU callback waiting for initialization of global yaw." << std::endl;
     }
-    T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
-  } else if (!initedGraphFlag_) {
-    // Add measurement to buffer
-    graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+  }
+  // Initialization
+  else if (!initedGraphFlag_) {
     initGraph_(imuTimeK);
+    if (!graphConfigPtr_->usingGnssFlag) {
+      // TODO
+      activateFallbackGraph();
+    }
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik = gtsam::NavState(gtsam::Rot3(T_O_Ik__.block<3, 3>(0, 0)), T_O_Ik__.block<3, 1>(0, 3), I_v_W_I__);
-  } else {
+  }
+  // Normal operation
+  else {
     // Add IMU factor and get propagated state
     T_W_Ik = graphMgrPtr_->addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
     imuAttitudeRoll_ = T_W_Ik.pose().rotation().roll();
@@ -181,15 +207,12 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     }
   }
 
-  // Timing
-  endLoopTime = std::chrono::high_resolution_clock::now();
-
   // Write information to global variable
   tf_T_W_Ik_.setData(pose3ToTf(T_W_Ik.pose()));
   tf_T_W_Ik_.stamp_ = imuTimeK;
 
   // Publish
-  predictionPtr = new InterfacePrediction(T_W_O__, T_O_Ik__, I_v_W_I__, I_w_W_I__);
+  predictionPtr = std::make_shared<InterfacePrediction>(T_W_O__, T_O_Ik__, I_v_W_I__, I_w_W_I__);
 
   // Write for next iteration
   T_O_Ikm1__ = T_O_Ik__;
@@ -199,7 +222,24 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
 
 void CompslamSe::addOdometryMeasurement(const DeltaMeasurement6D& delta) {}  // TODO
 
-void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& unary) {}  // TODO
+void CompslamSe::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
+  gtsam::Pose3 T_O_Ik(unary.measurementPose);
+
+  if (initedGraphFlag_) {
+    graphMgrPtr_->addPoseUnaryFactorToGlobalGraph(unary.time, unary.rate, unary.measurementNoise, T_O_Ik);
+    graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(unary.time, unary.rate, unary.measurementNoise, T_O_Ik);
+
+    // Optimize
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
+  if (!receivedOdometryFlag_) {
+    receivedOdometryFlag_ = true;
+  }
+}
 
 void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                         const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
@@ -377,7 +417,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
 
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
-  if (false && usingFallbackGraphFlag_) {
+  if (graphConfigPtr_->usingGnssFlag && usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
   // Read initial pose from graph

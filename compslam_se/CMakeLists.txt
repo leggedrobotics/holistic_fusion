@@ -13,16 +13,9 @@ find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
 
-find_package(PCL REQUIRED COMPONENTS common io)
-message("PCL Version:" ${PCL_VERSION})
-message("PCL Path:" ${PCL_DIR})
-
 find_package(GTSAM REQUIRED)
 message("GTSAM version: ${GTSAM_VERSION}")
 message("GTSAM path: ${GTSAM_DIR}")
-
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
 
 #generate_messages(
 #  DEPENDENCIES
@@ -31,7 +24,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS EIGEN3 PCL
+  DEPENDS EIGEN3 GTSAM
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -46,7 +39,6 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${GTSAM_INCLUDE_DIR}
-        ${PCL_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
 )
 
