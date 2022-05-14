@@ -14,6 +14,7 @@
 #include <sensor_msgs/NavSatFix.h>
 #include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
+#include <mutex>
 
 // Workspace
 #include "compslam_ros/GnssHandler.h"

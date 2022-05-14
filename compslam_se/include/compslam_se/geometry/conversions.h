@@ -1,6 +1,8 @@
 #ifndef MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 #define MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+
 namespace compslam_se {
 
 inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {
@@ -13,10 +15,27 @@ inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d&
   T.block<3, 1>(0, 3) = t;
 }
 
+inline void geomMsgToEigen(const geometry_msgs::PoseWithCovarianceStamped& geomLidar, Eigen::Matrix4d& T) {
+  tf::Quaternion tf_q;
+  tf::quaternionMsgToTF(geomLidar.pose.pose.orientation, tf_q);
+  Eigen::Vector3d t(geomLidar.pose.pose.position.x, geomLidar.pose.pose.position.y, geomLidar.pose.pose.position.z);
+  Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
+  T.setIdentity();
+  T.block<3, 3>(0, 0) = q.matrix();
+  T.block<3, 1>(0, 3) = t;
+}
+
 inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T) {
   tf::Quaternion tf_q;
   tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
   tf::Vector3 tf_t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+  T = tf::Transform(tf_q, tf_t);
+}
+
+inline void geomMsgToTf(const geometry_msgs::PoseWithCovarianceStamped& geomLidar, tf::Transform& T) {
+  tf::Quaternion tf_q;
+  tf::quaternionMsgToTF(geomLidar.pose.pose.orientation, tf_q);
+  tf::Vector3 tf_t(geomLidar.pose.pose.position.x, geomLidar.pose.pose.position.y, geomLidar.pose.pose.position.z);
   T = tf::Transform(tf_q, tf_t);
 }
 

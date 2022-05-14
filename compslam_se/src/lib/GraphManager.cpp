@@ -379,6 +379,77 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   }
 }
 
+void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
+                                                  const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel) {
+
+  static double lastWOTime = -1;       
+  static gtsam::Key lastClosestKey = -1;
+
+  assert(woSpeedNoise.size() == 4 && "GraphManager.cpp: Wheel odometry noise vector must have dimension 4!");
+
+  // Find closest key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  double maxSearchDeviation = 1 / (2 * rate);
+  maxSearchDeviation += 0.1 * maxSearchDeviation;
+  {
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (!imuBuffer_.getClosestKeyAndTimestamp("Wheel odometry velocity", maxSearchDeviation, woTimeK, closestGraphTime, closestKey)) {
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding wheel odometry velocity constraint to graph." << std::endl;
+      return;
+    }
+  }
+
+  // first measurement
+  if(lastWOTime == -1 || lastClosestKey == -1) {
+    lastWOTime = woTimeK;
+    lastClosestKey = closestKey;
+    return;
+  }
+
+  // Create noise model
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(3) << woSpeedNoise[0], woSpeedNoise[1], woSpeedNoise[2]).finished());  // m/s, m/s, m/s, rad/s: have high noise in z (e.g. 1.0)
+  auto woYawNoise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(1) << woSpeedNoise[3]).finished());  // m/s, m/s,, m/s, rad/s
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
+
+  // add WO yaw
+  double yawDt = woTimeK - lastWOTime;
+  double woYaw = angularVel[2] * yawDt;
+
+  gtsam::Expression<gtsam::Pose3> p1('x', lastClosestKey);
+  gtsam::Expression<gtsam::Pose3> p2('x', closestKey);
+  gtsam::Expression<gtsam::Vector1> hYaw = gtsam::Expression<gtsam::Vector1>(compslam_se::transform2Yaw, p1, p2);
+
+  gtsam::Vector1 z(woYaw);
+
+  // Write to graph
+  {
+    // Operating on graph data --> acquire mutex
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
+    // velocity constraint
+    globalFactorsBuffer_.addPrior(gtsam::symbol_shorthand::V(closestKey), linearVel, noise);
+    fallbackFactorsBuffer_.addPrior(gtsam::symbol_shorthand::V(closestKey), linearVel, noise);
+
+    // yaw measurement constraint
+    globalFactorsBuffer_.addExpressionFactor(hYaw, z, woYawNoise);
+    fallbackFactorsBuffer_.addExpressionFactor(hYaw, z, woYawNoise);
+
+    // update variables
+    lastWOTime = woTimeK;
+    lastClosestKey = closestKey;
+  }
+
+  // Print summary
+  if (graphConfigPtr_->verboseLevel > 1) {
+    std::cout << YELLOW_START << "FG-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+              << ", wheel odometry factor added to key " << closestKey << COLOR_END << std::endl;
+  }
+}
+
 bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
   // Check external motion
   if (pose.translation().norm() > graphConfigPtr_->zeroMotionTh) {

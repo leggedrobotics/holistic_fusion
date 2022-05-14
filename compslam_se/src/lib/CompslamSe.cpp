@@ -131,7 +131,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   ++imuCabinCallbackCounter__;
 
   // Set IMU time
-  const ros::Time imuTimeKm1 = imuTimeKm1_;
+  ros::Time imuTimeKm1 = imuTimeKm1_;
   imuTimeK_ = imuTimeK;
 
   // Filter out imu messages with same time stamp
@@ -147,7 +147,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   bool relocalizationFlag = false;
 
   // Add measurement to buffer
-  graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+  graphMgrPtr_->addToIMUBuffer(imuTimeK_.toSec(), linearAcc, angularVel);
 
   // If IMU not yet gravity aligned
   if (!alignedImuFlag_) {
@@ -363,18 +363,35 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
-void CompslamSe::addGnssHeadingMeasurement(const double attitude_W_I, const double gnssTimeK, const double rate, double headingUnaryNoise) {
+void CompslamSe::addGnssHeadingMeasurement(const double attitude_W_I, const ros::Time& gnssTimeK, const double rate, double headingUnaryNoise) {
   //  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
   //  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   //  double yaw_W_I = yawR_W_I.yaw();
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, attitude_W_I);
+    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK.toSec(), rate, headingUnaryNoise, attitude_W_I);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
   }
+}
+
+void CompslamSe::addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel) {
+  // transform from cabine frame to IMU frame
+  gtsam::Matrix3 IcWOSkew = gtsam::skewSymmetric(angularVel);
+  gtsam::Vector3 T_C_I = tfToPose3(staticTransformsPtr_->T_C_I()).translation();
+  gtsam::Rot3 R_C_Ic = gtsam::Pose3(graphMgrPtr_->getGraphState().navState().pose().matrix()).rotation();
+  gtsam::Vector3 linearVelIMU = R_C_Ic * (linearVel + IcWOSkew * T_C_I);
+
+  graphMgrPtr_->addWheelOdometryVelocityFactor(woTimeK.toSec(), rate, woSpeedNoise, linearVelIMU, angularVel);
+  
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
+
 }
 
 /// Worker Functions -----------------------

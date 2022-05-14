@@ -71,7 +71,9 @@ class CompslamSe {
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
                                   double positionUnaryNoise);
-  void addGnssHeadingMeasurement(const double yaw, const double gnssTimeK, const double rate, double headingUnaryNoise);
+  void addGnssHeadingMeasurement(const double yaw, const ros::Time& gnssTimeK, const double rate, double headingUnaryNoise);
+  void addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, 
+                                   const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel);
 
   // Getters
   bool getLogPlots() { return logPlots_; }

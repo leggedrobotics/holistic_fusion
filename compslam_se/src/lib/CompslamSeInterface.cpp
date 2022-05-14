@@ -81,9 +81,15 @@ void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& pos
   compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
 
-void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const double gnssTimeK, const double rate,
+void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const ros::Time& gnssTimeK, const double rate,
                                                      const double yawUnaryNoise) {
   compslamSePtr_->addGnssHeadingMeasurement(yaw, gnssTimeK, rate, yawUnaryNoise);
+}
+
+// wheel odometry measurement must be in cabin frame
+void CompslamSeInterface::addWheelOdometryMeasurement_(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
+                                                       const Eigen::Vector3d& linearVel, const Eigen::Vector3d& angularVel) {
+  compslamSePtr_->addWheelOdometryMeasurement(woTimeK, rate, woSpeedNoise, linearVel, angularVel);
 }
 
 void CompslamSeInterface::publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
