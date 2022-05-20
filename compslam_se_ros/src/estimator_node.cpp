@@ -5,7 +5,7 @@
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "compslam_ros/CompslamEstimator.h"
+#include "compslam_se_ros/CompslamEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {
@@ -17,8 +17,8 @@ int main(int argc, char** argv) {
   ros::MultiThreadedSpinner spinner(4);
 
   // Create Instance
-  std::unique_ptr<compslam_ros::CompslamEstimator> m545EstimatorGraphPtr =
-      std::make_unique<compslam_ros::CompslamEstimator>(node, privateNode);
+  std::unique_ptr<compslam_se::CompslamEstimator> m545EstimatorGraphPtr =
+      std::make_unique<compslam_se::CompslamEstimator>(node, privateNode);
   spinner.spin();
 
   return 0;

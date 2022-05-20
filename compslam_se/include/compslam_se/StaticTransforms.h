@@ -1,9 +1,8 @@
-#ifndef MENZI_SIM_STATICTRANSFORMS_H
-#define MENZI_SIM_STATICTRANSFORMS_H
+#ifndef STATICTRANSFORMS_H
+#define STATICTRANSFORMS_H
 
 // ROS
-#include <urdf/model.h>
-#include <Eigen/Eigen>
+//#include <Eigen/Eigen>
 #include "tf/tf.h"
 
 namespace compslam_se {
@@ -11,17 +10,6 @@ namespace compslam_se {
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
-
-class ElementToRoot final {
- public:
-  /// Constructor
-  explicit ElementToRoot(const tf::Transform& T, const std::string& rootName_, const std::string& elementName_)
-      : T_root_element(T), rootName(rootName_), elementName(elementName_) {}
-
-  tf::Transform T_root_element;  ///< The KDL segment
-  std::string rootName;          ///< The name of the root element to which this link is attached
-  std::string elementName;       ///< The name of the element
-};
 
 class StaticTransforms {
  public:
@@ -65,8 +53,6 @@ class StaticTransforms {
 
  protected:
   // Names
-  /// Description
-  std::string urdfDescription_;
   /// Frames
   std::string mapFrame_;
   std::string odomFrame_;
@@ -75,21 +61,12 @@ class StaticTransforms {
   std::string leftGnssFrame_;
   std::string rightGnssFrame_;
 
-  // Robot Models
-  urdf::Model urdfModel_;
-
   // Transformations
   tf::Transform tf_T_L_I_;
   tf::Transform tf_T_GnssL_I_;
   tf::Transform tf_T_GnssR_I_;
-
-  /// A map of dynamic segment names to SegmentPair structures
-  std::map<std::string, ElementToRoot> segments_;
-
-  /// A pointer to the parsed URDF model
-  std::unique_ptr<urdf::Model> model_;
 };
 
 }  // namespace compslam_se
 
-#endif  // MENZI_SIM_STATICTRANSFORMS_H
+#endif  // STATICTRANSFORMS_H

@@ -197,7 +197,6 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
                 << std::endl;
       // For this computation step assume T_O_Ik ~ T_O_Ikm1
       T_W_O__ = (T_W_Ik.pose().matrix() * T_O_Ikm1__.inverse());
-      tf::Transform tf_T_W_O = matrix4ToTf(T_W_O__);
     }
     // Estimate state
     if (receivedOdometryFlag_) {
@@ -447,7 +446,7 @@ void CompslamSe::optimizeGraph_() {
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
   // While loop
-  ROS_INFO("Thread for updating graph is ready.");
+  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Thread for updating graph is ready." << std::endl;
   while (ros::ok()) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag

@@ -16,19 +16,19 @@
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "compslam_ros/GnssHandler.h"
-#include "compslam_ros/StaticTransforms.h"
 #include "compslam_se/CompslamSeInterface.h"
-#include "compslam_se/geometry/conversions.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"
+#include "compslam_se_ros/GnssHandler.h"
+#include "compslam_se_ros/conversions.h"
+#include "compslam_se_ros/extrinsics/StaticTransformsTf.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20  // 0
 
-namespace compslam_ros {
+namespace compslam_se {
 
-class CompslamEstimator : public compslam_se::CompslamSeInterface {
+class CompslamEstimator : public CompslamSeInterface {
  public:
   CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& privateNode);
 
@@ -86,7 +86,7 @@ class CompslamEstimator : public compslam_se::CompslamSeInterface {
   double gnssHeadingUnaryNoise_;
 
   /// GNSS
-  m545_estimator::GnssHandler* gnssHandlerPtr_;
+  GnssHandler* gnssHandlerPtr_;
 };
-}  // namespace compslam_ros
+}  // namespace compslam_se
 #endif  // end M545ESTIMATORGRAPH_H

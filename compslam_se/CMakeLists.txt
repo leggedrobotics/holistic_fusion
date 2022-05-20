@@ -43,7 +43,10 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-  src/lib/CompslamSeInterface.cpp src/lib/CompslamSe.cpp src/lib/GraphManager.cpp src/lib/ImuBuffer.cpp include/compslam_se/CompslamSeInterface.h)
+  src/lib/CompslamSe.cpp
+  src/lib/CompslamSeInterface.cpp
+  src/lib/GraphManager.cpp
+  src/lib/ImuBuffer.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})

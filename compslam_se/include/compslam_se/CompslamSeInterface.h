@@ -7,7 +7,7 @@
 #include <thread>
 
 // Workspace
-#include "compslam_se/StaticTransforms.h"
+#include "StaticTransforms.h"
 #include "compslam_se/config/GraphConfig.h"
 #include "compslam_se/measurements/DeltaMeasurement6D.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"

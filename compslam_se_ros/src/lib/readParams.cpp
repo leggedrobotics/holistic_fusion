@@ -1,6 +1,6 @@
-#include "compslam_ros/CompslamEstimator.h"
+#include "compslam_se_ros/CompslamEstimator.h"
 
-namespace compslam_ros {
+namespace compslam_se {
 
 void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
@@ -270,4 +270,4 @@ void CompslamEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 }
 
-}  // namespace compslam_ros
+}  // namespace compslam_se

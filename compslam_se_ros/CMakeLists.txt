@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(compslam_ros)
+project(compslam_se_ros)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
   geometry_msgs
@@ -17,6 +17,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   signal_logger
   robot_utils
   compslam_se
+  kdl_parser
 )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -58,10 +59,12 @@ include_directories(
 
 # Library
 add_library(${PROJECT_NAME}
-        src/lib/CompslamEstimator.cpp
-        src/lib/readParams.cpp
-        src/lib/GnssHandler.cpp
-        src/lib/StaticTransforms.cpp)
+  src/lib/CompslamEstimator.cpp
+  src/lib/GnssHandler.cpp
+  src/lib/readParams.cpp
+  src/lib/StaticTransformsTf.cpp
+  src/lib/StaticTransformsUrdf.cpp
+)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 # Executable

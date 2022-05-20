@@ -1,13 +1,13 @@
-#include "compslam_ros/CompslamEstimator.h"
+#include "compslam_se_ros/CompslamEstimator.h"
 
-namespace compslam_ros {
+namespace compslam_se {
 
 CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Configurations
   graphConfigPtr_ = new compslam_se::GraphConfig();
-  staticTransformsPtr_ = new StaticTransforms(privateNode);
+  staticTransformsPtr_ = new StaticTransformsTf(privateNode);
 
   // Get ROS params and set extrinsics
   readParams_(privateNode);
@@ -185,4 +185,4 @@ long CompslamEstimator::secondsSinceStart_() {
   return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
 }
 
-}  // namespace compslam_ros
+}  // namespace compslam_se

@@ -8,21 +8,20 @@
 #include <thread>
 
 // ROS
-#include <nav_msgs/Odometry.h>
+//#include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
-#include <ros/node_handle.h>
+//#include <ros/node_handle.h>
 #include <sensor_msgs/Imu.h>
 #include <std_srvs/SetBool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
 // Package
+#include "StaticTransforms.h"
 #include "compslam_se/GraphManager.hpp"
 #include "compslam_se/InterfacePrediction.h"
 #include "compslam_se/SignalLogger.h"
-#include "compslam_se/StaticTransforms.h"
 #include "compslam_se/config/GraphConfig.h"
-#include "compslam_se/geometry/conversions.h"
 #include "compslam_se/geometry/math_utils.h"
 #include "compslam_se/measurements/DeltaMeasurement6D.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"

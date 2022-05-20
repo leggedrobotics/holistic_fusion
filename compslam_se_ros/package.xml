@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>compslam_ros</name>
+  <name>compslam_se_ros</name>
   <version>0.0.0</version>
 
   <description>
@@ -30,6 +30,7 @@
   <build_depend>signal_logger</build_depend>
   <build_depend>compslam_se</build_depend>
   <build_depend>robot_utils</build_depend>
+  <build_depend>kdl_parser</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
@@ -51,6 +52,7 @@
   <run_depend>kdl_parser</run_depend>
   <run_depend>compslam_se</run_depend>
   <run_depend>robot_utils</run_depend>
+  <run_depend>kdl_parser</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosbag</test_depend>

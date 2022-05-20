@@ -1,6 +1,8 @@
 #ifndef MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 #define MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 
+#include <nav_msgs/Odometry.h>
+
 namespace compslam_se {
 
 inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {

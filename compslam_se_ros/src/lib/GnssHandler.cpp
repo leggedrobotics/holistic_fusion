@@ -1,9 +1,9 @@
 // C++
 #include <iostream>
 // Package
-#include "compslam_ros/GnssHandler.h"
+#include "compslam_se_ros/GnssHandler.h"
 
-namespace m545_estimator {
+namespace compslam_se {
 
 // Public -------------------------------------------------------------------
 GnssHandler::GnssHandler() {
@@ -74,4 +74,4 @@ double GnssHandler::computeYawFromHeadingVector_(const Eigen::Vector3d& headingV
   }
 }
 
-}  // namespace m545_estimator
+}  // namespace compslam_se

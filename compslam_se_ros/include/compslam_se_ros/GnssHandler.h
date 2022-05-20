@@ -11,7 +11,7 @@
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
 
-namespace m545_estimator {
+namespace compslam_se {
 
 class GnssHandler {
  public:
@@ -45,6 +45,6 @@ class GnssHandler {
   double globalAttitudeYaw_;
 };
 
-}  // namespace m545_estimator
+}  // namespace compslam_se
 
 #endif  // GNSSHANDLER_H
