@@ -20,12 +20,12 @@ bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, Stati
 
   // Configs
   graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;
-  graphMgrPtr_->getIsamParamsReference().setEnableDetailedResults(graphConfigPtr_->enableDetailedResults);
-  graphMgrPtr_->getIsamParamsReference().setRelinearizeSkip(graphConfigPtr_->relinearizeSkip);
-  graphMgrPtr_->getIsamParamsReference().setEnableRelinearization(graphConfigPtr_->enableRelinearization);
-  graphMgrPtr_->getIsamParamsReference().setEvaluateNonlinearError(graphConfigPtr_->evaluateNonlinearError);
-  graphMgrPtr_->getIsamParamsReference().setCacheLinearizedFactors(graphConfigPtr_->cacheLinearizedFactors);
-  graphMgrPtr_->getIsamParamsReference().setEnablePartialRelinearizationCheck(graphConfigPtr_->enablePartialRelinearizationCheck);
+  graphMgrPtr_->getIsamParamsReference().enableDetailedResults = graphConfigPtr_->enableDetailedResults;
+  graphMgrPtr_->getIsamParamsReference().relinearizeSkip = graphConfigPtr_->relinearizeSkip;
+  graphMgrPtr_->getIsamParamsReference().enableRelinearization = graphConfigPtr_->enableRelinearization;
+  graphMgrPtr_->getIsamParamsReference().evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearError;
+  graphMgrPtr_->getIsamParamsReference().cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactors;
+  graphMgrPtr_->getIsamParamsReference().enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheck;
 
   // Publishers
   /// advertise odometry topic
