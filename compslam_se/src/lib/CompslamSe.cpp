@@ -338,6 +338,10 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   else if (usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
+  
+  if (!receivedOdometryFlag_) {
+    receivedOdometryFlag_ = true;
+  }
 
   // Publish path
   /// Left
