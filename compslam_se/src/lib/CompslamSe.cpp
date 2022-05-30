@@ -126,6 +126,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   /// Other
   static Eigen::Matrix4d T_O_Ikm1__;
   static int imuCabinCallbackCounter__ = -1;
+  static int count_imu_to_graph = 0;
 
   // Increase counter
   ++imuCabinCallbackCounter__;
@@ -216,6 +217,18 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
 
   // Write for next iteration
   T_O_Ikm1__ = T_O_Ik__;
+
+  count_imu_to_graph++;
+
+  // optimize graph at least every 100 IMU messages
+  if( count_imu_to_graph > 100 )
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+    count_imu_to_graph = 0;
+  }
+
 
   return true;
 }

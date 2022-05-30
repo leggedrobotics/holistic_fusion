@@ -228,7 +228,7 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END << std::endl;
       // return;
     }
   }
@@ -267,7 +267,7 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
+      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END << std::endl;
       // return;
     }
   }
@@ -306,7 +306,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
+      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END << std::endl;
       // return;
     }
   }
@@ -351,7 +351,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Heading", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << std::endl;
+      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END << std::endl;
       // return;
     }
   }
@@ -396,7 +396,7 @@ void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double r
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     if (!imuBuffer_.getClosestKeyAndTimestamp("Wheel odometry velocity", maxSearchDeviation, woTimeK, closestGraphTime, closestKey)) {
-      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding wheel odometry velocity constraint to graph." << std::endl;
+      std::cerr << YELLOW_START << "FG-GraphManager" << RED_START << " Not adding wheel odometry velocity constraint to graph." << COLOR_END << std::endl;
       return;
     }
   }
@@ -405,6 +405,16 @@ void GraphManager::addWheelOdometryVelocityFactor(double woTimeK, const double r
   if(lastWOTime == -1 || lastClosestKey == -1) {
     lastWOTime = woTimeK;
     lastClosestKey = closestKey;
+    return;
+  }
+
+  // skip first measurement after slip
+  if( (closestKey - lastClosestKey) > 4 * imuBuffer_.getImuRate()/rate) {
+    lastWOTime = woTimeK;
+    lastClosestKey = closestKey;
+
+    std::cerr << YELLOW_START << "FG-GraphManager" << YELLOW_START << " Skip first WO measurement after wheel slip." << COLOR_END << std::endl;
+
     return;
   }
 
@@ -454,7 +464,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   // Check external motion
   if (pose.translation().norm() > graphConfigPtr_->zeroMotionTh) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_
-              << ", Not adding zero motion factor due to too big motion." << std::endl;
+              << ", Not adding zero motion factor due to too big motion." << COLOR_END << std::endl;
     return false;
   }
 
