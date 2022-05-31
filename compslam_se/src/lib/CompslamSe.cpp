@@ -303,11 +303,11 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
 
 void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                             const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                                            double positionUnaryNoise) {
+                                            double positionUnaryNoise, double covarianceXYZ_violation_threshold) {
   // Read covariance
-  bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                                    covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
-                                    covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
+  bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > covarianceXYZ_violation_threshold ||
+                                    covarianceXYZ(1) > covarianceXYZ_violation_threshold ||
+                                    covarianceXYZ(2) > covarianceXYZ_violation_threshold;
   if (gnssCovarianceViolatedFlag && !gnssCovarianceViolatedFlag_) {
     std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS measurments now ABSENT due to too big covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = gnssCovarianceViolatedFlag;

@@ -41,7 +41,7 @@ class CompslamSeInterface {
                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                    const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                                   const double positionUnaryNoise);
+                                   const double positionUnaryNoise, double covarianceXYZ_violation_threshold);
   void addGnssHeadingMeasurement_(const double yaw, const ros::Time& gnssTimeK, const double rate, const double yawUnaryNoise);
   void addWheelOdometryMeasurement_(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise,
                                     const Eigen::Vector3d& linearVel, const Eigen::Vector3d& angularVel);

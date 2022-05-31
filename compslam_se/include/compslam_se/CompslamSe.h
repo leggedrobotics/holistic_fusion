@@ -33,7 +33,6 @@
 // Defined macros
 #define ROS_QUEUE_SIZE 100
 #define REQUIRED_GNSS_NUM_NOT_JUMPED 20
-#define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.1  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
@@ -70,7 +69,7 @@ class CompslamSe {
                               const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                                  double positionUnaryNoise);
+                                  double positionUnaryNoise, double covarianceXYZ_violation_threshold);
   void addGnssHeadingMeasurement(const double yaw, const ros::Time& gnssTimeK, const double rate, double headingUnaryNoise);
   void addWheelOdometryMeasurement(const ros::Time& woTimeK, const double rate, const std::vector<double>& woSpeedNoise, 
                                    const gtsam::Vector3& linearVel, const gtsam::Vector3& angularVel);

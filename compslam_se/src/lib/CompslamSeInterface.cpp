@@ -77,8 +77,8 @@ void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& odom
 
 void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                                       const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
-                                                      const double positionUnaryNoise) {
-  compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
+                                                      const double positionUnaryNoise, double covarianceXYZ_violation_threshold) {
+  compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise, covarianceXYZ_violation_threshold);
 }
 
 void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const ros::Time& gnssTimeK, const double rate,
