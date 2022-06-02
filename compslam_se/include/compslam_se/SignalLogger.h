@@ -37,9 +37,9 @@ class SignalLogger {
     siloOptions.updateFrequency_ = static_cast<int>(1.0 / 0.01);
     siloOptions.maxLoggingTime_ = window_time;
     // siloOptions.collectScriptFileName_ = loggingScriptFilename;
-    siloOptions.loggerName_ = logger_name;
     // Init logger
     signal_logger::logger->initLogger(siloOptions);
+    signal_logger::logger->setName(logger_name);
     ROS_INFO("Initialize logger with window time: %f, sampling frequency: %d", siloOptions.maxLoggingTime_, siloOptions.updateFrequency_);
 
     // Add poses to logger
@@ -253,9 +253,9 @@ class SignalLoggerGnss {
     siloOptions.updateFrequency_ = static_cast<int>(100);
     siloOptions.maxLoggingTime_ = window_time;
     // siloOptions.collectScriptFileName_ = loggingScriptFilename;
-    siloOptions.loggerName_ = logger_name;
     // Init logger
     signal_logger::logger->initLogger(siloOptions);
+    signal_logger::logger->setName(logger_name);
     ROS_INFO("Initialize logger with window time: %f, sampling frequency: %d", siloOptions.maxLoggingTime_, siloOptions.updateFrequency_);
 
     // Add poses to logger
