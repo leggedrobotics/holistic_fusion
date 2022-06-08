@@ -34,18 +34,18 @@ class CompslamSeInterface {
   void activateFallbackGraph();
 
   // Write measurements
-  void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK);
+  void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK);
   void addOdometryMeasurement_(const DeltaMeasurement6D& delta);
   void addUnaryPoseMeasurement_(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                   const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                   const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                    const double positionUnaryNoise);
   void addGnssHeadingMeasurement_(const double yaw, const double gnssTimeK, const double rate, const double yawUnaryNoise);
 
   // Publish
-  virtual void publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+  virtual void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                              const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) = 0;
 
   // Get Parameters
@@ -70,7 +70,7 @@ class CompslamSeInterface {
   std::thread publishStateThread_;
 
   // Functions
-  void publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+  void publishStateAndMeasureTime_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                                    const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I);
 };
 
