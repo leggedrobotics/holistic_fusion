@@ -58,7 +58,7 @@ void CompslamEstimator::imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuM
 
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  compslam_se::CompslamSeInterface::addImuMeasurement_(linearAcc, angularVel, imuMsgPtr->header.stamp);
+  compslam_se::CompslamSeInterface::addImuMeasurement_(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec());
 
   // Last time
   lastTime__ = imuMsgPtr->header.stamp;
@@ -130,7 +130,7 @@ void CompslamEstimator::imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuMs
   }
 }
 
-void CompslamEstimator::publishState_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+void CompslamEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                                       const Eigen::Vector3d& Ic_v_W_Ic, const Eigen::Vector3d& I_w_W_I) {
   // Used transforms
   tf::Transform tf_T_I_L = staticTransformsPtr_->T_L_I().inverse();
@@ -146,7 +146,7 @@ void CompslamEstimator::publishState_(ros::Time imuTimeK, const Eigen::Matrix4d&
   nav_msgs::OdometryPtr odomLidarMsgPtr(new nav_msgs::Odometry);
   odomLidarMsgPtr->header.frame_id = staticTransformsPtr_->getOdomFrame();
   odomLidarMsgPtr->child_frame_id = staticTransformsPtr_->getLidarFrame();
-  odomLidarMsgPtr->header.stamp = imuTimeK;
+  odomLidarMsgPtr->header.stamp = ros::Time(imuTimeK);
   tf::poseTFToMsg(tf_T_O_L, odomLidarMsgPtr->pose.pose);
   pubOdometryLidar_.publish(odomLidarMsgPtr);
 
@@ -167,7 +167,7 @@ void CompslamEstimator::publishState_(ros::Time imuTimeK, const Eigen::Matrix4d&
   nav_msgs::OdometryPtr worldLidarMsgPtr(new nav_msgs::Odometry);
   worldLidarMsgPtr->header.frame_id = staticTransformsPtr_->getMapFrame();
   worldLidarMsgPtr->child_frame_id = staticTransformsPtr_->getLidarFrame();
-  worldLidarMsgPtr->header.stamp = imuTimeK;
+  worldLidarMsgPtr->header.stamp = ros::Time(imuTimeK);
   tf::poseTFToMsg(tf_T_W_L, worldLidarMsgPtr->pose.pose);
   pubWorldLidar_.publish(worldLidarMsgPtr);
 
@@ -175,7 +175,7 @@ void CompslamEstimator::publishState_(ros::Time imuTimeK, const Eigen::Matrix4d&
   nav_msgs::OdometryPtr worldImuMsgPtr(new nav_msgs::Odometry);
   worldImuMsgPtr->header.frame_id = staticTransformsPtr_->getMapFrame();
   worldImuMsgPtr->child_frame_id = staticTransformsPtr_->getImuFrame();
-  worldImuMsgPtr->header.stamp = imuTimeK;
+  worldImuMsgPtr->header.stamp = ros::Time(imuTimeK);
   tf::Pose tf_T_W_Ik = compslam_se::matrix4ToTf(T_W_O * T_O_Ik);
   tf::poseTFToMsg(tf_T_W_Ik, worldImuMsgPtr->pose.pose);
   pubWorldImu_.publish(worldImuMsgPtr);
