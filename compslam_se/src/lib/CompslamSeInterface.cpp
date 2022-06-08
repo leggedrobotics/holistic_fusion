@@ -47,8 +47,7 @@ void CompslamSeInterface::activateFallbackGraph() {
  * @param angX the rotation angle around the x-axis
  * @param angY the rotation angle around the y-axis
  */
-void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
-                                             const ros::Time& imuTimeK) {
+void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK) {
   static int imuCabinCallbackCounter__ = -1;
 
   ++imuCabinCallbackCounter__;
@@ -76,7 +75,7 @@ void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& odom
 }
 
 void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                                      const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                                      const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                                       const double positionUnaryNoise) {
   compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
@@ -86,7 +85,7 @@ void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const dou
   compslamSePtr_->addGnssHeadingMeasurement(yaw, gnssTimeK, rate, yawUnaryNoise);
 }
 
-void CompslamSeInterface::publishStateAndMeasureTime_(ros::Time imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
+void CompslamSeInterface::publishStateAndMeasureTime_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                                                       const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) {
   // Define variables for timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;

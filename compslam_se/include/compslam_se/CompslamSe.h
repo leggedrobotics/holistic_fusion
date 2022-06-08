@@ -61,14 +61,14 @@ class CompslamSe {
   void activateFallbackGraph();
 
   // Adderfunctions
-  bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
+  bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                          std::shared_ptr<InterfacePrediction>& predictionPtr);
   void addOdometryMeasurement(const DeltaMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                               const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                  const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                  const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                   double positionUnaryNoise);
   void addGnssHeadingMeasurement(const double yaw, const double gnssTimeK, const double rate, double headingUnaryNoise);
 
@@ -82,9 +82,9 @@ class CompslamSe {
   // Methods -------------
   /// Worker functions
   //// Set Imu Attitude
-  bool alignImu_(const ros::Time& imuTimeK);
+  bool alignImu_();
   //// Initialize the graph
-  void initGraph_(const ros::Time& timeStamp_k);
+  void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
 
@@ -122,9 +122,9 @@ class CompslamSe {
   bool gnssCovarianceViolatedFlag_ = false;
 
   /// Times
-  ros::Time compslamTimeK_;
-  ros::Time imuTimeKm1_;
-  ros::Time imuTimeK_;
+  double compslamTimeK_;
+  double imuTimeKm1_;
+  double imuTimeK_;
   double imuTimeOffset_ = 0.0;
 
   /// Transformations

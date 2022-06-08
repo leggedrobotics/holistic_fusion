@@ -115,7 +115,7 @@ bool CompslamSe::initYawAndPosition(Eigen::Matrix4d T_O_I) {
 
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
-bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const ros::Time& imuTimeK,
+bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                    std::shared_ptr<InterfacePrediction>& predictionPtr) {
   // Static Members
   /// Prediction
@@ -131,28 +131,28 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   ++imuCabinCallbackCounter__;
 
   // Set IMU time
-  const ros::Time imuTimeKm1 = imuTimeKm1_;
   imuTimeK_ = imuTimeK;
 
   // Filter out imu messages with same time stamp
-  if (imuTimeK == imuTimeKm1_) {
-    ROS_WARN_STREAM("Imu time " << imuTimeK << " was repeated.");
-    return false;
-  } else {
+  if (std::abs(imuTimeK - imuTimeKm1_) < 1e-8) {
+    std::cout << YELLOW_START << " CompslamSe" << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated."
+              << COLOR_END << std::endl;
     imuTimeKm1_ = imuTimeK;
+    return false;
   }
+  imuTimeKm1_ = imuTimeK;
 
   // Loop variables
   gtsam::NavState T_W_Ik;
   bool relocalizationFlag = false;
 
   // Add measurement to buffer
-  graphMgrPtr_->addToIMUBuffer(imuTimeK.toSec(), linearAcc, angularVel);
+  graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
 
   // If IMU not yet gravity aligned
   if (!alignedImuFlag_) {
     // Try to align
-    if (alignImu_(imuTimeK)) {
+    if (alignImu_()) {
       gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch_, imuAttitudeRoll_);
       T_O_Ik__ = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0)).matrix();
       I_v_W_I__ = gtsam::Velocity3(0.0, 0.0, 0.0);
@@ -186,7 +186,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
   // Normal operation
   else {
     // Add IMU factor and get propagated state
-    T_W_Ik = graphMgrPtr_->addImuFactorAndGetState(imuTimeK.toSec(), linearAcc, angularVel, relocalizationFlag);
+    T_W_Ik = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, linearAcc, angularVel, relocalizationFlag);
     imuAttitudeRoll_ = T_W_Ik.pose().rotation().roll();
     imuAttitudePitch_ = T_W_Ik.pose().rotation().pitch();
 
@@ -208,7 +208,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
 
   // Write information to global variable
   tf_T_W_Ik_.setData(pose3ToTf(T_W_Ik.pose()));
-  tf_T_W_Ik_.stamp_ = imuTimeK;
+  tf_T_W_Ik_.stamp_ = ros::Time(imuTimeK);
 
   // Publish
   predictionPtr = std::make_shared<InterfacePrediction>(T_W_O__, T_O_Ik__, I_v_W_I__, I_w_W_I__);
@@ -288,7 +288,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
 }
 
 void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                            const Eigen::Vector3d& covarianceXYZ, const ros::Time& gnssTimeK, const double rate,
+                                            const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                             double positionUnaryNoise) {
   // Read covariance
   bool gnssCovarianceViolatedFlag = covarianceXYZ(0) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
@@ -325,7 +325,7 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
     }
-    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK.toSec(), rate, positionUnaryNoise, W_t_W_I);
+    graphMgrPtr_->addGnssPositionUnaryFactor(gnssTimeK, rate, positionUnaryNoise, W_t_W_I);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -342,22 +342,22 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   /// Left
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
-  pose.header.stamp = gnssTimeK;
+  pose.header.stamp = ros::Time(gnssTimeK);
   pose.pose.position.x = position(0);
   pose.pose.position.y = position(1);
   pose.pose.position.z = position(2);
   leftGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-  leftGnssPathPtr_->header.stamp = gnssTimeK;
+  leftGnssPathPtr_->header.stamp = ros::Time(gnssTimeK);
   leftGnssPathPtr_->poses.push_back(pose);
   pubLeftGnssPath_.publish(leftGnssPathPtr_);
   /// Right
   pose.header.frame_id = staticTransformsPtr_->getMapFrame();
-  pose.header.stamp = gnssTimeK;
+  pose.header.stamp = ros::Time(gnssTimeK);
   pose.pose.position.x = position(0);  // + tf_T_C_GR.getOrigin().x();
   pose.pose.position.y = position(1);  // + tf_T_C_GR.getOrigin().y();
   pose.pose.position.z = position(2);  // + tf_T_C_GR.getOrigin().z();
   rightGnssPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-  rightGnssPathPtr_->header.stamp = gnssTimeK;
+  rightGnssPathPtr_->header.stamp = ros::Time(gnssTimeK);
   rightGnssPathPtr_->poses.push_back(pose);
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
@@ -377,7 +377,7 @@ void CompslamSe::addGnssHeadingMeasurement(const double attitude_W_I, const doub
 }
 
 /// Worker Functions -----------------------
-bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
+bool CompslamSe::alignImu_() {
   gtsam::Rot3 imuAttitude;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
@@ -394,7 +394,7 @@ bool CompslamSe::alignImu_(const ros::Time& imuTimeK) {
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
-void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
+void CompslamSe::initGraph_(const double timeStamp_k) {
   // Calculate initial attitude;
   gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
   // gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
@@ -415,7 +415,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   T_W_I0 = gtsam::Pose3(R_W_I0, globPosition_W_I0_);
 
   /// Initialize graph node
-  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k.toSec(), T_W_I0);
+  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
   if (graphConfigPtr_->usingGnssFlag && usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
@@ -430,7 +430,7 @@ void CompslamSe::initGraph_(const ros::Time& timeStamp_k) {
   // Initialize global pose
   tf_T_W_Ik_.setData(tf_T_W_I0_);
   tf_T_W_Ik_.frame_id_ = staticTransformsPtr_->getMapFrame();
-  tf_T_W_Ik_.stamp_ = timeStamp_k;
+  tf_T_W_Ik_.stamp_ = ros::Time(timeStamp_k);
   // Set flag
   initedGraphFlag_ = true;
 }
@@ -493,7 +493,7 @@ void CompslamSe::optimizeGraph_() {
       // Publish IMU Bias after update of graph
       sensor_msgs::Imu imuBiasMsg;
       imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuFrame();
-      imuBiasMsg.header.stamp = compslamTimeK_;
+      imuBiasMsg.header.stamp = ros::Time(compslamTimeK_);
       imuBiasMsg.linear_acceleration.x = graphMgrPtr_->getIMUBias().accelerometer()(0);
       imuBiasMsg.linear_acceleration.y = graphMgrPtr_->getIMUBias().accelerometer()(1);
       imuBiasMsg.linear_acceleration.z = graphMgrPtr_->getIMUBias().accelerometer()(2);
