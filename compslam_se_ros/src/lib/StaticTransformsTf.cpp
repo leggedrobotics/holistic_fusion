@@ -5,6 +5,7 @@
 // Workspace
 #include "compslam_se_ros/extrinsics/StaticTransformsTf.h"
 
+
 namespace compslam_se {
 
 StaticTransformsTf::StaticTransformsTf(ros::NodeHandle& privateNode) {
@@ -20,9 +21,8 @@ void StaticTransformsTf::findTransformations() {
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Waiting for transform for 10 seconds.";
   listener_.waitForTransform(lidarFrame_, imuFrame_, ros::Time(0), ros::Duration(10.0));
   listener_.lookupTransform(lidarFrame_, imuFrame_, ros::Time(0), transform);
-  tf_T_L_I_ = tf::Transform(transform);
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Transform L_I: " << tf_T_L_I_.getOrigin().getX() << ","
-            << tf_T_L_I_.getOrigin().getY() << "," << tf_T_L_I_.getOrigin().getZ() << std::endl;
+  tfToMatrix4(tf::Transform(transform), T_L_I_);
+  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Translation L_I: " << T_L_I_.block<3, 1>(0, 3) << std::endl;
 
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }

@@ -1,9 +1,7 @@
 #ifndef STATICTRANSFORMS_H
 #define STATICTRANSFORMS_H
 
-// ROS
-//#include <Eigen/Eigen>
-#include "tf/tf.h"
+#include <Eigen/Eigen>
 
 namespace compslam_se {
 
@@ -44,11 +42,11 @@ class StaticTransforms {
   std::string getRightGnssFrame() { return rightGnssFrame_; }
 
   /// Transformations
-  const tf::Transform& T_L_I() { return tf_T_L_I_; }
-  const tf::Transform& T_GnssL_I() { return tf_T_GnssL_I_; }
-  const tf::Transform& T_GnssR_I() { return tf_T_GnssR_I_; }
-  tf::Transform tf_T_C_I_;
-  const tf::Transform& T_C_I() { return tf_T_C_I_; }
+  const Eigen::Matrix4d& T_L_I() { return T_L_I_; }
+  const Eigen::Matrix4d& T_GnssL_I() { return T_GnssL_I_; }
+  const Eigen::Matrix4d& T_GnssR_I() { return T_GnssR_I_; }
+  Eigen::Matrix4d T_C_I_;
+  const Eigen::Matrix4d& T_C_I() { return T_C_I_; }
 
   // Functionality
   virtual void findTransformations() = 0;
@@ -64,9 +62,9 @@ class StaticTransforms {
   std::string rightGnssFrame_;
 
   // Transformations
-  tf::Transform tf_T_L_I_;
-  tf::Transform tf_T_GnssL_I_;
-  tf::Transform tf_T_GnssR_I_;
+  Eigen::Matrix4d T_L_I_;
+  Eigen::Matrix4d T_GnssL_I_;
+  Eigen::Matrix4d T_GnssR_I_;
 };
 
 }  // namespace compslam_se

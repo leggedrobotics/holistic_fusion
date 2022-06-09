@@ -19,7 +19,6 @@
 #include "compslam_se/CompslamSeInterface.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"
 #include "compslam_se_ros/GnssHandler.h"
-#include "compslam_se_ros/conversions.h"
 #include "compslam_se_ros/extrinsics/StaticTransformsTf.h"
 
 // Defined Macros

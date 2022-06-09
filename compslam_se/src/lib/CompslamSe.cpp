@@ -69,7 +69,7 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
                                     const std::string& frame2) {
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
-  gtsam::Rot3 yawR_W_I0 = yawR_W_frame1 * tfToPose3(staticTransformsPtr_->T_C_I()).rotation();
+  gtsam::Rot3 yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_C_I()).rotation();
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -83,9 +83,8 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
               << "." << COLOR_END << std::endl;
 
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
-    tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
     // Set Member Variables
-    globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_frame2, tf_q_W_I0);
+    globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_frame2, R_W_I0);
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
@@ -324,7 +323,7 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   // Case: GNSS is good --> Write to graph and perform logic
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
     // Position factor --> only use left GNSS
-    gtsam::Point3 W_t_W_I = transformLeftGnssPointToImuFrame_(position, tf_T_W_Ik_.getRotation());
+    gtsam::Point3 W_t_W_I = transformLeftGnssPointToImuFrame_(position, tfToPose3(tf_T_W_Ik_).rotation());
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
     }
@@ -369,7 +368,7 @@ void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_frame, const std::
                                            const double rate, double headingUnaryNoise) {
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame);
-  gtsam::Rot3 yawR_W_I0 = yawR_W_frame * tfToPose3(staticTransformsPtr_->T_C_I()).rotation();
+  gtsam::Rot3 yawR_W_I0 = yawR_W_frame * gtsam::Pose3(staticTransformsPtr_->T_C_I()).rotation();
 
   //  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
   //  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
@@ -516,23 +515,20 @@ void CompslamSe::optimizeGraph_() {
   }
 }
 
-gtsam::Vector3 CompslamSe::transformLeftGnssPointToImuFrame_(const gtsam::Point3& t_W_GnssL, const tf::Quaternion& tf_q_W_I) {
+gtsam::Vector3 CompslamSe::transformLeftGnssPointToImuFrame_(const gtsam::Point3& W_t_W_GnssL, const gtsam::Rot3& R_W_I) {
   /// Translation in robot frame
-  tf::Vector3 tf_W_t_W_GnssL(t_W_GnssL(0), t_W_GnssL(1), t_W_GnssL(2));
-  tf::Transform tf_T_GnssL_I = staticTransformsPtr_->T_GnssL_I();
-  tf::Vector3 tf_GnssL_t_GnssL_I = tf_T_GnssL_I.getOrigin();
+  Eigen::Matrix4d T_GnssL_I = staticTransformsPtr_->T_GnssL_I();
+  Eigen::Vector3d GnssL_t_GnssL_I = T_GnssL_I.block<3, 1>(0, 3);
   /// Global rotation
-  tf::Transform tf_T_I_GnssL = staticTransformsPtr_->T_GnssL_I().inverse();
-  tf::Quaternion tf_q_W_GnssL = tf_q_W_I * tf_T_I_GnssL.getRotation();
-  tf::Transform tf_R_W_GnssL = tf::Transform::getIdentity();
-  tf_R_W_GnssL.setRotation(tf_q_W_GnssL);
+  Eigen::Matrix4d T_I_GnssL = staticTransformsPtr_->T_GnssL_I();
+  gtsam::Rot3 R_W_GnssL = R_W_I * gtsam::Pose3(T_I_GnssL).rotation();
+
   /// Translation in global frame
-  tf::Vector3 tf_W_t_GnssL_I = tf_R_W_GnssL * tf_GnssL_t_GnssL_I;
+  Eigen::Vector3d W_t_GnssL_I = R_W_GnssL * GnssL_t_GnssL_I;
 
   /// Shift observed GNSS position to IMU frame (instead of GNSS antenna)
-  tf::Vector3 tf_W_t_W_I = tf_W_t_W_GnssL + tf_W_t_GnssL_I;
-
-  return gtsam::Vector3(tf_W_t_W_I.x(), tf_W_t_W_I.y(), tf_W_t_W_I.z());
+  gtsam::Vector3 W_t_W_I = W_t_W_GnssL + W_t_GnssL_I;
+  return W_t_W_I;
 }
 
 }  // namespace compslam_se
