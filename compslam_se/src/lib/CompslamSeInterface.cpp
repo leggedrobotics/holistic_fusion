@@ -24,8 +24,9 @@ bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
   return true;
 }
 
-bool CompslamSeInterface::initYawAndPosition_(const double yaw, const Eigen::Vector3d& position) {
-  return compslamSePtr_->initYawAndPosition(yaw, position);
+bool CompslamSeInterface::initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+                                              const std::string& frame2) {
+  return compslamSePtr_->initYawAndPosition(yaw_W_frame1, frame1, t_W_frame2, frame2);
 }
 
 bool CompslamSeInterface::initYawAndPosition_(Eigen::Matrix4d T_O_I) {
@@ -33,7 +34,7 @@ bool CompslamSeInterface::initYawAndPosition_(Eigen::Matrix4d T_O_I) {
 }
 
 bool CompslamSeInterface::areYawAndPositionInited_() {
-  return compslamSePtr_->areYawAndPositionInited();
+  return compslamSePtr_->yawAndPositionInited();
 }
 
 void CompslamSeInterface::activateFallbackGraph() {
@@ -80,9 +81,9 @@ void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& pos
   compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
 }
 
-void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw, const double gnssTimeK, const double rate,
-                                                     const double yawUnaryNoise) {
-  compslamSePtr_->addGnssHeadingMeasurement(yaw, gnssTimeK, rate, yawUnaryNoise);
+void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK,
+                                                     const double rate, const double yawUnaryNoise) {
+  compslamSePtr_->addGnssHeadingMeasurement(yaw_W_frame, frameName, gnssTimeK, rate, yawUnaryNoise);
 }
 
 void CompslamSeInterface::publishStateAndMeasureTime_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,

@@ -25,7 +25,8 @@ class CompslamSeInterface {
   bool setup_(ros::NodeHandle& node);
 
   // Required for initialization
-  bool initYawAndPosition_(const double yaw, const Eigen::Vector3d& position);
+  bool initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+                           const std::string& frame2);
   bool initYawAndPosition_(Eigen::Matrix4d T_O_I);
   bool areYawAndPositionInited_();
 
@@ -42,7 +43,8 @@ class CompslamSeInterface {
   void addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                    const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                    const double positionUnaryNoise);
-  void addGnssHeadingMeasurement_(const double yaw, const double gnssTimeK, const double rate, const double yawUnaryNoise);
+  void addGnssHeadingMeasurement_(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK, const double rate,
+                                  const double yawUnaryNoise);
 
   // Publish
   virtual void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,

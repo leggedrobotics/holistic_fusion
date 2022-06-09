@@ -52,7 +52,7 @@ bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, Stati
   return true;
 }
 
-bool CompslamSe::areYawAndPositionInited() {
+bool CompslamSe::yawAndPositionInited() {
   return foundInitialYawAndPositionFlag_;
 }
 
@@ -65,24 +65,27 @@ void CompslamSe::activateFallbackGraph() {
   }
 }
 
-bool CompslamSe::initYawAndPosition(const double globAttitude_W_I0, const Eigen::Vector3d& t_W_GnssL) {
+bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+                                    const std::string& frame2) {
+  // Transform yaw to imu frame
+  gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
+  gtsam::Rot3 yawR_W_I0 = yawR_W_frame1 * tfToPose3(staticTransformsPtr_->T_C_I()).rotation();
+
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
-  if (!alignedImuFlag_) {
+  if (not alignedImuFlag_) {
     std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
               << std::endl;
     return false;
-  }
-  if (!areYawAndPositionInited()) {
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of has been set to " << globAttitude_W_I0 << "."
-              << COLOR_END << std::endl;
-    gtsam::Rot3 yawR_W_I0 = gtsam::Rot3::Yaw(globAttitude_W_I0_);
-    // gtsam::Rot3 yawR_W_I0 = yawR_W_I0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
+  } else if (not yawAndPositionInited()) {
+    globAttitude_W_I0_ = yawR_W_I0.yaw();
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of imu in world has been set to " << globAttitude_W_I0_
+              << "." << COLOR_END << std::endl;
+
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     tf::Quaternion tf_q_W_I0 = pose3ToTf(gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0))).getRotation();
     // Set Member Variables
-    globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_GnssL, tf_q_W_I0);
-    globAttitude_W_I0_ = globAttitude_W_I0;
+    globPosition_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_frame2, tf_q_W_I0);
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
@@ -101,7 +104,7 @@ bool CompslamSe::initYawAndPosition(Eigen::Matrix4d T_O_I) {
               << std::endl;
     return false;
   }
-  if (!areYawAndPositionInited()) {
+  if (not yawAndPositionInited()) {
     globPosition_W_I0_ = T_O_Ik.translation();
     globAttitude_W_I0_ = T_O_Ik.rotation().yaw();
     foundInitialYawAndPositionFlag_ = true;
@@ -362,12 +365,17 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& position, con
   pubRightGnssPath_.publish(rightGnssPathPtr_);
 }
 
-void CompslamSe::addGnssHeadingMeasurement(const double attitude_W_I, const double gnssTimeK, const double rate, double headingUnaryNoise) {
+void CompslamSe::addGnssHeadingMeasurement(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK,
+                                           const double rate, double headingUnaryNoise) {
+  // Transform yaw to imu frame
+  gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame);
+  gtsam::Rot3 yawR_W_I0 = yawR_W_frame * tfToPose3(staticTransformsPtr_->T_C_I()).rotation();
+
   //  gtsam::Rot3 yawR_W_C = gtsam::Rot3::Yaw(yaw_W_C);
   //  gtsam::Rot3 yawR_W_I = yawR_W_C * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   //  double yaw_W_I = yawR_W_I.yaw();
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, attitude_W_I);
+    graphMgrPtr_->addGnssHeadingUnaryFactor(gnssTimeK, rate, headingUnaryNoise, yawR_W_I0.yaw());
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);

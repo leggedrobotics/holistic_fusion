@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>compslam_se</name>
   <version>0.0.0</version>
 
@@ -15,7 +15,7 @@
   <build_depend>eigen_conversions</build_depend>
   <build_depend>signal_logger</build_depend>
 
-  <run_depend>eigen_conversions</run_depend>
-  <run_depend>signal_logger</run_depend>
+  <exec_depend>eigen_conversions</exec_depend>
+  <exec_depend>signal_logger</exec_depend>
 
 </package>

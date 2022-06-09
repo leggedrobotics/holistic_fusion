@@ -53,9 +53,10 @@ class CompslamSe {
   bool setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
 
   // Required Initialization
-  bool initYawAndPosition(const double yaw, const Eigen::Vector3d& position);
+  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+                          const std::string& frame2);
   bool initYawAndPosition(Eigen::Matrix4d T_O_I);
-  bool areYawAndPositionInited();
+  bool yawAndPositionInited();
 
   // Graph Manipulation
   void activateFallbackGraph();
@@ -70,7 +71,8 @@ class CompslamSe {
   void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
                                   const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
                                   double positionUnaryNoise);
-  void addGnssHeadingMeasurement(const double yaw, const double gnssTimeK, const double rate, double headingUnaryNoise);
+  void addGnssHeadingMeasurement(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK, const double rate,
+                                 double headingUnaryNoise);
 
   // Getters
   bool getLogPlots() { return logPlots_; }

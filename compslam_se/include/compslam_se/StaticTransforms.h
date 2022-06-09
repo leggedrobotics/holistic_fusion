@@ -47,6 +47,8 @@ class StaticTransforms {
   const tf::Transform& T_L_I() { return tf_T_L_I_; }
   const tf::Transform& T_GnssL_I() { return tf_T_GnssL_I_; }
   const tf::Transform& T_GnssR_I() { return tf_T_GnssR_I_; }
+  tf::Transform tf_T_C_I_;
+  const tf::Transform& T_C_I() { return tf_T_C_I_; }
 
   // Functionality
   virtual void findTransformations() = 0;
