@@ -101,8 +101,8 @@ void CompslamEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPt
     return;
   }
 
-  // compslam_se::CompslamSeInterface::addOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
-  compslam_se::CompslamSeInterface::addUnaryPoseMeasurement_(*poseUnaryKPtr);
+  compslam_se::CompslamSeInterface::addOdometryMeasurement_(*odometryKm1Ptr__, *poseBetweenKPtr, poseBetweenNoise_);
+  // compslam_se::CompslamSeInterface::addUnaryPoseMeasurement_(*poseUnaryKPtr);
 
   if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || (secondsSinceStart_() > 15))) {
     std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
