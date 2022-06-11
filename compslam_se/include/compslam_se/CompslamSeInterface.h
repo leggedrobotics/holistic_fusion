@@ -35,7 +35,7 @@ class CompslamSeInterface {
   void activateFallbackGraph();
 
   // Write measurements
-  void addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK);
+  void addImuMeasurementAndPublishState_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK);
   void addOdometryMeasurement_(const DeltaMeasurement6D& delta);
   void addUnaryPoseMeasurement_(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,

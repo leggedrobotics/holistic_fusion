@@ -4,7 +4,7 @@
 
 // Workspace
 #include "compslam_se_ros/extrinsics/StaticTransformsTf.h"
-
+#include "compslam_se_ros/util/conversions.h"
 
 namespace compslam_se {
 

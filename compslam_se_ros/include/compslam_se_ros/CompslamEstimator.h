@@ -34,7 +34,6 @@ class CompslamEstimator : public CompslamSeInterface {
  private:
   // Callbacks
   void imuCabinCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
-  void imuBaseCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
 
   // Publish State

@@ -2,6 +2,7 @@
 #define STATICTRANSFORMS_H
 
 #include <Eigen/Eigen>
+#include <iostream>
 
 namespace compslam_se {
 

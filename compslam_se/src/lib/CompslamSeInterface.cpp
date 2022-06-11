@@ -48,7 +48,8 @@ void CompslamSeInterface::activateFallbackGraph() {
  * @param angX the rotation angle around the x-axis
  * @param angY the rotation angle around the y-axis
  */
-void CompslamSeInterface::addImuMeasurement_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK) {
+void CompslamSeInterface::addImuMeasurementAndPublishState_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
+                                                            const double imuTimeK) {
   static int imuCabinCallbackCounter__ = -1;
 
   ++imuCabinCallbackCounter__;

@@ -7,15 +7,6 @@
 #include <string_view>
 #include <thread>
 
-// ROS
-//#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-//#include <ros/node_handle.h>
-#include <sensor_msgs/Imu.h>
-#include <std_srvs/SetBool.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_datatypes.h>
-
 // Package
 #include "StaticTransforms.h"
 #include "compslam_se/GraphManager.hpp"
@@ -25,9 +16,6 @@
 #include "compslam_se/geometry/math_utils.h"
 #include "compslam_se/measurements/DeltaMeasurement6D.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"
-
-// Workspace
-#include "kindr/Core"
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -62,8 +50,10 @@ class CompslamSe {
   void activateFallbackGraph();
 
   // Adderfunctions
+  /// Return
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                          std::shared_ptr<InterfacePrediction>& predictionPtr);
+  /// No return
   void addOdometryMeasurement(const DeltaMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
   void addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
@@ -76,6 +66,10 @@ class CompslamSe {
 
   // Getters
   bool getLogPlots() { return logPlots_; }
+  void getLatestOptimizedState(Eigen::Matrix4d& optState, double& time) {
+    time = optTime_;
+    optState = T_W_I_opt_.matrix();
+  }
 
   // Log data
   void logSignals() { signalLogger_.~SignalLogger(); }
@@ -124,36 +118,34 @@ class CompslamSe {
   bool gnssCovarianceViolatedFlag_ = false;
 
   /// Times
-  double compslamTimeK_;
   double imuTimeKm1_;
-  double imuTimeK_;
   double imuTimeOffset_ = 0.0;
 
-  /// Transformations
-  tf::Transform tf_compslam_T_I0_O_;
-  tf::StampedTransform tf_T_W_Ik_;
-  tf::Transform tf_T_W_I0_;  // Initial IMU pose (in graph)
+  /// Transformations with timestamps
+  /// Pose
+  gtsam::Pose3 T_W_Ik_;
+  gtsam::Pose3 T_W_O_;
+  /// Velocity
+  gtsam::Vector3 I_v_W_I_;
+  gtsam::Vector3 I_w_W_I_;
+  /// Timestamp
+  double imuTimeK_;
+  /// Other
+  gtsam::Pose3 T_W_I0_;  // Initial IMU pose (in graph)
+  gtsam::Pose3 T_W_I_opt_;
+  double optTime_;
+
   /// Attitudes
   double gravityConstant_ = 9.81;  // Will be overwritten
-  double globAttitude_W_I0_;
-  Eigen::Vector3d globPosition_W_I0_;
+  double yaw_W_I0_;
+  gtsam::Vector3 W_t_W_I0_;
   double imuAttitudePitch_;
   double imuAttitudeRoll_;
 
   /// Publishers
-  ros::Publisher pubLaserImuBias_;
-  ros::Publisher pubOptimizationPath_;
-  ros::Publisher pubCompslamPath_;
-  ros::Publisher pubLeftGnssPath_;
-  ros::Publisher pubRightGnssPath_;
+
   ros::Publisher imuMultiplotPublisher_;
   ros::Publisher lidarMultiplotPublisher_;
-
-  /// Messages
-  nav_msgs::PathPtr optimizationPathPtr_;
-  nav_msgs::PathPtr compslamPathPtr_;
-  nav_msgs::PathPtr leftGnssPathPtr_;
-  nav_msgs::PathPtr rightGnssPathPtr_;
 
   // Signal Logger
   SignalLogger signalLogger_;

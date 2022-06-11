@@ -1,6 +1,8 @@
 #ifndef ELEMENTTOROOT_H
 #define ELEMENTTOROOT_H
 
+#include "tf/tf.h"
+
 namespace compslam_se {
 
 class ElementToRoot final {
