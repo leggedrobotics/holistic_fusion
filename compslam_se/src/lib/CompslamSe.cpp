@@ -52,7 +52,7 @@ void CompslamSe::activateFallbackGraph() {
   }
 }
 
-bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                     const std::string& frame2) {
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
@@ -71,7 +71,12 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
 
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     // Set Member Variables
-    W_t_W_I0_ = transformLeftGnssPointToImuFrame_(t_W_frame2, R_W_I0);
+    // TODO replace with actual frame setting
+    if (graphConfigPtr_->usingGnssFlag) {
+      W_t_W_I0_ = transformLeftGnssPointToImuFrame_(W_t_W_frame2, R_W_I0);
+    } else {
+      W_t_W_I0_ = W_t_W_frame2;
+    }
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
