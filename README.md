@@ -16,9 +16,13 @@ In contrast to classical filtering-based approaches this graph-based structure a
 delayed sensor measurements.
 
 This repository contains 3 packages:
+
 1. CompslamSE: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
+
 2. CompslamSERos: This can be understood as an example to run sensor fusion using the developed library.
+
 3. GTSAM_catkin (not yet provided).
+
 ## Dependencies
 ### CompslamSE
 CompslamSE only has two main dependencies: Eigen3 and GTSAM.
@@ -60,7 +64,9 @@ catkin build compslam_se_ros
 
 ## Example Usage
 In this repository we provide two examples for running the pipeline:
+
 1. IMU + GNSS + LiDAR Odometry, with dual-graph formulation, as presented in this accompanying [paper](https://arxiv.org/pdf/2203.01389.pdf).
+
 2. IMU + LiDAR Odometry on a dataset recorded on ANYmal robot, with only one single main graph.
 
 Both examples can be found in CompslamSeRos in the corresponding launch files.
@@ -75,11 +81,14 @@ For custom usage, such as the fusion of more sensor measurements, an own class w
 This class only has to inherit from the **CompslamSeInterface** base-class.
 
 For usage three functionalities have to be implemented by the user:
+
 1. (ROS)-callbacks or other code snippets can be used to add measurements through the given interface as 
 specified [here](compslam_se/include/compslam_se/CompslamSeInterface.h). Examples for this can be seen in 
 [CompslamSeRos](compslam_se_ros), where ROS subscribers are used to add the measurements to the graph.
+
 2. Furthermore, the purely virtual functions _publishState__ needs to be implemented. This method is called after each 
 arrival of an IMU measurement to publish the state in the desired format. 
+
 3. Lastly, _readParams__ is called during initialization, and is needed to load extrinsic parameters inside the 
 [StaticTransforms](compslam_se/include/compslam_se/StaticTransforms.h) required for coordinate transformations.
 
