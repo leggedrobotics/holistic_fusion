@@ -6,12 +6,12 @@ namespace compslam_se {
 
 // Public -------------------------------------------------------------------------------------
 CompslamSeInterface::CompslamSeInterface() {
-  std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Instance created." << COLOR_END << std::endl;
+  std::cout << BLUE_START << "CompslamSeInterface" << GREEN_START << " Instance created." << COLOR_END << std::endl;
 }
 
 // Protected ------------------------------------------------------------------------------------
 bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
-  std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  std::cout << BLUE_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   if (!graphConfigPtr_ || !staticTransformsPtr_) {
     std::runtime_error("CompslamSeInterface::setup_(): graphConfigPtr_ or staticTransformsPtr_ is not set.");
@@ -20,7 +20,7 @@ bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
   compslamSePtr_ = new CompslamSe();
   compslamSePtr_->setup(node, graphConfigPtr_, staticTransformsPtr_);
 
-  std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << BLUE_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
 }
 
@@ -102,7 +102,7 @@ void CompslamSeInterface::publishStateAndMeasureTime_(ros::Time imuTimeK, const 
   publishState_(imuTimeK, T_W_O, T_O_Ik, I_v_W_I, I_w_W_I);
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count() > (1e6 / graphConfigPtr_->imuRate / 2.0)) {
-    std::cout << YELLOW_START << "CSe-Interface" << RED_START << " Publishing state took "
+    std::cout << BLUE_START << "CSe-Interface" << YELLOW_START << " Publishing state took "
               << std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count()
               << " microseconds, which is slower than double IMU-rate (" << (1e6 / graphConfigPtr_->imuRate / 2.0) << " microseconds)."
               << COLOR_END << std::endl;
