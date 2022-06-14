@@ -1,27 +1,14 @@
-#ifndef MENZI_SIM_STATICTRANSFORMS_H
-#define MENZI_SIM_STATICTRANSFORMS_H
+#ifndef STATICTRANSFORMS_H
+#define STATICTRANSFORMS_H
 
-// ROS
-#include <urdf/model.h>
 #include <Eigen/Eigen>
-#include "tf/tf.h"
+#include <iostream>
 
 namespace compslam_se {
 
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
-
-class ElementToRoot final {
- public:
-  /// Constructor
-  explicit ElementToRoot(const tf::Transform& T, const std::string& rootName_, const std::string& elementName_)
-      : T_root_element(T), rootName(rootName_), elementName(elementName_) {}
-
-  tf::Transform T_root_element;  ///< The KDL segment
-  std::string rootName;          ///< The name of the root element to which this link is attached
-  std::string elementName;       ///< The name of the element
-};
 
 class StaticTransforms {
  public:
@@ -56,19 +43,17 @@ class StaticTransforms {
   std::string getRightGnssFrame() { return rightGnssFrame_; }
 
   /// Transformations
-  const tf::Transform& T_L_I() { return tf_T_L_I_; }
-  const tf::Transform& T_GnssL_I() { return tf_T_GnssL_I_; }
-  const tf::Transform& T_GnssR_I() { return tf_T_GnssR_I_; }
-
-  double BC_z_offset() { return BC_Z_offset_; }
+  const Eigen::Matrix4d& T_L_I() { return T_L_I_; }
+  const Eigen::Matrix4d& T_GnssL_I() { return T_GnssL_I_; }
+  const Eigen::Matrix4d& T_GnssR_I() { return T_GnssR_I_; }
+  Eigen::Matrix4d T_C_I_;
+  const Eigen::Matrix4d& T_C_I() { return T_C_I_; }
 
   // Functionality
   virtual void findTransformations() = 0;
 
  protected:
   // Names
-  /// Description
-  std::string urdfDescription_;
   /// Frames
   std::string mapFrame_;
   std::string odomFrame_;
@@ -77,23 +62,12 @@ class StaticTransforms {
   std::string leftGnssFrame_;
   std::string rightGnssFrame_;
 
-  // Robot Models
-  urdf::Model urdfModel_;
-
   // Transformations
-  tf::Transform tf_T_L_I_;
-  tf::Transform tf_T_GnssL_I_;
-  tf::Transform tf_T_GnssR_I_;
-
-  double BC_Z_offset_;
-
-  /// A map of dynamic segment names to SegmentPair structures
-  std::map<std::string, ElementToRoot> segments_;
-
-  /// A pointer to the parsed URDF model
-  std::unique_ptr<urdf::Model> model_;
+  Eigen::Matrix4d T_L_I_;
+  Eigen::Matrix4d T_GnssL_I_;
+  Eigen::Matrix4d T_GnssR_I_;
 };
 
 }  // namespace compslam_se
 
-#endif  // MENZI_SIM_STATICTRANSFORMS_H
+#endif  // STATICTRANSFORMS_H

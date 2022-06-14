@@ -1,9 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
-project(compslam_se)
+project(compslam_se_ros)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  roscpp
+  rospy
+  std_msgs
+  tf
+  tf_conversions
+  message_generation
+  std_srvs
+  nodelet
+  message_filters
   signal_logger
-  )
+  robot_utils
+  compslam_se
+  kdl_parser
+)
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
@@ -13,9 +28,8 @@ find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
 
-find_package(GTSAM REQUIRED)
-message("GTSAM version: ${GTSAM_VERSION}")
-message("GTSAM path: ${GTSAM_DIR}")
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 #generate_messages(
 #  DEPENDENCIES
@@ -24,7 +38,7 @@ message("GTSAM path: ${GTSAM_DIR}")
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS EIGEN3 GTSAM
+  DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -39,15 +53,23 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${GTSAM_INCLUDE_DIR}
+        ${PCL_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
 )
 
+# Library
 add_library(${PROJECT_NAME}
-  src/lib/CompslamSe.cpp
-  src/lib/CompslamSeInterface.cpp
-  src/lib/GraphManager.cpp
-  src/lib/ImuBuffer.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
+  src/lib/CompslamEstimator.cpp
+  src/lib/GnssHandler.cpp
+  src/lib/readParams.cpp
+  src/lib/StaticTransformsTf.cpp
+  src/lib/StaticTransformsUrdf.cpp
+)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+
+# Executable
+add_executable(${PROJECT_NAME}_node src/estimator_node.cpp)
+target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 

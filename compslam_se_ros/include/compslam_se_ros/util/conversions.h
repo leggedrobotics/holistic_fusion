@@ -1,6 +1,8 @@
 #ifndef MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 #define MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 
+#include <nav_msgs/Odometry.h>
+
 namespace compslam_se {
 
 inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {
@@ -43,6 +45,14 @@ inline void tfToMatrix4(const tf::Transform& tf_T, Eigen::Matrix4d& T) {
   T.setIdentity();
   T.block<3, 3>(0, 0) = q.matrix();
   T.block<3, 1>(0, 3) = t;
+}
+
+inline tf::Transform pose3ToTf(const Eigen::Matrix3d& T) {
+  Eigen::Quaterniond q(T);
+  tf::Transform tf_T;
+  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
+  tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
+  return tf_T;
 }
 
 }  // namespace compslam_se
