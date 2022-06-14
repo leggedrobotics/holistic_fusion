@@ -4,22 +4,16 @@
 
 * [GTSAM 4.0.3](https://github.com/borglab/gtsam/tree/4.0.3)
   * ```git clone git@github.com:borglab/gtsam.git```
+  * ```cd gtsam```
   * ```git checkout 4.0.3```
   * ```mkdir build && cd build```
-  * Local installation:```cmake -DCMAKE_INSTALL_PREFIX:PATH=$HOME/software/install ..```
-  * Install ccmake: ```sudo apt-get install cmake-curses-gui```
-  * ```ccmake .```
-  * Set following flags to:
-    * GTSAM_BUILD_WITH_MARCH_NATIVE = OFF
-    * GTSAM_POSE3_EXPMAP = ON
-    * GTSAM_ROT3_EXPMAP = ON
-    * GTSAM_USE_QUATERNIONS = ON
-    * GTSAM_USE_SYSTEM_EIGEN = ON
+  * ```cmake -DCMAKE_INSTALL_PREFIX:PATH=$HOME/.local -DCMAKE_BUILD_TYPE=Release -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON -DGTSAM_USE_QUATERNIONS=ON -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..```
   * configure previous settings and then run ```make -j12```
   * ```make install```
   * Before using your code add the following to your .bashrc-file:
-    * ```export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:$HOME/software/install```
-    * ```export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/software/install```
+    * ```export CMAKE_PREFIX_PATH=$HOME/.local/:$CMAKE_PREFIX_PATH```
+    * ```export LD_LIBRARY_PATH=$HOME/.local/lib/:$LD_LIBRARY_PATH```
+    * ```export LIBRARY_PATH=${LIBRARY_PATH}:${LD_LIBRARY_PATH}``` (this was needed, at least by MarcoT to find the gtsam libraries installed in `.local`)
 * Needs external LiDAR odometry:
   * Compslam
     * In catkin workspace:
@@ -44,4 +38,3 @@
 
 * Julian Nubert (nubertj@ethz.ch)
 * Shehryar Khattak
-
