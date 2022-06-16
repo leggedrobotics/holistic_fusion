@@ -6,7 +6,7 @@
 
 namespace compslam_se {
 
-CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& privateNode) {
+CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& privateNode) : privateNode_(privateNode) {
   std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Configurations
@@ -14,10 +14,12 @@ CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& pri
   staticTransformsPtr_ = new StaticTransformsTf(privateNode);
 
   // Get ROS params and set extrinsics
-  readParams_(privateNode);
+  readParams_();
   staticTransformsPtr_->findTransformations();
 
-  bool success = compslam_se::CompslamSeInterface::setup_(node);
+  if (not compslam_se::CompslamSeInterface::setup_()) {
+    throw std::runtime_error("CompslamSeInterface could not be initiallized");
+  }
 
   // Publishers
   pubOdometryImu_ = node.advertise<nav_msgs::Odometry>("/compslam_se/transform_odom_imu", ROS_QUEUE_SIZE);
@@ -123,19 +125,6 @@ void CompslamEstimator::publishState_(const double imuTimeK, const Eigen::Matrix
   // Pose
   Eigen::Matrix4d T_O_L = T_O_Ik * T_I_L;
   Eigen::Matrix4d T_W_L = T_W_O * T_O_L;
-
-  // Publish path for IMU frame
-  /// Pose
-  //  geometry_msgs::PoseStamped poseStamped;
-  //  poseStamped.header.frame_id = staticTransformsPtr_->getOdomFrame();
-  //  poseStamped.header.stamp = imuTimeK;
-  //  tf::poseTFToMsg(tf_T_O_L, poseStamped.pose);
-  //  /// Path
-  //  odomPathPtr_->header.frame_id = staticTransformsPtr_->getOdomFrame();
-  //  odomPathPtr_->header.stamp = imuTimeK;
-  //  odomPathPtr_->poses.push_back(poseStamped);
-  //  /// Publish
-  //  pubOdomPath_.publish(odomPathPtr_);
 
   // Publish odometry message for map->lidar with 100 Hz
   nav_msgs::OdometryPtr worldLidarMsgPtr(new nav_msgs::Odometry);

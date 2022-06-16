@@ -10,7 +10,7 @@ CompslamSeInterface::CompslamSeInterface() {
 }
 
 // Protected ------------------------------------------------------------------------------------
-bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
+bool CompslamSeInterface::setup_() {
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   if (!graphConfigPtr_ || !staticTransformsPtr_) {
@@ -18,7 +18,7 @@ bool CompslamSeInterface::setup_(ros::NodeHandle& node) {
   }
 
   compslamSePtr_ = new CompslamSe();
-  compslamSePtr_->setup(node, graphConfigPtr_, staticTransformsPtr_);
+  compslamSePtr_->setup(graphConfigPtr_, staticTransformsPtr_);
 
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;

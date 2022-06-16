@@ -1,8 +1,6 @@
 #ifndef COMPSLAM_SE_INTERFACE_H
 #define COMPSLAM_SE_INTERFACE_H
 
-#include <ros/node_handle.h>
-#include <ros/time.h>
 #include <Eigen/Eigen>
 #include <thread>
 
@@ -22,7 +20,7 @@ class CompslamSeInterface {
 
  protected:
   // Setup
-  bool setup_(ros::NodeHandle& node);
+  bool setup_();
 
   // Required for initialization
   bool initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
@@ -49,9 +47,6 @@ class CompslamSeInterface {
   // Publish
   virtual void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                              const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) = 0;
-
-  // Get Parameters
-  virtual void readParams_(const ros::NodeHandle& privateNode) = 0;
 
   // Data Manipulation
 

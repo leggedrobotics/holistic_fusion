@@ -6,9 +6,6 @@
 #include <mutex>
 #include <vector>
 
-// ROS
-#include <rosconsole/macros_generated.h>
-
 // GTSAM
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>

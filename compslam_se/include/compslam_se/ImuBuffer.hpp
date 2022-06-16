@@ -8,9 +8,6 @@
 // Eigen
 #include <Eigen/Dense>
 
-// ROS
-#include <ros/node_handle.h>
-
 // GTSAM
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
