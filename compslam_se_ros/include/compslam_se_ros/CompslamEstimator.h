@@ -41,7 +41,7 @@ class CompslamEstimator : public CompslamSeInterface {
                      const Eigen::Vector3d& I_w_W_I) override;
 
   // Commodity functions
-  void readParams_(const ros::NodeHandle& privateNode);
+  void readParams_();
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
@@ -50,6 +50,9 @@ class CompslamEstimator : public CompslamSeInterface {
 
   // Mutex
   std::mutex accessImuBaseMutex_;
+
+  // Node
+  ros::NodeHandle privateNode_;
 
   /// Subscribers
   ros::Subscriber subImu_;

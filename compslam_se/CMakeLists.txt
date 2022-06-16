@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(compslam_se)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  signal_logger
-  )
+)
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
@@ -24,7 +23,7 @@ message("GTSAM path: ${GTSAM_DIR}")
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS EIGEN3 GTSAM
+  DEPENDS
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )

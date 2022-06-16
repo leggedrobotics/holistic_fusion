@@ -9,7 +9,7 @@ CompslamSe::CompslamSe() {
 }
 
 /// Setup ------------
-bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr) {
+bool CompslamSe::setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr) {
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
@@ -26,10 +26,6 @@ bool CompslamSe::setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, Stati
   graphMgrPtr_->getIsamParamsReference().setEvaluateNonlinearError(graphConfigPtr_->evaluateNonlinearError);
   graphMgrPtr_->getIsamParamsReference().setCacheLinearizedFactors(graphConfigPtr_->cacheLinearizedFactors);
   graphMgrPtr_->getIsamParamsReference().setEnablePartialRelinearizationCheck(graphConfigPtr_->enablePartialRelinearizationCheck);
-
-  // Signal logger
-  signalLogger_.setup(node);
-  // signalLoggerGnss_.setup(node);
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&CompslamSe::optimizeGraph_, this);
@@ -397,16 +393,13 @@ void CompslamSe::initGraph_(const double timeStamp_k) {
 }
 
 void CompslamSe::optimizeGraph_() {
-  // Pose Stamped
-  geometry_msgs::PoseStamped T_W_C;
-  T_W_C.header.frame_id = staticTransformsPtr_->getMapFrame();
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
   // While loop
   std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Thread for updating graph is ready." << std::endl;
-  while (ros::ok()) {
+  while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
     {
@@ -437,7 +430,6 @@ void CompslamSe::optimizeGraph_() {
 
       long seconds = long(currentTime);
       long nanoseconds = long((currentTime - seconds) * 1e9);
-      signalLogger_.publishOptimizedPosition(seconds, nanoseconds, T_W_I_opt_);
 
       // tf_T_W_C = tf_T_W_I * staticTransformsPtr_->T_Ic_C();
       //      // Publish path of optimized poses

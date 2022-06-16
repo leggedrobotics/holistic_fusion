@@ -596,7 +596,8 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
   // Check
   if (closestGraphTimeKm1 > closestGraphTimeK) {
-    ROS_ERROR("Time at time step k-1 must be smaller than time at time step k.");
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Time at time step k-1 must be smaller than time at time step k."
+              << COLOR_END << std::endl;
     return false;
   }
 

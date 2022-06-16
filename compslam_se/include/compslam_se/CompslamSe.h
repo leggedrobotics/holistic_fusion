@@ -11,7 +11,6 @@
 #include "StaticTransforms.h"
 #include "compslam_se/GraphManager.hpp"
 #include "compslam_se/InterfacePrediction.h"
-#include "compslam_se/SignalLogger.h"
 #include "compslam_se/config/GraphConfig.h"
 #include "compslam_se/geometry/math_utils.h"
 #include "compslam_se/measurements/DeltaMeasurement6D.h"
@@ -34,11 +33,11 @@ class CompslamSe {
  public:
   // Constructor
   CompslamSe();
-  // Destructor --> log signals
-  ~CompslamSe() { signalLogger_.~SignalLogger(); };
+  // Destructor
+  ~CompslamSe(){};
 
   // Setup
-  bool setup(ros::NodeHandle& node, GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
+  bool setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
 
   // Required Initialization
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
@@ -70,9 +69,6 @@ class CompslamSe {
     time = optTime_;
     optState = T_W_I_opt_.matrix();
   }
-
-  // Log data
-  void logSignals() { signalLogger_.~SignalLogger(); }
 
  protected:
   // Methods -------------
@@ -141,15 +137,6 @@ class CompslamSe {
   gtsam::Vector3 W_t_W_I0_;
   double imuAttitudePitch_;
   double imuAttitudeRoll_;
-
-  /// Publishers
-
-  ros::Publisher imuMultiplotPublisher_;
-  ros::Publisher lidarMultiplotPublisher_;
-
-  // Signal Logger
-  SignalLogger signalLogger_;
-  SignalLoggerGnss signalLoggerGnss_;
 
   /// Counter
   long gnssCallbackCounter_ = 0;
