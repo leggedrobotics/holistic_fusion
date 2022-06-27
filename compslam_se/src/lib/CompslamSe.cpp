@@ -165,7 +165,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
 
     // Assign poses and velocities ---------------------------------------------------
     T_W_Ik_ = T_W_Ik_nav.pose();
-    I_v_W_I_ = T_W_Ik_nav.velocity();
+    I_v_W_I_ = T_W_Ik_nav.bodyVelocity();
     I_w_W_I_ = graphMgrPtr_->getIMUBias().correctGyroscope(angularVel);
     imuAttitudeRoll_ = T_W_Ik_.rotation().roll();
     imuAttitudePitch_ = T_W_Ik_.rotation().pitch();
