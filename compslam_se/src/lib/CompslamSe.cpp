@@ -222,7 +222,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
                                         const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
   // Static variables
   static bool lidarUnaryFactorInitialized__ = false;
-  static Eigen::Matrix4d T_O_Ij__;
+  static Eigen::Matrix4d T_I0_Ij__;
   static gtsam::Pose3 T_O_Ij_Graph__;
   static gtsam::Key lastDeltaMeasurementKey__;
 
@@ -233,7 +233,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
       /// Reset LiDAR Unary factor intiialization
       lidarUnaryFactorInitialized__ = false;
       // Write current compslam pose to latest delta pose
-      T_O_Ij__ = odometryK.measurementPose;
+      T_I0_Ij__ = odometryK.measurementPose;
     }  //
     else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
       if (!lidarUnaryFactorInitialized__) {
@@ -244,7 +244,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
         lidarUnaryFactorInitialized__ = true;
       }
       /// Delta pose
-      gtsam::Pose3 T_Ij_Ik(T_O_Ij__.inverse() * odometryK.measurementPose);
+      gtsam::Pose3 T_Ij_Ik(T_I0_Ij__.inverse() * odometryK.measurementPose);
       gtsam::Pose3 T_O_Ik = T_O_Ij_Graph__ * T_Ij_Ik;
       graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(odometryK.time, odometryK.rate, odometryK.measurementNoise, T_O_Ik);
     }
