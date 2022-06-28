@@ -42,19 +42,19 @@ void CompslamEstimator::readParams_() {
     ROS_WARN("CompslamSe - LiDAR frame not set");
   }
 
-  /// Left GNSS frame
+  /// Left Gnss frame
   if (privateNode_.getParam("extrinsics/leftGnssFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - left GNSS frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - left Gnss frame: " << sParam);
     staticTransformsPtr_->setLeftGnssFrame(sParam);
   } else {
-    ROS_WARN("CompslamSe - left GNSS frame not set");
+    ROS_WARN("CompslamSe - left Gnss frame not set");
   }
-  /// Right GNSS frame
+  /// Right Gnss frame
   if (privateNode_.getParam("extrinsics/rightGnssFrame", sParam)) {
-    ROS_INFO_STREAM("CompslamSe - right GNSS frame: " << sParam);
+    ROS_INFO_STREAM("CompslamSe - right Gnss frame: " << sParam);
     staticTransformsPtr_->setRightGnssFrame(sParam);
   } else {
-    ROS_WARN("CompslamSe - right GNSS frame not set");
+    ROS_WARN("CompslamSe - right Gnss frame not set");
   }
 
   // IMU gravity definition
@@ -89,7 +89,7 @@ void CompslamEstimator::readParams_() {
     lidarRate_ = dParam;
   }
   if (privateNode_.getParam("sensor_params/gnssRate", dParam)) {
-    ROS_INFO_STREAM("CompslamSe - GNSS rate: " << dParam);
+    ROS_INFO_STREAM("CompslamSe - Gnss rate: " << dParam);
     gnssLeftRate_ = dParam;
     gnssRightRate_ = dParam;
   }
@@ -164,7 +164,7 @@ void CompslamEstimator::readParams_() {
   } else {
     std::runtime_error("poseUnaryNoise needs to be set in config file.");
   }
-  /// GNSS
+  /// Gnss
   if (privateNode_.getParam("noise_params/gnssPositionUnaryNoise", dParam)) {
     ROS_WARN_STREAM("Set gnssPositionUnaryNoise to " << dParam);
     gnssPositionUnaryNoise_ = dParam;
@@ -227,18 +227,18 @@ void CompslamEstimator::readParams_() {
     logPlots_ = false;
   }
 
-  // Using GNSS
+  // Using Gnss
   if (privateNode_.getParam("launch/using_gps", bParam)) {
-    ROS_INFO_STREAM("FactorGraphFiltering - using GNSS: " << bParam);
+    ROS_INFO_STREAM("FactorGraphFiltering - using Gnss: " << bParam);
     graphConfigPtr_->usingGnssFlag = bParam;
   } else {
-    ROS_ERROR("FactorGraphFiltering - using GNSS not set.");
+    ROS_ERROR("FactorGraphFiltering - using Gnss not set.");
     throw std::runtime_error("Rosparam 'launch/using_gps' must be set.");
   }
-  // GNSS parameters
+  // Gnss parameters
   if (graphConfigPtr_->usingGnssFlag) {
     if (privateNode_.getParam("gnss/use_reference", bParam)) {
-      ROS_INFO("Using the GNSS reference is set to: %d", bParam);
+      ROS_INFO("Using the Gnss reference is set to: %d", bParam);
       gnssHandlerPtr_->usingGnssReferenceFlag = bParam;
     } else {
       std::runtime_error("Must set gnss/use_reference.");
@@ -247,25 +247,25 @@ void CompslamEstimator::readParams_() {
       ROS_INFO_STREAM("Reference latitude of the scene is given as: " << dParam);
       gnssHandlerPtr_->gnssReferenceLatitude = dParam;
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("GNSS reference latitude must be provided.");
+      std::runtime_error("Gnss reference latitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_longitude", dParam)) {
       ROS_INFO_STREAM("Reference longitude of the scene is given as: " << dParam);
       gnssHandlerPtr_->gnssReferenceLongitude = dParam;
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("GNSS reference longitude must be provided.");
+      std::runtime_error("Gnss reference longitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_altitude", dParam)) {
       ROS_INFO_STREAM("Reference altitude of the scene is given as: " << dParam);
       gnssHandlerPtr_->gnssReferenceAltitude = dParam;
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("GNSS reference altitude must be provided.");
+      std::runtime_error("Gnss reference altitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_heading", dParam)) {
       ROS_INFO_STREAM("Reference heading of the scene is given as: " << dParam);
       gnssHandlerPtr_->gnssReferenceHeading = dParam;
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("GNSS reference heading must be provided.");
+      std::runtime_error("Gnss reference heading must be provided.");
     }
   }
 }

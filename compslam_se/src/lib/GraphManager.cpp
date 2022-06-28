@@ -330,7 +330,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Print summary
   if (graphConfigPtr_->verboseLevel > 1) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
-              << ", GNSS position factor added to key " << closestKey << COLOR_END << std::endl;
+              << ", Gnss position factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
@@ -339,7 +339,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Print information
   if (graphConfigPtr_->verboseLevel > 2) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
-              << ", GNSS yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
+              << ", Gnss yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
   }
 
   // Find closest key in existing graph
@@ -375,7 +375,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Print summary
   if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
-              << " GNSS heading factor is added to key " << closestKey << COLOR_END << std::endl;
+              << " Gnss heading factor is added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 

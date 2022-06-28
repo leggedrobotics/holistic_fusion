@@ -83,7 +83,7 @@ class CompslamSe {
   /// Utility functions
   //// Geometric transformation to IMU in world frame
   gtsam::Vector3 transformLeftGnssPointToImuFrame_(const gtsam::Point3& t_W_GnssL, const gtsam::Rot3& R_W_I);
-  //// Get the robot heading from the two GNSS positions
+  //// Get the robot heading from the two Gnss positions
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
 
   // Threads

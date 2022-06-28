@@ -40,10 +40,10 @@ CompslamEstimator::CompslamEstimator(ros::NodeHandle& node, ros::NodeHandle& pri
   subLidarOdometry_ = node.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &CompslamEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized LiDAR Odometry subscriber." << std::endl;
-  // GNSS usage
+  // Gnss usage
   if (!graphConfigPtr_->usingGnssFlag) {
     std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
-              << " GNSS usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
+              << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
               << std::endl;
   }
 

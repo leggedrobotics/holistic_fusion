@@ -273,33 +273,33 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& W_t_W_frame, 
                                     covarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     covarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
   if (gnssCovarianceViolatedFlag && !gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS measurments now ABSENT due to too big covariance." << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss measurments now ABSENT due to too big covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = gnssCovarianceViolatedFlag;
   } else if (!gnssCovarianceViolatedFlag && gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS returned. Low covariance." << std::endl;
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss returned. Low covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = gnssCovarianceViolatedFlag;
   }
 
-  // GNSS jumping?
+  // Gnss jumping?
   double jumpingDistance = (W_t_W_frame_km1 - W_t_W_frame).norm();
   if (jumpingDistance < 1.0) {  // gnssOutlierThreshold_) {
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " GNSS was not jumping recently. Jumping counter valid again."
+      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again."
                 << std::endl;
     }
   } else {
     if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "CompslamSe" << RED_START << " GNSS was jumping: Distance is " << jumpingDistance
+      std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss was jumping: Distance is " << jumpingDistance
                 << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << std::endl;
     }
     gnssNotJumpingCounter_ = 0;
   }
 
-  // Case: GNSS is good --> Write to graph and perform logic
+  // Case: Gnss is good --> Write to graph and perform logic
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    // Position factor --> only use left GNSS
+    // Position factor --> only use left Gnss
     gtsam::Point3 W_t_W_I = transformLeftGnssPointToImuFrame_(W_t_W_frame, T_W_Ik_.rotation());
     if (graphMgrPtr_->getStateKey() == 0) {
       return;
@@ -312,7 +312,7 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& W_t_W_frame, 
     }
     graphMgrPtr_->activateGlobalGraph();
   }
-  // Case: GNSS is bad --> Do not write to graph, set flags for odometry unary factor to true
+  // Case: Gnss is bad --> Do not write to graph, set flags for odometry unary factor to true
   else if (usingFallbackGraphFlag_) {
     graphMgrPtr_->activateFallbackGraph();
   }
@@ -472,7 +472,7 @@ gtsam::Vector3 CompslamSe::transformLeftGnssPointToImuFrame_(const gtsam::Point3
   /// Translation in global frame
   Eigen::Vector3d W_t_GnssL_I = R_W_GnssL * GnssL_t_GnssL_I;
 
-  /// Shift observed GNSS position to IMU frame (instead of GNSS antenna)
+  /// Shift observed Gnss position to IMU frame (instead of Gnss antenna)
   gtsam::Vector3 W_t_W_I = W_t_W_GnssL + W_t_GnssL_I;
   return W_t_W_I;
 }

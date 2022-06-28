@@ -86,7 +86,7 @@ class CompslamEstimator : public CompslamSeInterface {
   double gnssPositionUnaryNoise_;
   double gnssHeadingUnaryNoise_;
 
-  /// GNSS
+  /// Gnss
   GnssHandler* gnssHandlerPtr_;
 };
 }  // namespace compslam_se

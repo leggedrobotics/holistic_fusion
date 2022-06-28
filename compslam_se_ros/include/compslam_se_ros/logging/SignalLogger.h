@@ -227,7 +227,7 @@ class SignalLogger {
 
 /////////////////////////////////////////////////
 
-// Signal logger for GNSS
+// Signal logger for Gnss
 class SignalLoggerGnss {
  public:
   // Constructor / Destructor
