@@ -23,7 +23,9 @@ namespace compslam_se {
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
+#define BLUE_START "\033[94m"
 #define COLOR_END "\033[0m"
+#define TIME_DEVIATION_FACTOR 3
 
 class ImuBuffer {
  public:

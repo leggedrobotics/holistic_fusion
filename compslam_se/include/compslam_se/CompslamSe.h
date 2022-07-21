@@ -35,6 +35,7 @@
 #define REQUIRED_GNSS_NUM_NOT_JUMPED 5
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
+#define BLUE_START "\033[94m"
 #define COLOR_END "\033[0m"
 
 namespace compslam_se {
