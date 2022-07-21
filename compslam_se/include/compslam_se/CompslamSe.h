@@ -32,7 +32,7 @@
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
-#define REQUIRED_GNSS_NUM_NOT_JUMPED 20
+#define REQUIRED_GNSS_NUM_NOT_JUMPED 5
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
