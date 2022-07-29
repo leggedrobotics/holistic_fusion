@@ -50,9 +50,17 @@ void CompslamSe::activateFallbackGraph() {
 
 bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                     const std::string& frame2) {
+  assert(frame1 == staticTransformsPtr_->getCabinFrame() || frame1 == staticTransformsPtr_->getLidarFrame());
+  assert(frame2 == staticTransformsPtr_->getLeftGnssFrame());  // frame will be ignored if gnss usage is set to false
+
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
-  gtsam::Rot3 yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_C_I()).rotation();
+  gtsam::Rot3 yawR_W_I0;
+  if (frame1 == staticTransformsPtr_->getCabinFrame()) {
+    yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_C_I()).rotation();
+  } else if (frame1 == staticTransformsPtr_->getLidarFrame()) {
+    yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_L_I()).rotation();
+  }
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -139,6 +147,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
     if (alignImu_()) {
       gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch_, imuAttitudeRoll_);
       T_W_Ik_ = gtsam::Pose3(R_W_I0, gtsam::Point3(0.0, 0.0, 0.0));
+      T_W_O_ = gtsam::Pose3();
       I_v_W_I_ = gtsam::Vector3(0.0, 0.0, 0.0);
       I_w_W_I_ = gtsam::Vector3(0.0, 0.0, 0.0);
       alignedImuFlag_ = true;
@@ -147,7 +156,7 @@ bool CompslamSe::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen
                 << std::endl;
       return false;
     }
-  } else if (!foundInitialYawAndPositionFlag_) {  // Gravity Aligned but not yaw-aligned
+  } else if (not yawAndPositionInited()) {  // Gravity Aligned but not yaw-aligned
     if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " IMU callback waiting for initialization of global yaw." << std::endl;
     }

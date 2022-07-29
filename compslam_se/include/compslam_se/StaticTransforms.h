@@ -28,19 +28,23 @@ class StaticTransforms {
 
   void setRightGnssFrame(const std::string& s) { rightGnssFrame_ = s; }
 
+  void setCabinFrame(const std::string& s) { cabinFrame_ = s; }
+
   // Getters
   /// Frames
-  std::string getMapFrame() { return mapFrame_; }
+  const std::string& getMapFrame() { return mapFrame_; }
 
-  std::string getOdomFrame() { return odomFrame_; }
+  const std::string& getOdomFrame() { return odomFrame_; }
 
-  std::string getImuFrame() { return imuFrame_; }
+  const std::string& getImuFrame() { return imuFrame_; }
 
-  std::string getLidarFrame() { return lidarFrame_; }
+  const std::string& getLidarFrame() { return lidarFrame_; }
 
-  std::string getLeftGnssFrame() { return leftGnssFrame_; }
+  const std::string& getLeftGnssFrame() { return leftGnssFrame_; }
 
-  std::string getRightGnssFrame() { return rightGnssFrame_; }
+  const std::string& getRightGnssFrame() { return rightGnssFrame_; }
+
+  const std::string& getCabinFrame() { return cabinFrame_; }
 
   /// Transformations
   const Eigen::Matrix4d& T_L_I() { return T_L_I_; }
@@ -61,6 +65,7 @@ class StaticTransforms {
   std::string lidarFrame_;
   std::string leftGnssFrame_;
   std::string rightGnssFrame_;
+  std::string cabinFrame_;
 
   // Transformations
   Eigen::Matrix4d T_L_I_;
