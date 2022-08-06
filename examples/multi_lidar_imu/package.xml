@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package>
+  <name>multi_lidar_imu</name>
+  <version>0.0.0</version>
+
+  <description>
+    State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry and GNSS estimates.
+  </description>
+
+  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <license>BSD</license>
+  <author email="nubertj@ethz.ch">Julian Nubert</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>compslam_se_ros</build_depend>
+
+  <run_depend>compslam_se_ros</run_depend>
+
+  <test_depend>rostest</test_depend>
+  <test_depend>rosbag</test_depend>
+
+</package>

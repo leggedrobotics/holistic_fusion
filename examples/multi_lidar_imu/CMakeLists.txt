@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(single_lidar_imu)
+project(multi_lidar_imu)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
   compslam_se_ros
@@ -24,7 +24,7 @@ add_definitions(${PCL_DEFINITIONS})
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
   DEPENDS EIGEN3 PCL
-  INCLUDE_DIRS
+  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
 
@@ -35,12 +35,21 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(
+        include
         ${catkin_INCLUDE_DIRS}
 )
 
+# Library
+add_library(${PROJECT_NAME}
+        src/lib/MultiOdomEstimator.cpp
+        )
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+
 # Executable
 add_executable(${PROJECT_NAME}_node src/estimator_node.cpp)
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
@@ -56,6 +65,16 @@ endif(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 #############
 ## Install ##
 #############
+
+install(TARGETS ${PROJECT_NAME}
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        )
+
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        )
 
 ## Mark cpp header files for installation
 install(DIRECTORY launch config rviz

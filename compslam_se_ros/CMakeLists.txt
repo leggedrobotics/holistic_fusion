@@ -33,7 +33,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS EIGEN3 PCL
+  DEPENDS EIGEN3
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -47,9 +47,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
-        ${GTSAM_INCLUDE_DIR}
-        ${PCL_INCLUDE_DIRS}
-        ${Python3_INCLUDE_DIRS}
 )
 
 # Library
@@ -86,9 +83,4 @@ install(TARGETS ${PROJECT_NAME}
 
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-)
-
-## Mark cpp header files for installation
-install(DIRECTORY ../examples/single_lidar_imu/launch config rviz
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

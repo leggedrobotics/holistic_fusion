@@ -1,4 +1,4 @@
-#include "CompslamEstimator.h"
+#include "compslam_se_ros/CompslamEstimator.h"
 
 namespace compslam_se {
 
