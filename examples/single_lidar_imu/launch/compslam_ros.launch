@@ -22,7 +22,7 @@
     <param name="use_sim_time" value="true"/>
 
     <!-- Node -->
-    <node pkg="compslam_se_ros" type="compslam_se_ros_node" name="estimator_node" output="screen" > <!-- launch-prefix="gdb -args"-->
+    <node pkg="single_lidar_imu" type="single_lidar_imu_node" name="estimator_node" output="screen" > <!-- launch-prefix="gdb -args"-->
         <!-- Launch Parameters -->
         <param name="launch/description_name" type="string" value="$(arg description_name)" />
         <param name="launch/imu_gravity_direction" type="string" value="$(arg imu_gravity_direction)" />

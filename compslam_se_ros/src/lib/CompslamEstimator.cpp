@@ -1,5 +1,5 @@
 // Implementation
-#include "compslam_se_ros/CompslamEstimator.h"
+#include "CompslamEstimator.h"
 
 // Workspace
 #include "compslam_se_ros/util/conversions.h"

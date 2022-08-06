@@ -5,7 +5,7 @@
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "compslam_se_ros/CompslamEstimator.h"
+#include "CompslamEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {

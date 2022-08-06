@@ -11,7 +11,7 @@
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
 
-namespace asop_se {
+namespace compslam_se {
 
 class GnssHandler {
  public:
@@ -51,6 +51,6 @@ class GnssHandler {
   double gnssReferenceHeading_;
 };
 
-}  // namespace asop_se
+}  // namespace compslam_se
 
 #endif  // GnssHandler_H

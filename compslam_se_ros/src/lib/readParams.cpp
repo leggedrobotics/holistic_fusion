@@ -1,4 +1,4 @@
-#include "compslam_se_ros/CompslamEstimator.h"
+#include "CompslamEstimator.h"
 
 namespace compslam_se {
 
@@ -154,7 +154,7 @@ void CompslamEstimator::readParams_() {
     poseBetweenNoise_ << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2], poseBetweenNoise[3], poseBetweenNoise[4],
         poseBetweenNoise[5];
   } else {
-    std::runtime_error("poseBetweenNoise needs to be set in config file.");
+    throw std::runtime_error("poseBetweenNoise needs to be set in config file.");
   }
   std::vector<double> poseUnaryNoise;  // roll,pitch,yaw,x,y,z
   if (privateNode_.getParam("noise_params/poseUnaryNoise", poseUnaryNoise)) {
@@ -162,20 +162,20 @@ void CompslamEstimator::readParams_() {
                                                << poseUnaryNoise[3] << "," << poseUnaryNoise[4] << "," << poseUnaryNoise[5]);
     poseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   } else {
-    std::runtime_error("poseUnaryNoise needs to be set in config file.");
+    throw std::runtime_error("poseUnaryNoise needs to be set in config file.");
   }
   /// Gnss
   if (privateNode_.getParam("noise_params/gnssPositionUnaryNoise", dParam)) {
     ROS_WARN_STREAM("Set gnssPositionUnaryNoise to " << dParam);
     gnssPositionUnaryNoise_ = dParam;
   } else {
-    std::runtime_error("gnssPositionUnaryNoise needs to be set in config file.");
+    throw std::runtime_error("gnssPositionUnaryNoise needs to be set in config file.");
   }
   if (privateNode_.getParam("noise_params/gnssHeadingUnaryNoise", dParam)) {
     ROS_WARN_STREAM("Set gnssHeadingUnaryNoise to " << dParam);
     gnssHeadingUnaryNoise_ = dParam;
   } else {
-    std::runtime_error("gnssHeadingUnaryNoise needs to be set in config file.");
+    throw std::runtime_error("gnssHeadingUnaryNoise needs to be set in config file.");
   }
 
   // Relinearization
@@ -241,31 +241,31 @@ void CompslamEstimator::readParams_() {
       ROS_INFO("Using the Gnss reference is set to: %d", bParam);
       gnssHandlerPtr_->usingGnssReferenceFlag = bParam;
     } else {
-      std::runtime_error("Must set gnss/use_reference.");
+      throw std::runtime_error("Must set gnss/use_reference.");
     }
     if (privateNode_.getParam("gnss/reference_latitude", dParam)) {
       ROS_INFO_STREAM("Reference latitude of the scene is given as: " << dParam);
-      gnssHandlerPtr_->gnssReferenceLatitude = dParam;
+      gnssHandlerPtr_->setGnssReferenceLatitude(dParam);
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("Gnss reference latitude must be provided.");
+      throw std::runtime_error("Gnss reference latitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_longitude", dParam)) {
       ROS_INFO_STREAM("Reference longitude of the scene is given as: " << dParam);
-      gnssHandlerPtr_->gnssReferenceLongitude = dParam;
+      gnssHandlerPtr_->setGnssReferenceLongitude(dParam);
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("Gnss reference longitude must be provided.");
+      throw std::runtime_error("Gnss reference longitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_altitude", dParam)) {
       ROS_INFO_STREAM("Reference altitude of the scene is given as: " << dParam);
-      gnssHandlerPtr_->gnssReferenceAltitude = dParam;
+      gnssHandlerPtr_->setGnssReferenceAltitude(dParam);
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("Gnss reference altitude must be provided.");
+      throw std::runtime_error("Gnss reference altitude must be provided.");
     }
     if (privateNode_.getParam("gnss/reference_heading", dParam)) {
       ROS_INFO_STREAM("Reference heading of the scene is given as: " << dParam);
-      gnssHandlerPtr_->gnssReferenceHeading = dParam;
+      gnssHandlerPtr_->setGnssReferenceHeading(dParam);
     } else if (gnssHandlerPtr_->usingGnssReferenceFlag) {
-      std::runtime_error("Gnss reference heading must be provided.");
+      throw std::runtime_error("Gnss reference heading must be provided.");
     }
   }
 }

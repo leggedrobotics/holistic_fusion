@@ -1,18 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
-project(compslam_se_ros)
+project(single_lidar_imu)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
-  roscpp
-  std_msgs
-  tf
-  message_generation
-  std_srvs
-  message_filters
-  compslam_se
-  kdl_parser
+  compslam_se_ros
 )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -52,16 +42,9 @@ include_directories(
         ${Python3_INCLUDE_DIRS}
 )
 
-# Library
-add_library(${PROJECT_NAME}
-  src/lib/CompslamEstimator.cpp
-  src/lib/readParams.cpp
-  src/lib/StaticTransformsTf.cpp
-  src/lib/StaticTransformsUrdf.cpp
-)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+# Executable
+add_executable(${PROJECT_NAME}_node src/estimator_node.cpp)
+target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
 
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
@@ -78,17 +61,7 @@ endif(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 ## Install ##
 #############
 
-install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-)
-
 ## Mark cpp header files for installation
-install(DIRECTORY ../examples/single_lidar_imu/launch config rviz
+install(DIRECTORY launch config rviz
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
