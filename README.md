@@ -31,7 +31,7 @@ Just make sure you have the Eigen3-headers.
 * Clone and Checkout:
 ```bash
 git clone git@github.com:borglab/gtsam.git
-cd gtsam`
+cd gtsam
 git checkout 4.1.1
 mkdir build && cd build
 ```
