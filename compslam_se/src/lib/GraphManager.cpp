@@ -25,10 +25,10 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
   imuParamsPtr_->setIntegrationCovariance(
       gtsam::Matrix33::Identity(3, 3) *
       graphConfigPtr_->integrationNoiseDensity);  // error committed in integrating position from velocities
-  imuParamsPtr_->setUse2ndOrderCoriolis(false);
+  // imuParamsPtr_->setUse2ndOrderCoriolis(false);
   /// Rotation
   imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity);
-  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1e-4, 1e-4, 1e-4));
+  // imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1e-4, 1e-4, 1e-4));
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
@@ -97,14 +97,20 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                                                                          isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
   globalGraphPtr_->params().print("Factor Graph Parameters of global graph.");
   /// Add prior factor to graph and update
-  globalGraphPtr_->update(globalFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
+  if (graphConfigPtr_->useIsam) {
+    globalGraphPtr_->update(globalFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
+  } else {
+    throw std::runtime_error("Optimizer has to be ISAM at this stage.");
+  }
 
   // Fallback Graph
   fallbackGraphPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
                                                                            isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
   fallbackGraphPtr_->params().print("Factor Graph Parameters of global graph.");
   /// Add prior factor to graph and update
-  fallbackGraphPtr_->update(fallbackFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
+  if (graphConfigPtr_->useIsam) {
+    fallbackGraphPtr_->update(fallbackFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
+  }
 
   globalFactorsBuffer_.resize(0);
   fallbackFactorsBuffer_.resize(0);
@@ -506,11 +512,15 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
 
     // Perform update
     if ((activeGraphPtr_ == globalGraphPtr_)) {
-      activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+      if (graphConfigPtr_->useIsam) {
+        activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+      }
     } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
       try {
-        activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-        globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+        if (graphConfigPtr_->useIsam) {
+          activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+          globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+        }
       } catch (const std::exception& e) {
         std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
                   << " Exception was thrown while optimizing the global graph. Continuing, since fallback graph is active." << COLOR_END
@@ -520,7 +530,9 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
 
     // Additional iterations
     for (size_t itr = 0; itr < graphConfigPtr_->additionalIterations; ++itr) {
-      activeGraphPtr_->update();
+      if (graphConfigPtr_->useIsam) {
+        activeGraphPtr_->update();
+      }
     }
     /// Timing 3
     endLoopTime = std::chrono::high_resolution_clock::now();
@@ -531,8 +543,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
 
     // Compute result
     startLoopTime = std::chrono::high_resolution_clock::now();
-    resultNavState = calculateStateAtKey(currentKey);
-    resultBias = activeGraphPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
+    if (graphConfigPtr_->useIsam) {
+      resultNavState = calculateStateAtKey(currentKey);
+      resultBias = activeGraphPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
+    }
 
     // Increase counter
     ++numOptimizationsSinceGraphSwitching_;
@@ -565,9 +579,13 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
 }
 
 gtsam::NavState GraphManager::calculateStateAtKey(const gtsam::Key& key) {
-  auto resultPose =
-      activeGraphPtr_->calculateEstimate<gtsam::Pose3>(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
-  auto resultVelocity = activeGraphPtr_->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
+  gtsam::Pose3 resultPose;
+  gtsam::Vector3 resultVelocity;
+  if (graphConfigPtr_->useIsam) {
+    resultPose =
+        activeGraphPtr_->calculateEstimate<gtsam::Pose3>(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
+    resultVelocity = activeGraphPtr_->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
+  }
   return gtsam::NavState(resultPose, resultVelocity);
 }
 
