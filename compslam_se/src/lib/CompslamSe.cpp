@@ -440,31 +440,7 @@ void CompslamSe::optimizeGraph_() {
       optTime_ = currentTime;
 
       long seconds = long(currentTime);
-      long nanoseconds = long((currentTime - seconds) * 1e9);
 
-      // tf_T_W_C = tf_T_W_I * staticTransformsPtr_->T_Ic_C();
-      //      // Publish path of optimized poses
-      //      /// Pose
-      //      T_W_C.header.stamp = compslamTimeK_;
-      //      tf::poseTFToMsg(tf_T_W_C, T_W_C.pose);
-      //      /// Path
-      //      optimizationPathPtr_->header.frame_id = staticTransformsPtr_->getMapFrame();
-      //      optimizationPathPtr_->header.stamp = compslamTimeK_;
-      //      optimizationPathPtr_->poses.push_back(T_W_C);
-      //      /// Publish
-      //      pubOptimizationPath_.publish(optimizationPathPtr_);
-
-      // Publish IMU Bias after update of graph
-      //      sensor_msgs::Imu imuBiasMsg;
-      //      imuBiasMsg.header.frame_id = staticTransformsPtr_->getImuFrame();
-      //      imuBiasMsg.header.stamp = ros::Time(compslamTimeK_);
-      //      imuBiasMsg.linear_acceleration.x = graphMgrPtr_->getIMUBias().accelerometer()(0);
-      //      imuBiasMsg.linear_acceleration.y = graphMgrPtr_->getIMUBias().accelerometer()(1);
-      //      imuBiasMsg.linear_acceleration.z = graphMgrPtr_->getIMUBias().accelerometer()(2);
-      //      imuBiasMsg.angular_velocity.x = graphMgrPtr_->getIMUBias().gyroscope()(0);
-      //      imuBiasMsg.angular_velocity.y = graphMgrPtr_->getIMUBias().gyroscope()(1);
-      //      imuBiasMsg.angular_velocity.z = graphMgrPtr_->getIMUBias().gyroscope()(2);
-      //      pubLaserImuBias_.publish(imuBiasMsg);
     }  // else just sleep for a short amount of time before polling again
     else {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));

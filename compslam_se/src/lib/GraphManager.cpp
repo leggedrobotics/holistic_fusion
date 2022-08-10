@@ -505,10 +505,11 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
     // Perform update
-    activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-    // If fallback, also optimize global (if possible)
-    if (activeGraphPtr_ == fallbackGraphPtr_) {
+    if ((activeGraphPtr_ == globalGraphPtr_)) {
+      activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+    } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
       try {
+        activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
         globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
       } catch (const std::exception& e) {
         std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
