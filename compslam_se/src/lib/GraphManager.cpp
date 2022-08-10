@@ -20,20 +20,25 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
     throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
   }
   // Set noise and bias parameters
-  imuParamsPtr_->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accNoiseDensity;
-  imuParamsPtr_->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk;
-  imuParamsPtr_->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity;
-  imuParamsPtr_->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk;
-  imuParamsPtr_->integrationCovariance =
+  /// Position
+  imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accNoiseDensity);
+  imuParamsPtr_->setIntegrationCovariance(
       gtsam::Matrix33::Identity(3, 3) *
-      graphConfigPtr_->integrationNoiseDensity;  // error committed in integrating position from velocities
-  imuParamsPtr_->biasAccOmegaInt =
-      gtsam::Matrix66::Identity(6, 6) * graphConfigPtr_->biasAccOmegaPreint;  // covariance of bias used for preintegration
-  gtsam::Vector3 accBiasPrior(graphConfigPtr_->accBiasPrior);
+      graphConfigPtr_->integrationNoiseDensity);  // error committed in integrating position from velocities
+  imuParamsPtr_->setUse2ndOrderCoriolis(false);
+  /// Rotation
+  imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity);
+  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1e-4, 1e-4, 1e-4));
+  /// Bias
+  imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
+  imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
+  imuParamsPtr_->setBiasAccOmegaInt(gtsam::Matrix66::Identity(6, 6) *
+                                    graphConfigPtr_->biasAccOmegaPreint);  // covariance of bias used for preintegration
+
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior, graphConfigPtr_->gyroBiasPrior);
 
-  // Init preintegrators
+  // Init Pre-integrators
   imuBufferPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
   imuStepPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
   imuParamsPtr_->print("IMU Preintegration Parameters:");
@@ -73,7 +78,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMap);
 
   // Initialize both graphs
-  /// Initial global factors
+  /// Global Factors
   globalFactorsBuffer_.resize(0);
   globalFactorsBuffer_.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
       gtsam::symbol_shorthand::X(stateKey_), initialPose,
@@ -83,32 +88,25 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   globalFactorsBuffer_.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(stateKey_),
                                                                                         *imuBiasPriorPtr_,
                                                                                         priorBiasNoise);  // BIAS
-  /// Initial fallback factors
-  fallbackFactorsBuffer_.resize(0);
-  fallbackFactorsBuffer_.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
-      gtsam::symbol_shorthand::X(stateKey_), initialPose,
-      priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value is same type as type of PriorFactor
-  fallbackFactorsBuffer_.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(stateKey_), gtsam::Vector3(0, 0, 0),
-                                                                            priorVelocityNoise);  // VELOCITY
-  fallbackFactorsBuffer_.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(stateKey_),
-                                                                                          *imuBiasPriorPtr_,
-                                                                                          priorBiasNoise);  // BIAS
 
-  // Initialize global graph
+  // Fallback Factors
+  fallbackFactorsBuffer_ = globalFactorsBuffer_;
+
+  // Global Graph
   globalGraphPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
                                                                          isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
   globalGraphPtr_->params().print("Factor Graph Parameters of global graph.");
   /// Add prior factor to graph and update
   globalGraphPtr_->update(globalFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
-  /// Reset
-  globalFactorsBuffer_.resize(0);
-  // Initialize fallback graph
+
+  // Fallback Graph
   fallbackGraphPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
                                                                            isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
-  globalGraphPtr_->params().print("Factor Graph Parameters of fallback graph.");
+  fallbackGraphPtr_->params().print("Factor Graph Parameters of global graph.");
   /// Add prior factor to graph and update
   fallbackGraphPtr_->update(fallbackFactorsBuffer_, valuesEstimate, priorKeyTimestampMap);
-  /// Reset
+
+  globalFactorsBuffer_.resize(0);
   fallbackFactorsBuffer_.resize(0);
 
   // Set active graph to global graph in the beginning
@@ -324,7 +322,6 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
     // Operating on graph data --> acquire mutex
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     globalFactorsBuffer_.add(gnssPositionUnaryFactor);
-    fallbackFactorsBuffer_.add(gnssPositionUnaryFactor);
   }
 
   // Print summary
@@ -369,7 +366,6 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
     // Operating on graph data --> acquire mutex
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     globalFactorsBuffer_.add(gnssHeadingUnaryFactor);
-    fallbackFactorsBuffer_.add(gnssHeadingUnaryFactor);
   }
 
   // Print summary
@@ -433,8 +429,6 @@ void GraphManager::activateGlobalGraph() {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
   if (activeGraphPtr_ != globalGraphPtr_) {
-    *fallbackGraphPtr_ = *globalGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << COLOR_END << std::endl;
     activeGraphPtr_ = globalGraphPtr_;
     std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer." << COLOR_END << std::endl;
     // Reset counter
@@ -615,6 +609,10 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
     std::cerr << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
               << std::endl;
     return;
+  } else if (imuMeas.size() > 2) {
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << "Currently only supporting two IMU messages for pre-integration."
+              << std::endl;
+    throw std::runtime_error("Terminating.");
   }
 
   // Reset IMU Step Preintegration

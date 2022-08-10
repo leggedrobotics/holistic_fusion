@@ -57,9 +57,11 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
   gtsam::Rot3 yawR_W_I0;
   if (frame1 == staticTransformsPtr_->getCabinFrame()) {
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting yaw in CABIN frame." << COLOR_END << std::endl;
     yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_C_I()).rotation();
   } else if (frame1 == staticTransformsPtr_->getLidarFrame()) {
     yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_L_I()).rotation();
+    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting yaw in LiDAR frame." << COLOR_END << std::endl;
   }
 
   // Locking
