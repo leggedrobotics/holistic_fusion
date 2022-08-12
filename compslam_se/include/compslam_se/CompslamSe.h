@@ -42,6 +42,7 @@ class CompslamSe {
   // Required Initialization
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
                           const std::string& frame2);
+  bool initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName);
   bool initYawAndPosition(Eigen::Matrix4d T_O_I);
   bool yawAndPositionInited();
 

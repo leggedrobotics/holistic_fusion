@@ -110,7 +110,7 @@ void CompslamEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPt
     std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
               << " LiDAR odometry callback is setting global cabin position and yaw to LiDAR Pose, as it was not set so far." << COLOR_END
               << std::endl;
-    compslam_se::CompslamSeInterface::initYawAndPosition_(poseUnaryKPtr->measurementPose);
+    compslam_se::CompslamSeInterface::initYawAndPosition_(poseUnaryKPtr->measurementPose, staticTransformsPtr_->getImuFrame());
   }
 
   // Wrap up iteration

@@ -29,8 +29,8 @@ bool CompslamSeInterface::initYawAndPosition_(const double yaw_W_frame1, const s
   return compslamSePtr_->initYawAndPosition(yaw_W_frame1, frame1, t_W_frame2, frame2);
 }
 
-bool CompslamSeInterface::initYawAndPosition_(Eigen::Matrix4d T_O_I) {
-  return compslamSePtr_->initYawAndPosition(T_O_I);
+bool CompslamSeInterface::initYawAndPosition_(const Eigen::Matrix4d& T_W_frame, const std::string& frameName) {
+  return compslamSePtr_->initYawAndPosition(T_W_frame, frameName);
 }
 
 bool CompslamSeInterface::areYawAndPositionInited_() {
