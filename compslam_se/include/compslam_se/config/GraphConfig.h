@@ -13,6 +13,7 @@ struct GraphConfig {
 
   // Booleans
   /// ISAM
+  bool useIsam = true;
   bool findUnusedFactorSlots = false;
   bool enableDetailedResults = false;
   bool enableRelinearization = true;
