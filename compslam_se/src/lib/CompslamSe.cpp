@@ -78,10 +78,12 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     // Set Member Variables
     // TODO replace with actual frame setting
-    if (graphConfigPtr_->usingGnssFlag) {
+    if (graphConfigPtr_->usingGnssFlag && frame2 == staticTransformsPtr_->getLeftGnssFrame()) {
       W_t_W_I0_ = transformLeftGnssPointToImuFrame_(W_t_W_frame2, R_W_I0);
-    } else {
-      W_t_W_I0_ = W_t_W_frame2;
+    } else if (frame2 == staticTransformsPtr_->getCabinFrame()) {
+      W_t_W_I0_ = W_t_W_frame2 + staticTransformsPtr_->T_C_I().block<3, 1>(0, 3);
+    } else if (frame2 == staticTransformsPtr_->getLidarFrame()) {
+      W_t_W_I0_ = W_t_W_frame2 + staticTransformsPtr_->T_L_I().block<3, 1>(0, 3);
     }
     foundInitialYawAndPositionFlag_ = true;
     return true;
@@ -92,25 +94,9 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
   }
 }
 
-bool CompslamSe::initYawAndPosition(Eigen::Matrix4d T_O_I) {
-  gtsam::Pose3 T_O_Ik(T_O_I);
-
-  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
-  if (!alignedImuFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
-              << std::endl;
-    return false;
-  }
-  if (not yawAndPositionInited()) {
-    W_t_W_I0_ = T_O_Ik.translation();
-    yaw_W_I0_ = T_O_Ik.rotation().yaw();
-    foundInitialYawAndPositionFlag_ = true;
-    return true;
-  } else {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END
-              << std::endl;
-    return false;
-  }
+bool CompslamSe::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName) {
+  gtsam::Pose3 T_O_frame_gtsam(T_O_frame);
+  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.block<3, 1>(0, 3), frameName);
 }
 
 // Private ---------------------------------------------------------------

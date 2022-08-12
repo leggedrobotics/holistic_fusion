@@ -25,7 +25,7 @@ class CompslamSeInterface {
   // Required for initialization
   bool initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
                            const std::string& frame2);
-  bool initYawAndPosition_(Eigen::Matrix4d T_O_I);
+  bool initYawAndPosition_(const Eigen::Matrix4d& T_W_frame, const std::string& frameName);
   bool areYawAndPositionInited_();
 
   // Graph Maniupulation
