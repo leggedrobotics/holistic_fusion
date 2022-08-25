@@ -57,8 +57,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                   graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh)
                      .finished();
   isamParams_.relinearizeThreshold = relinTh;
-  isamParams_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
-                                                             // poorly conditioned problems
+  isamParams_.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
+                                                       // poorly conditioned problems
 
   // Create Prior factor and Initialize factor graph
   /// Prior factor noise

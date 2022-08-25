@@ -39,14 +39,14 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   gtsam::Vector evaluateError(const gtsam::Pose3& q, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
     // Jacobian
     if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 0.0, 1.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+      (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 0.0, -1.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
     }
 
     // calculate error
     double yaw_error = q.rotation().yaw() - yaw_;
 
-    while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
-    while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
+    // while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
+    // while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
 
     return gtsam::Vector1(yaw_error);
   }

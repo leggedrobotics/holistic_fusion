@@ -84,6 +84,8 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
       W_t_W_I0_ = W_t_W_frame2 + staticTransformsPtr_->T_C_I().block<3, 1>(0, 3);
     } else if (frame2 == staticTransformsPtr_->getLidarFrame()) {
       W_t_W_I0_ = W_t_W_frame2 + staticTransformsPtr_->T_L_I().block<3, 1>(0, 3);
+    } else {
+      throw std::runtime_error("No valid coordinate frame for initial position.");
     }
     foundInitialYawAndPositionFlag_ = true;
     return true;
