@@ -19,7 +19,6 @@ This repository contains 3 packages:
 
 1. CompslamSE: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
 2. CompslamSERos: This can be understood as an example to run sensor fusion using the developed library.
-3. GTSAM_catkin (not yet provided).
 
 ## Dependencies
 ### CompslamSE
