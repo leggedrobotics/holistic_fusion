@@ -45,8 +45,8 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
     // calculate error
     double yaw_error = q.rotation().yaw() - yaw_;
 
-    // while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
-    // while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
+    while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
+    while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
 
     return gtsam::Vector1(yaw_error);
   }
