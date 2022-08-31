@@ -52,7 +52,7 @@
     <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_dual_graph)/rviz/gnss_lidar.rviz" /> -->
 
     <node name="gps_path_publisher" type="gps_path_publisher_node" pkg="gps_path_publisher" output="screen" >
-        <param name="gpx_filename"                           value="/home/gabriel/Downloads/LEE_terrace_full_loop.kml" />
+        <param name="gpx_filename"                           value="/home/integration/glattpark_anymal_handdrawn.kml" />
         <param name="remove_duplicate_nodes"                 value="true" />
         <param name="output_frame"                           value="enu" />
         <param name="path_creator/auto_orient_nodes"         value="true" />

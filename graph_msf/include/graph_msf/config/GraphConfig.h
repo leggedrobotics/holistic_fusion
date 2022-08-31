@@ -28,7 +28,7 @@ struct GraphConfig {
   bool cacheLinearizedFactors = true;
   bool enablePartialRelinearizationCheck = true;
   /// Flags
-  bool usingFallbackGraphFlag = true;
+  bool usingFallbackGraphFlag = false;
   bool usingGnssFlag = true;
   bool usingLioFlag = true;
 

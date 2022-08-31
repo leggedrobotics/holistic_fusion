@@ -110,7 +110,7 @@ class GraphMsf {
 
   /// Flags
   //// Configuration
-  bool usingFallbackGraphFlag_ = true;
+  bool usingFallbackGraphFlag_ = false;
 
   //// Initialization
   bool alignedImuFlag_ = false;
