@@ -50,9 +50,6 @@ void CompslamSe::activateFallbackGraph() {
 
 bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                     const std::string& frame2) {
-  assert(frame1 == staticTransformsPtr_->getCabinFrame() || frame1 == staticTransformsPtr_->getLidarFrame());
-  assert(frame2 == staticTransformsPtr_->getLeftGnssFrame());  // frame will be ignored if gnss usage is set to false
-
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
   gtsam::Rot3 yawR_W_I0;
@@ -62,6 +59,8 @@ bool CompslamSe::initYawAndPosition(const double yaw_W_frame1, const std::string
   } else if (frame1 == staticTransformsPtr_->getLidarFrame()) {
     yawR_W_I0 = yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->T_L_I()).rotation();
     std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting yaw in LiDAR frame." << COLOR_END << std::endl;
+  } else {
+    throw std::runtime_error("No valid coordinate frame for initial yaw.");
   }
 
   // Locking
