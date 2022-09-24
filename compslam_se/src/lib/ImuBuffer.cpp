@@ -59,8 +59,8 @@ void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
   imuMap[endItr->first] = endItr->second;
 }
 
-bool ImuBuffer::getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tK, double& tInGraph,
-                                          gtsam::Key& key) {
+bool ImuBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
+                                          const double maxSearchDeviation, const double tK) {
   auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
   auto lowerIterator = upperIterator;
   --lowerIterator;
@@ -68,21 +68,23 @@ bool ImuBuffer::getClosestKeyAndTimestamp(const std::string& callingName, double
   // Keep key which is closer to tLidar
   tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
   key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
+  double timeDeviation = tK - tInGraph;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
               << " searched time step: " << tK << std::endl;
     std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
               << " Found time step: " << tInGraph << std::endl;
-    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Delay: " << tInGraph - tK << " s" << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Time Deviation (t_request-t_graph): " << 1000 * timeDeviation << " ms"
+              << std::endl;
     std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_ << std::endl;
   }
 
   // Check for error and warn user
-  double timeDeviation = std::abs(tInGraph - tK);
-  if (timeDeviation > maxSearchDeviation) {
-    std::cerr << YELLOW_START << "CSe-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is " << timeDeviation
-              << " s, being larger than admissible deviation of " << maxSearchDeviation << " s" << COLOR_END << std::endl;
+  if (std::abs(timeDeviation) > maxSearchDeviation) {
+    std::cerr << YELLOW_START << "CSe-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is "
+              << 1000 * timeDeviation << " ms, being larger than admissible deviation of " << 1000 * maxSearchDeviation << " ms"
+              << COLOR_END << std::endl;
     return false;
   }
 

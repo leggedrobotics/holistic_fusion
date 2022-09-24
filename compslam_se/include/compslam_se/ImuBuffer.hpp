@@ -46,8 +46,8 @@ class ImuBuffer {
   inline double getImuRate() const { return imuRate_; }
   inline double getLatestTimestampInBuffer() const { return tLatestInBuffer_; }
   void getLastTwoMeasurements(TimeToImuMap& imuMap);
-  bool getClosestKeyAndTimestamp(const std::string& callingName, double maxSearchDeviation, double tLidar, double& tInGraph,
-                                 gtsam::Key& key);
+  bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
+                                 const double tLidar);
   bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, TimeToImuMap::iterator& s_itr,
                                        TimeToImuMap::iterator& e_itr);
 

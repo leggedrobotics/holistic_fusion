@@ -33,6 +33,7 @@ struct GraphConfig {
 
   // Doubles
   double imuRate = 100;
+  double maxSearchDeviation = 0.01;
   double imuTimeOffset = 0.0;
   double smootherLag = 6.0;
   double zeroMotionTh = 0.0;

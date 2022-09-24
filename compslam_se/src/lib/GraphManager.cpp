@@ -182,15 +182,13 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
 gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
                                                            const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose) {
   // Find corresponding keys in graph
-  double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
-  double maxLidarTimestampDistance = 1.0 / rate + 2.0 * maxSearchDeviation;
+  double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar delta")) {
     std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Current key: " << stateKey_
               << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << COLOR_END << std::endl;
-    // return closestLidarKeyK;
+    return closestLidarKeyK;
   }
 
   // Create noise model
@@ -226,14 +224,13 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  double maxSearchDeviation = 1 / (2 * rate);
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
+    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "lidar unary", graphConfigPtr_->maxSearchDeviation,
+                                              lidarTimeK)) {
       std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-      // return;
+      return;
     }
   }
 
@@ -265,14 +262,13 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  double maxSearchDeviation = 1 / (2 * rate);
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp("lidar unary", maxSearchDeviation, lidarTimeK, closestGraphTime, closestKey)) {
+    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "lidar unary", graphConfigPtr_->maxSearchDeviation,
+                                              lidarTimeK)) {
       std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-      // return;
+      return;
     }
   }
 
@@ -304,14 +300,12 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  double maxSearchDeviation = 1 / (2 * rate);
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Unary", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Unary", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
       std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
-      // return;
+      return;
     }
   }
 
@@ -348,14 +342,13 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  double maxSearchDeviation = 1 / (2 * rate);
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp("Gnss Heading", maxSearchDeviation, gnssTimeK, closestGraphTime, closestKey)) {
+    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Heading", graphConfigPtr_->maxSearchDeviation,
+                                              gnssTimeK)) {
       std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << std::endl;
-      // return;
+      return;
     }
   }
 
@@ -469,9 +462,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   gtsam::Key currentKey;
   /// Timing 1
   endLoopTime = std::chrono::high_resolution_clock::now();
-  if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Initialization took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Initialization took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+              << std::endl;
   }
 
   // Mutex Block 1 -----------------
@@ -497,9 +491,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   }
   /// Timing 2
   endLoopTime = std::chrono::high_resolution_clock::now();
-  if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " First mutex block took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " First mutex block took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+              << std::endl;
   }
 
   // Graph Update (time consuming) -------------------
@@ -536,9 +531,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     }
     /// Timing 3
     endLoopTime = std::chrono::high_resolution_clock::now();
-    if (graphConfigPtr_->verboseLevel > 2) {
-      std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Optimization of the graph took "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 50) {
+      std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Optimization of the graph took "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+                << std::endl;
     }
 
     // Compute result
@@ -553,9 +549,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   }
   /// Timing 4
   endLoopTime = std::chrono::high_resolution_clock::now();
-  if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Calculation of the estimate took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Calculation of the estimate took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+              << std::endl;
   }
 
   // Mutex block 2 ------------------
@@ -570,9 +567,10 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   }
   /// Timing 5
   endLoopTime = std::chrono::high_resolution_clock::now();
-  if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Second mutex block took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << std::endl;
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Second mutex block took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+              << std::endl;
   }
 
   return resultNavState;
@@ -595,13 +593,13 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
                                   gtsam::Key& closestKeyK, const std::string& name) {
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
-  double maxSearchDeviation = 1 / (2 * imuBuffer_.getImuRate());
-  maxSearchDeviation += 0.1 * maxSearchDeviation;
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    bool successKm1 = imuBuffer_.getClosestKeyAndTimestamp(name + " km1", maxSearchDeviation, timeKm1, closestGraphTimeKm1, closestKeyKm1);
-    bool successK = imuBuffer_.getClosestKeyAndTimestamp(name + " k", maxSearchDeviation, timeK, closestGraphTimeK, closestKeyK);
+    bool successKm1 = imuBuffer_.getClosestKeyAndTimestamp(closestGraphTimeKm1, closestKeyKm1, name + " km1",
+                                                           graphConfigPtr_->maxSearchDeviation, timeKm1);
+    bool successK =
+        imuBuffer_.getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k", graphConfigPtr_->maxSearchDeviation, timeK);
     if (!successKm1 || !successK) {
       return false;
     }
@@ -618,7 +616,8 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
   if (keyTimestampDistance > maxTimestampDistance) {
     std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Distance of " << name
               << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
-              << " which is larger than the maximum admissible distance of " << maxTimestampDistance << COLOR_END << std::endl;
+              << " which is larger than the maximum admissible distance of " << maxTimestampDistance
+              << ". Still adding constraints to graph" << COLOR_END << std::endl;
   }
   return true;
 }

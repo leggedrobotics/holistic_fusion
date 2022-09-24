@@ -79,6 +79,7 @@ void CompslamEstimator::readParams_() {
   if (privateNode_.getParam("sensor_params/imuRate", dParam)) {
     ROS_INFO_STREAM("CompslamSe - IMU rate for preintegrator: " << dParam);
     graphConfigPtr_->imuRate = dParam;
+    graphConfigPtr_->maxSearchDeviation = 1.0 / dParam;
   }
   if (privateNode_.getParam("sensor_params/imuBufferLength", iParam)) {
     ROS_INFO_STREAM("CompslamSe - IMU buffer length: " << iParam);
