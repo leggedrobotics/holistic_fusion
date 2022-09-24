@@ -48,6 +48,8 @@ class CompslamSeInterface {
   virtual void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                              const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) = 0;
 
+  // Getters
+  bool isInNormalOperation() const;
   // Data Manipulation
 
   // Member Variables

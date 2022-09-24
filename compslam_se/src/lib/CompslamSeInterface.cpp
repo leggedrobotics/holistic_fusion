@@ -104,4 +104,8 @@ void CompslamSeInterface::publishStateAndMeasureTime_(const double imuTimeK, con
   }
 }
 
+bool CompslamSeInterface::isInNormalOperation() const {
+  return compslamSePtr_->getNormalOperationFlag();
+}
+
 }  // end namespace compslam_se

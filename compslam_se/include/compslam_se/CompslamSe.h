@@ -70,6 +70,7 @@ class CompslamSe {
     time = optTime_;
     optState = T_W_I_opt_.matrix();
   }
+  bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
  protected:
   // Methods -------------
@@ -113,6 +114,7 @@ class CompslamSe {
   //// During operation
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
+  bool normalOperationFlag_ = false;
 
   /// Times
   double imuTimeKm1_;
