@@ -1,5 +1,7 @@
 #include "compslam_se/GraphManager.hpp"
 
+#define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
+
 namespace compslam_se {
 
 // Public --------------------------------------------------------------------
@@ -129,13 +131,17 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   // Write current time
   stateTime_ = imuTimeK;
 
+  // Keys
+  gtsam::Key oldKey;
+  gtsam::Key newKey;
+
   {
-    // Operating on graph data --> acquire mutex
+    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
     // Get new key
-    gtsam::Key oldKey = stateKey_;
-    gtsam::Key newKey = newStateKey_();
+    oldKey = stateKey_;
+    newKey = newStateKey_();
 
     // Add to key buffer
     imuBuffer_.addToKeyBuffer(imuTimeK, newKey);
@@ -153,8 +159,8 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    globalFactorsBuffer_.add(imuFactor);
-    fallbackFactorsBuffer_.add(imuFactor);
+    bool success = addFactorToGraph_<const gtsam::CombinedImuFactor*>(globalFactorsBuffer_, &imuFactor, imuTimeK);
+    success = success && addFactorToGraph_<const gtsam::CombinedImuFactor*>(fallbackFactorsBuffer_, &imuFactor, imuTimeK);
 
     // Add IMU values
     gtsam::Values valuesEstimate;
@@ -165,18 +171,22 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
 
     // Add timestamp for fixed lag smoother
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBuffer_);
+  }
+  {
+    // Mutex, such s.t. the used graph is consistent
+    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
     // Relocalization Command
-    if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ == 1) {
+    if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ >= 1) {
       relocalizationFlag = true;
       sentRelocalizationCommandAlready_ = true;
     } else {
       relocalizationFlag = false;
     }
-
-    // Return copy of propagated state (for publishing)
-    return imuPropagatedState_;
   }
+
+  // Return copy of propagated state (for publishing)
+  return imuPropagatedState_;
 }
 
 gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
@@ -203,14 +213,14 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
                                                        gtsam::symbol_shorthand::X(closestLidarKeyK), pose, errorFunction);
 
   // Write to graph
-  {
-    // Operating on graph data --> acquire mutex
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    globalFactorsBuffer_.add(poseBetweenFactor);
-  }
+  bool success = addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(globalFactorsBuffer_, &poseBetweenFactor, lidarTimeKm1);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 1) {
+  if (!success) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << YELLOW_START
+              << " LiDAR PoseBetween factor NOT added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
+              << std::endl;
+  } else if (graphConfigPtr_->verboseLevel > 1) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
               << " LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
               << std::endl;
@@ -224,14 +234,12 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  {
-    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "lidar unary", graphConfigPtr_->maxSearchDeviation,
-                                              lidarTimeK)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-      return;
-    }
+
+  if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "fallback lidar unary", graphConfigPtr_->maxSearchDeviation,
+                                            lidarTimeK)) {
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
+              << std::endl;
+    return;
   }
 
   assert(poseUnaryNoise.size() == 6);
@@ -244,14 +252,13 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, errorFunction);
 
   // Write to graph
-  {
-    // Operating on graph data --> acquire mutex
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    fallbackFactorsBuffer_.add(poseUnaryFactor);
-  }
+  bool success = addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Pose3>*>(fallbackFactorsBuffer_, &poseUnaryFactor, lidarTimeK);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 0) {
+  if (!success) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+              << " LiDAR unary factor NOT added to key " << closestKey << COLOR_END << std::endl;
+  } else if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
@@ -262,14 +269,12 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  {
-    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "lidar unary", graphConfigPtr_->maxSearchDeviation,
-                                              lidarTimeK)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << std::endl;
-      return;
-    }
+
+  if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "global lidar unary", graphConfigPtr_->maxSearchDeviation,
+                                            lidarTimeK)) {
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
+              << std::endl;
+    return;
   }
 
   assert(poseUnaryNoise.size() == 6);
@@ -282,14 +287,13 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, errorFunction);
 
   // Write to graph
-  {
-    // Operating on graph data --> acquire mutex
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    globalFactorsBuffer_.add(poseUnaryFactor);
-  }
+  bool success = addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Pose3>*>(globalFactorsBuffer_, &poseUnaryFactor, lidarTimeK);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 0) {
+  if (!success) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+              << " LiDAR unary factor NOT added to key " << closestKey << COLOR_END << std::endl;
+  } else if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
@@ -300,13 +304,9 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  {
-    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Unary", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << std::endl;
-      return;
-    }
+  if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Unary", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END << std::endl;
+    return;
   }
 
   // Create noise model
@@ -318,14 +318,13 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   gtsam::GPSFactor gnssPositionUnaryFactor(gtsam::symbol_shorthand::X(closestKey), position, tukeyErrorFunction);
 
   // Write to graph
-  {
-    // Operating on graph data --> acquire mutex
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    globalFactorsBuffer_.add(gnssPositionUnaryFactor);
-  }
+  bool success = addFactorSafelyToGraph_<const gtsam::GPSFactor*>(globalFactorsBuffer_, &gnssPositionUnaryFactor, gnssTimeK);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 1) {
+  if (!success) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+              << ", Gnss position factor NOT added to key " << closestKey << COLOR_END << std::endl;
+  } else if (graphConfigPtr_->verboseLevel > 1) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << ", Gnss position factor added to key " << closestKey << COLOR_END << std::endl;
   }
@@ -342,14 +341,10 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  {
-    // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Heading", graphConfigPtr_->maxSearchDeviation,
-                                              gnssTimeK)) {
-      std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << std::endl;
-      return;
-    }
+  if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Heading", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
+    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
+              << std::endl;
+    return;
   }
 
   // Create noise model
@@ -361,14 +356,13 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   HeadingFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredYaw, tukeyErrorFunction);
 
   // Write to graph
-  {
-    // Operating on graph data --> acquire mutex
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    globalFactorsBuffer_.add(gnssHeadingUnaryFactor);
-  }
+  bool success = addFactorSafelyToGraph_<const HeadingFactor*>(globalFactorsBuffer_, &gnssHeadingUnaryFactor, gnssTimeK);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 0) {
+  if (!success) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+              << " Gnss heading factor is NOT added to key " << closestKey << COLOR_END << std::endl;
+  } else if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " Gnss heading factor is added to key " << closestKey << COLOR_END << std::endl;
   }
@@ -388,39 +382,30 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
     return false;
   }
 
+  // Factors
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
+                                                       gtsam::Pose3::identity(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+  gtsam::PriorFactor<gtsam::Vector3> velocityUnaryFactor(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
+                                                         gtsam::noiseModel::Isotropic::Sigma(3, 1e-3));
+
   // Global
-  /// Operating on graph data --> acquire mutex during whole method
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   /// Add Zero Pose Factor
-  globalFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                              gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
-                                                              gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+  bool success = addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(globalFactorsBuffer_, &poseBetweenFactor, timeKm1);
   /// Add Zero Velocity Factor
-  globalFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
-                                                              gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
+  success =
+      success && addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Vector3>*>(globalFactorsBuffer_, &velocityUnaryFactor, timeKm1);
   // Fallback
   /// Add Zero Pose Factor
-  fallbackFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                                gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
-                                                                gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+  success =
+      success && addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(fallbackFactorsBuffer_, &poseBetweenFactor, timeKm1);
   /// Add Zero Velocity Factor
-  fallbackFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
-                                                                gtsam::noiseModel::Isotropic::Sigma(3, 1e-3)));
+  success =
+      success && addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Vector3>*>(fallbackFactorsBuffer_, &velocityUnaryFactor, timeKm1);
 
   if (graphConfigPtr_->verboseLevel > 0) {
     std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_
               << GREEN_START " Zero Motion Factor added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
   }
-  return true;
-}
-
-bool GraphManager::addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imu_attitude) {
-  static auto imuEstNoise =
-      gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e+10, 1e+10, 1e+10, 1e+10).finished());  // rad,rad,rad,m, m, m
-  globalFactorsBuffer_.add(
-      gtsam::PriorFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(key), gtsam::Pose3(imu_attitude, gtsam::Point3::Zero()), imuEstNoise));
-  fallbackFactorsBuffer_.add(
-      gtsam::PriorFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(key), gtsam::Pose3(imu_attitude, gtsam::Point3::Zero()), imuEstNoise));
   return true;
 }
 
@@ -488,7 +473,8 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     // Get current key and time
     currentKey = stateKey_;
     currentTime = stateTime_;
-  }
+  }  // end of locking
+
   /// Timing 2
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
@@ -506,29 +492,31 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
     // Perform update
-    if ((activeGraphPtr_ == globalGraphPtr_)) {
-      if (graphConfigPtr_->useIsam) {
-        activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-      }
-    } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
-      try {
+    try {
+      if ((activeGraphPtr_ == globalGraphPtr_)) {
+        if (graphConfigPtr_->useIsam) {
+          activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+        }
+      } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
         if (graphConfigPtr_->useIsam) {
           activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
           globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
         }
-      } catch (const std::exception& e) {
-        std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
-                  << " Exception was thrown while optimizing the global graph. Continuing, since fallback graph is active." << COLOR_END
-                  << std::endl;
       }
+      // Additional iterations
+      for (size_t itr = 0; itr < graphConfigPtr_->additionalIterations; ++itr) {
+        if (graphConfigPtr_->useIsam) {
+          activeGraphPtr_->update();
+        }
+      }
+    } catch (const std::out_of_range& outOfRangeExeception) {
+      std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
+      std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+                << " This happens if the graph-smootherLag is chosen too small, i.e. the optimized graph instances are not connected."
+                << COLOR_END << std::endl;
+      throw std::out_of_range("");
     }
 
-    // Additional iterations
-    for (size_t itr = 0; itr < graphConfigPtr_->additionalIterations; ++itr) {
-      if (graphConfigPtr_->useIsam) {
-        activeGraphPtr_->update();
-      }
-    }
     /// Timing 3
     endLoopTime = std::chrono::high_resolution_clock::now();
     if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 50) {
@@ -546,7 +534,8 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
 
     // Increase counter
     ++numOptimizationsSinceGraphSwitching_;
-  }
+  }  // end of locking
+
   /// Timing 4
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
@@ -564,7 +553,8 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
     graphState_.updateNavStateAndBias(currentKey, currentTime, resultNavState, resultBias);
     // Predict from solution to obtain refined propagated state
     imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(graphState_.navState(), graphState_.imuBias());
-  }
+  }  // end of locking
+
   /// Timing 5
   endLoopTime = std::chrono::high_resolution_clock::now();
   if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 2) {
@@ -588,6 +578,29 @@ gtsam::NavState GraphManager::calculateStateAtKey(const gtsam::Key& key) {
 }
 
 // Private --------------------------------------------------------------------
+template <class CHILDPTR>
+bool GraphManager::addFactorToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+                                     const double measurementTimestamp) {
+  // Check Timestamp of Measurement on Delay
+  if (imuBuffer_.getLatestTimestampInBuffer() - measurementTimestamp > graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+              << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
+              << COLOR_END << std::endl;
+    return false;
+  }
+  // Add measurements
+  modifiedGraph.add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  return true;
+}
+
+template <class CHILDPTR>
+bool GraphManager::addFactorSafelyToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+                                           const double measurementTimestamp) {
+  // Operating on graph data --> acquire mutex
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  // Add measurements
+  return addFactorToGraph_<CHILDPTR>(modifiedGraph, noiseModelFactorPtr, measurementTimestamp);
+}
 
 bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& closestKeyKm1,
                                   gtsam::Key& closestKeyK, const std::string& name) {
@@ -614,10 +627,10 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Distance of " << name
-              << " timestamps is too big. Found timestamp difference is  " << closestGraphTimeK - closestGraphTimeKm1
-              << " which is larger than the maximum admissible distance of " << maxTimestampDistance
-              << ". Still adding constraints to graph" << COLOR_END << std::endl;
+    std::cerr << YELLOW_START << "CSe-GraphManager"
+              << " Distance of " << name << " timestamps is too big. Found timestamp difference is  "
+              << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum admissible distance of "
+              << maxTimestampDistance << ". Still adding constraints to graph." << COLOR_END << std::endl;
   }
   return true;
 }
@@ -629,7 +642,7 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
     return;
   } else if (imuMeas.size() > 2) {
     std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << "Currently only supporting two IMU messages for pre-integration."
-              << std::endl;
+              << COLOR_END << std::endl;
     throw std::runtime_error("Terminating.");
   }
 

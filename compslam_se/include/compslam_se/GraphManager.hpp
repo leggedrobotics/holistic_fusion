@@ -50,7 +50,6 @@ class GraphManager {
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, const double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
-  bool addGravityRollPitchFactor(const gtsam::Key key, const gtsam::Rot3 imuAttitude);
 
   // Graph selection
   void activateGlobalGraph();
@@ -94,6 +93,12 @@ class GraphManager {
 
  private:
   // Methods
+  template <class CHILDPTR>
+  bool addFactorToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+                         const double measurementTimestamp);
+  template <class CHILDPTR>
+  bool addFactorSafelyToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+                               const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
   /// Find graph keys for timestamps

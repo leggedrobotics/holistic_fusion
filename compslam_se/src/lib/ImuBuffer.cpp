@@ -18,8 +18,14 @@ void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ,
   imuMeas << accX, accY, accZ, gyrX, gyrY, gyrZ;
 
   // Add to buffer
-  timeToImuBuffer_[ts] = imuMeas;
-  tLatestInBuffer_ = ts;
+  {
+    // Writing to IMU buffer --> acquire mutex
+    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+    timeToImuBuffer_[ts] = imuMeas;
+  }
+  if (ts > tLatestInBuffer_) {
+    tLatestInBuffer_ = ts;
+  }
 
   // If IMU buffer is too large, remove first element
   if (timeToImuBuffer_.size() > imuBufferLength_) {
@@ -35,7 +41,15 @@ void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ,
 }
 
 void ImuBuffer::addToKeyBuffer(double ts, gtsam::Key key) {
-  timeToKeyBuffer_[ts] = key;
+  if (verboseLevel_ >= 5) {
+    std::cout << YELLOW_START << "CSe-Imu-Buffer" << COLOR_END << " Adding key " << key << " to timeToKeyBuffer for time " << ts
+              << std::endl;
+  }
+  {
+    // Writing to IMU buffer --> acquire mutex
+    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+    timeToKeyBuffer_[ts] = key;
+  }
 
   // If Key buffer is too large, remove first element
   if (timeToKeyBuffer_.size() > imuBufferLength_) {
@@ -61,23 +75,30 @@ void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
 
 bool ImuBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
                                           const double maxSearchDeviation, const double tK) {
-  auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
+  std::_Rb_tree_iterator<std::pair<const double, gtsam::Key>> upperIterator;
+  {
+    // Read frp, IMU buffer --> acquire mutex
+    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+    upperIterator = timeToKeyBuffer_.upper_bound(tK);
+  }
+
   auto lowerIterator = upperIterator;
   --lowerIterator;
 
   // Keep key which is closer to tLidar
   tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
   key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
-  double timeDeviation = tK - tInGraph;
+  double timeDeviation = tInGraph - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
               << " searched time step: " << tK << std::endl;
     std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
-              << " Found time step: " << tInGraph << std::endl;
-    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Time Deviation (t_request-t_graph): " << 1000 * timeDeviation << " ms"
+              << " found time step: " << tInGraph << " at key " << key << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation << " ms"
               << std::endl;
-    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_ << std::endl;
+    std::cout << YELLOW_START << "CSe-ImuBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
+              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
   }
 
   // Check for error and warn user
