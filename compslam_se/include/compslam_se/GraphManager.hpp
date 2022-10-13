@@ -83,11 +83,11 @@ class GraphManager {
 
   // Status
   bool globalGraphActiveFlag() {
-    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
     return activeGraphPtr_ == globalGraphPtr_;
   }
   bool fallbackGraphActiveFlag() {
-    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
     return activeGraphPtr_ == fallbackGraphPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
   }
 
@@ -152,7 +152,8 @@ class GraphManager {
   // Member variables
   /// Mutex
   std::mutex operateOnGraphDataMutex_;
-  std::mutex consistentActiveGraphMutex_;
+  std::mutex activelyUsingActiveGraphMutex_;
+  std::mutex swappingActiveGraphMutex_;
   /// Propagated state (at IMU frequency)
   gtsam::NavState imuPropagatedState_;
 

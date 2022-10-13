@@ -172,17 +172,13 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
     // Add timestamp for fixed lag smoother
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBuffer_);
   }
-  {
-    // Mutex, such s.t. the used graph is consistent
-    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
-    // Relocalization Command
-    if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ >= 1) {
-      relocalizationFlag = true;
-      sentRelocalizationCommandAlready_ = true;
-    } else {
-      relocalizationFlag = false;
-    }
+  // Relocalization Command
+  if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ >= 1) {
+    relocalizationFlag = true;
+    sentRelocalizationCommandAlready_ = true;
+  } else {
+    relocalizationFlag = false;
   }
 
   // Return copy of propagated state (for publishing)
@@ -411,10 +407,18 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
 
 void GraphManager::activateGlobalGraph() {
   // Mutex, such s.t. the used graph is consistent
-  const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+  const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
   if (activeGraphPtr_ != globalGraphPtr_) {
-    activeGraphPtr_ = globalGraphPtr_;
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Re-optimzing global graph from current estimate." << COLOR_END
+              << std::endl;
+
+    {
+      // Activate global graph
+      const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
+      activeGraphPtr_ = globalGraphPtr_;
+    }
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Optimization of global graph is done, activated global graph pointer."
+              << COLOR_END << std::endl;
     // Reset counter
     numOptimizationsSinceGraphSwitching_ = 0;
     sentRelocalizationCommandAlready_ = false;
@@ -423,11 +427,14 @@ void GraphManager::activateGlobalGraph() {
 
 void GraphManager::activateFallbackGraph() {
   // Mutex, such s.t. the used graph is consistent
-  const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
+  const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
   if (activeGraphPtr_ != fallbackGraphPtr_) {
     *fallbackGraphPtr_ = *globalGraphPtr_;
     std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset fallback graph to global graph." << COLOR_END << std::endl;
-    activeGraphPtr_ = fallbackGraphPtr_;
+    {
+      const std::lock_guard<std::mutex> activelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
+      activeGraphPtr_ = fallbackGraphPtr_;
+    }
     std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated fallback graph pointer." << COLOR_END << std::endl;
     // Reset counter
     numOptimizationsSinceGraphSwitching_ = 0;
@@ -435,6 +442,9 @@ void GraphManager::activateFallbackGraph() {
 }
 
 gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
+  // Mutex, such s.t. the used graph is consistent
+  const std::lock_guard<std::mutex> ativelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
+
   // Define variables for timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
@@ -487,54 +497,50 @@ gtsam::NavState GraphManager::updateGraphAndState(double& currentTime) {
   gtsam::NavState resultNavState;
   gtsam::imuBias::ConstantBias resultBias;
   startLoopTime = std::chrono::high_resolution_clock::now();
-  {
-    // Mutex, s.t. the used graph is consistent
-    const std::lock_guard<std::mutex> consistentActiveGraphLock(consistentActiveGraphMutex_);
 
-    // Perform update
-    try {
-      if ((activeGraphPtr_ == globalGraphPtr_)) {
-        if (graphConfigPtr_->useIsam) {
-          activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-        }
-      } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
-        if (graphConfigPtr_->useIsam) {
-          activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-          globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-        }
+  // Perform update
+  try {
+    if ((activeGraphPtr_ == globalGraphPtr_)) {
+      if (graphConfigPtr_->useIsam) {
+        activeGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
       }
-      // Additional iterations
-      for (size_t itr = 0; itr < graphConfigPtr_->additionalIterations; ++itr) {
-        if (graphConfigPtr_->useIsam) {
-          activeGraphPtr_->update();
-        }
+    } else if (activeGraphPtr_ == fallbackGraphPtr_) {  // If fallback, also optimize global (if possible)
+      if (graphConfigPtr_->useIsam) {
+        activeGraphPtr_->update(newFallbackGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+        globalGraphPtr_->update(newGlobalGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
       }
-    } catch (const std::out_of_range& outOfRangeExeception) {
-      std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-      std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
-                << " This happens if the graph-smootherLag is chosen too small, i.e. the optimized graph instances are not connected."
-                << COLOR_END << std::endl;
-      throw std::out_of_range("");
     }
-
-    /// Timing 3
-    endLoopTime = std::chrono::high_resolution_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 50) {
-      std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Optimization of the graph took "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
-                << std::endl;
+    // Additional iterations
+    for (size_t itr = 0; itr < graphConfigPtr_->additionalIterations; ++itr) {
+      if (graphConfigPtr_->useIsam) {
+        activeGraphPtr_->update();
+      }
     }
+  } catch (const std::out_of_range& outOfRangeExeception) {
+    std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+              << " This happens if the graph-smootherLag is chosen too small, i.e. the optimized graph instances are not connected."
+              << COLOR_END << std::endl;
+    throw std::out_of_range("");
+  }
 
-    // Compute result
-    startLoopTime = std::chrono::high_resolution_clock::now();
-    if (graphConfigPtr_->useIsam) {
-      resultNavState = calculateStateAtKey(currentKey);
-      resultBias = activeGraphPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
-    }
+  /// Timing 3
+  endLoopTime = std::chrono::high_resolution_clock::now();
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() > 50) {
+    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START << " Optimization of the graph took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " ms." << COLOR_END
+              << std::endl;
+  }
 
-    // Increase counter
-    ++numOptimizationsSinceGraphSwitching_;
-  }  // end of locking
+  // Compute result
+  startLoopTime = std::chrono::high_resolution_clock::now();
+  if (graphConfigPtr_->useIsam) {
+    resultNavState = calculateStateAtKey(currentKey);
+    resultBias = activeGraphPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
+  }
+
+  // Increase counter
+  ++numOptimizationsSinceGraphSwitching_;
 
   /// Timing 4
   endLoopTime = std::chrono::high_resolution_clock::now();
