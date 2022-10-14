@@ -13,10 +13,10 @@ bool CompslamSe::setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTran
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
-  graphConfigPtr_ = graphConfigPtr;
+  graphConfigPtr_ = std::make_shared<GraphConfig>(*(new GraphConfig(*graphConfigPtr)));
   staticTransformsPtr_ = staticTransformsPtr;
 
-  graphMgrPtr_ = new GraphManager(graphConfigPtr);
+  graphMgrPtr_ = new GraphManager(graphConfigPtr_);
 
   // Configs
   graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;
@@ -237,8 +237,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
     else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
       if (!lidarUnaryFactorInitialized__) {
         // Calculate state still from globalGraph
-        std::cout << lastDeltaMeasurementKey__ << std::endl;
-        T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+        T_O_Ij_Graph__ = graphMgrPtr_->calculateActiveStateAtKey(lastDeltaMeasurementKey__).pose();
         std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
         lidarUnaryFactorInitialized__ = true;
       }
@@ -414,7 +413,7 @@ void CompslamSe::optimizeGraph_() {
       // Get result
       startLoopTime = std::chrono::high_resolution_clock::now();
       double currentTime;
-      gtsam::NavState optimizedNavState = graphMgrPtr_->updateGraphAndState(currentTime);
+      gtsam::NavState optimizedNavState = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (graphConfigPtr_->verboseLevel > 0) {

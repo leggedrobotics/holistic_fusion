@@ -99,7 +99,7 @@ class CompslamSe {
   GraphManager* graphMgrPtr_ = NULL;
 
   // Graph Config
-  GraphConfig* graphConfigPtr_ = NULL;
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
   StaticTransforms* staticTransformsPtr_ = NULL;
 
   /// Flags
