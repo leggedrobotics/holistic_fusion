@@ -33,7 +33,7 @@ namespace compslam_se {
 
 class GraphManager {
  public:
-  GraphManager(GraphConfig* graphConfigPtr);
+  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr);
   ~GraphManager(){};
 
   // Change Graph
@@ -56,10 +56,10 @@ class GraphManager {
   void activateFallbackGraph();
 
   // Update graph and get new state
-  gtsam::NavState updateGraphAndState(double& currentTime);
+  gtsam::NavState updateActiveGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
-  gtsam::NavState calculateStateAtKey(const gtsam::Key& key);
+  gtsam::NavState calculateActiveStateAtKey(const gtsam::Key& key);
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
@@ -84,23 +84,33 @@ class GraphManager {
   // Status
   bool globalGraphActiveFlag() {
     const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
-    return activeGraphPtr_ == globalGraphPtr_;
+    return activeSmootherPtr_ == globalSmootherPtr_;
   }
   bool fallbackGraphActiveFlag() {
     const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
-    return activeGraphPtr_ == fallbackGraphPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
+    return activeSmootherPtr_ == fallbackSmootherPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
   }
 
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+  bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  template <class CHILDPTR>
+  bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
                          const double measurementTimestamp);
   template <class CHILDPTR>
-  bool addFactorSafelyToGraph_(gtsam::NonlinearFactorGraph& modifiedGraph, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
-                               const double measurementTimestamp);
+  bool addFactorSafelyToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr,
+                               const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
+  // Calculate state at key for graph
+  static gtsam::NavState calculateStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+                                             const std::shared_ptr<GraphConfig> graphConfigPtr, const gtsam::Key& key);
+  // Add Factors for a smoother
+  static void addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
+                                              const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
+                                              const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
+                                              const std::shared_ptr<GraphConfig> graphConfigPtr);
   /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
                       const std::string& name = "lidar");
@@ -108,9 +118,9 @@ class GraphManager {
   const auto newStateKey_() { return ++stateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
   inline void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
-                                               std::map<gtsam::Key, double>& keyTimestampMap) {
+                                               std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
     for (const auto& value : values) {
-      keyTimestampMap[value.key] = measurementTime;
+      (*keyTimestampMapPtr)[value.key] = measurementTime;
     }
   }
 
@@ -121,33 +131,41 @@ class GraphManager {
   gtsam::ISAM2Params isamParams_;
 
   // Graphs
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalGraphPtr_;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackGraphPtr_;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalSmootherPtr_;
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackSmootherPtr_;
   /// Data buffers
-  gtsam::NonlinearFactorGraph globalFactorsBuffer_;
-  gtsam::NonlinearFactorGraph fallbackFactorsBuffer_;
-  /// Config
-  GraphConfig* graphConfigPtr_ = NULL;
-  /// Graph names
-  std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
-  /// Selector
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeGraphPtr_ = globalGraphPtr_;  // std::shared_ptr<gtsam::ISAM2> mainGraphPtr_;
-  gtsam::NonlinearFactorGraph& activeFactorsBuffer_ = globalFactorsBuffer_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> globalFactorsBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> fallbackFactorsBufferPtr_;
+  // Values map
+  std::shared_ptr<gtsam::Values> globalGraphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> fallbackGraphValuesBufferPtr_;
+  // Timestampmaps
+  std::shared_ptr<std::map<gtsam::Key, double>> globalGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> fallbackGraphKeysTimestampsMapBufferPtr_;
+
   /// Counter
   int numOptimizationsSinceGraphSwitching_ = 0;
   bool sentRelocalizationCommandAlready_ = true;
 
-  // Values and timestamp map --> same for both graphs
-  gtsam::Values graphValuesBuffer_;
-  std::map<gtsam::Key, double> graphKeysTimestampsMapBuffer_;
   /// Buffer Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> globalImuBufferPreintegratorPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> fallbackImuBufferPreintegratorPtr_;
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
   ImuBuffer imuBuffer_;  // Need to get rid of this
   gtsam::Vector6 lastImuVector_;
-  bool firstImuCallback_ = true;
+
+  /// Config
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
+  /// Graph names
+  std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
+  /// Selector
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeSmootherPtr_ = globalSmootherPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> activeImuBufferPreintegratorPtr_ = globalImuBufferPreintegratorPtr_;
+  std::shared_ptr<gtsam::Values> activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
 
   // Member variables
   /// Mutex

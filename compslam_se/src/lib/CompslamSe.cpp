@@ -13,10 +13,10 @@ bool CompslamSe::setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTran
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
-  graphConfigPtr_ = graphConfigPtr;
+  graphConfigPtr_ = std::make_shared<GraphConfig>(*(new GraphConfig(*graphConfigPtr)));
   staticTransformsPtr_ = staticTransformsPtr;
 
-  graphMgrPtr_ = new GraphManager(graphConfigPtr);
+  graphMgrPtr_ = new GraphManager(graphConfigPtr_);
 
   // Configs
   graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;
@@ -237,8 +237,7 @@ void CompslamSe::addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, c
     else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
       if (!lidarUnaryFactorInitialized__) {
         // Calculate state still from globalGraph
-        std::cout << lastDeltaMeasurementKey__ << std::endl;
-        T_O_Ij_Graph__ = graphMgrPtr_->calculateStateAtKey(lastDeltaMeasurementKey__).pose();
+        T_O_Ij_Graph__ = graphMgrPtr_->calculateActiveStateAtKey(lastDeltaMeasurementKey__).pose();
         std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
         lidarUnaryFactorInitialized__ = true;
       }
@@ -285,13 +284,13 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& W_t_W_frame, 
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again."
-                << std::endl;
+                << COLOR_END << std::endl;
     }
   } else {
     if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss was jumping: Distance is " << jumpingDistance
                 << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
-                << "m.  Reset outlier counter." << std::endl;
+                << "m.  Reset outlier counter." << COLOR_END << std::endl;
     }
     gnssNotJumpingCounter_ = 0;
   }
@@ -414,7 +413,7 @@ void CompslamSe::optimizeGraph_() {
       // Get result
       startLoopTime = std::chrono::high_resolution_clock::now();
       double currentTime;
-      gtsam::NavState optimizedNavState = graphMgrPtr_->updateGraphAndState(currentTime);
+      gtsam::NavState optimizedNavState = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (graphConfigPtr_->verboseLevel > 0) {
