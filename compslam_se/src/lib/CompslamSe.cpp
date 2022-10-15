@@ -284,13 +284,13 @@ void CompslamSe::addGnssPositionMeasurement(const Eigen::Vector3d& W_t_W_frame, 
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again."
-                << std::endl;
+                << COLOR_END << std::endl;
     }
   } else {
     if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss was jumping: Distance is " << jumpingDistance
                 << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
-                << "m.  Reset outlier counter." << std::endl;
+                << "m.  Reset outlier counter." << COLOR_END << std::endl;
     }
     gnssNotJumpingCounter_ = 0;
   }

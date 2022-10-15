@@ -142,9 +142,6 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
 gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc,
                                                       const Eigen::Vector3d& angularVel, bool& relocalizationFlag) {
-  // Write current time
-  stateTime_ = imuTimeK;
-
   // Keys
   gtsam::Key oldKey;
   gtsam::Key newKey;
@@ -152,6 +149,9 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
+    // Write current time
+    stateTime_ = imuTimeK;
 
     // Get new key
     oldKey = stateKey_;
@@ -182,11 +182,52 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), graphState_.imuBias());
     globalGraphValuesBufferPtr_->insert(valuesEstimate);
-    fallbackGraphValuesBufferPtr_->insert(valuesEstimate);
+    fallbackGraphValuesBufferPtr_->insert(valuesEstimate);  // Is emptied at each optimization step
 
     // Add timestamp for fixed lag smoother
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, globalGraphKeysTimestampsMapBufferPtr_);
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, fallbackGraphKeysTimestampsMapBufferPtr_);
+
+    // Avoid growing of buffers
+    int numKeysinBuffer = graphConfigPtr_->smootherLag * graphConfigPtr_->imuRate;
+    if (globalGraphValuesBufferPtr_->size() > (3 * numKeysinBuffer)) {
+      long keyToDelete = newKey - numKeysinBuffer;
+      gtsam::Symbol xKeyToFilter = gtsam::symbol_shorthand::X(keyToDelete);
+      gtsam::Symbol vKeyToFilter = gtsam::symbol_shorthand::V(keyToDelete);
+      gtsam::Symbol bKeyToFilter = gtsam::symbol_shorthand::B(keyToDelete);
+
+      // Values
+      globalGraphValuesBufferPtr_->erase(xKeyToFilter);
+      globalGraphValuesBufferPtr_->erase(vKeyToFilter);
+      globalGraphValuesBufferPtr_->erase(bKeyToFilter);
+      // KeyTimeMaps
+      globalGraphKeysTimestampsMapBufferPtr_->erase(xKeyToFilter);
+      globalGraphKeysTimestampsMapBufferPtr_->erase(vKeyToFilter);
+      globalGraphKeysTimestampsMapBufferPtr_->erase(bKeyToFilter);
+      // Factors
+      if (graphConfigPtr_->verboseLevel > 4) {
+        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " All keys before human readable key " << xKeyToFilter.index()
+                  << " have to be removed." << std::endl;
+        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END
+                  << " Number of Factors before erasing:  " << globalFactorsBufferPtr_->size() << std::endl;
+      }
+      for (auto factorIterator = globalFactorsBufferPtr_->begin(); factorIterator != globalFactorsBufferPtr_->end(); ++factorIterator) {
+        for (int i = 0; i < (*factorIterator)->keys().size(); ++i) {
+          gtsam::Symbol thisKey = (*factorIterator)->keys()[i];
+          if (thisKey.index() <= keyToDelete) {
+            globalFactorsBufferPtr_->erase(factorIterator);
+            if (graphConfigPtr_->verboseLevel > 3) {
+              std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << GREEN_START << " Erased factor for key number " << COLOR_END
+                        << thisKey.index() << std::endl;
+            }
+          }
+        }
+      }
+      if (graphConfigPtr_->verboseLevel > 4) {
+        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END
+                  << " Number of Factors after erasing:  " << globalFactorsBufferPtr_->size() << std::endl;
+      }
+    }
 
     // Relocalization Command
     if (!sentRelocalizationCommandAlready_ && numOptimizationsSinceGraphSwitching_ >= 1) {
@@ -195,7 +236,7 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
     } else {
       relocalizationFlag = false;
     }
-  }
+  }  // end of lock
 
   // Return copy of propagated state (for publishing)
   return imuPropagatedState_;
@@ -426,61 +467,102 @@ void GraphManager::activateGlobalGraph() {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
   if (activeSmootherPtr_ != globalSmootherPtr_) {
-      // Activate global graph
-      const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
-      int smootherStateLength = graphConfigPtr_->smootherLag * graphConfigPtr_->imuRate;
-      gtsam::NonlinearFactorGraph globalFactorsBuffer;
-      int numGlobalFactors = 0;
-      bool updateGraphFlag = false;
-      // Check graph data with lock ------------------
-      {
-        const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-        numGlobalFactors = globalFactorsBufferPtr_->nrFactors();
-        std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Number of measurements in smoother: " << smootherStateLength
-                  << ". Measurements accumulated since last graph switching: " << numGlobalFactors << COLOR_END << std::endl;
-        updateGraphFlag = numGlobalFactors >= smootherStateLength;
-        if (updateGraphFlag) {
-          std::cout << YELLOW_START << "GraphManager" << GREEN_START
-                    << " Hence, previously optimized graph can not be used --> re-optimizing..." << COLOR_END << std::endl;
-          // Copy
-          globalFactorsBuffer = *globalFactorsBufferPtr_;
-          globalFactorsBufferPtr_->resize(0);
-          globalImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(graphState_.imuBias());
-        } else {
-          std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Hence, previously optimized graph can be used." << COLOR_END
-                    << std::endl;
-        }
+    // Activate global graph
+    const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
+    int smootherNumberStates = int(graphConfigPtr_->smootherLag * graphConfigPtr_->imuRate);
+    gtsam::NonlinearFactorGraph globalFactorsBuffer;
+    gtsam::Values globalGraphValues;
+    std::map<gtsam::Key, double> globalGraphKeysTimestampsMap;
+    bool optimizeGraphFlag = false;
+    gtsam::Key currentKey;
+    double currentTime;
+
+    // Check graph data with lock: Mutex Block 1 ------------------
+    {
+      const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+      currentKey = stateKey_;
+      currentTime = stateTime_;
+      int lastKeyInSmoother = (--globalSmootherPtr_->timestamps().end())->first;
+
+      std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Last Key in Smoother is: " << lastKeyInSmoother
+                << ", current key is: " << stateKey_ << COLOR_END << std::endl;
+      if (lastKeyInSmoother < (int(stateKey_) - smootherNumberStates)) {
+        optimizeGraphFlag = true;
+        std::cout
+            << YELLOW_START << "GraphManager" << GREEN_START
+            << " Hence, previous global graph is too old --> previously optimized graph can not be used --> shrinking and re-optimizing..."
+            << COLOR_END << std::endl;
+
+        // Copy
+        globalFactorsBuffer = *globalFactorsBufferPtr_;
+        globalGraphValues = *globalGraphValuesBufferPtr_;
+        globalGraphKeysTimestampsMap = *globalGraphKeysTimestampsMapBufferPtr_;
+        globalFactorsBufferPtr_->resize(0);
+        globalGraphValuesBufferPtr_->clear();
+        globalGraphKeysTimestampsMapBufferPtr_->clear();
+        globalImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(graphState_.imuBias());
+      } else {
+        std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Hence, previously optimized graph can be used." << COLOR_END
+                  << std::endl;
       }
+    }
+
+    if (optimizeGraphFlag) {
       // Reoptimization of global graph outside of lock ---------------
-      if (updateGraphFlag) {
-        auto startIterator = globalFactorsBuffer.begin();
-        auto endIterator = --globalFactorsBuffer.end();
+      // Add prior factor for observability
+      std::cout << "Adding prior factor for key " << currentKey << std::endl;
+      gtsam::PriorFactor<gtsam::Pose3> posePrior(
+          gtsam::symbol_shorthand::X(currentKey), gtsam::Pose3(),
+          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e5, 1e5, 1e5, 1e5, 1e5, 1e5).finished()));
+      globalFactorsBuffer.add(posePrior);
+      gtsam::PriorFactor<gtsam::Vector3> velPrior(gtsam::symbol_shorthand::V(currentKey),
+                                                  globalGraphValues.at<gtsam::Vector3>(gtsam::symbol_shorthand::V(currentKey)),
+                                                  gtsam::noiseModel::Isotropic::Sigma(3, 1e-3));  // VELOCITY
+      globalFactorsBuffer.add(velPrior);
+      gtsam::PriorFactor<gtsam::imuBias::ConstantBias> biasPrior(
+          gtsam::symbol_shorthand::B(currentKey), graphState_.imuBias(),
+          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished()));  // BIAS
+      globalFactorsBuffer.add(biasPrior);
 
-        // Start from behind to keep compute bounded
-        for (int i = 1; i < smootherStateLength; ++i) {
-          --endIterator;
-        }
-        globalFactorsBuffer.erase(startIterator, endIterator);
-        numGlobalFactors = globalFactorsBuffer.nrFactors();
-        std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Remaining measurements after pruning: " << numGlobalFactors
-                  << COLOR_END << std::endl;
+      // Optimize over it with good intitial guesses
+      globalSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(
+          graphConfigPtr_->smootherLag, isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
+      addFactorsToSmootherAndOptimize(globalSmootherPtr_, globalFactorsBuffer, globalGraphValues, globalGraphKeysTimestampsMap,
+                                      graphConfigPtr_);
 
-        globalSmootherPtr_->update(globalFactorsBuffer, *globalGraphValuesBufferPtr_, *globalGraphKeysTimestampsMapBufferPtr_);
-      }
+      // Compute result
+      gtsam::NavState resultNavState = calculateStateAtKey(globalSmootherPtr_, graphConfigPtr_, currentKey);
+      gtsam::imuBias::ConstantBias resultBias =
+          globalSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
 
-      //*globalSmootherPtr_ = *fallbackSmootherPtr_;
-      // std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Reset global graph to fallback graph." << COLOR_END << std::endl;
-      activeSmootherPtr_ = globalSmootherPtr_;
-      activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
-      activeImuBufferPreintegratorPtr_ = globalImuBufferPreintegratorPtr_;
-      activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
-      activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
-      // Reset counter
+      // Update Values: Mutex block 2 ------------------
+      {
+        // Lock
+        const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+        // Update Graph State
+        graphState_.updateNavStateAndBias(currentKey, currentTime, resultNavState, resultBias);
+        // Predict from solution to obtain refined propagated state
+        // Resetting is done at beginning of next optimization
+        imuPropagatedState_ = activeImuBufferPreintegratorPtr_->predict(graphState_.navState(), graphState_.imuBias());
+
+        // Reset counter
+        numOptimizationsSinceGraphSwitching_ = 1;
+        sentRelocalizationCommandAlready_ = false;
+
+      }  // end of locking
+    } else {
       numOptimizationsSinceGraphSwitching_ = 0;
       sentRelocalizationCommandAlready_ = false;
+    }
 
-    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer."
-              << COLOR_END << std::endl;
+    // Switching of active Graph ---------------
+    activeSmootherPtr_ = globalSmootherPtr_;
+    activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
+    activeImuBufferPreintegratorPtr_ = globalImuBufferPreintegratorPtr_;
+    activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
+    activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
+
+    std::cout << YELLOW_START << "GraphManager" << GREEN_START << " Activated global graph pointer." << COLOR_END << std::endl;
   }
 }
 
@@ -614,6 +696,13 @@ gtsam::NavState GraphManager::calculateStateAtKey(std::shared_ptr<gtsam::Increme
 // Private --------------------------------------------------------------------
 template <class CHILDPTR>
 bool GraphManager::addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr,
+                                     const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
+  modifiedGraphPtr->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  return true;
+}
+
+template <class CHILDPTR>
+bool GraphManager::addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr,
                                      const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Check Timestamp of Measurement on Delay
   if (imuBuffer_.getLatestTimestampInBuffer() - measurementTimestamp > graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
@@ -623,8 +712,7 @@ bool GraphManager::addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph
     return false;
   }
   // Add measurements
-  modifiedGraphPtr->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
-  return true;
+  return addFactorToGraph_<CHILDPTR>(modifiedGraphPtr, noiseModelFactorPtr);
 }
 
 template <class CHILDPTR>

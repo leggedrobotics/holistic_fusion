@@ -94,6 +94,8 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
+  bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  template <class CHILDPTR>
   bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
                          const double measurementTimestamp);
   template <class CHILDPTR>
