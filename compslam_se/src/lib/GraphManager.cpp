@@ -511,8 +511,10 @@ void GraphManager::activateGlobalGraph() {
       // Reoptimization of global graph outside of lock ---------------
       // Add prior factor for observability
       std::cout << "Adding prior factor for key " << currentKey << std::endl;
+      // Putting high uncertainty for pose prior because GNSS factors are added that constrain x,y,z and yaw, and roll and pitch are
+      // immediately obsevrable
       gtsam::PriorFactor<gtsam::Pose3> posePrior(
-          gtsam::symbol_shorthand::X(currentKey), gtsam::Pose3(),
+          gtsam::symbol_shorthand::X(currentKey), globalGraphValues.at<gtsam::Pose3>(gtsam::symbol_shorthand::X(currentKey)),
           gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e5, 1e5, 1e5, 1e5, 1e5, 1e5).finished()));
       globalFactorsBuffer.add(posePrior);
       gtsam::PriorFactor<gtsam::Vector3> velPrior(gtsam::symbol_shorthand::V(currentKey),
@@ -689,7 +691,6 @@ gtsam::NavState GraphManager::calculateStateAtKey(std::shared_ptr<gtsam::Increme
       throw std::out_of_range("");
     }
   }
-  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Computed result at key: " << key << std::endl;
   return gtsam::NavState(resultPose, resultVelocity);
 }
 
