@@ -11,7 +11,7 @@
 #define YELLOW_START "\033[33m"
 #define COLOR_END "\033[0m"
 
-namespace asop_se {
+namespace compslam_se {
 
 class GnssHandler {
  public:
@@ -40,7 +40,7 @@ class GnssHandler {
   static double computeYawFromHeadingVector_(const Eigen::Vector3d& headingVector);
 
   // Member variables
-  compslam_se::Gnss gnssSensor_;
+  Gnss gnssSensor_;
   Eigen::Vector3d W_t_W_GnssL0_;
   double globalAttitudeYaw_;
 
@@ -51,6 +51,6 @@ class GnssHandler {
   double gnssReferenceHeading_;
 };
 
-}  // namespace asop_se
+}  // namespace compslam_se
 
 #endif  // GnssHandler_H

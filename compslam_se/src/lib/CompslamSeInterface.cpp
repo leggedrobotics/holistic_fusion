@@ -17,7 +17,7 @@ bool CompslamSeInterface::setup_() {
     std::runtime_error("CompslamSeInterface::setup_(): graphConfigPtr_ or staticTransformsPtr_ is not set.");
   }
 
-  compslamSePtr_ = new CompslamSe();
+  compslamSePtr_ = std::make_shared<CompslamSe>();
   compslamSePtr_->setup(graphConfigPtr_, staticTransformsPtr_);
 
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;

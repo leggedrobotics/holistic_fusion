@@ -54,10 +54,10 @@ class CompslamSeInterface {
 
   // Member Variables
   /// CompslamSe
-  CompslamSe* compslamSePtr_ = NULL;
+  std::shared_ptr<CompslamSe> compslamSePtr_ = NULL;
   /// Graph Configuration
-  GraphConfig* graphConfigPtr_ = NULL;
-  StaticTransforms* staticTransformsPtr_ = NULL;
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = NULL;
 
   /// Verbosity
   int verboseLevel_ = 0;

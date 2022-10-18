@@ -3,7 +3,7 @@
 // Package
 #include "compslam_se/gnss/GnssHandler.h"
 
-namespace asop_se {
+namespace compslam_se {
 
 // Public -------------------------------------------------------------------
 GnssHandler::GnssHandler() {
@@ -70,4 +70,4 @@ double GnssHandler::computeYawFromHeadingVector_(const Eigen::Vector3d& headingV
   return atan2(headingVector(1), headingVector(0));
 }
 
-}  // namespace asop_se
+}  // namespace compslam_se

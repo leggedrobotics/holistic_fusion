@@ -9,14 +9,14 @@ CompslamSe::CompslamSe() {
 }
 
 /// Setup ------------
-bool CompslamSe::setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr) {
+bool CompslamSe::setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_ptr<StaticTransforms> staticTransformsPtr) {
   std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
-  graphConfigPtr_ = std::make_shared<GraphConfig>(*(new GraphConfig(*graphConfigPtr)));
+  graphConfigPtr_ = graphConfigPtr;
   staticTransformsPtr_ = staticTransformsPtr;
 
-  graphMgrPtr_ = new GraphManager(graphConfigPtr_);
+  graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_);
 
   // Configs
   graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;

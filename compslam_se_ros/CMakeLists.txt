@@ -59,9 +59,8 @@ include_directories(
 
 # Library
 add_library(${PROJECT_NAME}
-  src/lib/GnssHandler.cpp
-  src/lib/StaticTransformsTf.cpp
-  src/lib/StaticTransformsUrdf.cpp
+        src/lib/StaticTransformsTf.cpp
+        src/lib/StaticTransformsUrdf.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 

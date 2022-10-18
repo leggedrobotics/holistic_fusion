@@ -39,7 +39,7 @@ class CompslamSe {
   ~CompslamSe(){};
 
   // Setup
-  bool setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
+  bool setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Required Initialization
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
@@ -98,11 +98,11 @@ class CompslamSe {
   std::mutex optimizeGraphMutex_;
 
   // Factor graph
-  GraphManager* graphMgrPtr_ = NULL;
+  std::shared_ptr<GraphManager> graphMgrPtr_ = NULL;
 
   // Graph Config
   std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
-  StaticTransforms* staticTransformsPtr_ = NULL;
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = NULL;
 
   /// Flags
   //// Configuration
