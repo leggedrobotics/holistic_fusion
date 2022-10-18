@@ -7,11 +7,13 @@ namespace compslam_se {
 
 struct UnaryMeasurement : public Measurement {
  public:
-  UnaryMeasurement() {}
+  UnaryMeasurement(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeStamp)
+      : Measurement(measurementName, frameName, measurementRate, timeStamp) {}
 
-  virtual std::string type() override { return name; }
+  virtual MeasurementType measurementType() override { return measurementType_; }
 
-  Eigen::MatrixXd T_k;
+ protected:
+  MeasurementType measurementType_ = MeasurementType::Unary;
 };
 
 }  // namespace compslam_se

@@ -16,61 +16,42 @@ class StaticTransforms {
   StaticTransforms() { std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl; }
 
   // Setters
-  void setMapFrame(const std::string& s) { mapFrame_ = s; }
-
-  void setOdomFrame(const std::string& s) { odomFrame_ = s; }
+  Eigen::Matrix4d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+    std::pair<std::string, std::string> framePair(frame1, frame2);
+    //    auto keyIterator = T_frame1_frame2_map_.find(framePair);
+    //    if (keyIterator == T_frame1_frame2_map_.end()) {
+    //      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
+    //                << std::endl;
+    //      throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
+    //    }
+    return T_frame1_frame2_map_[framePair];
+  }
 
   void setImuFrame(const std::string& s) { imuFrame_ = s; }
 
-  void setLidarFrame(const std::string& s) { lidarFrame_ = s; }
-
-  void setLeftGnssFrame(const std::string& s) { leftGnssFrame_ = s; }
-
-  void setRightGnssFrame(const std::string& s) { rightGnssFrame_ = s; }
-
-  void setCabinFrame(const std::string& s) { cabinFrame_ = s; }
-
   // Getters
-  /// Frames
-  const std::string& getMapFrame() { return mapFrame_; }
-
-  const std::string& getOdomFrame() { return odomFrame_; }
+  const Eigen::Matrix4d& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+    std::pair<std::string, std::string> framePair(frame1, frame2);
+    auto keyIterator = T_frame1_frame2_map_.find(framePair);
+    if (keyIterator == T_frame1_frame2_map_.end()) {
+      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
+                << std::endl;
+      throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
+    }
+    return keyIterator->second;
+  }
 
   const std::string& getImuFrame() { return imuFrame_; }
-
-  const std::string& getLidarFrame() { return lidarFrame_; }
-
-  const std::string& getLeftGnssFrame() { return leftGnssFrame_; }
-
-  const std::string& getRightGnssFrame() { return rightGnssFrame_; }
-
-  const std::string& getCabinFrame() { return cabinFrame_; }
-
-  /// Transformations
-  const Eigen::Matrix4d& T_L_I() { return T_L_I_; }
-  const Eigen::Matrix4d& T_GnssL_I() { return T_GnssL_I_; }
-  const Eigen::Matrix4d& T_GnssR_I() { return T_GnssR_I_; }
-  Eigen::Matrix4d T_C_I_;
-  const Eigen::Matrix4d& T_C_I() { return T_C_I_; }
 
   // Functionality
   virtual void findTransformations() = 0;
 
  protected:
-  // Names
-  /// Frames
-  std::string mapFrame_;
-  std::string odomFrame_;
-  std::string imuFrame_;  // If used --> copied to imuCabinFrame_
-  std::string lidarFrame_;
-  std::string leftGnssFrame_;
-  std::string rightGnssFrame_;
-  std::string cabinFrame_;
+  // General container class
+  std::map<std::pair<std::string, std::string>, Eigen::Matrix4d> T_frame1_frame2_map_;
 
-  // Transformations
-  Eigen::Matrix4d T_L_I_;
-  Eigen::Matrix4d T_GnssL_I_;
-  Eigen::Matrix4d T_GnssR_I_;
+  // Required frames
+  std::string imuFrame_;  // If used --> copied to imuCabinFrame_
 };
 
 }  // namespace compslam_se

@@ -59,17 +59,11 @@ include_directories(
 
 # Library
 add_library(${PROJECT_NAME}
-  src/lib/CompslamEstimator.cpp
   src/lib/GnssHandler.cpp
-  src/lib/readParams.cpp
   src/lib/StaticTransformsTf.cpp
   src/lib/StaticTransformsUrdf.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-
-# Executable
-add_executable(${PROJECT_NAME}_node src/estimator_node.cpp)
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 

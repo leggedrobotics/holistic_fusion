@@ -353,7 +353,7 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   }
 }
 
-void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const double gnssPositionUnaryNoise,
+void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
                                               const gtsam::Vector3& position) {
   // Find closest key in existing graph
   double closestGraphTime;
@@ -365,7 +365,8 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
 
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << gnssPositionUnaryNoise, gnssPositionUnaryNoise, gnssPositionUnaryNoise).finished());  // rad,rad,rad,m,m,m
+      (gtsam::Vector(3) << gnssPositionUnaryNoise[0], gnssPositionUnaryNoise[1], gnssPositionUnaryNoise[2])
+          .finished());  // rad,rad,rad,m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
 
   // Create unary factor and add it

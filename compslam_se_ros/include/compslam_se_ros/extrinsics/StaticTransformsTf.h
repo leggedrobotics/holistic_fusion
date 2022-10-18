@@ -17,6 +17,9 @@ class StaticTransformsTf : public StaticTransforms {
   void findTransformations() override;
 
   // Members
+  std::string lidarFrame_;
+
+  // Members
   tf::TransformListener listener_;
 };
 }  // namespace compslam_se

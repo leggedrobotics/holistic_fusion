@@ -6,18 +6,32 @@
 
 namespace compslam_se {
 
+// Enum that contains 2 possible measurement types
+enum class MeasurementType { Unary, Binary };
+
 struct Measurement {
  public:
-  Measurement() {}
+  Measurement(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeStamp)
+      : measurementName_(measurementName), frameName_(frameName), measurementRate_(measurementRate), timeK_(timeStamp) {}
 
-  virtual std::string type() = 0;
+  // Public Methods
+  const std::string& measurementName() const { return measurementName_; }
+  const std::string& frameName() const { return frameName_; }
+  int measurementRate() const { return measurementRate_; }
+  double timeK() const { return timeK_; }
 
-  std::string name;
-  int rate;
+  // Pure Virtual Class
+  virtual MeasurementType measurementType() = 0;
 
-  double time;
+ protected:
+  // Members
+  std::string measurementName_;
+  std::string frameName_;
+  int measurementRate_;
+  double timeK_;
 
-  Eigen::MatrixXd measurementNoise;
+  // Unknown at this level
+  MeasurementType measurementType_;
 };
 
 }  // namespace compslam_se
