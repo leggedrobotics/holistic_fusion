@@ -65,6 +65,7 @@ class ImuBuffer {
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
   int verboseLevel_ = 0;
   double tLatestInBuffer_;
+  std::mutex writeInBufferMutex_;
 };
 
 }  // namespace compslam_se
