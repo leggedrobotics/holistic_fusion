@@ -40,4 +40,8 @@ void CompslamSeRos::addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::st
   msgPtr->twist.twist.angular.z = W_w_W_F(2);
 }
 
+long CompslamSeRos::secondsSinceStart_() {
+  return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
+}
+
 }  // namespace compslam_se

@@ -2,6 +2,7 @@
 #define MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
 
 #include <nav_msgs/Odometry.h>
+#include <Eigen/Dense>
 
 namespace compslam_se {
 

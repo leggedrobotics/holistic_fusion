@@ -13,10 +13,8 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>eigen_conversions</build_depend>
-  <build_depend>signal_logger</build_depend>
   <build_depend>cmake_clang_tools</build_depend>
 
   <exec_depend>eigen_conversions</exec_depend>
-  <exec_depend>signal_logger</exec_depend>
 
 </package>

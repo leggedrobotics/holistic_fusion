@@ -14,10 +14,7 @@ class StaticTransformsTf : public StaticTransforms {
   StaticTransformsTf(ros::NodeHandle& privateNode);
 
  protected:
-  void findTransformations() override;
-
-  // Members
-  std::string lidarFrame_;
+  virtual void findTransformations() = 0;
 
   // Members
   tf::TransformListener listener_;

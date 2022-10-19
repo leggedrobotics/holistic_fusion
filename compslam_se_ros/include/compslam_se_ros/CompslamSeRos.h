@@ -1,6 +1,9 @@
 #ifndef CompslamSeRos_H
 #define CompslamSeRos_H
 
+// std
+#include <chrono>
+
 // ROS
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
@@ -26,6 +29,11 @@ class CompslamSeRos : public CompslamSeInterface {
   static void addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
                                const ros::Time& stamp, const Eigen::Matrix4d& T, const Eigen::Vector3d& W_v_W_F,
                                const Eigen::Vector3d& W_w_W_F);
+  long secondsSinceStart_();
+
+  // Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 };
 }  // namespace compslam_se
 #endif  // end M545ESTIMATORGRAPH_H
