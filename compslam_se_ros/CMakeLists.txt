@@ -2,22 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 project(compslam_se_ros)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
   roscpp
-  rospy
-  std_msgs
-  tf
-  tf_conversions
-  message_generation
-  std_srvs
-  nodelet
-  message_filters
-  signal_logger
-  robot_utils
   compslam_se
   kdl_parser
+  nav_msgs
+  tf
 )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -61,6 +50,7 @@ include_directories(
 add_library(${PROJECT_NAME}
         src/lib/StaticTransformsTf.cpp
         src/lib/StaticTransformsUrdf.cpp
+        src/lib/CompslamSeRos.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
