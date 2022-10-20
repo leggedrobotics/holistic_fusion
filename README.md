@@ -4,10 +4,7 @@
 , [Shehryar Khattak](https://www.linkedin.com/in/shehryar-khattak/)
 , [Marco Hutter](https://rsl.ethz.ch/the-lab/people/person-detail.MTIxOTEx.TGlzdC8yNDQxLC0xNDI1MTk1NzM1.html)
 
-<img src="doc/graph_msf.gif" width="60%" height="60%">
-<img src="doc/titleimg.png" width="39%" height="39%">
-
-*Copyright IEEE*
+<img src="doc/graph_msf.gif" width="100%" height="60%">
 
 ## Resources 
 **[1] ICRA2022, Philadelphia**
@@ -22,19 +19,22 @@ The adding of the measurements and the optimization of the graph are performed i
 In contrast to classical filtering-based approaches this graph-based structure also allows for a simple incorporation of
 delayed sensor measurements up to the smoothingLag.
 
-The framework is still under development and will be updated, extended, and more generalized in the future. There are two 
-intended **use-cases**:
+There are two intended **use-cases**:
 
 1. Using the dual graph formulation as proosed in [1]. In this part of the implementation there are hard-coded 
 components for this specific use-case.
 2. A more general graph-based multi-sensor fusion. An example for fusing LiDAR odometry and IMU on the dataset of the 
 [ETH Zurich Robotic Summer School](https://ethz-robotx.github.io/SuperMegaBot/) will follow shortly.
 
+<img src="doc/titleimg.png" width="50%" height="50%">**Copyright IEEE**
+
+**Disclaimer:** The framework is still under development and will be updated, extended, and more generalized in the future.
+
 ## Modules and Packages
 This repository contains the following modules:
 
-1. _GraphMsf_: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
-2. _GraphMsfRos_: This package provides a basic class for using GraphMsf in ROS. It is dependant on GraphMsf and ROS.
+1. _graph_msf_: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
+2. _graph_msf_ros_: This package provides a basic class for using GraphMsf in ROS. It is dependant on GraphMsf and ROS.
 3. _examples_: Examples on how to use GraphMsf and GraphMsfRos.
    - [./examples/excavator_dual_graph](./examples/excavator_dual_graph) from [1]. This is the implementation as presented in the paper.
    - Single-graph standalone fusion example following soon.
@@ -46,7 +46,7 @@ For the installation instructions please refer to the [./doc/installation.md](./
 Instructions on how to use and run the examples can be found in the [./examples/README.md](./examples/README.md).
 
 ## Data
-We provide some example dataset from our excavator HEAP. The data contains
+We provide some example datasets from our excavator HEAP. The data contains
 * IMU measurements,
 * LiDAR odometry from CompSLAM,
 * Left and Right GNSS measurements,
