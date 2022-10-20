@@ -3,11 +3,14 @@
 **Authors:** [Julian Nubert](https://juliannubert.com/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub]))
 , [Shehryar Khattak](https://www.linkedin.com/in/shehryar-khattak/)
 , [Marco Hutter](https://rsl.ethz.ch/the-lab/people/person-detail.MTIxOTEx.TGlzdC8yNDQxLC0xNDI1MTk1NzM1.html)
-<img src="doc/titleimg.png" width="30%" height="30%">
+
+<img src="doc/graph_msf.gif" width="60%" height="60%">
+<img src="doc/titleimg.png" width="39%" height="39%">
+
 *Copyright IEEE*
 
 ## Resources 
-* [1] ICRA2022, Philadelphia 
+**[1] ICRA2022, Philadelphia**
   * [project page](https://sites.google.com/leggedrobotics.com/gmfcl).
   * [paper](https://arxiv.org/pdf/2203.01389.pdf)
   * [video](https://youtu.be/syTV7Ui36jg)
