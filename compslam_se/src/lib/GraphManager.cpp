@@ -516,15 +516,15 @@ void GraphManager::activateGlobalGraph() {
       // immediately obsevrable
       gtsam::PriorFactor<gtsam::Pose3> posePrior(
           gtsam::symbol_shorthand::X(currentKey), globalGraphValues.at<gtsam::Pose3>(gtsam::symbol_shorthand::X(currentKey)),
-          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e5, 1e5, 1e5, 1e5, 1e5, 1e5).finished()));
+          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-05, 1e-02, 1e-02, 1e02, 1e02, 1e02).finished()));
       globalFactorsBuffer.add(posePrior);
       gtsam::PriorFactor<gtsam::Vector3> velPrior(gtsam::symbol_shorthand::V(currentKey),
                                                   globalGraphValues.at<gtsam::Vector3>(gtsam::symbol_shorthand::V(currentKey)),
-                                                  gtsam::noiseModel::Isotropic::Sigma(3, 1e-3));  // VELOCITY
+                                                  gtsam::noiseModel::Isotropic::Sigma(3, 1e-03));  // VELOCITY
       globalFactorsBuffer.add(velPrior);
       gtsam::PriorFactor<gtsam::imuBias::ConstantBias> biasPrior(
           gtsam::symbol_shorthand::B(currentKey), graphState_.imuBias(),
-          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished()));  // BIAS
+          gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-03, 1e-03, 1e-03, 1e-03, 1e-03, 1e-03).finished()));  // BIAS
       globalFactorsBuffer.add(biasPrior);
 
       // Optimize over it with good intitial guesses

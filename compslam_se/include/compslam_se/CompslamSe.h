@@ -20,7 +20,7 @@
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
-#define REQUIRED_GNSS_NUM_NOT_JUMPED 20
+#define REQUIRED_GNSS_NUM_NOT_JUMPED 40          // 2*singleGnssJumping = 2*20 = 40
 #define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.1  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
@@ -145,7 +145,7 @@ class CompslamSe {
 
   /// Counter
   long gnssCallbackCounter_ = 0;
-  int gnssNotJumpingCounter_ = 0;
+  int gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
 
   /// Logging
   bool logPlots_ = false;

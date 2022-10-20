@@ -306,112 +306,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        BASE:
-          Value: true
-        BASE_inertia:
-          Value: true
-        BOOM:
-          Value: true
-        CABIN:
-          Value: true
-        DIPPER:
-          Value: true
-        ENDEFFECTOR:
-          Value: true
-        ENDEFFECTOR_CONTACT:
-          Value: true
-        GNSS_L:
-          Value: true
-        GNSS_R:
-          Value: true
-        IMU_base_link:
-          Value: true
-        IMU_link:
-          Value: true
-        LF_BEAM:
-          Value: true
-        LF_BEARING:
-          Value: true
-        LF_KNUCKLE:
-          Value: true
-        LF_PARALLEL:
-          Value: true
-        LF_SWIVEL:
-          Value: true
-        LF_WHEEL:
-          Value: true
-        LF_WHEEL_CONTACT:
-          Value: true
-        LH_BEAM:
-          Value: true
-        LH_KNUCKLE:
-          Value: true
-        LH_OUTRIGGER:
-          Value: true
-        LH_ROTATOR:
-          Value: true
-        LH_WHEEL:
-          Value: true
-        LH_WHEEL_CONTACT:
-          Value: true
-        RF_BEAM:
-          Value: true
-        RF_BEARING:
-          Value: true
-        RF_KNUCKLE:
-          Value: true
-        RF_PARALLEL:
-          Value: true
-        RF_SWIVEL:
-          Value: true
-        RF_WHEEL:
-          Value: true
-        RF_WHEEL_CONTACT:
-          Value: true
-        RH_BEAM:
-          Value: true
-        RH_KNUCKLE:
-          Value: true
-        RH_OUTRIGGER:
-          Value: true
-        RH_ROTATOR:
-          Value: true
-        RH_WHEEL:
-          Value: true
-        RH_WHEEL_CONTACT:
-          Value: true
-        ROTO:
-          Value: true
-        ROTO_BASE:
-          Value: true
-        SHOVEL:
-          Value: true
-        TELE:
-          Value: true
-        camMainView:
-          Value: true
-        compslam_lio/camera_init:
-          Value: true
-        compslam_lio/camera_init_CORRECTED:
-          Value: true
-        imu_box_base_link:
-          Value: true
-        imu_box_link:
-          Value: true
-        livox_frame:
-          Value: true
-        map:
-          Value: true
-        odom:
-          Value: true
-        os_imu:
-          Value: true
-        os_lidar:
-          Value: true
-        os_sensor:
-          Value: true
-        roof_top_box:
-          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF
@@ -419,77 +313,7 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          compslam_lio/camera_init_CORRECTED:
-            compslam_lio/camera_init:
-              {}
-          odom:
-            BASE:
-              BASE_inertia:
-                {}
-              CABIN:
-                BOOM:
-                  DIPPER:
-                    TELE:
-                      ROTO_BASE:
-                        ROTO:
-                          ENDEFFECTOR:
-                            SHOVEL:
-                              ENDEFFECTOR_CONTACT:
-                                {}
-                GNSS_L:
-                  {}
-                GNSS_R:
-                  {}
-                camMainView:
-                  livox_frame:
-                    {}
-                  os_sensor:
-                    os_imu:
-                      {}
-                    os_lidar:
-                      {}
-                  roof_top_box:
-                    imu_box_base_link:
-                      imu_box_link:
-                        {}
-              IMU_base_link:
-                IMU_link:
-                  {}
-              LF_SWIVEL:
-                LF_BEAM:
-                  LF_BEARING:
-                    LF_KNUCKLE:
-                      LF_WHEEL:
-                        LF_WHEEL_CONTACT:
-                          {}
-                LF_PARALLEL:
-                  {}
-              LH_ROTATOR:
-                LH_BEAM:
-                  LH_KNUCKLE:
-                    LH_OUTRIGGER:
-                      {}
-                    LH_WHEEL:
-                      LH_WHEEL_CONTACT:
-                        {}
-              RF_SWIVEL:
-                RF_BEAM:
-                  RF_BEARING:
-                    RF_KNUCKLE:
-                      RF_WHEEL:
-                        RF_WHEEL_CONTACT:
-                          {}
-                RF_PARALLEL:
-                  {}
-              RH_ROTATOR:
-                RH_BEAM:
-                  RH_KNUCKLE:
-                    RH_OUTRIGGER:
-                      {}
-                    RH_WHEEL:
-                      RH_WHEEL_CONTACT:
-                        {}
+        {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -723,7 +547,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -764,7 +588,7 @@ Visualization Manager:
       Name: Current View
       Near Clip Distance: 0.009999999776482582
       Pitch: 0.7853981852531433
-      Target Frame: map
+      Target Frame: odom
       Yaw: 0.7853981852531433
     Saved: ~
 Window Geometry:

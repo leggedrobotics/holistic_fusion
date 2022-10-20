@@ -41,13 +41,6 @@ void CompslamSeInterface::activateFallbackGraph() {
   compslamSePtr_->activateFallbackGraph();
 }
 
-/** \brief Rotate the given vector by the specified angles around the z-, x- respectively y-axis.
- *
- * @param v the vector to rotate
- * @param angZ the rotation angle around the z-axis
- * @param angX the rotation angle around the x-axis
- * @param angY the rotation angle around the y-axis
- */
 void CompslamSeInterface::addImuMeasurementAndPublishState_(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                                             const double imuTimeK) {
   static int imuCabinCallbackCounter__ = -1;

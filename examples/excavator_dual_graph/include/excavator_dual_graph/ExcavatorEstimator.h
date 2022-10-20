@@ -88,6 +88,8 @@ class ExcavatorEstimator : public compslam_se::CompslamSeRos {
   // GNSS Sync Policy
   typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> GnssExactSyncPolicy;
   boost::shared_ptr<message_filters::Synchronizer<GnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
+  // TF
+  tf::TransformListener listener_;
 
   // Publishers
   // Odometry
@@ -105,7 +107,7 @@ class ExcavatorEstimator : public compslam_se::CompslamSeRos {
   // Messages
   // Odometry
   nav_msgs::OdometryPtr odomImuMsgPtr_;
-  nav_msgs::OdometryPtr worldImuMsgPtr_;
+  nav_msgs::OdometryPtr mapImuMsgPtr_;
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
   nav_msgs::PathPtr estMapImuPathPtr_;

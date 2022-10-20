@@ -18,13 +18,16 @@ void ExcavatorStaticTransforms::findTransformations() {
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree.";
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " " << lidarFrame_ << ", " << leftGnssFrame_ << ", " << rightGnssFrame_
-            << ", " << cabinFrame_ << ", " << imuFrame_ << ", " << std::endl;
+            << ", " << cabinFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable
-  tf::StampedTransform transform;
+  static tf::StampedTransform transform;
 
   // Look up transforms ----------------------------
+  // Sleep before subscribing, otherwise sometimes dying in the beginning of rosbag
+  ros::Rate rosRate(10);
+  rosRate.sleep();
 
   // Imu to Cabin Link ---
   listener_.waitForTransform(imuFrame_, cabinFrame_, ros::Time(0), ros::Duration(100.0));
@@ -36,9 +39,19 @@ void ExcavatorStaticTransforms::findTransformations() {
   // Cabin_I
   lv_T_frame1_frame2(cabinFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, cabinFrame_).inverse();
 
+  // Imu to Base Link ---
+  listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(1.0));
+  listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
+  // I_Cabin
+  compslam_se::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
+  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
+            << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).block<3, 1>(0, 3) << std::endl;
+  // Cabin_I
+  lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
+
   // Imu to LiDAR Link ---
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Waiting for transform for 10 seconds.";
-  listener_.waitForTransform(imuFrame_, lidarFrame_, ros::Time(0), ros::Duration(0.1));
+  listener_.waitForTransform(imuFrame_, lidarFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, lidarFrame_, ros::Time(0), transform);
   // I_Lidar
   compslam_se::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
@@ -48,7 +61,7 @@ void ExcavatorStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(lidarFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarFrame_).inverse();
 
   // Imu to GNSS Left Link ---
-  listener_.waitForTransform(imuFrame_, leftGnssFrame_, ros::Time(0), ros::Duration(0.1));
+  listener_.waitForTransform(imuFrame_, leftGnssFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, leftGnssFrame_, ros::Time(0), transform);
   // I_GnssL
   compslam_se::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, leftGnssFrame_));
@@ -58,7 +71,7 @@ void ExcavatorStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(leftGnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, leftGnssFrame_).inverse();
 
   // Imu to GNSS Right Link ---
-  listener_.waitForTransform(imuFrame_, rightGnssFrame_, ros::Time(0), ros::Duration(0.1));
+  listener_.waitForTransform(imuFrame_, rightGnssFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, rightGnssFrame_, ros::Time(0), transform);
   // I_GnssR
   compslam_se::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, rightGnssFrame_));
