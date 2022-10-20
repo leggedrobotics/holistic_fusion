@@ -11,18 +11,18 @@
 
 ## Resources 
 **[1] ICRA2022, Philadelphia**
-  * [project page](https://sites.google.com/leggedrobotics.com/gmfcl).
-  * [paper](https://arxiv.org/pdf/2203.01389.pdf)
-  * [video](https://youtu.be/syTV7Ui36jg)
+* [project page](https://sites.google.com/leggedrobotics.com/gmfcl).
+* [paper](https://arxiv.org/pdf/2203.01389.pdf)
+* [video](https://youtu.be/syTV7Ui36jg)
 
 ## Overview
 The presented framework aims for a flexible and fast fusion of multiple sensor modalities. The state estimate is 
-published at **imu frequency** through IMU pre-integration with a multi-threaded implementation and bookkeeping. 
+published at **imu frequency** through IMU pre-integration with a multi-threaded implementation and book-keeping. 
 The adding of the measurements and the optimization of the graph are performed in different threads. 
 In contrast to classical filtering-based approaches this graph-based structure also allows for a simple incorporation of
 delayed sensor measurements up to the smoothingLag.
 
-The framework is still under development and will be updated, extended, and generalized in the future. There are two 
+The framework is still under development and will be updated, extended, and more generalized in the future. There are two 
 intended **use-cases**:
 
 1. Using the dual graph formulation as proosed in [1]. In this part of the implementation there are hard-coded 
@@ -36,8 +36,8 @@ This repository contains the following modules:
 1. _GraphMsf_: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
 2. _GraphMsfRos_: This package provides a basic class for using GraphMsf in ROS. It is dependant on GraphMsf and ROS.
 3. _examples_: Examples on how to use GraphMsf and GraphMsfRos.
-   1. [./examples/excavator_dual_graph](./examples/excavator_dual_graph) from [1]. This is the implementation as presented in the paper.
-   2. Single-graph standalone fusion example following soon.
+   - [./examples/excavator_dual_graph](./examples/excavator_dual_graph) from [1]. This is the implementation as presented in the paper.
+   - Single-graph standalone fusion example following soon.
 
 ## Installation
 For the installation instructions please refer to the [./doc/installation.md](./doc/installation.md).
