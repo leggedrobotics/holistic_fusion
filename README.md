@@ -84,4 +84,4 @@ If you find this code useful, please consider citing
 
 ## Acknowledgements
 The authors thank Marco Tranzatto, Simon Kerscher, Dominic Jud, Lorenzo Terenzi, Timo Schoenegg and the remaining HEAP 
-team for patiently testing this framework during their experiments. 
+team for patiently testing parts of this framework during their experiments. 
