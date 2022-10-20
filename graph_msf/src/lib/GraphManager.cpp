@@ -213,9 +213,9 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
       globalGraphKeysTimestampsMapBufferPtr_->erase(bKeyToFilter);
       // Factors
       if (graphConfigPtr_->verboseLevel > 4) {
-        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " All keys before human readable key " << xKeyToFilter.index()
+        std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " All keys before human readable key " << xKeyToFilter.index()
                   << " have to be removed." << std::endl;
-        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END
+        std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END
                   << " Number of Factors before erasing:  " << globalFactorsBufferPtr_->size() << std::endl;
       }
       for (auto factorIterator = globalFactorsBufferPtr_->begin(); factorIterator != globalFactorsBufferPtr_->end(); ++factorIterator) {
@@ -224,14 +224,14 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
           if (thisKey.index() <= keyToDelete) {
             globalFactorsBufferPtr_->erase(factorIterator);
             if (graphConfigPtr_->verboseLevel > 3) {
-              std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << GREEN_START << " Erased factor for key number " << COLOR_END
+              std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << GREEN_START << " Erased factor for key number " << COLOR_END
                         << thisKey.index() << std::endl;
             }
           }
         }
       }
       if (graphConfigPtr_->verboseLevel > 4) {
-        std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END
+        std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END
                   << " Number of Factors after erasing:  " << globalFactorsBufferPtr_->size() << std::endl;
       }
     }
@@ -256,7 +256,7 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
 
   if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar delta")) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Current key: " << stateKey_
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Current key: " << stateKey_
               << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << COLOR_END << std::endl;
     return closestLidarKeyK;
   }
@@ -278,11 +278,11 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << YELLOW_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << YELLOW_START
               << " LiDAR PoseBetween factor NOT added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
               << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 1) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key: " << stateKey_ << "," << GREEN_START
               << " LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK << COLOR_END
               << std::endl;
   }
@@ -298,7 +298,7 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
 
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "fallback lidar unary", graphConfigPtr_->maxSearchDeviation,
                                             lidarTimeK)) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
               << std::endl;
     return;
   }
@@ -317,10 +317,10 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
               << " LiDAR unary factor NOT added to key " << closestKey << COLOR_END << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -333,7 +333,7 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
 
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "global lidar unary", graphConfigPtr_->maxSearchDeviation,
                                             lidarTimeK)) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
               << std::endl;
     return;
   }
@@ -352,10 +352,10 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
               << " LiDAR unary factor NOT added to key " << closestKey << COLOR_END << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " LiDAR unary factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -366,7 +366,8 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   double closestGraphTime;
   gtsam::Key closestKey;
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Unary", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END << std::endl;
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END
+              << std::endl;
     return;
   }
 
@@ -384,10 +385,10 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
               << ", Gnss position factor NOT added to key " << closestKey << COLOR_END << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 1) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << ", Gnss position factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -396,7 +397,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
                                              const double measuredYaw) {
   // Print information
   if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << std::setprecision(14)
               << ", Gnss yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
   }
 
@@ -404,7 +405,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   double closestGraphTime;
   gtsam::Key closestKey;
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "Gnss Heading", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
               << std::endl;
     return;
   }
@@ -422,10 +423,10 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << YELLOW_START
               << " Gnss heading factor is NOT added to key " << closestKey << COLOR_END << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_ << GREEN_START
               << " Gnss heading factor is added to key " << closestKey << COLOR_END << std::endl;
   }
 }
@@ -433,7 +434,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
 bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
   // Check external motion
   if (pose.translation().norm() > graphConfigPtr_->zeroMotionTh) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_
               << ", Not adding zero motion factor due to too big motion." << std::endl;
     return false;
   }
@@ -465,7 +466,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
             addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Vector3>*>(fallbackFactorsBufferPtr_, &velocityUnaryFactor, timeKm1);
 
   if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Current key " << stateKey_
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current key " << stateKey_
               << GREEN_START " Zero Motion Factor added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
   }
   return true;
@@ -670,7 +671,7 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::Increm
     }
   } catch (const std::out_of_range& outOfRangeExeception) {
     std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
               << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are not "
                  "connected. Increase the lag in this case."
               << COLOR_END << std::endl;
@@ -692,7 +693,7 @@ gtsam::NavState GraphManager::calculateStateAtKey(std::shared_ptr<gtsam::Increme
       resultVelocity = graphPtr->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
     } catch (const std::out_of_range& outOfRangeExeception) {
       std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-      std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
                 << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
                    "not connected. Increase the lag in this case."
                 << COLOR_END << std::endl;
@@ -715,7 +716,7 @@ bool GraphManager::addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph
                                      const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Check Timestamp of Measurement on Delay
   if (imuBuffer_.getLatestTimestampInBuffer() - measurementTimestamp > graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
-    std::cout << YELLOW_START << "CSe-GraphManager" << RED_START
+    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
               << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
               << COLOR_END << std::endl;
     return false;
@@ -751,14 +752,14 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
   // Check
   if (closestGraphTimeKm1 > closestGraphTimeK) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << " Time at time step k-1 must be smaller than time at time step k."
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Time at time step k-1 must be smaller than time at time step k."
               << COLOR_END << std::endl;
     return false;
   }
 
   double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimestampDistance > maxTimestampDistance) {
-    std::cerr << YELLOW_START << "CSe-GraphManager"
+    std::cerr << YELLOW_START << "GMsf-GraphManager"
               << " Distance of " << name << " timestamps is too big. Found timestamp difference is  "
               << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum admissible distance of "
               << maxTimestampDistance << ". Still adding constraints to graph." << COLOR_END << std::endl;
@@ -768,11 +769,11 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
 
 void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   if (imuMeas.size() < 2) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
               << std::endl;
     return;
   } else if (imuMeas.size() > 2) {
-    std::cerr << YELLOW_START << "CSe-GraphManager" << RED_START << "Currently only supporting two IMU messages for pre-integration."
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << "Currently only supporting two IMU messages for pre-integration."
               << COLOR_END << std::endl;
     throw std::runtime_error("Terminating.");
   }

@@ -1,3 +1,10 @@
+/*
+Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+All rights reserved.
+This file is released under the "BSD-3-Clause License".
+Please see the LICENSE file that has been included as part of this package.
+ */
+
 // Implementation
 #include "excavator_dual_graph/ExcavatorEstimator.h"
 
@@ -5,11 +12,11 @@ namespace excavator_se {
 
 template <typename T>
 void printKey(const std::string& key, T value) {
-  std::cout << YELLOW_START << "AsopSe " << COLOR_END << key << "  set to: " << value << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator " << COLOR_END << key << "  set to: " << value << std::endl;
 }
 template <>
 void printKey(const std::string& key, std::vector<double> vector) {
-  std::cout << YELLOW_START << "AsopSe " << COLOR_END << key << " set to: ";
+  std::cout << YELLOW_START << "ExcavatorEstimator " << COLOR_END << key << " set to: ";
   for (const auto& element : vector) {
     std::cout << element << ",";
   }
@@ -23,7 +30,7 @@ T tryGetParam(const std::string& key, const ros::NodeHandle& privateNode) {
     printKey(key, value);
     return value;
   } else {
-    throw std::runtime_error("AsopSE - " + key + " not specified.");
+    throw std::runtime_error("ExcavatorEstimator - " + key + " not specified.");
   }
 }
 
@@ -35,7 +42,7 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   std::string sParam;
 
   if (!graphConfigPtr_) {
-    throw std::runtime_error("AsopSe: graphConfigPtr must be initialized.");
+    throw std::runtime_error("ExcavatorEstimator: graphConfigPtr must be initialized.");
   }
 
   // Configuration

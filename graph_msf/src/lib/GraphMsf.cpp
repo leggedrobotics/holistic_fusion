@@ -12,12 +12,12 @@ namespace graph_msf {
 // Public -----------------------------------------------------------
 /// Constructor -----------
 GraphMsf::GraphMsf() {
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Instance created." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Instance created." << COLOR_END << std::endl;
 }
 
 /// Setup ------------
 bool GraphMsf::setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_ptr<StaticTransforms> staticTransformsPtr) {
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
   graphConfigPtr_ = graphConfigPtr;
@@ -36,9 +36,9 @@ bool GraphMsf::setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_pt
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
-  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Initialized thread for optimizing the graph in parallel." << std::endl;
+  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Initialized thread for optimizing the graph in parallel." << std::endl;
 
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
 }
 
@@ -50,8 +50,7 @@ void GraphMsf::activateFallbackGraph() {
   if (graphConfigPtr_->usingFallbackGraphFlag) {
     graphMgrPtr_->activateFallbackGraph();
   } else {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Not activating fallback graph, disabled in config." << COLOR_END
-              << std::endl;
+    std::cout << YELLOW_START << "GMsf" << RED_START << " Not activating fallback graph, disabled in config." << COLOR_END << std::endl;
   }
 }
 
@@ -60,19 +59,19 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
   // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
   gtsam::Rot3 yawR_W_I0;
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
   yawR_W_I0 =
       yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame())).rotation();
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
   if (not alignedImuFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
+    std::cout << YELLOW_START << "GMsf" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
               << std::endl;
     return false;
   } else if (not yawAndPositionInited()) {
     yaw_W_I0_ = yawR_W_I0.yaw();
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Initial global yaw of imu in world has been set to (deg) "
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Initial global yaw of imu in world has been set to (deg) "
               << 180.0 * yaw_W_I0_ / M_PI << "." << COLOR_END << std::endl;
 
     gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
@@ -82,8 +81,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
     foundInitialYawAndPositionFlag_ = true;
     return true;
   } else {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END
-              << std::endl;
+    std::cout << YELLOW_START << "GMsf" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END << std::endl;
     return false;
   }
 }
@@ -109,8 +107,8 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
 
   // Filter out imu messages with same time stamp
   if (std::abs(imuTimeK_ - imuTimeKm1) < 1e-8) {
-    std::cout << YELLOW_START << " CompslamSe" << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated."
-              << COLOR_END << std::endl;
+    std::cout << YELLOW_START << " GMsf" << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated." << COLOR_END
+              << std::endl;
     return false;
   }
 
@@ -130,8 +128,7 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     if (!alignImu_()) {
       // Print only once per second
       if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
-        std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..."
-                  << std::endl;
+        std::cout << YELLOW_START << "GMsf" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..." << std::endl;
       }
       return false;
     } else {
@@ -146,8 +143,8 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     }
   } else if (!yawAndPositionInited()) {  // Gravity Aligned but not yaw-aligned
     if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
-      std::cout << YELLOW_START << "CompslamSe" << COLOR_END
-                << " IMU callback waiting for initialization of global yaw and initial position." << std::endl;
+      std::cout << YELLOW_START << "GMsf" << COLOR_END << " IMU callback waiting for initialization of global yaw and initial position."
+                << std::endl;
     }
     T_W_Ik_nav = gtsam::NavState(T_W_Ik_, I_v_W_I_);
   } else if (!initedGraphFlag_) {  // Initialization
@@ -156,7 +153,7 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     //      // TODO
     //      //activateFallbackGraph();
     //    }
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik_nav = gtsam::NavState(T_W_Ik_, I_v_W_I_);
     relocalizationFlag = true;
   } else {  // Normal operation
@@ -175,8 +172,7 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
   // If relocalization happens --> write to map->odom ------------------------------------
   if (relocalizationFlag) {
     // Print
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << COLOR_END
-              << std::endl;
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << COLOR_END << std::endl;
     // For this computation step assume T_O_Ik ~ T_O_Ikm1
     gtsam::Pose3 T_I_O_km1 = T_W_I_km1__.inverse() * T_W_O_;
     T_W_O_ = T_W_Ik_ * T_I_O_km1;
@@ -242,14 +238,14 @@ void GraphMsf::addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1,
   if (graphMgrPtr_->globalGraphActiveFlag()) {
     /// Reset LiDAR Unary factor intiialization
     lidarUnaryFactorInitialized__ = false;
-    // Write current compslam pose to latest delta pose
+    // Write current odometry pose to latest delta pose
     T_Wl_Lj__ = odometryK.measurementPose();
   }  //
   else if (graphMgrPtr_->fallbackGraphActiveFlag()) {
     if (!lidarUnaryFactorInitialized__) {
       // Calculate state still from globalGraph
       T_W_Ij_Graph__ = graphMgrPtr_->calculateActiveStateAtKey(lastDeltaMeasurementKey__).pose();
-      std::cout << YELLOW_START << "CompslamSe" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf" << GREEN_START " Initialized LiDAR unary factors." << COLOR_END << std::endl;
       lidarUnaryFactorInitialized__ = true;
     }
     /// Delta pose
@@ -292,10 +288,10 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
                                     estCovarianceXYZ(1) > GNSS_COVARIANCE_VIOLATION_THRESHOLD ||
                                     estCovarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
   if (gnssCovarianceViolatedFlag && !gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss measurments now ABSENT due to too big covariance." << std::endl;
+    std::cout << YELLOW_START << "GMsf" << RED_START << " Gnss measurments now ABSENT due to too big covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = true;
   } else if (!gnssCovarianceViolatedFlag && gnssCovarianceViolatedFlag_) {
-    std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss returned. Low covariance." << std::endl;
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Gnss returned. Low covariance." << std::endl;
     gnssCovarianceViolatedFlag_ = false;
   }
 
@@ -304,13 +300,13 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
   if (jumpingDistance < graphConfigPtr_->gnssOutlierThresold) {  // gnssOutlierThreshold_) {
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again."
-                << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again." << COLOR_END
+                << std::endl;
     }
   } else {
     if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
-      std::cout << YELLOW_START << "CompslamSe" << RED_START << " Gnss was jumping: Distance is " << jumpingDistance
-                << "m, larger than allowed " << 1.0  // gnssOutlierThreshold_
+      std::cout << YELLOW_START << "GMsf" << RED_START << " Gnss was jumping: Distance is " << jumpingDistance << "m, larger than allowed "
+                << 1.0  // gnssOutlierThreshold_
                 << "m.  Reset outlier counter." << COLOR_END << std::endl;
     }
     gnssNotJumpingCounter_ = 0;
@@ -380,7 +376,7 @@ bool GraphMsf::alignImu_() {
                                             graphMgrPtr_->getInitGyrBiasReference())) {
     imuAttitudeRoll_ = imuAttitude.roll();
     imuAttitudePitch_ = imuAttitude.pitch();
-    std::cout << YELLOW_START << "CompslamSe" << COLOR_END
+    std::cout << YELLOW_START << "GMsf" << COLOR_END
               << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
     return true;
   } else {
@@ -395,7 +391,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   // gtsam::Rot3 yawR_W_I0 = yawR_W_C0 * tfToPose3(staticTransformsPtr_->T_C_Ic()).rotation();
   gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
 
-  std::cout << YELLOW_START << "CompslamSe" << GREEN_START
+  std::cout << YELLOW_START << "GMsf" << GREEN_START
             << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << R_W_I0.ypr().transpose() * (180.0 / M_PI) << COLOR_END
             << std::endl;
 
@@ -413,10 +409,9 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   //  }
   // Read initial pose from graph
   T_W_I0 = gtsam::Pose3(graphMgrPtr_->getGraphState().navState().pose().matrix());
-  std::cout << YELLOW_START << "CompslamSe " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
+  std::cout << YELLOW_START << "GMsf " << GREEN_START << " INIT t(x,y,z): " << T_W_I0.translation().transpose()
             << ", RPY(deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
-  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Factor graph key of very first node: " << graphMgrPtr_->getStateKey()
-            << std::endl;
+  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Factor graph key of very first node: " << graphMgrPtr_->getStateKey() << std::endl;
   // Write in tf member variable
   T_W_I0_ = T_W_I0;
   // Initialize global pose
@@ -432,7 +427,7 @@ void GraphMsf::optimizeGraph_() {
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
   // While loop
-  std::cout << YELLOW_START << "CompslamSe" << COLOR_END << " Thread for updating graph is ready." << std::endl;
+  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Thread for updating graph is ready." << std::endl;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
@@ -453,7 +448,7 @@ void GraphMsf::optimizeGraph_() {
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (graphConfigPtr_->verboseLevel > 0) {
-        std::cout << YELLOW_START << "CompslamSe" << GREEN_START << " Whole optimization loop took "
+        std::cout << YELLOW_START << "GMsf" << GREEN_START << " Whole optimization loop took "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
                   << COLOR_END << std::endl;
       }

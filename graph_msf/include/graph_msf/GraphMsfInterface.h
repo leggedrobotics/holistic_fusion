@@ -60,7 +60,7 @@ class GraphMsfInterface {
   bool isInNormalOperation() const;
 
   // Member Variables
-  /// CompslamSe
+  /// GraphMsf
   std::shared_ptr<GraphMsf> graphMsfPtr_ = NULL;
   /// Graph Configuration
   std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;

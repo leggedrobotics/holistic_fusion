@@ -1,3 +1,10 @@
+/*
+Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+All rights reserved.
+This file is released under the "BSD-3-Clause License".
+Please see the LICENSE file that has been included as part of this package.
+ */
+
 // Implementation
 #include "excavator_dual_graph/ExcavatorEstimator.h"
 
@@ -133,7 +140,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   }
 
   if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
-    std::cout << YELLOW_START << "AsopSe" << GREEN_START
+    std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START
               << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
     graph_msf::GraphMsfInterface::initYawAndPosition_(
         compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
@@ -173,7 +180,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
     accumulatedLeftCoordinates__ += leftGnssCoord;
     accumulatedRightCoordinates__ += rightGnssCoord;
     if (!(gnssCallbackCounter__ % 10)) {
-      std::cout << YELLOW_START << "AsopSe" << COLOR_END << " NOT ENOUGH Gnss MESSAGES ARRIVED!" << std::endl;
+      std::cout << YELLOW_START << "ExcavatorEstimator" << COLOR_END << " NOT ENOUGH Gnss MESSAGES ARRIVED!" << std::endl;
     }
     return;
   } else if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
