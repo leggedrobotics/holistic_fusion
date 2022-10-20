@@ -1,11 +1,11 @@
 #ifndef ExcavatorStaticTransforms_H
 #define ExcavatorStaticTransforms_H
 // Workspace
-#include "compslam_se_ros/extrinsics/StaticTransformsTf.h"
+#include "graph_msf_ros/extrinsics/StaticTransformsTf.h"
 
 namespace excavator_se {
 
-class ExcavatorStaticTransforms : public compslam_se::StaticTransformsTf {
+class ExcavatorStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
   ExcavatorStaticTransforms(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 

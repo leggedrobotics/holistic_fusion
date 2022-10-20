@@ -1,30 +1,31 @@
 cmake_minimum_required(VERSION 3.16)
-project(excavator_dual_graph)
+project(graph_msf)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf
-  graph_msf_ros
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
-  roscpp
-  std_msgs
-  tf
-  message_filters
 )
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
-#find_package(Eigen3 REQUIRED)
-#message("Eigen Version:" ${EIGEN3_VERSION_STRING})
-#message("Eigen Path:" ${Eigen3_DIR})
+find_package(Eigen3 REQUIRED)
+message("Eigen Version:" ${EIGEN3_VERSION_STRING})
+message("Eigen Path:" ${Eigen3_DIR})
+
+find_package(GTSAM REQUIRED)
+message("GTSAM version: ${GTSAM_VERSION}")
+message("GTSAM path: ${GTSAM_DIR}")
+
+#generate_messages(
+#  DEPENDENCIES
+#  std_msgs
+#)
 
 catkin_package(
+  CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
+  DEPENDS
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
 ###########
@@ -36,23 +37,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
+        ${GTSAM_INCLUDE_DIR}
+        ${Python3_INCLUDE_DIRS}
 )
 
-# Library
 add_library(${PROJECT_NAME}
-        src/lib/ExcavatorEstimator.cpp
-        src/lib/readParams.cpp
-        src/lib/ExcavatorStaticTransforms.cpp
-        )
-target_link_libraries(${PROJECT_NAME}
-        ${catkin_LIBRARIES})
+        src/lib/GraphMsf.cpp
+        src/lib/GraphMsfInterface.cpp
+  src/lib/GraphManager.cpp
+  src/lib/ImuBuffer.cpp
+  src/lib/Gnss.cpp
+  src/lib/GnssHandler.cpp)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
-# Executable
-add_executable(${PROJECT_NAME}_node src/dual_graph_node.cpp)
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
-
-add_dependencies(${PROJECT_NAME}
-        ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
@@ -80,6 +78,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark cpp header files for installation
-install(DIRECTORY config launch rviz
+install(DIRECTORY config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

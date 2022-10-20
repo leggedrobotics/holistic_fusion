@@ -5,11 +5,11 @@
 #include "excavator_dual_graph/ExcavatorStaticTransforms.h"
 
 // Workspace
-#include "compslam_se/measurements/BinaryMeasurement6D.h"
-#include "compslam_se/measurements/UnaryMeasurement1D.h"
-#include "compslam_se/measurements/UnaryMeasurement3D.h"
-#include "compslam_se/measurements/UnaryMeasurement6D.h"
-#include "compslam_se_ros/util/conversions.h"
+#include "graph_msf/measurements/BinaryMeasurement6D.h"
+#include "graph_msf/measurements/UnaryMeasurement1D.h"
+#include "graph_msf/measurements/UnaryMeasurement3D.h"
+#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf_ros/util/conversions.h"
 
 namespace excavator_se {
 
@@ -17,15 +17,15 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
-  graphConfigPtr_ = std::make_shared<compslam_se::GraphConfig>();
+  graphConfigPtr_ = std::make_shared<graph_msf::GraphConfig>();
   staticTransformsPtr_ = std::make_shared<ExcavatorStaticTransforms>(privateNodePtr);
-  gnssHandlerPtr_ = std::make_shared<compslam_se::GnssHandler>();
+  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
   // Get ROS params and set extrinsics
   readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
-  if (not compslam_se::CompslamSeInterface::setup_()) {
+  if (not graph_msf::GraphMsfInterface::setup_()) {
     throw std::runtime_error("CompslamSeInterface could not be initiallized");
   }
 
@@ -43,14 +43,14 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
 
 void ExcavatorEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
-  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/compslam_se/odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/compslam_se/odometry_map_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_map_imu", ROS_QUEUE_SIZE);
   // Paths
-  pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/compslam_se/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/compslam_se/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/compslam_se/meas_path_map_gnssL", ROS_QUEUE_SIZE);
-  pubMeasMapGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/compslam_se/meas_path_map_gnssR", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/compslam_se/meas_path_map_Lidar", ROS_QUEUE_SIZE);
+  pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssL", ROS_QUEUE_SIZE);
+  pubMeasMapGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssR", ROS_QUEUE_SIZE);
+  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
 }
 
 void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -98,44 +98,44 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   }
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  compslam_se::CompslamSeInterface::addImuMeasurementAndPublishState_(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec());
+  graph_msf::GraphMsfInterface::addImuMeasurementAndPublishState_(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec());
 }
 
 void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int odometryCallbackCounter__ = -1;
-  static std::shared_ptr<compslam_se::UnaryMeasurement6D> odometryKm1Ptr__;
+  static std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKm1Ptr__;
 
   // Counter
   ++odometryCallbackCounter__;
 
   Eigen::Matrix4d compslam_T_Wl_Lk;
-  compslam_se::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
+  graph_msf::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
 
   // Transform to IMU frame
   double timeK = odomLidarPtr->header.stamp.toSec();
 
   // Measurement
-  std::shared_ptr<compslam_se::UnaryMeasurement6D> odometryKPtr;
+  std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKPtr;
   // Create pseudo unary factors
   if (graphConfigPtr_->usingGnssFlag) {
-    odometryKPtr = std::make_unique<compslam_se::UnaryMeasurement6D>(
+    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     if (odometryCallbackCounter__ > 0) {
-      compslam_se::CompslamSeInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+      graph_msf::GraphMsfInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
     }
   } else {  // real unary factors
-    odometryKPtr = std::make_unique<compslam_se::UnaryMeasurement6D>(
+    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
-    compslam_se::CompslamSeInterface::addUnaryPoseMeasurement_(*odometryKPtr);
+    graph_msf::GraphMsfInterface::addUnaryPoseMeasurement_(*odometryKPtr);
   }
 
   if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
     std::cout << YELLOW_START << "AsopSe" << GREEN_START
               << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
-    compslam_se::CompslamSeInterface::initYawAndPosition_(
+    graph_msf::GraphMsfInterface::initYawAndPosition_(
         compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
   }
 
@@ -166,7 +166,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                    leftGnssMsgPtr->position_covariance[8]);
   if (!graphConfigPtr_->usingGnssFlag) {
     ROS_WARN("Received Gnss message, but usage is set to false.");
-    compslam_se::CompslamSeInterface::activateFallbackGraph();
+    graph_msf::GraphMsfInterface::activateFallbackGraph();
     return;
   } else if (gnssCallbackCounter__ < NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
     // Wait until measurements got accumulated
@@ -188,27 +188,27 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // Initialization
   if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
-    if (not compslam_se::CompslamSeInterface::initYawAndPosition_(
+    if (not graph_msf::GraphMsfInterface::initYawAndPosition_(
             yaw_W_C, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(), W_t_W_GnssL,
             dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
       // Decrease counter if not successfully initialized
       --gnssCallbackCounter__;
     }
   } else {
-    compslam_se::UnaryMeasurement1D meas_yaw_W_C("Gnss yaw",
-                                                 dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
-                                                 int(gnssLeftRate_), leftGnssMsgPtr->header.stamp.toSec(), yaw_W_C, gnssHeadingUnaryNoise_);
-    compslam_se::CompslamSeInterface::addGnssHeadingMeasurement_(meas_yaw_W_C);
-    compslam_se::UnaryMeasurement3D meas_W_t_W_GnssL(
+    graph_msf::UnaryMeasurement1D meas_yaw_W_C("Gnss yaw",
+                                               dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
+                                               int(gnssLeftRate_), leftGnssMsgPtr->header.stamp.toSec(), yaw_W_C, gnssHeadingUnaryNoise_);
+    graph_msf::GraphMsfInterface::addGnssHeadingMeasurement_(meas_yaw_W_C);
+    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssL(
         "Gnss left", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), gnssLeftRate_,
         leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssL,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    compslam_se::CompslamSeInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ);
-    compslam_se::UnaryMeasurement3D meas_W_t_W_GnssR(
+    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ);
+    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
         "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
         leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    compslam_se::CompslamSeInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
+    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
   }
   W_t_W_GnssL_km1__ = W_t_W_GnssL;
   W_t_W_GnssR_km1__ = W_t_W_GnssR;

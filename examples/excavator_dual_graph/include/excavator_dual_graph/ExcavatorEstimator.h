@@ -16,10 +16,10 @@
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "compslam_se/gnss/GnssHandler.h"
-#include "compslam_se/measurements/UnaryMeasurement6D.h"
-#include "compslam_se_ros/CompslamSeRos.h"
 #include "excavator_dual_graph/ExcavatorStaticTransforms.h"
+#include "graph_msf/gnss/GnssHandler.h"
+#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -27,7 +27,7 @@
 
 namespace excavator_se {
 
-class ExcavatorEstimator : public compslam_se::CompslamSeRos {
+class ExcavatorEstimator : public graph_msf::GraphMsfRos {
  public:
   ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
@@ -46,7 +46,7 @@ class ExcavatorEstimator : public compslam_se::CompslamSeRos {
   void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 
   // GNSS Handler
-  std::shared_ptr<compslam_se::GnssHandler> gnssHandlerPtr_;
+  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
