@@ -14,6 +14,7 @@
 
 // Package
 #include "compslam_se/Datatypes.hpp"
+#include <mutex>
 
 namespace compslam_se {
 
