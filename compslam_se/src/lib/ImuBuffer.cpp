@@ -3,6 +3,7 @@
 
 // CPP
 #include <iomanip>
+#include <mutex>
 
 namespace compslam_se {
 
