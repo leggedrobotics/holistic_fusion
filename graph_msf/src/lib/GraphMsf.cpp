@@ -176,6 +176,9 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     // For this computation step assume T_O_Ik ~ T_O_Ikm1
     gtsam::Pose3 T_I_O_km1 = T_W_I_km1__.inverse() * T_W_O_;
     T_W_O_ = T_W_Ik_ * T_I_O_km1;
+    std::cout << T_W_O_ << std::endl;
+    // T_W_O_ = gtsam::Pose3(T_W_O_.rotation(), gtsam::Point3(-1.04284, 1.06973, -0.0976915));
+    // std::cout << T_W_O_ << std::endl;
   }
 
   // Convert to odom frame ----------------------------------------------------------------

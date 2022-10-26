@@ -26,19 +26,26 @@ class GnssHandler {
 
   // Methods
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
+  void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
+  void initHandler(const double& initYaw);
 
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
+  void convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
   double computeYaw(const Eigen::Vector3d& gnssPos1, const Eigen::Vector3d& gnssPos2);
 
   // Flags
   bool usingGnssReferenceFlag = false;
 
   // Setters
+  void setInitYaw(const double initYaw) { initYaw_ = initYaw; }
   void setGnssReferenceLatitude(const double gnssReferenceLatitude) { gnssReferenceLatitude_ = gnssReferenceLatitude; }
   void setGnssReferenceLongitude(const double gnssReferenceLongitude) { gnssReferenceLongitude_ = gnssReferenceLongitude; }
   void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
+
+  // Getters.
+  double getInitYaw();
 
  private:
   // Member methods
@@ -52,6 +59,7 @@ class GnssHandler {
   double globalAttitudeYaw_;
 
   // Reference Parameters
+  double initYaw_;
   double gnssReferenceLatitude_;
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;
