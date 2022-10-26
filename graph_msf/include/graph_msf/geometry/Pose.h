@@ -22,7 +22,7 @@ class Pose {
 
  private:
   Eigen::Vector3d _position;
-  Eigen::Vector4d _orientation; // xyzw
+  Eigen::Vector4d _orientation;  // xyzw
   double _time;
 };
 
