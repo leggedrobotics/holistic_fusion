@@ -4,3 +4,4 @@ gnss:
   referenceLongitude: 8.50435818058 # Wangen a.A.: 7.681415329904487, Hoengg: 8.50435818058, Oberglatt: 8.49975325
   referenceAltitude: 565.0          # Wangen a.A.: 472.58400000000074, Hoengg: 565.0, Oberglatt: 474.9
   referenceHeading: 0.0             # radians, # Wangen a.A.: 0.0, Hoengg: 0.0, Oberglatt: 2.6305
+

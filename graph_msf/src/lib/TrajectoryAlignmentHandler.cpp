@@ -14,7 +14,8 @@ namespace graph_msf {
 
 // Public -------------------------------------------------------------------
 TrajectoryAlignmentHandler::TrajectoryAlignmentHandler() {
-  std::cout << YELLOW_START << "TrajectoryAlignmentHandler" << GREEN_START << " Created Gnss Handler instance." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "TrajectoryAlignmentHandler" << GREEN_START << " Created Trajectory Alignment Handler instance." << COLOR_END
+            << std::endl;
 }
 
 void TrajectoryAlignmentHandler::initHandler() {
@@ -31,6 +32,7 @@ void TrajectoryAlignmentHandler::addGnssPose(Eigen::Vector3d position, double ti
 
 bool TrajectoryAlignmentHandler::associateTrajectories(Trajectory& lidarTrajectory, Trajectory& gnssTrajectory,
                                                        Trajectory& newLidarTrajectory, Trajectory& newGnssTrajectory) {
+  // matching trajectories with their timestamps.
   Trajectory longerTrajectory;
   Trajectory shorterTrajectory;
   if (lidarTrajectory.poses().size() > gnssTrajectory.poses().size()) {
@@ -86,9 +88,8 @@ bool TrajectoryAlignmentHandler::associateTrajectories(Trajectory& lidarTrajecto
 
 bool TrajectoryAlignmentHandler::trajectoryAlignment(Trajectory& newLidarTrajectory, Trajectory& newGnssTrajectory,
                                                      Eigen::Matrix4d& transform) {
-  // fill matrices.
+  // fill matrices to use Eigen Umeyama function.
   const int numberOfMeasurements = newLidarTrajectory.poses().size();
-  std::cout << " number of Measurements " << numberOfMeasurements << " " << newGnssTrajectory.poses().size() << std::endl;
   if (numberOfMeasurements < 2) return false;
 
   Eigen::MatrixXd lidarPoses;
@@ -102,20 +103,20 @@ bool TrajectoryAlignmentHandler::trajectoryAlignment(Trajectory& newLidarTraject
   }
 
   // Umeyama Alignment.
-  std::cout << newGnssTrajectory.poses().at(0).position() << std::endl;
   std::cout << "umeyama " << std::endl;
   std::cout << lidarPoses << std::endl;
   std::cout << gnssPoses << std::endl;
   transform = umeyama(gnssPoses, lidarPoses, false);
 
+  std::cout << "umeyama transform " << std::endl;
   std::cout << transform << std::endl;
 
   return true;
 }
 
 bool TrajectoryAlignmentHandler::initializeYaw(double& yaw) {
-  if (lidarTrajectory_.distance() < 0.2) return false;
-  if (gnssTrajectory_.distance() < 0.2) return false;
+  if (lidarTrajectory_.distance() < minDistanceHeadingInit_) return false;
+  if (gnssTrajectory_.distance() < minDistanceHeadingInit_) return false;
 
   // aligin trajectories
   Trajectory newLidarTrajectory;
@@ -132,31 +133,12 @@ bool TrajectoryAlignmentHandler::initializeYaw(double& yaw) {
   }
 
   Eigen::Matrix3d rotation = transform.block<3, 3>(0, 0);
-  std::cout << rotation << std::endl;
-  Eigen::Vector3d eulerAngles;
-  rotationMatrixToEulerAngles(rotation, eulerAngles);
-  std::cout << eulerAngles << std::endl;
-  std::cout << " yaw " << eulerAngles(2) * 180 / M_PI << std::endl;
+  Eigen::Vector3d eulerAngles = rotation.eulerAngles(2, 1, 0).reverse();
   yaw = eulerAngles(2);
-  return true;
-}
 
-bool TrajectoryAlignmentHandler::rotationMatrixToEulerAngles(Eigen::Matrix3d& rotation, Eigen::Vector3d& eulerAngles) {
-  double sy = sqrt(rotation.coeff(0, 0) * rotation.coeff(0, 0) + rotation.coeff(1, 0) * rotation.coeff(1, 0));
-  bool singular = sy < 1e-6;
-  double x, y, z;
-
-  if (!singular) {
-    x = atan2(rotation.coeff(2, 1), rotation.coeff(2, 2));
-    y = atan2(-rotation.coeff(2, 0), sy);
-    z = atan2(rotation.coeff(1, 0), rotation.coeff(0, 0));
-  } else {
-    x = atan2(-rotation.coeff(1, 2), rotation.coeff(1, 1));
-    y = atan2(-rotation.coeff(2, 0), sy);
-    z = 0;
-  }
-  eulerAngles = Eigen::Vector3d(x, y, z);
-  std::cout << "roll pitch yaw " << rotation << std::endl;
+  std::cout << rotation << std::endl;
+  std::cout << "euler " << std::endl;
+  std::cout << eulerAngles * 180 / M_PI << std::endl;
 
   return true;
 }

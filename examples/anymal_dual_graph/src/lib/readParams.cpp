@@ -168,7 +168,14 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
       const double referenceHeading = tryGetParam<double>("gnss/referenceHeading", privateNode);
       gnssHandlerPtr_->setGnssReferenceHeading(referenceHeading);
     }
+    {
+      const double minDistanceHeadingInit = tryGetParam<double>("gnss/referenceHeading", privateNode);
+      trajectoryAlignmentHandlerPtr_->setMinDistanceHeadingInit(minDistanceHeadingInit);
+    }
   }
+
+  const double minDistanceHeadingInit = tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode);
+  trajectoryAlignmentHandlerPtr_->setMinDistanceHeadingInit(minDistanceHeadingInit);
 }
 
 }  // namespace anymal_se

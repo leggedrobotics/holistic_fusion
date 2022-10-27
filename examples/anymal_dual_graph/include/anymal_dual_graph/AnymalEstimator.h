@@ -94,9 +94,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subLidarOdometry_;
   ros::Subscriber subGnss_;
   tf::TransformListener tfListener_;
-  // GNSS Sync Policy
-  typedef message_filters::sync_policies::ExactTime<sensor_msgs::NavSatFix, sensor_msgs::NavSatFix> GnssExactSyncPolicy;
-  boost::shared_ptr<message_filters::Synchronizer<GnssExactSyncPolicy>> gnssExactSyncPtr_;  // ROS Exact Sync Policy Message Filter
   // TF
   tf::TransformListener listener_;
 

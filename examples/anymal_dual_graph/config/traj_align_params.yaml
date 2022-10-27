@@ -1,0 +1,2 @@
+trajectoryAlignment:
+  minimumDistanceHeadingInit: 0.2   # [m], only for one GNSS
