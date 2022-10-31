@@ -198,11 +198,10 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
     gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
     trajectoryAlignmentHandlerPtr_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
     double initYaw;
-    if (!trajectoryAlignmentHandlerPtr_->initializeYaw(initYaw)) {
+    if (!trajectoryAlignmentHandlerPtr_->alignTrajectories(initYaw)) {
       --gnssCallbackCounter__;
       return;
     }
-    std::cout << " Initialized with init Yaw: " << initYaw * 180 / M_PI << std::endl;
     gnssHandlerPtr_->setInitYaw(initYaw);
     initialized_ = true;
     gnssHandlerPtr_->initHandler(gnssHandlerPtr_->getInitYaw());

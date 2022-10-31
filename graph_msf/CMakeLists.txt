@@ -48,6 +48,7 @@ add_library(${PROJECT_NAME}
   src/lib/ImuBuffer.cpp
   src/lib/Gnss.cpp
   src/lib/GnssHandler.cpp
+  src/lib/TrajectoryAlignment.cpp
   src/lib/TrajectoryAlignmentHandler.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 

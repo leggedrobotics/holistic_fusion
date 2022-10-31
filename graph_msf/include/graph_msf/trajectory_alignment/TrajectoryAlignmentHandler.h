@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <Eigen/Eigen>
 // Package
 #include "graph_msf/geometry/Trajectory.h"
+#include "graph_msf/trajectory_alignment/TrajectoryAlignment.h"
 
 // Defined macros
 #define GREEN_START "\033[92m"
@@ -28,25 +29,14 @@ class TrajectoryAlignmentHandler {
   void initHandler();
   void addLidarPose(Eigen::Vector3d position, double time);
   void addGnssPose(Eigen::Vector3d position, double time);
-  bool initializeYaw(double& yaw);
-
-  // Flags
+  bool alignTrajectories(double& yaw);
 
   // Setters
-  void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
+  void setMinDistanceHeadingInit(const double& minDistanceHeadingInit);
 
  private:
-  // Member methods
-  bool associateTrajectories(Trajectory& lidarTrajectory, Trajectory& gnssTrajectory, Trajectory& newLidarTrajectory,
-                             Trajectory& newGnssTrajectory);
-  bool trajectoryAlignment(Trajectory& newLidarTrajectory, Trajectory& newGnssTrajectory, Eigen::Matrix4d& transform);
-
   // Member variables
-  Trajectory gnssTrajectory_;
-  Trajectory lidarTrajectory_;
-
-  // Reference Parameters
-  double minDistanceHeadingInit_;
+  TrajectoryAlignment trajectoryAlignment_;
 };
 
 }  // namespace graph_msf

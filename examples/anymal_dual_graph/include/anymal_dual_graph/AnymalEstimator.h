@@ -24,9 +24,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "anymal_dual_graph/AnymalStaticTransforms.h"
-#include "graph_msf/TrajectoryAlignmentHandler.h"
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
