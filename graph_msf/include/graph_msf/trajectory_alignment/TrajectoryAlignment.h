@@ -29,16 +29,13 @@ class TrajectoryAlignment {
   void addGnssPose(Eigen::Vector3d position, double time);
   bool alignTrajectories(double& yaw);
 
-  // Flags
-
   // Setters
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
 
  private:
   // Member methods
-  bool associateTrajectories(Trajectory& lidarTrajectory, Trajectory& gnssTrajectory, Trajectory& newLidarTrajectory,
-                             Trajectory& newGnssTrajectory);
-  bool trajectoryAlignment(Trajectory& newLidarTrajectory, Trajectory& newGnssTrajectory, Eigen::Matrix4d& transform);
+  bool associateTrajectories(Trajectory& trajectoryA, Trajectory& trajectoryB, Trajectory& newTrajectoryA, Trajectory& newTrajectoryB);
+  bool trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Matrix4d& transform);
 
   // Member variables
   Trajectory gnssTrajectory_;

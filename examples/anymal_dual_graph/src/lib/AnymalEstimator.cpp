@@ -259,7 +259,7 @@ void AnymalEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d
   addToOdometryMsg(mapImuMsgPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
                    dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(imuTimeK), T_W_O * T_O_Ik,
                    Ic_v_W_Ic, I_w_W_I);
-  pubEstOdomImu_.publish(mapImuMsgPtr_);
+  pubEstMapImu_.publish(mapImuMsgPtr_);
   addToPathMsg(estMapImuPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(), ros::Time(imuTimeK),
                (T_W_O * T_O_Ik).block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 20);
   pubEstMapImuPath_.publish(estMapImuPathPtr_);

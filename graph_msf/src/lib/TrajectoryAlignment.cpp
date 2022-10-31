@@ -25,79 +25,64 @@ void TrajectoryAlignment::addGnssPose(Eigen::Vector3d position, double time) {
   gnssTrajectory_.addPose(position, time);
 }
 
-bool TrajectoryAlignment::associateTrajectories(Trajectory& lidarTrajectory, Trajectory& gnssTrajectory, Trajectory& newLidarTrajectory,
-                                                Trajectory& newGnssTrajectory) {
+bool TrajectoryAlignment::associateTrajectories(Trajectory& trajectoryA, Trajectory& trajectoryB, Trajectory& newTrajectoryA,
+                                                Trajectory& newTrajectoryB) {
   // matching trajectories with their timestamps.
-  Trajectory longerTrajectory;
-  Trajectory shorterTrajectory;
-  if (lidarTrajectory.poses().size() > gnssTrajectory.poses().size()) {
-    longerTrajectory = lidarTrajectory;
-    shorterTrajectory = gnssTrajectory;
-  } else {
-    longerTrajectory = gnssTrajectory;
-    shorterTrajectory = lidarTrajectory;
+  bool swapped = false;
+  if (trajectoryA.poses().size() < trajectoryB.poses().size()) {
+    std::swap(trajectoryA, trajectoryB);
+    swapped = true;
   }
 
-  std::vector<int> matchingIndexesShort;
-  std::vector<int> matchingIndexesLong;
-  int indexShort = 0;
-  int matchingIndexLong = -1;
-  int lastMatchingIndex = -1;
-  for (auto poseShort : shorterTrajectory.poses()) {
-    int indexLong = 0;
+  int indexB = 0;
+  int matchingIndexA = -1;
+  int lastMatchingIndexA = 0;
+  bool matched = false;
+  for (const auto& poseB : trajectoryB.poses()) {  // shorter trajectory.
+    int indexA = 0;
     double diff = std::numeric_limits<double>::max();
-    for (auto poseLong : longerTrajectory.poses()) {
-      if ((abs(poseShort.time() - poseLong.time())) < diff && abs((poseShort.time() - poseLong.time())) < 0.1 &&
-          indexLong > lastMatchingIndex) {
-        diff = poseShort.time() - poseLong.time();
-        matchingIndexLong = indexLong;
-        lastMatchingIndex = matchingIndexLong;
+    for (auto it = trajectoryA.poses().begin() + lastMatchingIndexA; it != trajectoryA.poses().end(); ++it) {
+      if ((abs(poseB.time() - it->time())) < diff && abs((poseB.time() - it->time())) < 0.1) {
+        diff = poseB.time() - it->time();
+        matchingIndexA = indexA;
+        lastMatchingIndexA = matchingIndexA;
+        matched = true;
       }
-      ++indexLong;
+      ++indexA;
     }
-    if (matchingIndexLong > -1) {
-      matchingIndexesShort.push_back(indexShort);
-      matchingIndexesLong.push_back(matchingIndexLong);
+
+    if (matched) {
+      newTrajectoryA.addPose(trajectoryA.poses().at(matchingIndexA));
+      newTrajectoryB.addPose(trajectoryB.poses().at(indexB));
+      matched = false;
     }
-    ++indexShort;
+    ++indexB;
   }
 
-  if (lidarTrajectory.poses().size() > gnssTrajectory.poses().size()) {
-    for (auto index : matchingIndexesLong) {
-      newLidarTrajectory.addPose(lidarTrajectory.poses().at(index));
-    }
-    for (auto index : matchingIndexesShort) {
-      newGnssTrajectory.addPose(gnssTrajectory.poses().at(index));
-    }
-  } else {
-    for (auto index : matchingIndexesShort) {
-      newLidarTrajectory.addPose(lidarTrajectory.poses().at(index));
-    }
-    for (auto index : matchingIndexesLong) {
-      newGnssTrajectory.addPose(gnssTrajectory.poses().at(index));
-    }
+  if (swapped) {
+    std::swap(newTrajectoryA, newTrajectoryB);
   }
 
   return true;
 }
 
-bool TrajectoryAlignment::trajectoryAlignment(Trajectory& newLidarTrajectory, Trajectory& newGnssTrajectory, Eigen::Matrix4d& transform) {
+bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Matrix4d& transform) {
   // fill matrices to use Eigen Umeyama function.
-  const int numberOfMeasurements = newLidarTrajectory.poses().size();
+  const int numberOfMeasurements = trajectoryA.poses().size();
   if (numberOfMeasurements < 2) return false;
 
-  Eigen::MatrixXd lidarPoses;
-  Eigen::MatrixXd gnssPoses;
-  lidarPoses.resize(3, numberOfMeasurements);
-  gnssPoses.resize(3, numberOfMeasurements);
+  Eigen::MatrixXd posesA;
+  Eigen::MatrixXd posesB;
+  posesA.resize(3, numberOfMeasurements);
+  posesB.resize(3, numberOfMeasurements);
 
   for (unsigned i = 0; i < numberOfMeasurements; ++i) {
-    lidarPoses.col(i) = newLidarTrajectory.poses().at(i).position();
-    gnssPoses.col(i) = newGnssTrajectory.poses().at(i).position() - newGnssTrajectory.poses().at(0).position();
+    posesA.col(i) = trajectoryA.poses().at(i).position() - trajectoryA.poses().at(0).position();
+    posesB.col(i) = trajectoryB.poses().at(i).position() - trajectoryB.poses().at(0).position();
   }
 
   // Umeyama Alignment.
-  transform = umeyama(gnssPoses, lidarPoses, false);
+  transform = umeyama(posesB, posesA, false);
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Umeyama transform: " << std::endl
             << COLOR_END << transform << std::endl;
 
