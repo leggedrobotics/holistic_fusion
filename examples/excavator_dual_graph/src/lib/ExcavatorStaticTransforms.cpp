@@ -38,15 +38,15 @@ void ExcavatorStaticTransforms::findTransformations() {
   ros::Rate rosRate(10);
   rosRate.sleep();
 
-  // Imu to Cabin Link ---
-  listener_.waitForTransform(imuFrame_, cabinFrame_, ros::Time(0), ros::Duration(100.0));
-  listener_.lookupTransform(imuFrame_, cabinFrame_, ros::Time(0), transform);
-  // I_Cabin
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, cabinFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_Cabin: " << rv_T_frame1_frame2(imuFrame_, cabinFrame_).block<3, 1>(0, 3) << std::endl;
-  // Cabin_I
-  lv_T_frame1_frame2(cabinFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, cabinFrame_).inverse();
+  // // Imu to Cabin Link ---
+  // listener_.waitForTransform(imuFrame_, cabinFrame_, ros::Time(0), ros::Duration(100.0));
+  // listener_.lookupTransform(imuFrame_, cabinFrame_, ros::Time(0), transform);
+  // // I_Cabin
+  // graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, cabinFrame_));
+  // std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
+  //           << " Translation I_Cabin: " << rv_T_frame1_frame2(imuFrame_, cabinFrame_).block<3, 1>(0, 3) << std::endl;
+  // // Cabin_I
+  // lv_T_frame1_frame2(cabinFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, cabinFrame_).inverse();
 
   // Imu to Base Link ---
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(1.0));
@@ -68,26 +68,6 @@ void ExcavatorStaticTransforms::findTransformations() {
             << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarFrame_).block<3, 1>(0, 3) << std::endl;
   // Lidar_I
   lv_T_frame1_frame2(lidarFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarFrame_).inverse();
-
-  // Imu to GNSS Left Link ---
-  listener_.waitForTransform(imuFrame_, leftGnssFrame_, ros::Time(0), ros::Duration(1.0));
-  listener_.lookupTransform(imuFrame_, leftGnssFrame_, ros::Time(0), transform);
-  // I_GnssL
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, leftGnssFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, leftGnssFrame_).block<3, 1>(0, 3) << std::endl;
-  // GnssL_I
-  lv_T_frame1_frame2(leftGnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, leftGnssFrame_).inverse();
-
-  // Imu to GNSS Right Link ---
-  listener_.waitForTransform(imuFrame_, rightGnssFrame_, ros::Time(0), ros::Duration(1.0));
-  listener_.lookupTransform(imuFrame_, rightGnssFrame_, ros::Time(0), transform);
-  // I_GnssR
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, rightGnssFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_GnssR: " << rv_T_frame1_frame2(imuFrame_, rightGnssFrame_).block<3, 1>(0, 3) << std::endl;
-  // GnssL_I
-  lv_T_frame1_frame2(rightGnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, rightGnssFrame_).inverse();
 
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }
