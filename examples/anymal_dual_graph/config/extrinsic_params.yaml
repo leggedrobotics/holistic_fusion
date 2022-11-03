@@ -5,4 +5,4 @@ extrinsics:
   baseLinkFrame: base
   lidarFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
   imuFrame: imu_link       # IMU_CABIN_link           #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
-  gnssFrame: gps
+  gnssFrame: gps_new

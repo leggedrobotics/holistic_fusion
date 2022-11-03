@@ -45,6 +45,8 @@
         <remap from="/gnss_topic_2"         to="$(arg gnss_right_topic_name)" />
     </node>
 
+    <node pkg="tf2_ros" type="static_transform_publisher" name="static_transform_publisher_gps" args="0.37 0 0.22 0 0 0 base gps_new" />
+
     <!-- RVIZ for Visualization -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_dual_graph)/rviz/gnss_lidar.rviz" />
 

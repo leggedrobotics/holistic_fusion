@@ -12,7 +12,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include <Eigen/Eigen>
 #include <memory>
 // Package
-#include "graph_msf/config/TrajectoryAlignmentConfig.h"
 #include "graph_msf/geometry/Trajectory.h"
 
 // Defined macros
