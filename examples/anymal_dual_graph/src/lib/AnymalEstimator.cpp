@@ -121,7 +121,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   Eigen::Matrix4d compslam_T_Wl_Lk;
   graph_msf::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
 
-  if (not initialized_) {
+  if (not initialized_ && graphConfigPtr_->usingGnssFlag) {
     trajectoryAlignmentHandlerPtr_->addLidarPose(compslam_T_Wl_Lk.block<3, 1>(0, 3), odomLidarPtr->header.stamp.toSec());
     --odometryCallbackCounter__;
     return;
