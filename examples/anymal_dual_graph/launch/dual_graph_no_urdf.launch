@@ -6,7 +6,7 @@
     <!-- Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
     <arg name="lidar_odometry_topic_name" default="/compslam_lio/odometry" />
-    <arg name="gnss_left_topic_name"      default="/m545_gnss_left" />
+    <arg name="gnss_left_topic_name"      default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
     <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
 
     <!-- Config -->
