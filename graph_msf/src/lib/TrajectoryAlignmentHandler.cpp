@@ -30,8 +30,24 @@ void TrajectoryAlignmentHandler::addGnssPose(Eigen::Vector3d position, double ti
   trajectoryAlignment_.addGnssPose(position, time);
 }
 
+void TrajectoryAlignmentHandler::setGnssRate(const int& gnssRate) {
+  trajectoryAlignment_.setGnssRate(gnssRate);
+}
+
+void TrajectoryAlignmentHandler::setLidarRate(const int& lidarRate) {
+  trajectoryAlignment_.setLidarRate(lidarRate);
+}
+
 void TrajectoryAlignmentHandler::setMinDistanceHeadingInit(const double& minDistanceHeadingInit) {
   trajectoryAlignment_.setMinDistanceHeadingInit(minDistanceHeadingInit);
+}
+
+void TrajectoryAlignmentHandler::setNoMovementDistance(const double& noMovementDistance) {
+  trajectoryAlignment_.setNoMovementDistance(noMovementDistance);
+}
+
+void TrajectoryAlignmentHandler::setNoMovementTime(const double& noMovementTime) {
+  trajectoryAlignment_.setNoMovementTime(noMovementTime);
 }
 
 bool TrajectoryAlignmentHandler::alignTrajectories(double& yaw) {

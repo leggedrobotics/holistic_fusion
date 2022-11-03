@@ -46,6 +46,6 @@
     </node>
 
     <!-- RVIZ for Visualization -->
-    <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_dual_graph)/rviz/gnss_lidar.rviz" /> -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_dual_graph)/rviz/gnss_lidar.rviz" />
 
 </launch>

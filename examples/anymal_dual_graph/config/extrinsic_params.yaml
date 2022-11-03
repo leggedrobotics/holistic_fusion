@@ -2,8 +2,7 @@
 extrinsics:
   mapFrame: map_graph_msf
   odomFrame: odom
+  baseLinkFrame: base
   lidarFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
   imuFrame: imu_link       # IMU_CABIN_link           #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
-  cabinFrame: CABIN
-  gnssFrame1: GNSS_L
-  gnssFrame2: GNSS_R
+  gnssFrame: gps

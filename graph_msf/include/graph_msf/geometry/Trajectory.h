@@ -34,6 +34,23 @@ class Trajectory {
     return distance;
   }
 
+  bool standing(const int& rate, const int& seconds, const double& noMovementThreshold) {
+    if (_poses.size() < rate * seconds) return false;
+
+    double distance = 0.0;
+    Eigen::Vector3d lastPose = (_poses.end() - rate * seconds)->position();
+    for (auto poseIt = _poses.end() - rate * seconds + 1; poseIt != _poses.end(); ++poseIt) {
+      distance += ((poseIt->position() - lastPose).norm());
+      lastPose = poseIt->position();
+    }
+    std::cout << distance << std::endl;
+    if (distance < noMovementThreshold) {
+      std::cout << "standing" << std::endl;
+    }
+
+    return distance < noMovementThreshold;
+  }
+
   std::vector<Pose> poses() const { return _poses; }
 
  private:

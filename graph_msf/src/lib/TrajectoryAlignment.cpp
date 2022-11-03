@@ -90,8 +90,12 @@ bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajector
 }
 
 bool TrajectoryAlignment::alignTrajectories(double& yaw) {
+  std::cout << "lidar ";
   if (lidarTrajectory_.distance() < minDistanceHeadingInit_) return false;
+  if (!lidarTrajectory_.standing(lidarRate_, noMovementTime_, noMovementDistance_)) return false;
   if (gnssTrajectory_.distance() < minDistanceHeadingInit_) return false;
+  std::cout << "gnss ";
+  if (!gnssTrajectory_.standing(gnssRate_, noMovementTime_, noMovementDistance_)) return false;
 
   // aligin trajectories
   Trajectory newLidarTrajectory;

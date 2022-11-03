@@ -59,7 +59,7 @@ void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& pr
   // Paths
   pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
   pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssL", ROS_QUEUE_SIZE);
+  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnss", ROS_QUEUE_SIZE);
   pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
 }
 
@@ -213,7 +213,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   // Initialization
   if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 2) {
     if (not graph_msf::GraphMsfInterface::initYawAndPosition_(
-            gnssHandlerPtr_->getInitYaw(), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(), W_t_W_Gnss,
+            gnssHandlerPtr_->getInitYaw(), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), W_t_W_Gnss,
             dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
       // Decrease counter if not successfully initialized
       --gnssCallbackCounter__;
@@ -224,7 +224,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
         gnssMsgPtr->header.stamp.toSec(), W_t_W_Gnss,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
     graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
-    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_Gnss, W_t_W_Gnss_km1__, estCovarianceXYZ);
+    // graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_Gnss, W_t_W_Gnss_km1__, estCovarianceXYZ);
   }
   W_t_W_Gnss_km1__ = W_t_W_Gnss;
 
@@ -272,9 +272,9 @@ void AnymalEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d
   transform_W_O.setOrigin(tf::Vector3(T_W_O(0, 3), T_W_O(1, 3), T_W_O(2, 3)));
   Eigen::Quaterniond q_W_O(T_W_O.block<3, 3>(0, 0));
   transform_W_O.setRotation(tf::Quaternion(q_W_O.x(), q_W_O.y(), q_W_O.z(), q_W_O.w()));
-  // tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(imuTimeK),
-  //                                                   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
-  //                                                   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame()));
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(imuTimeK),
+                                                    dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+                                                    dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame()));
   // I->B
   static tf::StampedTransform transform_I_B;
   tfListener_.waitForTransform(staticTransformsPtr_->getImuFrame(),

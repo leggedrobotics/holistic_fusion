@@ -21,7 +21,6 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   void setOdomFrame(const std::string& s) { odomFrame_ = s; }
   void setLidarFrame(const std::string& s) { lidarFrame_ = s; }
   void setGnssFrame(const std::string& s) { gnssFrame_ = s; }
-  void setCabinFrame(const std::string& s) { cabinFrame_ = s; }
   void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
 
   // Getters
@@ -29,7 +28,6 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getOdomFrame() { return odomFrame_; }
   const std::string& getLidarFrame() { return lidarFrame_; }
   const std::string& getGnssFrame() { return gnssFrame_; }
-  const std::string& getCabinFrame() { return cabinFrame_; }
   const std::string& getBaseLinkFrame() { return baseLinkFrame_; }
 
  private:
@@ -40,7 +38,6 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   std::string odomFrame_;
   std::string lidarFrame_;
   std::string gnssFrame_;
-  std::string cabinFrame_;
   std::string baseLinkFrame_;
 };
 }  // namespace anymal_se

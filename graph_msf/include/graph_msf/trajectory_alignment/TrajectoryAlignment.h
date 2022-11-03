@@ -10,7 +10,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <Eigen/Eigen>
+#include <memory>
 // Package
+#include "graph_msf/config/TrajectoryAlignmentConfig.h"
 #include "graph_msf/geometry/Trajectory.h"
 
 // Defined macros
@@ -30,7 +32,11 @@ class TrajectoryAlignment {
   bool alignTrajectories(double& yaw);
 
   // Setters
+  void setGnssRate(const int gnssRate) { gnssRate_ = gnssRate; }
+  void setLidarRate(const int lidarRate) { lidarRate_ = lidarRate; }
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
+  void setNoMovementDistance(const double noMovementDistance) { noMovementDistance_ = noMovementDistance; }
+  void setNoMovementTime(const double noMovementTime) { noMovementTime_ = noMovementTime; }
 
  private:
   // Member methods
@@ -42,7 +48,11 @@ class TrajectoryAlignment {
   Trajectory lidarTrajectory_;
 
   // Reference Parameters
+  int gnssRate_;
+  int lidarRate_;
   double minDistanceHeadingInit_;
+  double noMovementDistance_;
+  double noMovementTime_;
 };
 
 }  // namespace graph_msf

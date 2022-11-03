@@ -57,11 +57,11 @@ void GraphMsf::activateFallbackGraph() {
 bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                   const std::string& frame2) {
   // Transform yaw to imu frame
-  gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
-  gtsam::Rot3 yawR_W_I0;
-  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
-  yawR_W_I0 =
-      yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame())).rotation();
+  // gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
+  // gtsam::Rot3 yawR_W_I0;
+  // std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
+  // yawR_W_I0 =
+  //     yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame())).rotation();
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -70,11 +70,11 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
               << std::endl;
     return false;
   } else if (not yawAndPositionInited()) {
-    yaw_W_I0_ = yawR_W_I0.yaw();
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Initial global yaw of imu in world has been set to (deg) "
-              << 180.0 * yaw_W_I0_ / M_PI << "." << COLOR_END << std::endl;
+    yaw_W_I0_ = 0.0;  // yawR_W_I0.yaw();
+    // std::cout << YELLOW_START << "GMsf" << GREEN_START << " Initial global yaw of imu in world has been set to (deg) "
+    //           << 180.0 * yaw_W_I0_ / M_PI << "." << COLOR_END << std::endl;
 
-    gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
+    gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yaw_W_I0_, imuAttitudePitch_, imuAttitudeRoll_);
     // Set Member Variables
     W_t_W_I0_ = W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
 
