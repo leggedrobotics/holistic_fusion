@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /ExcavatorModel1
         - /TF1/Frames1
       Splitter Ratio: 0.4882352948188782
     Tree Height: 934
@@ -27,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: FilteredPointCloud
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -74,125 +73,261 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        BASE:
+        LF_FOOT:
           Value: true
-        BASE_inertia:
+        LF_HAA:
           Value: true
-        BOOM:
+        LF_HFE:
           Value: true
-        CABIN:
+        LF_HIP:
           Value: true
-        DIPPER:
+        LF_KFE:
           Value: true
-        ENDEFFECTOR:
+        LF_SHANK:
           Value: true
-        ENDEFFECTOR_CONTACT:
+        LF_THIGH:
           Value: true
-        GNSS_L:
+        LF_hip_fixed:
           Value: true
-        GNSS_R:
+        LF_shank_fixed:
           Value: true
-        IMU_base_link:
+        LF_thigh_fixed:
           Value: true
-        IMU_link:
+        LH_FOOT:
           Value: true
-        LF_BEAM:
+        LH_HAA:
           Value: true
-        LF_BEARING:
+        LH_HFE:
           Value: true
-        LF_KNUCKLE:
+        LH_HIP:
           Value: true
-        LF_PARALLEL:
+        LH_KFE:
           Value: true
-        LF_SWIVEL:
+        LH_SHANK:
           Value: true
-        LF_WHEEL:
+        LH_THIGH:
           Value: true
-        LF_WHEEL_CONTACT:
+        LH_hip_fixed:
           Value: true
-        LH_BEAM:
+        LH_shank_fixed:
           Value: true
-        LH_KNUCKLE:
+        LH_thigh_fixed:
           Value: true
-        LH_OUTRIGGER:
+        RF_FOOT:
           Value: true
-        LH_ROTATOR:
+        RF_HAA:
           Value: true
-        LH_WHEEL:
+        RF_HFE:
           Value: true
-        LH_WHEEL_CONTACT:
+        RF_HIP:
           Value: true
-        RF_BEAM:
+        RF_KFE:
           Value: true
-        RF_BEARING:
+        RF_SHANK:
           Value: true
-        RF_KNUCKLE:
+        RF_THIGH:
           Value: true
-        RF_PARALLEL:
+        RF_hip_fixed:
           Value: true
-        RF_SWIVEL:
+        RF_shank_fixed:
           Value: true
-        RF_WHEEL:
+        RF_thigh_fixed:
           Value: true
-        RF_WHEEL_CONTACT:
+        RH_FOOT:
           Value: true
-        RH_BEAM:
+        RH_HAA:
           Value: true
-        RH_KNUCKLE:
+        RH_HFE:
           Value: true
-        RH_OUTRIGGER:
+        RH_HIP:
           Value: true
-        RH_ROTATOR:
+        RH_KFE:
           Value: true
-        RH_WHEEL:
+        RH_SHANK:
           Value: true
-        RH_WHEEL_CONTACT:
+        RH_THIGH:
           Value: true
-        ROTO:
+        RH_hip_fixed:
           Value: true
-        ROTO_BASE:
+        RH_shank_fixed:
           Value: true
-        SHOVEL:
+        RH_thigh_fixed:
           Value: true
-        TELE:
+        aft_mapped:
           Value: true
-        camMainView:
+        aft_mapped_to_init_CORRECTED:
           Value: true
-        compslam_lio/aft_mapped:
+        base:
           Value: true
-        compslam_lio/aft_mapped_to_init_CORRECTED:
+        base_inertia:
           Value: true
-        compslam_lio/camera:
+        base_inverted:
           Value: true
-        compslam_lio/camera_CORRECTED:
+        battery:
           Value: true
-        compslam_lio/camera_init:
+        body_top:
           Value: true
-        compslam_lio/camera_init_CORRECTED:
+        bottom_shell:
           Value: true
-        compslam_lio/camera_init_GRAVITY_ALIGNED:
+        camera:
           Value: true
-        compslam_lio/laser_odom:
+        camera_CORRECTED:
           Value: true
-        compslam_lio/laser_odom_CORRECTED:
+        camera_init:
           Value: true
-        imu_box_base_link:
+        camera_init_CORRECTED:
           Value: true
-        imu_box_link:
+        camera_init_GRAVITY_ALIGNED:
           Value: true
-        livox_frame:
+        depth_camera_front_camera:
+          Value: true
+        depth_camera_front_camera_parent:
+          Value: true
+        depth_camera_front_depth_frame:
+          Value: true
+        depth_camera_front_depth_optical_frame:
+          Value: true
+        depth_camera_front_infra1_frame:
+          Value: true
+        depth_camera_front_infra1_optical_frame:
+          Value: true
+        depth_camera_front_infra2_frame:
+          Value: true
+        depth_camera_front_infra2_optical_frame:
+          Value: true
+        depth_camera_left_camera:
+          Value: true
+        depth_camera_left_camera_parent:
+          Value: true
+        depth_camera_left_depth_frame:
+          Value: true
+        depth_camera_left_depth_optical_frame:
+          Value: true
+        depth_camera_left_infra1_frame:
+          Value: true
+        depth_camera_left_infra1_optical_frame:
+          Value: true
+        depth_camera_left_infra2_frame:
+          Value: true
+        depth_camera_left_infra2_optical_frame:
+          Value: true
+        depth_camera_rear_camera:
+          Value: true
+        depth_camera_rear_camera_parent:
+          Value: true
+        depth_camera_rear_depth_frame:
+          Value: true
+        depth_camera_rear_depth_optical_frame:
+          Value: true
+        depth_camera_rear_infra1_frame:
+          Value: true
+        depth_camera_rear_infra1_optical_frame:
+          Value: true
+        depth_camera_rear_infra2_frame:
+          Value: true
+        depth_camera_rear_infra2_optical_frame:
+          Value: true
+        depth_camera_right_camera:
+          Value: true
+        depth_camera_right_camera_parent:
+          Value: true
+        depth_camera_right_depth_frame:
+          Value: true
+        depth_camera_right_depth_optical_frame:
+          Value: true
+        depth_camera_right_infra1_frame:
+          Value: true
+        depth_camera_right_infra1_optical_frame:
+          Value: true
+        depth_camera_right_infra2_frame:
+          Value: true
+        depth_camera_right_infra2_optical_frame:
+          Value: true
+        docking_hatch_cover:
+          Value: true
+        docking_station:
+          Value: true
+        docking_station__apriltag36_11_00000_link:
+          Value: true
+        docking_station__apriltag36_11_00000_link__visual__apriltag36_11_00000_visual:
+          Value: true
+        docking_station__apriltag36_11_00001_link:
+          Value: true
+        docking_station__apriltag36_11_00001_link__visual__apriltag36_11_00001_visual:
+          Value: true
+        docking_station__apriltag36_11_00002_link:
+          Value: true
+        docking_station__apriltag36_11_00002_link__visual__apriltag36_11_00002_visual:
+          Value: true
+        docking_station__apriltag36_11_00003_link:
+          Value: true
+        docking_station__apriltag36_11_00003_link__visual__apriltag36_11_00003_visual:
+          Value: true
+        docking_station__docking_port_link:
+          Value: true
+        docking_station__docking_port_link__visual__docking_port_visual:
+          Value: true
+        face_front:
+          Value: true
+        face_rear:
+          Value: true
+        feetcenter:
+          Value: true
+        floorplan_tf:
+          Value: true
+        footprint:
+          Value: true
+        front_handle:
+          Value: true
+        gps:
+          Value: true
+        gps_new:
+          Value: true
+        ground_plane:
+          Value: true
+        ground_plane__link:
+          Value: true
+        ground_plane__link__collision__collision:
+          Value: true
+        ground_plane__link__visual__visual:
+          Value: true
+        handle:
+          Value: true
+        hatch:
+          Value: true
+        imu_link:
+          Value: true
+        interface_hatch:
+          Value: true
+        laser_odom:
+          Value: true
+        laser_odom_CORRECTED:
+          Value: true
+        lidar:
           Value: true
         map:
           Value: true
+        map_graph_msf:
+          Value: true
+        msf_body_imu_map:
+          Value: true
         odom:
           Value: true
-        os_imu:
+        perception_head_cage:
           Value: true
-        os_lidar:
+        remote:
           Value: true
-        os_sensor:
+        state_msf_body_imu:
           Value: true
-        roof_top_box:
+        top_shell:
+          Value: true
+        wide_angle_camera_front_camera:
+          Value: true
+        wide_angle_camera_front_camera_parent:
+          Value: true
+        wide_angle_camera_rear_camera:
+          Value: true
+        wide_angle_camera_rear_camera_parent:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -201,90 +336,186 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          compslam_lio/camera_init_CORRECTED:
-            compslam_lio/aft_mapped_to_init_CORRECTED:
-              {}
-            compslam_lio/camera_CORRECTED:
-              {}
-            compslam_lio/camera_init:
-              compslam_lio/aft_mapped:
-                {}
-              compslam_lio/camera:
-                {}
-              compslam_lio/laser_odom:
-                {}
-            compslam_lio/camera_init_GRAVITY_ALIGNED:
-              {}
-            compslam_lio/laser_odom_CORRECTED:
-              {}
-          odom:
-            BASE:
-              BASE_inertia:
-                {}
-              CABIN:
-                BOOM:
-                  DIPPER:
-                    TELE:
-                      ROTO_BASE:
-                        ROTO:
-                          ENDEFFECTOR:
-                            SHOVEL:
-                              ENDEFFECTOR_CONTACT:
+        map_graph_msf:
+          {}
+        odom:
+          base:
+            LF_HAA:
+              LF_HIP:
+                LF_hip_fixed:
+                  LF_HFE:
+                    LF_THIGH:
+                      LF_thigh_fixed:
+                        LF_KFE:
+                          LF_SHANK:
+                            LF_shank_fixed:
+                              LF_FOOT:
                                 {}
-                GNSS_L:
-                  {}
-                GNSS_R:
-                  {}
-                camMainView:
-                  livox_frame:
+            LH_HAA:
+              LH_HIP:
+                LH_hip_fixed:
+                  LH_HFE:
+                    LH_THIGH:
+                      LH_thigh_fixed:
+                        LH_KFE:
+                          LH_SHANK:
+                            LH_shank_fixed:
+                              LH_FOOT:
+                                {}
+            RF_HAA:
+              RF_HIP:
+                RF_hip_fixed:
+                  RF_HFE:
+                    RF_THIGH:
+                      RF_thigh_fixed:
+                        RF_KFE:
+                          RF_SHANK:
+                            RF_shank_fixed:
+                              RF_FOOT:
+                                {}
+            RH_HAA:
+              RH_HIP:
+                RH_hip_fixed:
+                  RH_HFE:
+                    RH_THIGH:
+                      RH_thigh_fixed:
+                        RH_KFE:
+                          RH_SHANK:
+                            RH_shank_fixed:
+                              RH_FOOT:
+                                {}
+            base_inertia:
+              {}
+            base_inverted:
+              {}
+            battery:
+              {}
+            body_top:
+              {}
+            bottom_shell:
+              {}
+            depth_camera_left_camera:
+              depth_camera_left_camera_parent:
+                depth_camera_left_depth_frame:
+                  depth_camera_left_depth_optical_frame:
                     {}
-                  os_sensor:
-                    os_imu:
+                depth_camera_left_infra1_frame:
+                  depth_camera_left_infra1_optical_frame:
+                    {}
+                depth_camera_left_infra2_frame:
+                  depth_camera_left_infra2_optical_frame:
+                    {}
+            depth_camera_right_camera:
+              depth_camera_right_camera_parent:
+                depth_camera_right_depth_frame:
+                  depth_camera_right_depth_optical_frame:
+                    {}
+                depth_camera_right_infra1_frame:
+                  depth_camera_right_infra1_optical_frame:
+                    {}
+                depth_camera_right_infra2_frame:
+                  depth_camera_right_infra2_optical_frame:
+                    {}
+            docking_hatch_cover:
+              {}
+            face_front:
+              depth_camera_front_camera:
+                depth_camera_front_camera_parent:
+                  depth_camera_front_depth_frame:
+                    depth_camera_front_depth_optical_frame:
                       {}
-                    os_lidar:
+                  depth_camera_front_infra1_frame:
+                    depth_camera_front_infra1_optical_frame:
                       {}
-                  roof_top_box:
-                    imu_box_base_link:
-                      imu_box_link:
-                        {}
-              IMU_base_link:
-                IMU_link:
+                  depth_camera_front_infra2_frame:
+                    depth_camera_front_infra2_optical_frame:
+                      {}
+              wide_angle_camera_front_camera:
+                wide_angle_camera_front_camera_parent:
                   {}
-              LF_SWIVEL:
-                LF_BEAM:
-                  LF_BEARING:
-                    LF_KNUCKLE:
-                      LF_WHEEL:
-                        LF_WHEEL_CONTACT:
-                          {}
-                LF_PARALLEL:
-                  {}
-              LH_ROTATOR:
-                LH_BEAM:
-                  LH_KNUCKLE:
-                    LH_OUTRIGGER:
+            face_rear:
+              depth_camera_rear_camera:
+                depth_camera_rear_camera_parent:
+                  depth_camera_rear_depth_frame:
+                    depth_camera_rear_depth_optical_frame:
                       {}
-                    LH_WHEEL:
-                      LH_WHEEL_CONTACT:
-                        {}
-              RF_SWIVEL:
-                RF_BEAM:
-                  RF_BEARING:
-                    RF_KNUCKLE:
-                      RF_WHEEL:
-                        RF_WHEEL_CONTACT:
-                          {}
-                RF_PARALLEL:
-                  {}
-              RH_ROTATOR:
-                RH_BEAM:
-                  RH_KNUCKLE:
-                    RH_OUTRIGGER:
+                  depth_camera_rear_infra1_frame:
+                    depth_camera_rear_infra1_optical_frame:
                       {}
-                    RH_WHEEL:
-                      RH_WHEEL_CONTACT:
-                        {}
+                  depth_camera_rear_infra2_frame:
+                    depth_camera_rear_infra2_optical_frame:
+                      {}
+              wide_angle_camera_rear_camera:
+                wide_angle_camera_rear_camera_parent:
+                  {}
+            front_handle:
+              {}
+            gps:
+              {}
+            gps_new:
+              {}
+            handle:
+              {}
+            imu_link:
+              {}
+            interface_hatch:
+              hatch:
+                {}
+            perception_head_cage:
+              lidar:
+                {}
+            remote:
+              {}
+            top_shell:
+              {}
+          docking_station:
+            docking_station__apriltag36_11_00000_link:
+              docking_station__apriltag36_11_00000_link__visual__apriltag36_11_00000_visual:
+                {}
+            docking_station__apriltag36_11_00001_link:
+              docking_station__apriltag36_11_00001_link__visual__apriltag36_11_00001_visual:
+                {}
+            docking_station__apriltag36_11_00002_link:
+              docking_station__apriltag36_11_00002_link__visual__apriltag36_11_00002_visual:
+                {}
+            docking_station__apriltag36_11_00003_link:
+              docking_station__apriltag36_11_00003_link__visual__apriltag36_11_00003_visual:
+                {}
+            docking_station__docking_port_link:
+              docking_station__docking_port_link__visual__docking_port_visual:
+                {}
+          feetcenter:
+            {}
+          footprint:
+            {}
+          ground_plane:
+            ground_plane__link:
+              ground_plane__link__collision__collision:
+                {}
+              ground_plane__link__visual__visual:
+                {}
+          map:
+            camera_init_CORRECTED:
+              aft_mapped_to_init_CORRECTED:
+                {}
+              camera_CORRECTED:
+                {}
+              camera_init:
+                aft_mapped:
+                  {}
+                camera:
+                  {}
+                laser_odom:
+                  {}
+              camera_init_GRAVITY_ALIGNED:
+                {}
+              laser_odom_CORRECTED:
+                {}
+            floorplan_tf:
+              {}
+          msf_body_imu_map:
+            state_msf_body_imu:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -517,6 +748,15 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /path_creator_interactive_marker_server/update
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -545,7 +785,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 60.24916076660156
+      Distance: 116.20648193359375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -561,9 +801,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.209796667098999
       Target Frame: odom
-      Yaw: 0.7553982138633728
+      Yaw: 0.48039841651916504
     Saved: ~
 Window Geometry:
   Displays:

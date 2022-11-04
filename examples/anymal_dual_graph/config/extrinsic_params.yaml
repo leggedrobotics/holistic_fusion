@@ -1,6 +1,6 @@
 #External Prior/Transform Input
 extrinsics:
-  mapFrame: map_graph_msf
+  mapFrame: enu
   odomFrame: odom
   baseLinkFrame: base
   lidarFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame

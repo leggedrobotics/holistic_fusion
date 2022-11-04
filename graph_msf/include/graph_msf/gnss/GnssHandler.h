@@ -46,6 +46,7 @@ class GnssHandler {
 
   // Getters.
   double getInitYaw();
+  Gnss getGnssSensor() { return gnssSensor_; }
 
  private:
   // Member methods

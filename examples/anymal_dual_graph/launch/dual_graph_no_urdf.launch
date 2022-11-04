@@ -6,8 +6,10 @@
     <!-- Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
     <arg name="lidar_odometry_topic_name" default="/compslam_lio/odometry" />
-    <arg name="gnss_left_topic_name"      default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
-    <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
+    <arg name="gnss_topic_name"           default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
+
+    <!-- Servers -->
+    <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
@@ -41,8 +43,9 @@
         <!-- Remapping of topics -->
         <remap from="/imu_topic"            to="$(arg imu_topic_name)" />
         <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
-        <remap from="/gnss_topic_1"         to="$(arg gnss_left_topic_name)" />
-        <remap from="/gnss_topic_2"         to="$(arg gnss_right_topic_name)" />
+        <remap from="/gnss_topic"         to="$(arg gnss_topic_name)" />
+        <!-- Remapping of services -->
+        <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)" />
     </node>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="static_transform_publisher_gps" args="0.37 0 0.22 0 0 0 base gps_new" />

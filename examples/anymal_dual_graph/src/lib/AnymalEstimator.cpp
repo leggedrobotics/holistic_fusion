@@ -43,6 +43,9 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   // Subscribers ----------------------------
   initializeSubscribers_(privateNodePtr);
 
+  // Server ----------------------------
+  initializeServers_(privateNodePtr);
+
   // Messages ----------------------------
   initializeMessages_(privateNodePtr);
 
@@ -78,7 +81,7 @@ void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& p
 
   // GNSS
   if (graphConfigPtr_->usingGnssFlag) {
-    subGnss_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic_1", ROS_QUEUE_SIZE, &AnymalEstimator::gnssCallback_, this,
+    subGnss_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssCallback_, this,
                                                               ros::TransportHints().tcpNoDelay());
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized Gnss subscriber with topic: " << subGnss_.getTopic()
               << std::endl;
@@ -87,6 +90,27 @@ void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& p
               << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
               << std::endl;
   }
+}
+
+void AnymalEstimator::initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  serverTransformGnssToEnu_ =
+      privateNode_.advertiseService("/gnss_coordinates_to_enu_topic", &AnymalEstimator::gnssCoordinatesToENUCallback_, this);
+}
+
+bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req,
+                                                    graph_msf_msgs::GetPathInEnu::Response& res) {
+  nav_msgs::PathPtr enuPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
+  for (auto& coordinate : req.wgs84Coordinates) {
+    Eigen::Vector3d enuCoordinate;
+    Eigen::Vector3d gnssCoordinate = Eigen::Vector3d(coordinate.latitude, coordinate.longitude, coordinate.altitude);
+    gnssHandlerPtr_->convertNavSatToPosition(gnssCoordinate, enuCoordinate);
+
+    addToPathMsg(enuPathPtr, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(), ros::Time::now(),
+                 enuCoordinate, std::numeric_limits<int>::max());
+  }
+  res.gnssEnuPath = *enuPathPtr;
+
+  return true;
 }
 
 void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {

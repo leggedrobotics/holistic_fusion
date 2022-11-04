@@ -3,6 +3,7 @@ project(anymal_dual_graph)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
   graph_msf
+  graph_msf_msgs
   graph_msf_ros
   geometry_msgs
   nav_msgs

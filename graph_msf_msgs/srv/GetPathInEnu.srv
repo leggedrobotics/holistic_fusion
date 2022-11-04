@@ -1,0 +1,3 @@
+Wgs84Coordinate[] wgs84Coordinates
+---
+nav_msgs/Path gnssEnuPath

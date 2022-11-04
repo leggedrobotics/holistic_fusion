@@ -27,6 +27,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
+#include "graph_msf_msgs/GetPathInEnu.h"
+#include "graph_msf_msgs/GetPathInEnuRequest.h"
+#include "graph_msf_msgs/GetPathInEnuResponse.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
@@ -50,6 +53,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
   void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+
+  void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
   void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 
@@ -84,6 +89,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
+  bool gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req, graph_msf_msgs::GetPathInEnu::Response& res);
 
   // Node
   ros::NodeHandle privateNode_;
@@ -106,6 +112,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubMeasMapGnssPath_;
   ros::Publisher pubMeasMapLidarPath_;
+  // Servers
+  ros::ServiceServer serverTransformGnssToEnu_;
   // TF
   tf::TransformBroadcaster tfBroadcaster_;
 
