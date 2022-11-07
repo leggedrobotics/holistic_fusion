@@ -20,15 +20,15 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
     throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
   }
   // Set noise and bias parameters
-  imuParamsPtr_->accelerometerCovariance = gtsam::Matrix33::identity(3, 3) * graphConfigPtr_->accNoiseDensity;
-  imuParamsPtr_->biasAccCovariance = gtsam::Matrix33::identity(3, 3) * graphConfigPtr_->accBiasRandomWalk;
-  imuParamsPtr_->gyroscopeCovariance = gtsam::Matrix33::identity(3, 3) * graphConfigPtr_->gyroNoiseDensity;
-  imuParamsPtr_->biasOmegaCovariance = gtsam::Matrix33::identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk;
+  imuParamsPtr_->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accNoiseDensity;
+  imuParamsPtr_->biasAccCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk;
+  imuParamsPtr_->gyroscopeCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity;
+  imuParamsPtr_->biasOmegaCovariance = gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk;
   imuParamsPtr_->integrationCovariance =
-      gtsam::Matrix33::identity(3, 3) *
+      gtsam::Matrix33::Identity(3, 3) *
       graphConfigPtr_->integrationNoiseDensity;  // error committed in integrating position from velocities
   imuParamsPtr_->biasAccOmegaInt =
-      gtsam::Matrix66::identity(6, 6) * graphConfigPtr_->biasAccOmegaPreint;  // covariance of bias used for preintegration
+      gtsam::Matrix66::Identity(6, 6) * graphConfigPtr_->biasAccOmegaPreint;  // covariance of bias used for preintegration
   gtsam::Vector3 accBiasPrior(graphConfigPtr_->accBiasPrior);
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior, graphConfigPtr_->gyroBiasPrior);
@@ -479,7 +479,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   /// Add Zero Pose Factor
   globalFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                              gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::Identity(),
+                                                              gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
                                                               gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   /// Add Zero Velocity Factor
   globalFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
@@ -487,7 +487,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   // Fallback
   /// Add Zero Pose Factor
   fallbackFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                                gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::Identity(),
+                                                                gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
                                                                 gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   /// Add Zero Velocity Factor
   fallbackFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
