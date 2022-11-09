@@ -27,7 +27,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
-#define REQUIRED_GNSS_NUM_NOT_JUMPED 20          // 2*singleGnssJumping = 2*20 = 40
+#define REQUIRED_GNSS_NUM_NOT_JUMPED 40          // 2*singleGnssJumping = 2*20 = 40
 #define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.2  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
