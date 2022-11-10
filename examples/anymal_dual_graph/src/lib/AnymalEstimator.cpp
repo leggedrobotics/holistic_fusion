@@ -57,13 +57,13 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
 
 void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
-  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_map_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf2/odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf2/odometry_map_imu", ROS_QUEUE_SIZE);
   // Paths
-  pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnss", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
+  pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf2/est_path_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf2/est_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf2/meas_path_map_gnss", ROS_QUEUE_SIZE);
+  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf2/meas_path_map_Lidar", ROS_QUEUE_SIZE);
 }
 
 void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
