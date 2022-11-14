@@ -38,16 +38,6 @@ void AnymalStaticTransforms::findTransformations() {
   ros::Rate rosRate(10);
   rosRate.sleep();
 
-  // // Imu to Cabin Link ---
-  // listener_.waitForTransform(imuFrame_, cabinFrame_, ros::Time(0), ros::Duration(100.0));
-  // listener_.lookupTransform(imuFrame_, cabinFrame_, ros::Time(0), transform);
-  // // I_Cabin
-  // graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, cabinFrame_));
-  // std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-  //           << " Translation I_Cabin: " << rv_T_frame1_frame2(imuFrame_, cabinFrame_).block<3, 1>(0, 3) << std::endl;
-  // // Cabin_I
-  // lv_T_frame1_frame2(cabinFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, cabinFrame_).inverse();
-
   // Imu to Base Link ---
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(100.0));
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);

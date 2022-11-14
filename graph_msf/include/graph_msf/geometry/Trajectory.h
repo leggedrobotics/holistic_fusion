@@ -43,10 +43,6 @@ class Trajectory {
       distance += ((poseIt->position() - lastPose).norm());
       lastPose = poseIt->position();
     }
-    std::cout << distance << std::endl;
-    if (distance < noMovementThreshold) {
-      std::cout << "standing" << std::endl;
-    }
 
     return distance < noMovementThreshold;
   }

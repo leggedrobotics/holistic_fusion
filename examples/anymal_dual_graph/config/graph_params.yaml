@@ -9,7 +9,7 @@ sensor_params:
 # Factor Graph
 graph_params:
   useIsam: true # if false, then levenberg-marquardt is used
-  smootherLag: 1.5                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  smootherLag: 2.5                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additionalOptimizationIterations: 0                  #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: false
   enableDetailedResults: true
