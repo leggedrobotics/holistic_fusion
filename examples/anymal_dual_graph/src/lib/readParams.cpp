@@ -167,8 +167,8 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     }
   }
 
-  trajectoryAlignmentHandlerPtr_->setGnssRate(tryGetParam<int>("trajectoryAlignment/gnssRate", privateNode));
-  trajectoryAlignmentHandlerPtr_->setLidarRate(tryGetParam<int>("trajectoryAlignment/lidarRate", privateNode));
+  trajectoryAlignmentHandlerPtr_->setGnssRate(gnssRate_);
+  trajectoryAlignmentHandlerPtr_->setLidarRate(lidarRate_);
   trajectoryAlignmentHandlerPtr_->setMinDistanceHeadingInit(
       tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));
   trajectoryAlignmentHandlerPtr_->setNoMovementDistance(tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));

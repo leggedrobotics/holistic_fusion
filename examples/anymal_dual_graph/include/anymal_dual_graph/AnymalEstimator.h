@@ -72,7 +72,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Rates
   double lidarRate_ = 5.0;
-  double gnssRate_ = 20.0;
+  double gnssRate_ = 10.0;
 
   // Noise
   Eigen::Matrix<double, 6, 1> poseBetweenNoise_;

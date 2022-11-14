@@ -31,8 +31,8 @@ class TrajectoryAlignment {
   bool alignTrajectories(double& yaw);
 
   // Setters
-  void setGnssRate(const int gnssRate) { gnssRate_ = gnssRate; }
-  void setLidarRate(const int lidarRate) { lidarRate_ = lidarRate; }
+  void setGnssRate(const double gnssRate) { gnssRate_ = gnssRate; }
+  void setLidarRate(const double lidarRate) { lidarRate_ = lidarRate; }
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
   void setNoMovementDistance(const double noMovementDistance) { noMovementDistance_ = noMovementDistance; }
   void setNoMovementTime(const double noMovementTime) { noMovementTime_ = noMovementTime; }
@@ -47,8 +47,8 @@ class TrajectoryAlignment {
   Trajectory lidarTrajectory_;
 
   // Reference Parameters
-  int gnssRate_;
-  int lidarRate_;
+  double gnssRate_;
+  double lidarRate_;
   double minDistanceHeadingInit_;
   double noMovementDistance_;
   double noMovementTime_;

@@ -32,8 +32,8 @@ class TrajectoryAlignmentHandler {
   bool alignTrajectories(double& yaw);
 
   // Setters
-  void setGnssRate(const int& gnssRate);
-  void setLidarRate(const int& lidarRate);
+  void setGnssRate(const double& gnssRate);
+  void setLidarRate(const double& lidarRate);
   void setMinDistanceHeadingInit(const double& minDistanceHeadingInit);
   void setNoMovementDistance(const double& noMovementDistance);
   void setNoMovementTime(const double& noMovementTime);

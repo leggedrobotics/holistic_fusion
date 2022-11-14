@@ -30,11 +30,11 @@ void TrajectoryAlignmentHandler::addGnssPose(Eigen::Vector3d position, double ti
   trajectoryAlignment_.addGnssPose(position, time);
 }
 
-void TrajectoryAlignmentHandler::setGnssRate(const int& gnssRate) {
+void TrajectoryAlignmentHandler::setGnssRate(const double& gnssRate) {
   trajectoryAlignment_.setGnssRate(gnssRate);
 }
 
-void TrajectoryAlignmentHandler::setLidarRate(const int& lidarRate) {
+void TrajectoryAlignmentHandler::setLidarRate(const double& lidarRate) {
   trajectoryAlignment_.setLidarRate(lidarRate);
 }
 
