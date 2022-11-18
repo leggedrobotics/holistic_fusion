@@ -21,6 +21,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/geometry/Pose3.h>
 
 // Package
+#include <mutex>
 #include "graph_msf/Datatypes.hpp"
 
 namespace graph_msf {
