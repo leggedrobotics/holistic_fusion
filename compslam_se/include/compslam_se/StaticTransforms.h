@@ -16,20 +16,21 @@ class StaticTransforms {
   StaticTransforms() { std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl; }
 
   // Setters
-  Eigen::Matrix4d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
-    std::pair<std::string, std::string> framePair(frame1, frame2);
-    //    auto keyIterator = T_frame1_frame2_map_.find(framePair);
-    //    if (keyIterator == T_frame1_frame2_map_.end()) {
-    //      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
-    //                << std::endl;
-    //      throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
-    //    }
-    return T_frame1_frame2_map_[framePair];
+  void set_T_frame1_frame2_andInverse(const std::string& frame1, const std::string& frame2, const Eigen::Matrix4d& T_frame1_frame2) {
+    lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
+    lv_T_frame1_frame2(frame2, frame1) = rv_T_frame1_frame2(frame1, frame2).inverse();
   }
 
   void setImuFrame(const std::string& s) { imuFrame_ = s; }
 
   // Getters
+  // Returns a left value of the requested transformation
+  Eigen::Matrix4d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+    std::pair<std::string, std::string> framePair(frame1, frame2);
+    return T_frame1_frame2_map_[framePair];
+  }
+
+  // Returns a right value to the requested transformation
   const Eigen::Matrix4d& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
