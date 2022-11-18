@@ -50,6 +50,8 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
   void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
+  void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+
   void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 
   // GNSS Handler

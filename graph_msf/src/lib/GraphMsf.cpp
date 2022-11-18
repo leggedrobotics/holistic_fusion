@@ -56,6 +56,7 @@ void GraphMsf::activateFallbackGraph() {
 
 bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                   const std::string& frame2) {
+  // Transform yaw to imu frame
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
   gtsam::Rot3 yawR_W_I0;
   std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
@@ -73,7 +74,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " Initial global yaw of imu in world has been set to (deg) "
               << 180.0 * yaw_W_I0_ / M_PI << "." << COLOR_END << std::endl;
 
-    gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yaw_W_I0_, imuAttitudePitch_, imuAttitudeRoll_);
+    gtsam::Rot3 R_W_I0 = gtsam::Rot3::Ypr(yawR_W_I0.yaw(), imuAttitudePitch_, imuAttitudeRoll_);
     // Set Member Variables
     W_t_W_I0_ = W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
 
@@ -175,7 +176,6 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     // For this computation step assume T_O_Ik ~ T_O_Ikm1
     gtsam::Pose3 T_I_O_km1 = T_W_I_km1__.inverse() * T_W_O_;
     T_W_O_ = T_W_Ik_ * T_I_O_km1;
-    std::cout << T_W_O_ << std::endl;
   }
 
   // Convert to odom frame ----------------------------------------------------------------

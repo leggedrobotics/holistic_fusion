@@ -86,6 +86,8 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
   }
 }
 
+void ExcavatorEstimator::initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {}
+
 void ExcavatorEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
   odomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);

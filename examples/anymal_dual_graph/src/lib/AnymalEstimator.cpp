@@ -97,6 +97,17 @@ void AnymalEstimator::initializeServers_(std::shared_ptr<ros::NodeHandle>& priva
       privateNode_.advertiseService("/gnss_coordinates_to_enu_topic", &AnymalEstimator::gnssCoordinatesToENUCallback_, this);
 }
 
+void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  // Odometry
+  odomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  mapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  // Path
+  estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measMapGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measMapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+}
+
 bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req,
                                                     graph_msf_msgs::GetPathInEnu::Response& res) {
   nav_msgs::PathPtr enuPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -111,17 +122,6 @@ bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu
   res.gnssEnuPath = *enuPathPtr;
 
   return true;
-}
-
-void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
-  // Odometry
-  odomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  mapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  // Path
-  estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void AnymalEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
