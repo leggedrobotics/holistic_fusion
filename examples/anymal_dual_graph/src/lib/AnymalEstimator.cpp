@@ -232,7 +232,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
                                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame())
                                 .block<3, 3>(0, 0);
     Eigen::Vector3d eulerAngles = R_L_I.eulerAngles(2, 1, 0).reverse();
-    double initYaw = initYawEnuLidar + eulerAngles(0);
+    double initYaw = initYawEnuLidar //+ eulerAngles(0);
     gnssHandlerPtr_->setInitYaw(initYaw);
     initialized_ = true;
     gnssHandlerPtr_->initHandler(gnssHandlerPtr_->getInitYaw());
@@ -244,7 +244,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   // Initialization
   if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 2) {
     if (not graph_msf::GraphMsfInterface::initYawAndPosition_(
-            gnssHandlerPtr_->getInitYaw(), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), W_t_W_Gnss,
+            gnssHandlerPtr_->getInitYaw(), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), W_t_W_Gnss,
             dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
       // Decrease counter if not successfully initialized
       --gnssCallbackCounter__;

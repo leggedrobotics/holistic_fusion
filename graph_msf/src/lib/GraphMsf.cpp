@@ -57,7 +57,10 @@ void GraphMsf::activateFallbackGraph() {
 bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                   const std::string& frame2) {
   gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
-  gtsam::Rot3 yawR_W_I0 = yawR_W_frame1;
+  gtsam::Rot3 yawR_W_I0;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
+  yawR_W_I0 =
+      yawR_W_frame1 * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame())).rotation();
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
