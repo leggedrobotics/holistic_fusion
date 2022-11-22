@@ -232,7 +232,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
                                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame())
                                 .block<3, 3>(0, 0);
     Eigen::Vector3d eulerAngles = R_L_I.eulerAngles(2, 1, 0).reverse();
-    double initYaw = initYawEnuLidar //+ eulerAngles(0);
+    double initYaw = initYawEnuLidar;  //+ eulerAngles(0);
     gnssHandlerPtr_->setInitYaw(initYaw);
     initialized_ = true;
     gnssHandlerPtr_->initHandler(gnssHandlerPtr_->getInitYaw());
