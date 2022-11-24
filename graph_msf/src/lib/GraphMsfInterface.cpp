@@ -92,18 +92,19 @@ void GraphMsfInterface::addGnssHeadingMeasurement_(const UnaryMeasurement1D& yaw
 void GraphMsfInterface::publishStateAndMeasureTime_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
                                                     const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I) {
   // Define variables for timing
-  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
-  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
+  // std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
+  // std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
-  startLoopTime = std::chrono::high_resolution_clock::now();
+  // startLoopTime = std::chrono::high_resolution_clock::now();
   publishState_(imuTimeK, T_W_O, T_O_Ik, I_v_W_I, I_w_W_I);
-  endLoopTime = std::chrono::high_resolution_clock::now();
-  if (std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count() > (1e6 / graphConfigPtr_->imuRate / 2.0)) {
-    std::cout << YELLOW_START << "GMsf-Interface" << RED_START << " Publishing state took "
-              << std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count()
-              << " microseconds, which is slower than double IMU-rate (" << (1e6 / graphConfigPtr_->imuRate / 2.0) << " microseconds)."
-              << COLOR_END << std::endl;
-  }
+  // endLoopTime = std::chrono::high_resolution_clock::now();
+  // if (std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count() > (1e6 / graphConfigPtr_->imuRate
+  // / 2.0)) {
+  //   std::cout << YELLOW_START << "GMsf-Interface" << RED_START << " Publishing state took "
+  //             << std::chrono::duration_cast<std::chrono::microseconds>(endLoopTime - startLoopTime).count()
+  //             << " microseconds, which is slower than double IMU-rate (" << (1e6 / graphConfigPtr_->imuRate / 2.0) << " microseconds)."
+  //             << COLOR_END << std::endl;
+  // }
 }
 
 bool GraphMsfInterface::isInNormalOperation() const {

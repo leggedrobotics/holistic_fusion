@@ -38,6 +38,10 @@ class TrajectoryAlignmentHandler {
   void setNoMovementDistance(const double& noMovementDistance);
   void setNoMovementTime(const double& noMovementTime);
 
+  // Getters
+  std::vector<std::pair<double, Eigen::Vector3d>> getLidarTrajectory();
+  std::vector<std::pair<double, Eigen::Vector3d>> getGnssTrajectory();
+
  private:
   // Member variables
   TrajectoryAlignment trajectoryAlignment_;

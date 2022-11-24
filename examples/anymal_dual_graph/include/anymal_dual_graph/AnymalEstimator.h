@@ -112,6 +112,12 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubMeasMapGnssPath_;
   ros::Publisher pubMeasMapLidarPath_;
+  // Debug
+  ros::Publisher lidarPoses_;
+  ros::Publisher lidarPath_;
+  ros::Publisher gnssPoses_;
+  ros::Publisher gnssPath_;
+
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
   // TF

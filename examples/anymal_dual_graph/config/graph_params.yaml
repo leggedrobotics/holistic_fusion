@@ -34,7 +34,7 @@ noise_params:
   integrationNoiseDensity: 1.0e-08         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   biasAccOmegaPreInt: 1.0              #covariance of bias used for preintegration, default: 1.0e-2
   ## LiDAR
-  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseBetweenNoise: [ 5.0, 5.0, 5.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
   poseUnaryNoise: [ 1000.0, 1000.0, 10.0, 10.0, 10.0, 10.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position

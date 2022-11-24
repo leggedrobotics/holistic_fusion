@@ -64,6 +64,11 @@ void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& pr
   pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
   pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnss", ROS_QUEUE_SIZE);
   pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
+
+  lidarPoses_ = privateNode_.advertise<geometry_msgs::PoseStamped>("/graph_msf/lidarPoses", ROS_QUEUE_SIZE);
+  lidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/lidarPath", ROS_QUEUE_SIZE);
+  gnssPoses_ = privateNode_.advertise<geometry_msgs::PoseStamped>("/graph_msf/gnssPoses", ROS_QUEUE_SIZE);
+  gnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/gnssPath", ROS_QUEUE_SIZE);
 }
 
 void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -221,6 +226,37 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
     // Convert to cartesian coordinates
     gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
     trajectoryAlignmentHandlerPtr_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
+
+    // get trajectories for debug;
+    std::vector<std::pair<double, Eigen::Vector3d>> tLidar = trajectoryAlignmentHandlerPtr_->getLidarTrajectory();
+    std::vector<std::pair<double, Eigen::Vector3d>> tGnss = trajectoryAlignmentHandlerPtr_->getGnssTrajectory();
+    nav_msgs::Path path;
+    geometry_msgs::PoseStamped poseStamped;
+    path.header.frame_id = "map";
+    poseStamped.header.frame_id = "map";
+    for (auto pose : tLidar) {
+      poseStamped.header.stamp.sec = int(int(pose.first) / 1e9);
+      poseStamped.header.stamp.nsec = int(int(pose.first) % int(1e9));
+      poseStamped.pose.position.x = pose.second(0);
+      poseStamped.pose.position.y = pose.second(1);
+      poseStamped.pose.position.z = pose.second(2);
+      path.poses.push_back(poseStamped);
+    }
+    lidarPath_.publish(path);
+    path.poses.clear();
+    path.header.frame_id = "enu";
+    poseStamped.header.frame_id = "enu";
+    for (auto pose : tGnss) {
+      poseStamped.header.stamp.sec = int(int(pose.first) / 1e9);
+      poseStamped.header.stamp.nsec = int(int(pose.first) % int(1e9));
+      poseStamped.pose.position.x = pose.second(0);
+      poseStamped.pose.position.y = pose.second(1);
+      poseStamped.pose.position.z = pose.second(2);
+      path.poses.push_back(poseStamped);
+    }
+    gnssPath_.publish(path);
+    // end get trajectories for debug;
+
     double initYawEnuLidar;
     if (!trajectoryAlignmentHandlerPtr_->alignTrajectories(initYawEnuLidar)) {
       --gnssCallbackCounter__;
@@ -235,6 +271,31 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
     double initYaw = initYawEnuLidar;  //+ eulerAngles(0);
     gnssHandlerPtr_->setInitYaw(initYaw);
     initialized_ = true;
+
+    // get trajectories for debug;
+    tLidar = trajectoryAlignmentHandlerPtr_->getLidarTrajectory();
+    tGnss = trajectoryAlignmentHandlerPtr_->getGnssTrajectory();
+    poseStamped.header.frame_id = "map";
+    for (auto pose : tLidar) {
+      poseStamped.header.stamp.sec = int(int(pose.first) / 1e9);
+      poseStamped.header.stamp.nsec = int(int(pose.first) % int(1e9));
+      poseStamped.pose.position.x = pose.second(0);
+      poseStamped.pose.position.y = pose.second(1);
+      poseStamped.pose.position.z = pose.second(2);
+      lidarPoses_.publish(poseStamped);
+    }
+    path.header.frame_id = "enu";
+    poseStamped.header.frame_id = "enu";
+    for (auto pose : tGnss) {
+      poseStamped.header.stamp.sec = int(int(pose.first) / 1e9);
+      poseStamped.header.stamp.nsec = int(int(pose.first) % int(1e9));
+      poseStamped.pose.position.x = pose.second(0);
+      poseStamped.pose.position.y = pose.second(1);
+      poseStamped.pose.position.z = pose.second(2);
+      gnssPoses_.publish(poseStamped);
+    }
+    // end get trajectories for debug;
+
     gnssHandlerPtr_->initHandler(gnssHandlerPtr_->getInitYaw());
   }
 
@@ -320,9 +381,9 @@ void AnymalEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d
   transform_O_I.setOrigin(tf::Vector3(T_O_Ik(0, 3), T_O_Ik(1, 3), T_O_Ik(2, 3)));
   Eigen::Quaterniond q_O_I(T_O_Ik.block<3, 3>(0, 0));
   transform_O_I.setRotation(tf::Quaternion(q_O_I.x(), q_O_I.y(), q_O_I.z(), q_O_I.w()));
-  // tfBroadcaster_.sendTransform(tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(imuTimeK),
-  //                                                   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-  //                                                   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame()));
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(imuTimeK),
+                                                    dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
+                                                    "base_graph_msf"));
 }
 
 }  // namespace anymal_se

@@ -22,6 +22,14 @@ void TrajectoryAlignmentHandler::initHandler() {
   std::cout << YELLOW_START << "TrajectoryAlignmentHandler" << GREEN_START << " Initializing the handler." << COLOR_END << std::endl;
 }
 
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getLidarTrajectory() {
+  return trajectoryAlignment_.getLidarTrajectory();
+}
+
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getGnssTrajectory() {
+  return trajectoryAlignment_.getGnssTrajectory();
+}
+
 void TrajectoryAlignmentHandler::addLidarPose(Eigen::Vector3d position, double time) {
   trajectoryAlignment_.addLidarPose(position, time);
 }

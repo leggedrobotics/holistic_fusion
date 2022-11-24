@@ -17,6 +17,28 @@ TrajectoryAlignment::TrajectoryAlignment() {
   std::cout << YELLOW_START << "TrajectoryAlignment" << GREEN_START << " Created Trajectory Alignment instance." << COLOR_END << std::endl;
 }
 
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignment::getLidarTrajectory() {
+  std::vector<std::pair<double, Eigen::Vector3d>> trajectory;
+  std::pair<double, Eigen::Vector3d> onePose;
+  for (auto pose : lidarTrajectory_.poses()) {
+    onePose.first = pose.time();
+    onePose.second = pose.position();
+    trajectory.push_back(onePose);
+  }
+  return trajectory;
+}
+
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignment::getGnssTrajectory() {
+  std::vector<std::pair<double, Eigen::Vector3d>> trajectory;
+  std::pair<double, Eigen::Vector3d> onePose;
+  for (auto pose : gnssTrajectory_.poses()) {
+    onePose.first = pose.time();
+    onePose.second = pose.position();
+    trajectory.push_back(onePose);
+  }
+  return trajectory;
+}
+
 void TrajectoryAlignment::addLidarPose(Eigen::Vector3d position, double time) {
   lidarTrajectory_.addPose(position, time);
 }
@@ -41,11 +63,11 @@ bool TrajectoryAlignment::associateTrajectories(Trajectory& trajectoryA, Traject
   for (const auto& poseB : trajectoryB.poses()) {  // shorter trajectory.
     int indexA = 0;
     double diff = std::numeric_limits<double>::max();
-    for (auto it = trajectoryA.poses().begin() + lastMatchingIndexA; it != trajectoryA.poses().end(); ++it) {
+    for (auto it = trajectoryA.poses().begin(); it != trajectoryA.poses().end(); ++it) {
       if ((abs(poseB.time() - it->time())) < diff && abs((poseB.time() - it->time())) < 0.1) {
-        diff = poseB.time() - it->time();
+        diff = abs(poseB.time() - it->time());
         matchingIndexA = indexA;
-        lastMatchingIndexA = matchingIndexA;
+        // lastMatchingIndexA = matchingIndexA;
         matched = true;
       }
       ++indexA;
@@ -77,8 +99,8 @@ bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajector
   posesB.resize(3, numberOfMeasurements);
 
   for (unsigned i = 0; i < numberOfMeasurements; ++i) {
-    posesA.col(i) = trajectoryA.poses().at(i).position() - trajectoryA.poses().at(0).position();
-    posesB.col(i) = trajectoryB.poses().at(i).position() - trajectoryB.poses().at(0).position();
+    posesA.col(i) = trajectoryA.poses().at(i).position();
+    posesB.col(i) = trajectoryB.poses().at(i).position();
   }
 
   // Umeyama Alignment.
@@ -105,17 +127,20 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
     return false;
   }
 
+  lidarTrajectory_ = newLidarTrajectory;
+  gnssTrajectory_ = newGnssTrajectory;
   Eigen::Matrix4d transform;
-  if (!trajectoryAlignment(newLidarTrajectory, newGnssTrajectory, transform)) {
+  if (!trajectoryAlignment(newGnssTrajectory, newLidarTrajectory, transform)) {
     std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;
     return false;
   }
 
   Eigen::Matrix3d rotation = transform.block<3, 3>(0, 0);
-  Eigen::Vector3d eulerAngles = rotation.eulerAngles(2, 1, 0).reverse();
-  yaw = eulerAngles(2);
-  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Initial Roll/Pitch/Yaw(deg):" << COLOR_END
-            << eulerAngles.transpose() * 180 / M_PI << std::endl;
+  double pitch = -asin(transform(2, 0));
+  double roll = atan2(transform(2, 1), transform(2, 2));
+  yaw = atan2(transform(1, 0) / cos(pitch), transform(0, 0) / cos(pitch));
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Initial Roll/Pitch/Yaw(deg):" << COLOR_END << roll * 180 / M_PI
+            << "," << pitch * 180 / M_PI << "," << yaw * 180 / M_PI << std::endl;
 
   return true;
 }

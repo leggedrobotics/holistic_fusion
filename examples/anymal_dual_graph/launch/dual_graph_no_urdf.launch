@@ -28,7 +28,7 @@
     <arg name="trajectory_alignment_parameter_file" default="$(find anymal_dual_graph)/config/traj_align_params.yaml"/>
 
     <!-- Node -->
-    <node pkg="anymal_dual_graph" type="anymal_dual_graph_node" name="dual_graph_node" output="screen" > <!-- launch-prefix="gdb -args"-->
+    <node pkg="anymal_dual_graph" type="anymal_dual_graph_node" name="dual_graph_node" output="screen"> <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
         <param name="launch/descriptionName" type="string" value="$(arg description_name)" />
         <param name="launch/imuGravityDirection" type="string" value="$(arg imu_gravity_direction)" />
