@@ -17,11 +17,11 @@ Please see the LICENSE file that has been included as part of this package.
 #include <ros/ros.h>
 
 // Workspace
-#include "graph_msf/GraphMsfInterface.h"
+#include "graph_msf/core/GraphMsf.h"
 
 namespace graph_msf {
 
-class GraphMsfRos : public GraphMsfInterface {
+class GraphMsfRos : public GraphMsf {
  public:
   GraphMsfRos() {}
 

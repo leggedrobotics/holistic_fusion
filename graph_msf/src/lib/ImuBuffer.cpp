@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "graph_msf/ImuBuffer.hpp"
+#include "graph_msf/imu/ImuBuffer.hpp"
 
 // CPP
 #include <iomanip>

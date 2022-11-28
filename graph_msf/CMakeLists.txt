@@ -42,8 +42,7 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-        src/lib/GraphMsf.cpp
-        src/lib/GraphMsfInterface.cpp
+  src/lib/GraphMsf.cpp
   src/lib/GraphManager.cpp
   src/lib/ImuBuffer.cpp
   src/lib/Gnss.cpp
