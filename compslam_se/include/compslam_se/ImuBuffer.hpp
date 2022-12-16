@@ -65,7 +65,7 @@ class ImuBuffer {
   int imuBufferLength_ = -1;
   const double imuPoseInitWaitSecs_ = 1.0;  // Multiplied with _imuRate
   int verboseLevel_ = 0;
-  double tLatestInBuffer_;
+  double tLatestInBuffer_ = 0.0;
   std::mutex writeInBufferMutex_;
 };
 

@@ -37,6 +37,7 @@ struct GraphConfig {
   double imuTimeOffset = 0.0;
   double smootherLag = 6.0;
   double zeroMotionTh = 0.0;
+  double gnssOutlierThresold = 0.3;
   /// Noise Params
   double accNoiseDensity = 1e-8;
   double accBiasRandomWalk = 1e-8;

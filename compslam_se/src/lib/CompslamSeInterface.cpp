@@ -17,16 +17,16 @@ bool CompslamSeInterface::setup_() {
     std::runtime_error("CompslamSeInterface::setup_(): graphConfigPtr_ or staticTransformsPtr_ is not set.");
   }
 
-  compslamSePtr_ = new CompslamSe();
+  compslamSePtr_ = std::make_shared<CompslamSe>();
   compslamSePtr_->setup(graphConfigPtr_, staticTransformsPtr_);
 
   std::cout << YELLOW_START << "CompslamSeInterface" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
 }
 
-bool CompslamSeInterface::initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+bool CompslamSeInterface::initYawAndPosition_(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                               const std::string& frame2) {
-  return compslamSePtr_->initYawAndPosition(yaw_W_frame1, frame1, t_W_frame2, frame2);
+  return compslamSePtr_->initYawAndPosition(yaw_W_frame1, frame1, W_t_W_frame2, frame2);
 }
 
 bool CompslamSeInterface::initYawAndPosition_(const Eigen::Matrix4d& T_W_frame, const std::string& frameName) {
@@ -63,7 +63,7 @@ void CompslamSeInterface::addImuMeasurementAndPublishState_(const Eigen::Vector3
   }
 }
 
-void CompslamSeInterface::addOdometryMeasurement_(const DeltaMeasurement6D& delta) {
+void CompslamSeInterface::addOdometryMeasurement_(const BinaryMeasurement6D& delta) {
   compslamSePtr_->addOdometryMeasurement(delta);
 }
 
@@ -71,20 +71,22 @@ void CompslamSeInterface::addUnaryPoseMeasurement_(const UnaryMeasurement6D& una
   compslamSePtr_->addUnaryPoseMeasurement(unary);
 }
 
-void CompslamSeInterface::addOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
-                                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
-  compslamSePtr_->addOdometryMeasurement(odometryKm1, odometryK, poseBetweenNoise);
+void CompslamSeInterface::addDualOdometryMeasurement_(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                                                      const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
+  compslamSePtr_->addDualOdometryMeasurement(odometryKm1, odometryK, poseBetweenNoise);
 }
 
-void CompslamSeInterface::addGnssPositionMeasurement_(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                                      const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
-                                                      const double positionUnaryNoise) {
-  compslamSePtr_->addGnssPositionMeasurement(position, lastPosition, covarianceXYZ, gnssTimeK, rate, positionUnaryNoise);
+void CompslamSeInterface::addDualGnssPositionMeasurement_(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
+                                                          const Eigen::Vector3d& estCovarianceXYZ) {
+  compslamSePtr_->addDualGnssPositionMeasurement(W_t_W_frame, lastPosition, estCovarianceXYZ);
 }
 
-void CompslamSeInterface::addGnssHeadingMeasurement_(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK,
-                                                     const double rate, const double yawUnaryNoise) {
-  compslamSePtr_->addGnssHeadingMeasurement(yaw_W_frame, frameName, gnssTimeK, rate, yawUnaryNoise);
+void CompslamSeInterface::addGnssPositionMeasurement_(const UnaryMeasurement3D& W_t_W_frame) {
+  compslamSePtr_->addGnssPositionMeasurement(W_t_W_frame);
+}
+
+void CompslamSeInterface::addGnssHeadingMeasurement_(const UnaryMeasurement1D& yaw_W_frame) {
+  compslamSePtr_->addGnssHeadingMeasurement(yaw_W_frame);
 }
 
 void CompslamSeInterface::publishStateAndMeasureTime_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,

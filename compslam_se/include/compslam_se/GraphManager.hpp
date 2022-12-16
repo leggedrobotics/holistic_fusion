@@ -23,6 +23,7 @@
 #include "compslam_se/GraphState.hpp"
 #include "compslam_se/ImuBuffer.hpp"
 #include "compslam_se/config/GraphConfig.h"
+#include "compslam_se/measurements/UnaryMeasurement6D.h"
 
 namespace compslam_se {
 
@@ -47,7 +48,8 @@ class GraphManager {
                                        const gtsam::Pose3& unaryPose);
   void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
                                          const gtsam::Pose3& pose);
-  void addGnssPositionUnaryFactor(double gnssTime, const double rate, const double gnssPositionUnaryNoise, const gtsam::Vector3& position);
+  void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
+                                  const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, const double measuredYaw);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 

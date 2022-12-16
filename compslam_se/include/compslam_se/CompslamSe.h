@@ -13,7 +13,9 @@
 #include "compslam_se/InterfacePrediction.h"
 #include "compslam_se/config/GraphConfig.h"
 #include "compslam_se/geometry/math_utils.h"
-#include "compslam_se/measurements/DeltaMeasurement6D.h"
+#include "compslam_se/measurements/BinaryMeasurement6D.h"
+#include "compslam_se/measurements/UnaryMeasurement1D.h"
+#include "compslam_se/measurements/UnaryMeasurement3D.h"
 #include "compslam_se/measurements/UnaryMeasurement6D.h"
 
 // Defined macros
@@ -37,10 +39,10 @@ class CompslamSe {
   ~CompslamSe(){};
 
   // Setup
-  bool setup(GraphConfig* graphConfigPtr, StaticTransforms* staticTransformsPtr);
+  bool setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Required Initialization
-  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& t_W_frame2,
+  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                           const std::string& frame2);
   bool initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName);
   bool initYawAndPosition(Eigen::Matrix4d T_O_I);
@@ -54,15 +56,14 @@ class CompslamSe {
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                          std::shared_ptr<InterfacePrediction>& predictionPtr);
   /// No return
-  void addOdometryMeasurement(const DeltaMeasurement6D& delta);
+  void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
-  void addOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
-                              const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
-  void addGnssPositionMeasurement(const Eigen::Vector3d& position, const Eigen::Vector3d& lastPosition,
-                                  const Eigen::Vector3d& covarianceXYZ, const double gnssTimeK, const double rate,
-                                  double positionUnaryNoise);
-  void addGnssHeadingMeasurement(const double yaw_W_frame, const std::string& frameName, const double gnssTimeK, const double rate,
-                                 double headingUnaryNoise);
+  void addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
+                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
+  void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
+                                      const Eigen::Vector3d& estCovarianceXYZ);
+  void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
+  void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
   bool getLogPlots() { return logPlots_; }
@@ -84,7 +85,8 @@ class CompslamSe {
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
-  gtsam::Vector3 transformLeftGnssPointToImuFrame_(const gtsam::Point3& t_W_GnssL, const gtsam::Rot3& R_W_I);
+  gtsam::Vector3 W_t_W_Frame1_to_W_t_W_Frame2_(const gtsam::Point3& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
+                                               const gtsam::Rot3& R_W_frame2);
   //// Get the robot heading from the two Gnss positions
   static gtsam::Point3 getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
 
@@ -96,11 +98,11 @@ class CompslamSe {
   std::mutex optimizeGraphMutex_;
 
   // Factor graph
-  GraphManager* graphMgrPtr_ = NULL;
+  std::shared_ptr<GraphManager> graphMgrPtr_ = NULL;
 
   // Graph Config
   std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
-  StaticTransforms* staticTransformsPtr_ = NULL;
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = NULL;
 
   /// Flags
   //// Configuration

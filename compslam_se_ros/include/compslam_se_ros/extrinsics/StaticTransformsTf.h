@@ -13,8 +13,8 @@ class StaticTransformsTf : public StaticTransforms {
  public:
   StaticTransformsTf(ros::NodeHandle& privateNode);
 
- private:
-  void findTransformations() override;
+ protected:
+  virtual void findTransformations() = 0;
 
   // Members
   tf::TransformListener listener_;

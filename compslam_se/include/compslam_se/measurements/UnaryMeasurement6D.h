@@ -7,17 +7,18 @@ namespace compslam_se {
 
 struct UnaryMeasurement6D : public UnaryMeasurement {
  public:
-  explicit UnaryMeasurement6D(std::string name_, int rate_, double time_, Eigen::MatrixXd measurementPose_,
-                              Eigen::MatrixXd measurementNoise_) {
-    name = name_;
-    rate = rate_;
-    time = time_;
-    measurementPose = measurementPose_;
-    measurementNoise = measurementNoise_;
-  }
+  UnaryMeasurement6D(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeStamp,
+                     const Eigen::Matrix4d& measurementPose, const Eigen::Matrix<double, 6, 1>& measurementNoise)
+      : UnaryMeasurement(measurementName, frameName, measurementRate, timeStamp),
+        measurementPose_(measurementPose),
+        measurementNoise_(measurementNoise) {}
 
-  Eigen::Matrix4d measurementPose;
-  Eigen::Matrix<double, 6, 1> measurementNoise;
+  const Eigen::Matrix4d& measurementPose() const { return measurementPose_; }
+  const Eigen::Matrix<double, 6, 1>& measurementNoise() const { return measurementNoise_; }
+
+ protected:
+  Eigen::Matrix4d measurementPose_;
+  Eigen::Matrix<double, 6, 1> measurementNoise_;
 };
 
 }  // namespace compslam_se
