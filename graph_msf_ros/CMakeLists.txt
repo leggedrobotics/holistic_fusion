@@ -17,9 +17,6 @@ find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
 
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
 #generate_messages(
 #  DEPENDENCIES
 #  std_msgs
@@ -27,7 +24,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS EIGEN3 PCL
+  DEPENDS EIGEN3
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -42,7 +39,6 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${GTSAM_INCLUDE_DIR}
-        ${PCL_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
 )
 
