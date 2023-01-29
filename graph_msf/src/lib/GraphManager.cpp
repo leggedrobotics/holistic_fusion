@@ -57,8 +57,8 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
-  imuParamsPtr_->setBiasAccOmegaInt(gtsam::Matrix66::Identity(6, 6) *
-                                    graphConfigPtr_->biasAccOmegaPreint);  // covariance of bias used for preintegration
+  imuParamsPtr_->biasAccOmegaInt =
+      gtsam::Matrix66::Identity(6, 6) * graphConfigPtr_->biasAccOmegaPreint;  // covariance of bias used for preintegration
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior, graphConfigPtr_->gyroBiasPrior);
@@ -455,7 +455,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
 
   // Factors
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
-                                                       gtsam::Pose3::identity(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+                                                       gtsam::Pose3::Identity(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
   gtsam::PriorFactor<gtsam::Vector3> velocityUnaryFactor(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
                                                          gtsam::noiseModel::Isotropic::Sigma(3, 1e-3));
 
