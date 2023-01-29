@@ -597,7 +597,7 @@ void GraphManager::activateFallbackGraph() {
   }
 }
 
-gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentTime) {
+NavStateWithCovariance GraphManager::updateActiveGraphAndGetState(double& currentTime) {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> activelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
 
@@ -641,6 +641,12 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentTime) 
   gtsam::imuBias::ConstantBias resultBias =
       activeSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentKey));
 
+  // Compute Covariance
+  // Pose
+  gtsam::Matrix66 poseCovariance = activeSmootherPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentKey));
+  // Velocity
+  gtsam::Matrix33 velocityCovariance = activeSmootherPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentKey));
+
   // Mutex block 2 ------------------
   {
     // Lock
@@ -655,7 +661,7 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentTime) 
     ++numOptimizationsSinceGraphSwitching_;
   }  // end of locking
 
-  return resultNavState;
+  return NavStateWithCovariance(resultNavState, poseCovariance, velocityCovariance);
 }
 
 void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,

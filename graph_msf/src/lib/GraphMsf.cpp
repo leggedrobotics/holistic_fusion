@@ -444,7 +444,7 @@ void GraphMsf::optimizeGraph_() {
       // Get result
       startLoopTime = std::chrono::high_resolution_clock::now();
       double currentTime;
-      gtsam::NavState optimizedNavState = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
+      NavStateWithCovariance optimizedNavStateWithCovariance = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
       endLoopTime = std::chrono::high_resolution_clock::now();
 
       if (graphConfigPtr_->verboseLevel > 0) {

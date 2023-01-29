@@ -65,7 +65,7 @@ class GraphManager {
   void activateFallbackGraph();
 
   // Update graph and get new state
-  gtsam::NavState updateActiveGraphAndGetState(double& currentTime);
+  NavStateWithCovariance updateActiveGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
   gtsam::NavState calculateActiveStateAtKey(const gtsam::Key& key);
