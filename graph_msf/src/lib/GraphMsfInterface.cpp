@@ -110,4 +110,8 @@ bool GraphMsfInterface::isInNormalOperation() const {
   return graphMsfPtr_->getNormalOperationFlag();
 }
 
+void GraphMsfInterface::getLatestOptimizedState(Eigen::Matrix4d& optState, double& time) {
+  graphMsfPtr_->getLatestOptimizedState(optState, time);
+}
+
 }  // namespace graph_msf
