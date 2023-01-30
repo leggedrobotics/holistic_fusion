@@ -14,13 +14,35 @@ namespace graph_msf {
 
 // Interface Prediction
 struct NavState {
-  NavState(const Eigen::Matrix4d& T_W_O_, const Eigen::Matrix4d& T_O_Ik_, const Eigen::Vector3d& I_v_W_I_, const Eigen::Vector3d& I_w_W_I_)
-      : T_W_O(T_W_O_), T_O_Ik(T_O_Ik_), I_v_W_I(I_v_W_I_), I_w_W_I(I_w_W_I_) {}
 
-  const Eigen::Matrix4d T_W_O;
-  const Eigen::Matrix4d T_O_Ik;
+    // Copy Constructor
+    NavState(const NavState& navState)
+        : T_W_M(navState.T_W_M), T_M_O(navState.T_M_O), T_O_Ik(navState.T_O_Ik), I_v_W_I(navState.I_v_W_I), I_w_W_I(navState.I_w_W_I), timeK(navState.timeK), relocalizeWorldToMap(navState.relocalizeWorldToMap) {}
+        // Regular Constructor
+  NavState(const Eigen::Isometry3d& T_W_M, const Eigen::Isometry3d T_M_O, const Eigen::Isometry3d& T_O_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK, const bool relocalizeWorldToMap=false)
+      : T_W_M(std::move(T_W_M)), T_M_O(std::move(T_M_O)), T_O_Ik(std::move(T_O_Ik)), I_v_W_I(std::move(I_v_W_I)), I_w_W_I(std::move(I_w_W_I)), timeK(timeK), relocalizeWorldToMap(relocalizeWorldToMap) {}
+
+  // Transformations
+  const Eigen::Isometry3d T_W_M;
+  const Eigen::Isometry3d T_M_O;
+  const Eigen::Isometry3d T_O_Ik;
+  // Corrected Velocities
   const Eigen::Vector3d I_v_W_I;
   const Eigen::Vector3d I_w_W_I;
+  // Time
+  double timeK;
+  // Bool
+  bool relocalizeWorldToMap;
+};
+
+struct NavStateWithCovariance : public NavState {
+  NavStateWithCovariance(const Eigen::Isometry3d& T_W_M, const Eigen::Isometry3d& T_M_O, const Eigen::Isometry3d& T_O_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
+                         const double timeK, const Eigen::Matrix<double, 6, 6>& poseCovariance, const Eigen::Matrix<double, 3, 3>& velocityCovariance)
+      : NavState(T_W_M, T_M_O, T_O_Ik, I_v_W_I, I_w_W_I, timeK), poseCovariance(poseCovariance), velocityCovariance(velocityCovariance) {}
+
+  // Covariance
+  const Eigen::Matrix<double, 6, 6> poseCovariance;
+  const Eigen::Matrix<double, 3, 3> velocityCovariance;
 };
 
 }  // namespace graph_msf

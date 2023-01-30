@@ -31,6 +31,7 @@ struct GraphConfig {
   bool usingFallbackGraphFlag = true;
   bool usingGnssFlag = true;
   bool usingLioFlag = true;
+  bool relocalizeWorldToMapAtStart = false;
 
   // Integers
   int verboseLevel = 0;

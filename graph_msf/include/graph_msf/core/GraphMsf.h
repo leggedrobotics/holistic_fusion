@@ -15,7 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <thread>
 
 // Package
-#include "StaticTransforms.h"
+#include "graph_msf/core/StaticTransforms.h"
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurement6D.h"
@@ -39,7 +39,8 @@ class GraphManager;
 
 // Actual Class
 class GraphMsf {
- public:
+
+ public: // Interface
   // Constructor
   GraphMsf();
   // Destructor
@@ -61,7 +62,7 @@ class GraphMsf {
   // Adderfunctions
   /// Return
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                         std::shared_ptr<NavState>& predictionPtr);
+                         std::shared_ptr<NavState> preIntegratedNavState);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
@@ -73,15 +74,22 @@ class GraphMsf {
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
-  void getLatestOptimizedState(Eigen::Matrix4d& optState, double& time) {
-    time = optTime_;
-    optState = T_W_I_opt_;
+  inline NavState getLatestPreintegratedNavState() {
+      if (preIntegratedNavStatePtr_ != nullptr)
+          return *preIntegratedNavStatePtr_;
+      else
+          throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");;
   }
+  inline NavStateWithCovariance getLatestOptimizedNavStateWithCovariance() {
+        if (optimizedNavStateWithCovariancePtr_ != nullptr)
+            return *optimizedNavStateWithCovariancePtr_;
+        else
+            throw std::runtime_error("GraphMsf::getLatestOptimizedNavStateWithCovariance: optimizedNavStateWithCovariancePtr is NULL");;
+    }
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
- protected:
-  // Methods -------------
+ protected: // Functions -------------
   /// Worker functions
   //// Set Imu Attitude
   bool alignImu_();
@@ -94,9 +102,8 @@ class GraphMsf {
   //// Geometric transformation to IMU in world frame
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
-  //// Get the robot heading from the two Gnss positions
-  static Eigen::Vector3d getRobotHeading_(const Eigen::Vector3d& leftPosition, const Eigen::Vector3d& rightPosition);
 
+private: // Variables -------------
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
@@ -105,11 +112,11 @@ class GraphMsf {
   std::mutex optimizeGraphMutex_;
 
   // Factor graph
-  std::shared_ptr<GraphManager> graphMgrPtr_ = NULL;
+  std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
 
   // Graph Config
-  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
-  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = NULL;
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
 
   /// Flags
   //// Initialization
@@ -122,32 +129,23 @@ class GraphMsf {
   bool gnssCovarianceViolatedFlag_ = false;
   bool normalOperationFlag_ = false;
 
-  /// Transformations with timestamps
-  /// Pose
-  Eigen::Matrix4d T_W_Ik_;
-  Eigen::Matrix4d T_W_O_;
+  /// State Containers
+  // Preintegrated NavState
+  std::shared_ptr<NavState> preIntegratedNavStatePtr_ = NULL;
+  // Optimized NavState with Covariance
+  std::shared_ptr<NavStateWithCovariance> optimizedNavStateWithCovariancePtr_ = NULL;
+  /// Yaw
   double lastGnssYaw_W_I;
-  /// Velocity
-  Eigen::Vector3d I_v_W_I_;
-  Eigen::Vector3d I_w_W_I_;
-  /// Timestamp
-  double imuTimeK_;
   /// Other
   Eigen::Matrix4d T_W_I0_;  // Initial IMU pose (in graph)
-  Eigen::Matrix4d T_W_I_opt_;
-  double optTime_;
 
   /// Attitudes
   double gravityConstant_ = 9.81;  // Will be overwritten
   double yaw_W_I0_;
   Eigen::Vector3d W_t_W_I0_;
-  double imuAttitudePitch_;
-  double imuAttitudeRoll_;
 
   /// Counter
   int gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
-
- private:
 };
 
 }  // namespace graph_msf
