@@ -13,7 +13,8 @@ namespace graph_msf {
 // Public -----------------------------------------------------------
 /// Constructor -----------
 GraphMsf::GraphMsf() {
-  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Instance created." << COLOR_END << " Waiting for setup() with graphConfiguration and staticTransforms." << std::endl;
+  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Instance created." << COLOR_END
+            << " Waiting for setup() with graphConfiguration and staticTransforms." << std::endl;
 }
 
 /// Setup ------------
@@ -96,13 +97,9 @@ bool GraphMsf::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::s
 /// Callbacks -----------------------
 bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                  std::shared_ptr<NavState> preIntegratedNavStatePtr) {
-  // Static Members
-  static Eigen::Matrix4d T_W_I_km1__;
-  static int imuCabinCallbackCounter__ = -1;
-
   // Setyp -------------------------
   // Increase counter
-  ++imuCabinCallbackCounter__;
+  ++imuCabinCallbackCounter_;
   // Last Nav State
   NavState lastPreIntegratedNavState = *preIntegratedNavStatePtr_;
   // Filter out imu messages with same time stamp
@@ -114,27 +111,33 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
   // Add measurement to buffer
   graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
 
-// State Machine in form of if-else statements -----------------
+  // State Machine in form of if-else statements -----------------
+  gtsam::NavState T_W_Ik_nav;
+  bool relocalizeWorldToMapFlag = false;
+
   if (!alignedImuFlag_) {  // Case 1: IMU not aligned
     // Try to align
-    if (!alignImu_()) { // Case 1.1: IMU alignment failed --> try again next time
+    double imuAttitudeRoll, imuAttitudePitch;
+    if (!alignImu_(imuAttitudeRoll, imuAttitudePitch)) {  // Case 1.1: IMU alignment failed --> try again next time
       // Print only once per second
-      if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
+      if (imuCabinCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
         std::cout << YELLOW_START << "GMsf" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..." << std::endl;
       }
       return false;
-    } else { // Case 1.2: IMU alignment succeeded --> continue next call iteration
-      Eigen::Matrix3d R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch_, imuAttitudeRoll_).matrix();
+    } else {  // Case 1.2: IMU alignment succeeded --> continue next call iteration
+      Eigen::Matrix3d R_W_I0 = gtsam::Rot3::Ypr(0.0, imuAttitudePitch, imuAttitudeRoll).matrix();
       Eigen::Isometry3d T_W_Ik = Eigen::Isometry3d::Identity();
       T_W_Ik.matrix().block<3, 3>(0, 0) = R_W_I0;
-      NavState T_W_Ik_nav(Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity(), T_W_Ik, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0), imuTimeK);
+      NavState T_W_Ik_nav(Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity(), T_W_Ik, Eigen::Vector3d(0, 0, 0),
+                          Eigen::Vector3d(0, 0, 0), imuTimeK);
       alignedImuFlag_ = true;
       preIntegratedNavStatePtr_ = std::make_shared<NavState>(T_W_Ik_nav);
       return false;
     }
-  } else if (!areYawAndPositionInited()) {  // Case 2: IMU aligned, but yaw and position not initialized, waiting for external initialization, meanwhile publishing initial roll and pitch
+  } else if (!areYawAndPositionInited()) {  // Case 2: IMU aligned, but yaw and position not initialized, waiting for external
+                                            // initialization, meanwhile publishing initial roll and pitch
     // Printing every second
-    if (imuCabinCallbackCounter__ % int(graphConfigPtr_->imuRate) == 0) {
+    if (imuCabinCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "GMsf" << COLOR_END << " IMU callback waiting for initialization of global yaw and initial position."
                 << std::endl;
     }
@@ -143,35 +146,39 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     preIntegratedNavStatePtr = std::make_shared<NavState>(*preIntegratedNavStatePtr_);
     return true;
   } else if (!initedGraphFlag_) {  // Case 3: IMU aligned, yaw and position initialized, but graph not yet initialized
-      preIntegratedNavStatePtr_->timeK = imuTimeK;
+    preIntegratedNavStatePtr_->timeK = imuTimeK;
     initGraph_(imuTimeK);
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     if (graphConfigPtr_->relocalizeWorldToMapAtStart) {
-        preIntegratedNavStatePtr_->relocalizeWorldToMap = true;
+      relocalizeWorldToMapFlag = true;
     }
-  } else {  // Case 4: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning predicting the next state via integration
+    T_W_Ik_nav = gtsam::NavState(gtsam::Pose3((optimizedNavStateWithCovariancePtr_->T_W_M * optimizedNavStateWithCovariancePtr_->T_M_O * optimizedNavStateWithCovariancePtr_->T_O_Ik).matrix()),
+                                 gtsam::Velocity3());
+  } else {  // Case 4: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning predicting the next state
+            // via integration
     normalOperationFlag_ = true;
     // Add IMU factor and get propagated state
-    gtsam::NavStateT_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, linearAcc, angularVel, relocalizationFlag);
+    T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, linearAcc, angularVel, relocalizeWorldToMapFlag);
   }
 
   // Assign poses and velocities ---------------------------------------------------
-  T_W_Ik_ = T_W_Ik_nav.pose().matrix();
-  I_v_W_I_ = T_W_Ik_nav.bodyVelocity();
-  I_w_W_I_ = graphMgrPtr_->getOptimizedImuBias().correctGyroscope(angularVel);
+  Eigen::Isometry3d T_W_Ik(T_W_Ik_nav.pose().matrix());
+  Eigen::Vector3d I_v_W_I(T_W_Ik_nav.bodyVelocity());
+  Eigen::Vector3d I_w_W_I(graphMgrPtr_->getOptimizedImuBias().correctGyroscope(angularVel));
+  Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
 
   // If relocalization happens --> write to map->odom ------------------------------------
-  if (relocalizationFlag) {
+  if (relocalizeWorldToMapFlag) {
     // Print
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Relocalization is needed. Publishing to map->odom." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Relocalization is needed. Publishing to world->map." << COLOR_END << std::endl;
     // For this computation step assume T_O_Ik ~ T_O_Ikm1
     Eigen::Matrix4d T_I_O_km1 = T_W_I_km1__.inverse() * T_W_O_;
     T_W_O_ = T_W_Ik_ * T_I_O_km1;
   }
 
   // Predict ----------------------------------------------------------------
-  preIntegratedStatePtr =
-      std::make_shared<NavState>(T_W_O_.matrix(), T_W_O_.inverse() * T_W_Ik_, Eigen::Vector3d(I_v_W_I_), Eigen::Vector3d(I_w_W_I_), imuTimeK);
+  preIntegratedStatePtr = std::make_shared<NavState>(T_W_O_.matrix(), T_W_O_.inverse() * T_W_Ik_, Eigen::Vector3d(I_v_W_I_),
+                                                     Eigen::Vector3d(I_w_W_I_), imuTimeK);
 
   // Write for next iteration
   T_W_I_km1__ = T_W_Ik_;
@@ -374,14 +381,14 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
 }
 
 /// Worker Functions -----------------------
-bool GraphMsf::alignImu_() {
+bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
   gtsam::Rot3 imuAttitude;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
   if (graphMgrPtr_->estimateAttitudeFromImu(graphConfigPtr_->imuGravityDirection, imuAttitude, gravityConstant_,
                                             graphMgrPtr_->getInitGyrBiasReference())) {
-    imuAttitudeRoll_ = imuAttitude.roll();
-    imuAttitudePitch_ = imuAttitude.pitch();
+    imuAttitudeRoll = imuAttitude.roll();
+    imuAttitudePitch = imuAttitude.pitch();
     std::cout << YELLOW_START << "GMsf" << COLOR_END
               << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
     return true;

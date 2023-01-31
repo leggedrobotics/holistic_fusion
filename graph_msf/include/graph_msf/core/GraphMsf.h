@@ -15,8 +15,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include <thread>
 
 // Package
-#include "graph_msf/core/StaticTransforms.h"
 #include "graph_msf/config/GraphConfig.h"
+#include "graph_msf/core/StaticTransforms.h"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurement6D.h"
 #include "graph_msf/measurements/UnaryMeasurement1D.h"
@@ -39,8 +39,7 @@ class GraphManager;
 
 // Actual Class
 class GraphMsf {
-
- public: // Interface
+ public:  // Interface
   // Constructor
   GraphMsf();
   // Destructor
@@ -75,24 +74,26 @@ class GraphMsf {
 
   // Getters
   inline NavState getLatestPreintegratedNavState() {
-      if (preIntegratedNavStatePtr_ != nullptr)
-          return *preIntegratedNavStatePtr_;
-      else
-          throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");;
+    if (preIntegratedNavStatePtr_ != nullptr)
+      return *preIntegratedNavStatePtr_;
+    else
+      throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");
+    ;
   }
   inline NavStateWithCovariance getLatestOptimizedNavStateWithCovariance() {
-        if (optimizedNavStateWithCovariancePtr_ != nullptr)
-            return *optimizedNavStateWithCovariancePtr_;
-        else
-            throw std::runtime_error("GraphMsf::getLatestOptimizedNavStateWithCovariance: optimizedNavStateWithCovariancePtr is NULL");;
-    }
+    if (optimizedNavStateWithCovariancePtr_ != nullptr)
+      return *optimizedNavStateWithCovariancePtr_;
+    else
+      throw std::runtime_error("GraphMsf::getLatestOptimizedNavStateWithCovariance: optimizedNavStateWithCovariancePtr is NULL");
+    ;
+  }
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
- protected: // Functions -------------
+ protected:  // Functions -------------
   /// Worker functions
   //// Set Imu Attitude
-  bool alignImu_();
+  bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
   //// Initialize the graph
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
@@ -103,7 +104,7 @@ class GraphMsf {
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
 
-private: // Variables -------------
+ private:  // Variables -------------
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
 
@@ -144,8 +145,9 @@ private: // Variables -------------
   double yaw_W_I0_;
   Eigen::Vector3d W_t_W_I0_;
 
-  /// Counter
+  // Counter
   int gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
+  int imuCabinCallbackCounter_ = -1;
 };
 
 }  // namespace graph_msf
