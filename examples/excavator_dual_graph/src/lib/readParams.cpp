@@ -146,8 +146,9 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
       tryGetParam<bool>("relinearization_params/enablePartialRelinearizationCheck", privateNode);
 
   // Common Parameters
-  verboseLevel_ = tryGetParam<int>("common_params/verbosity", privateNode);
-  graphConfigPtr_->verboseLevel = verboseLevel_;
+  graphConfigPtr_->verboseLevel = tryGetParam<int>("common_params/verbosity", privateNode);
+
+  graphConfigPtr_->reLocalizeWorldToMapAtStart = tryGetParam<bool>("common_params/reLocalizeWorldToMapAtStart", privateNode);
 
   if (graphConfigPtr_->usingGnssFlag) {
     // Gnss parameters

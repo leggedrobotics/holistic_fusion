@@ -8,6 +8,11 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MANAGER_HPP_
 #define GRAPH_MANAGER_HPP_
 
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
+#define COLOR_END "\033[0m"
+
 // C++
 #include <chrono>
 #include <mutex>
@@ -33,11 +38,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/optimization/factors/HeadingFactor.h"
 
 namespace graph_msf {
-
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
 
 class GraphManager {
  public:

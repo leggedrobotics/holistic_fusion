@@ -41,7 +41,7 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
  private:
   // Publish State
   void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic,
-                     const Eigen::Vector3d& I_w_W_I) override;
+                     const Eigen::Vector3d& I_w_W_I);
 
   // Parameter Reading Commodity Function
   void readParams_(const ros::NodeHandle& privateNode);

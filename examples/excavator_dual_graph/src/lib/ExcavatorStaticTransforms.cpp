@@ -24,7 +24,7 @@ ExcavatorStaticTransforms::ExcavatorStaticTransforms(std::shared_ptr<ros::NodeHa
 
 void ExcavatorStaticTransforms::findTransformations() {
   // Print to console --------------------------
-  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree.";
+  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " " << lidarFrame_ << ", " << leftGnssFrame_ << ", " << rightGnssFrame_
             << ", " << cabinFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;

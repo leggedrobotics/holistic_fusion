@@ -32,7 +32,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
-  if (not graph_msf::GraphMsfInterface::setup_()) {
+  if (not graph_msf::GraphMsf::setup()) {
     throw std::runtime_error("CompslamSeInterface could not be initiallized");
   }
 
@@ -103,9 +103,15 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   if (firstCallbackFlag__) {
     firstCallbackFlag__ = false;
   }
+  // Convert to Eigen
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  graph_msf::GraphMsfInterface::addImuMeasurementAndPublishState_(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec());
+  // Create Pointer for Carrying State
+  std::shared_ptr<graph_msf::NavState> preIntegratedNavStatePtr;
+  graph_msf::GraphMsf::addImuMeasurement(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr);
+
+    // Publish Odometry
+    this->publishState_(preIntegratedNavStatePtr);
 }
 
 void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
@@ -130,20 +136,19 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     if (odometryCallbackCounter__ > 0) {
-      graph_msf::GraphMsfInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+      this->addDualOdometryMeasurement(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
     }
   } else {  // real unary factors
     odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
-    graph_msf::GraphMsfInterface::addUnaryPoseMeasurement_(*odometryKPtr);
+    this->addUnaryPoseMeasurement(*odometryKPtr);
   }
 
-  if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
+  if (!this->areYawAndPositionInited() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
     std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START
               << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
-    graph_msf::GraphMsfInterface::initYawAndPosition_(
-        compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
+    this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
   }
 
   // Wrap up iteration
@@ -173,7 +178,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                    leftGnssMsgPtr->position_covariance[8]);
   if (!graphConfigPtr_->usingGnssFlag) {
     ROS_WARN("Received Gnss message, but usage is set to false.");
-    graph_msf::GraphMsfInterface::activateFallbackGraph();
+    this->activateFallbackGraph();
     return;
   } else if (gnssCallbackCounter__ < NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
     // Wait until measurements got accumulated
@@ -195,9 +200,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // Initialization
   if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
-    if (not graph_msf::GraphMsfInterface::initYawAndPosition_(
-            yaw_W_C, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(), W_t_W_GnssL,
-            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
+    if (!this->initYawAndPosition(yaw_W_C, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
+                                  W_t_W_GnssL, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
       // Decrease counter if not successfully initialized
       --gnssCallbackCounter__;
     }
@@ -205,17 +209,17 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
     graph_msf::UnaryMeasurement1D meas_yaw_W_C("Gnss yaw",
                                                dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
                                                int(gnssLeftRate_), leftGnssMsgPtr->header.stamp.toSec(), yaw_W_C, gnssHeadingUnaryNoise_);
-    graph_msf::GraphMsfInterface::addGnssHeadingMeasurement_(meas_yaw_W_C);
+    this->addGnssHeadingMeasurement(meas_yaw_W_C);
     graph_msf::UnaryMeasurement3D meas_W_t_W_GnssL(
         "Gnss left", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), gnssLeftRate_,
         leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssL,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ);
-    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
-        "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
-        leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
-        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
+    this->addDualGnssPositionMeasurement(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ, true, true);
+    //    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
+    //        "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
+    //        leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
+    //        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
+    //    this->addDualGnssPositionMeasurement(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
   }
   W_t_W_GnssL_km1__ = W_t_W_GnssL;
   W_t_W_GnssR_km1__ = W_t_W_GnssR;

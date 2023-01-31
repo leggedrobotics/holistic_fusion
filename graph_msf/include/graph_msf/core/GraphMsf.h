@@ -46,7 +46,7 @@ class GraphMsf {
   ~GraphMsf(){};
 
   // Setup
-  bool setup(std::shared_ptr<GraphConfig> graphConfigPtr, std::shared_ptr<StaticTransforms> staticTransformsPtr);
+  bool setup();
 
   // Required Initialization
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
@@ -58,10 +58,10 @@ class GraphMsf {
   // Graph Manipulation
   void activateFallbackGraph();
 
-  // Adderfunctions
+  // Adder functions
   /// Return
   bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                         std::shared_ptr<NavState> preIntegratedNavState);
+                         std::shared_ptr<NavState> returnPreIntegratedNavStatePtr);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
@@ -80,7 +80,7 @@ class GraphMsf {
       throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");
     ;
   }
-  inline NavStateWithCovariance getLatestOptimizedNavStateWithCovariance() {
+  inline NavStateWithCovarianceAndBias getLatestOptimizedNavStateWithCovarianceAndBias() {
     if (optimizedNavStateWithCovariancePtr_ != nullptr)
       return *optimizedNavStateWithCovariancePtr_;
     else
@@ -104,6 +104,12 @@ class GraphMsf {
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
 
+  // Graph Config
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
+
+  // Extrinsics
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
+
  private:  // Variables -------------
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
@@ -114,10 +120,6 @@ class GraphMsf {
 
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
-
-  // Graph Config
-  std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
-  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
 
   /// Flags
   //// Initialization
@@ -134,20 +136,16 @@ class GraphMsf {
   // Preintegrated NavState
   std::shared_ptr<NavState> preIntegratedNavStatePtr_ = NULL;
   // Optimized NavState with Covariance
-  std::shared_ptr<NavStateWithCovariance> optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<NavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I;
-  /// Other
-  Eigen::Matrix4d T_W_I0_;  // Initial IMU pose (in graph)
 
-  /// Attitudes
+  /// Gravity
   double gravityConstant_ = 9.81;  // Will be overwritten
-  double yaw_W_I0_;
-  Eigen::Vector3d W_t_W_I0_;
 
   // Counter
-  int gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
-  int imuCabinCallbackCounter_ = -1;
+  long gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
+  long imuCabinCallbackCounter_ = 0;
 };
 
 }  // namespace graph_msf
