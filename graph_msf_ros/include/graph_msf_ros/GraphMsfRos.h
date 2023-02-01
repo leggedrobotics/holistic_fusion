@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <ros/ros.h>
 
 // Workspace
-#include "graph_msf/core/GraphMsf.h"
+#include "graph_msf/frontend/GraphMsf.h"
 
 namespace graph_msf {
 
@@ -35,7 +35,9 @@ class GraphMsfRos : public GraphMsf {
                            const int maxBufferLength);
   static void addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
                                const ros::Time& stamp, const Eigen::Isometry3d& T, const Eigen::Vector3d& W_v_W_F,
-                               const Eigen::Vector3d& W_w_W_F);
+                               const Eigen::Vector3d& W_w_W_F,
+                               const Eigen::Matrix<double, 6, 6>& poseCovariance = Eigen::Matrix<double, 6, 6>::Zero(),
+                               const Eigen::Matrix<double, 6, 6>& twistCovariance = Eigen::Matrix<double, 6, 6>::Zero());
   long secondsSinceStart_();
 
   // Time

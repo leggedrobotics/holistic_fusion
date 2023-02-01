@@ -5,7 +5,7 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/optimization/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.hpp"
 
 #define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
 
@@ -152,7 +152,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   globalFactorsBufferPtr_->resize(0);
   fallbackFactorsBufferPtr_->resize(0);
 
-  // Wraup up ----------------------------------------------------------------
+  // Wrap up ----------------------------------------------------------------
   // Set active graph to global graph in the beginning
   activeSmootherPtr_ = globalSmootherPtr_;
   activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
@@ -613,7 +613,27 @@ void GraphManager::activateFallbackGraph() {
   }
 }
 
-gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
+gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+                                                     const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key) {
+  gtsam::Pose3 resultPose;
+  gtsam::Vector3 resultVelocity;
+  if (true) {
+    try {
+      resultPose = graphPtr->calculateEstimate<gtsam::Pose3>(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
+      resultVelocity = graphPtr->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
+    } catch (const std::out_of_range& outOfRangeExeception) {
+      std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
+      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
+                << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
+                   "not connected. Increase the lag in this case."
+                << COLOR_END << std::endl;
+      throw std::out_of_range("");
+    }
+  }
+  return gtsam::NavState(resultPose, resultVelocity);
+}
+
+NavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> activelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
 
@@ -652,15 +672,15 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentPropag
   addFactorsToSmootherAndOptimize(activeSmootherPtr_, newActiveGraphFactors, newActiveGraphValues, newActiveGraphKeysTimestampsMap,
                                   graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations);
 
-  // Compute result
+  // Compute entire result
+  // NavState
   gtsam::NavState resultNavState = calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey);
+  // Bias
   gtsam::imuBias::ConstantBias resultBias =
       activeSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentPropagatedKey));
-
-  if (numOptimizationsSinceGraphSwitching_ == 0) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " First regular optimization after graph switching." << COLOR_END
-              << std::endl;
-  }
+  // Compute Covariance
+  gtsam::Matrix66 poseCovariance = activeSmootherPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
+  gtsam::Matrix33 velocityCovariance = activeSmootherPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
   // Mutex block 2 ------------------
   {
@@ -676,7 +696,12 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentPropag
     ++numOptimizationsSinceGraphSwitching_;
   }  // end of locking
 
-  return resultNavState;
+  // Return result
+  NavStateWithCovarianceAndBias resultNavStateWithCovarianceAndBias(Eigen::Isometry3d(resultNavState.pose().matrix()), resultNavState.v(),
+                                                                    currentPropagatedTime, poseCovariance, velocityCovariance,
+                                                                    resultBias.accelerometer(), resultBias.gyroscope());
+
+  return resultNavStateWithCovarianceAndBias;
 }
 
 void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
@@ -722,26 +747,6 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::Increm
 
 gtsam::NavState GraphManager::calculateActiveStateAtKey(const gtsam::Key& key) {
   return calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, key);
-}
-
-gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
-                                                     const std::shared_ptr<GraphConfig> graphConfigPtr, const gtsam::Key& key) {
-  gtsam::Pose3 resultPose;
-  gtsam::Vector3 resultVelocity;
-  if (true) {
-    try {
-      resultPose = graphPtr->calculateEstimate<gtsam::Pose3>(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
-      resultVelocity = graphPtr->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
-    } catch (const std::out_of_range& outOfRangeExeception) {
-      std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
-                   "not connected. Increase the lag in this case."
-                << COLOR_END << std::endl;
-      throw std::out_of_range("");
-    }
-  }
-  return gtsam::NavState(resultPose, resultVelocity);
 }
 
 // Private --------------------------------------------------------------------

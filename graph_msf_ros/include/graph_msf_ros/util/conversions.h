@@ -13,6 +13,16 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+inline Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam) {
+  Eigen::Matrix<double, 6, 6> covRos;
+  covRos.setZero();
+  covRos.block<3, 3>(0, 0) = covGtsam.block<3, 3>(3, 3);
+  covRos.block<3, 3>(3, 3) = covGtsam.block<3, 3>(0, 0);
+  covRos.block<3, 3>(0, 3) = covGtsam.block<3, 3>(3, 0);
+  covRos.block<3, 3>(3, 0) = covGtsam.block<3, 3>(0, 3);
+  return covRos;
+}
+
 inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {
   tf::Quaternion tf_q;
   tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);

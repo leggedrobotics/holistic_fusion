@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/core/GraphMsf.h"
-#include "graph_msf/optimization/GraphManager.hpp"
+#include "graph_msf/frontend/GraphMsf.h"
+#include "graph_msf/core/GraphManager.hpp"
 
 namespace graph_msf {
 
@@ -107,8 +107,9 @@ bool GraphMsf::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::s
 
 // Private ---------------------------------------------------------------
 /// Callbacks -----------------------
-bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                 std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr) {
+bool GraphMsf::addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+                                            std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr,
+                                            std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
   // Setyp -------------------------
   // Increase counter
   ++imuCallbackCounter_;
@@ -154,14 +155,19 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     }
     // Publish state with correct roll and pitch, nothing has changed compared to Case 1.2
     preIntegratedNavStatePtr_->updateTime(imuTimeK);
-    std::cout << "time: " << preIntegratedNavStatePtr_->getTimeK() << std::endl;
     returnPreIntegratedNavStatePtr = std::make_shared<NavState>(*preIntegratedNavStatePtr_);
+    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
+      returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+    }
     return true;
   } else if (!initedGraphFlag_) {  // Case 3: IMU aligned, yaw and position initialized, but graph not yet initialized
     preIntegratedNavStatePtr_->updateTime(imuTimeK);
     initGraph_(imuTimeK);
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     returnPreIntegratedNavStatePtr = std::make_shared<NavState>(*preIntegratedNavStatePtr_);
+    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
+      returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+    }
     return true;
   } else if (!normalOperationFlag_) {  // Case 4: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning
                                        // predicting the next state
@@ -180,6 +186,9 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
 
   // Return Corresponding State ----------------------------------------------------------------
   returnPreIntegratedNavStatePtr = std::make_shared<NavState>(*preIntegratedNavStatePtr_);
+  if (optimizedNavStateWithCovariancePtr_ != nullptr) {
+    returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+  }
 
   return true;
 }
@@ -442,8 +451,8 @@ void GraphMsf::optimizeGraph_() {
       // Get result
       double currentTime;
 
-      gtsam::NavState optimizedState = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
-      // TODO: Write optimizedState
+      NavStateWithCovarianceAndBias optimizedStateWithCovarianceAndBias = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
+      optimizedNavStateWithCovariancePtr_ = std::make_shared<NavStateWithCovarianceAndBias>(optimizedStateWithCovarianceAndBias);
 
     }  // else just sleep for a short amount of time before polling again
     else {

@@ -40,7 +40,8 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Publish State
-  void publishState_(const std::shared_ptr<graph_msf::NavState> navStatePtr);
+  void publishState_(const std::shared_ptr<graph_msf::NavState>& preIntegratedNavStatePtr,
+                     const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
 
   // Parameter Reading Commodity Function
   void readParams_(const ros::NodeHandle& privateNode);
@@ -97,13 +98,18 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // TF
   tf::TransformListener listener_;
 
+  // Last Optimized State Timestamp
+  double lastOptimizedStateTimestamp_ = 0.0;
+
   // Publishers
   // Odometry
   ros::Publisher pubEstOdomImu_;
   ros::Publisher pubEstWorldImu_;
+  ros::Publisher pubOptWorldImu_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
   ros::Publisher pubEstWorldImuPath_;
+  ros::Publisher pubOptWorldImuPath_;
   ros::Publisher pubMeasWorldGnssLPath_;
   ros::Publisher pubMeasWorldGnssRPath_;
   ros::Publisher pubMeasWorldLidarPath_;
@@ -112,11 +118,13 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
   // Messages
   // Odometry
-  nav_msgs::OdometryPtr odomImuMsgPtr_;
-  nav_msgs::OdometryPtr worldImuMsgPtr_;
+  nav_msgs::OdometryPtr estOdomImuMsgPtr_;
+  nav_msgs::OdometryPtr estWorldImuMsgPtr_;
+  nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
   nav_msgs::PathPtr estWorldImuPathPtr_;
+  nav_msgs::PathPtr optWorldImuPathPtr_;
   nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
   nav_msgs::PathPtr measWorldRightGnssPathPtr_;
   nav_msgs::PathPtr measWorldLidarPathPtr_;

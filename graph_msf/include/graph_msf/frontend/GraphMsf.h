@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/StaticTransforms.h"
-#include "graph_msf/interface/NavState.h"
+#include "graph_msf/frontend/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurement6D.h"
 #include "graph_msf/measurements/UnaryMeasurement1D.h"
 #include "graph_msf/measurements/UnaryMeasurement3D.h"
@@ -60,8 +60,9 @@ class GraphMsf {
 
   // Adder functions
   /// Return
-  bool addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                         std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr);
+  bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+                                    std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);

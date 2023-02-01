@@ -66,25 +66,24 @@ class NavState {
 
 class NavStateWithCovarianceAndBias : public NavState {
  public:
-  NavStateWithCovarianceAndBias(const Eigen::Isometry3d& T_W_M, const Eigen::Isometry3d& T_M_O, const Eigen::Isometry3d& T_O_Ik,
-                                const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
+  NavStateWithCovarianceAndBias(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const double timeK,
                                 const Eigen::Matrix<double, 6, 6>& poseCovariance, const Eigen::Matrix<double, 3, 3>& velocityCovariance,
                                 const Eigen::Vector3d& accelerometerBias, const Eigen::Vector3d& gyroscopeBias)
-      : NavState(T_W_M, T_M_O, T_O_Ik, I_v_W_I, I_w_W_I, timeK),
+      : NavState(Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity(), T_W_Ik, I_v_W_I, Eigen::Vector3d(), timeK),
         poseCovariance_(poseCovariance),
         velocityCovariance_(velocityCovariance),
         accelerometerBias_(accelerometerBias),
         gyroscopeBias_(gyroscopeBias) {}
 
   // Getters
-  const Eigen::Matrix<double, 6, 6>& getPoseCovariance() const { return poseCovariance_; }
+  const Eigen::Matrix<double, 6, 6>& getPoseCovariance() const { return poseCovariance_; }  // yaw, pitch, roll, x, y, z
   const Eigen::Matrix<double, 3, 3>& getVelocityCovariance() const { return velocityCovariance_; }
   const Eigen::Vector3d& getAccelerometerBias() const { return accelerometerBias_; }
   const Eigen::Vector3d& getGyroscopeBias() const { return gyroscopeBias_; }
 
  private:  // Member Variables
   // Covariance
-  Eigen::Matrix<double, 6, 6> poseCovariance_;
+  Eigen::Matrix<double, 6, 6> poseCovariance_;  // x,y,z,roll,pitch,yaw
   Eigen::Matrix<double, 3, 3> velocityCovariance_;
 
   // Bias

@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "graph_msf/interface/NavState.h"
+#include "graph_msf/frontend/NavState.h"
 
 // GTSAM
 #include <gtsam/geometry/Pose3.h>

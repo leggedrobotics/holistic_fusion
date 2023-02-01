@@ -46,7 +46,8 @@ add_library(${PROJECT_NAME}
   src/lib/GraphManager.cpp
   src/lib/ImuBuffer.cpp
   src/lib/Gnss.cpp
-  src/lib/GnssHandler.cpp src/lib/NavState.cpp include/graph_msf/frontend/Terminal.h)
+  src/lib/GnssHandler.cpp
+  src/lib/NavState.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})

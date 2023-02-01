@@ -32,10 +32,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
+#include "graph_msf/core/GraphState.hpp"
+#include "graph_msf/factors/HeadingFactor.h"
+#include "graph_msf/frontend/NavState.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
-#include "graph_msf/optimization/GraphState.hpp"
-#include "graph_msf/optimization/factors/HeadingFactor.h"
 
 namespace graph_msf {
 
@@ -65,7 +66,7 @@ class GraphManager {
   void activateFallbackGraph();
 
   // Update graph and get new state
-  gtsam::NavState updateActiveGraphAndGetState(double& currentTime);
+  NavStateWithCovarianceAndBias updateActiveGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
   gtsam::NavState calculateActiveStateAtKey(const gtsam::Key& key);
@@ -100,6 +101,11 @@ class GraphManager {
     return activeSmootherPtr_ == fallbackSmootherPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
   }
 
+ protected:
+  // Calculate state at key for graph
+  static gtsam::NavState calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+                                                const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key);
+
  private:
   // Methods
   template <class CHILDPTR>
@@ -112,9 +118,7 @@ class GraphManager {
                                const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
-  // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
-                                                const std::shared_ptr<GraphConfig> graphConfigPtr, const gtsam::Key& key);
+
   // Add Factors for a smoother
   static void addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
                                               const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
