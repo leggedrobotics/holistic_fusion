@@ -1,5 +1,6 @@
 #External Prior/Transform Input
 extrinsics:
+  worldFrame: world
   mapFrame: map
   odomFrame: odom
   baseLinkFrame: BASE

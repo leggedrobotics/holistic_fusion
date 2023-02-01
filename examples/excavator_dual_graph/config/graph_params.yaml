@@ -8,12 +8,13 @@ sensor_params:
 
 # Factor Graph
 graph_params:
-  useIsam: true # if false, then levenberg-marquardt is used
+  useIsam: true # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
   smootherLag: 1.5                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additionalOptimizationIterations: 0                  #Additional iterations of graph optimizer after update with new factors
-  findUnusedFactorSlots: false
+  findUnusedFactorSlots: true
   enableDetailedResults: false
   usingFallbackGraph: true
+  usingCholeskyFactorization: true # CHOLESKY faster, QR numerically more stable
 
 # Outlier Rejection
 outlier_params:
@@ -51,4 +52,4 @@ relinearization_params:
   enableRelinearization: true
   evaluateNonlinearError: false
   cacheLinearizedFactors: true
-  enablePartialRelinearizationCheck: true
+  enablePartialRelinearizationCheck: false

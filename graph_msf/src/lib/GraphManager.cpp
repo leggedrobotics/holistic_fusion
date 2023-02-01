@@ -83,8 +83,22 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                   graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh)
                      .finished();
   isamParams_.relinearizeThreshold = relinTh;
-  isamParams_.factorization = gtsam::ISAM2Params::QR;  // CHOLESKY:Fast but non-stable //QR:Slower but more stable in
-                                                       // poorly conditioned problems
+  // Factorization
+  if (graphConfigPtr_->usingCholeskyFactorization) {
+    isamParams_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
+  } else {
+    isamParams_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly conditioned problems
+  }
+  // Set graph relinearization skip
+  isamParams_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
+  // Set relinearization
+  isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearization;
+  // Enable Nonlinear Error
+  isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearError;
+  // Cache linearized factors
+  isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactors;
+  // Enable particular relinearization check
+  isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheck;
 
   // Create Prior factor and Initialize factor graph
   /// Prior factor noise
@@ -440,13 +454,6 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
 }
 
 bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
-  // Check external motion
-  if (pose.translation().norm() > graphConfigPtr_->zeroMotionTh) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_
-              << ", Not adding zero motion factor due to too big motion." << std::endl;
-    return false;
-  }
-
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
   if (!findGraphKeys_(maxTimestampDistance, timeKm1, timeK, closestKeyKm1, closestKeyK, "zero motion factor")) {
@@ -651,12 +658,9 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentPropag
     fallbackGraphValuesBufferPtr_->clear();
     fallbackGraphKeysTimestampsMapBufferPtr_->clear();
     if (activeFactorsBufferPtr_ == globalFactorsBufferPtr_) {
-      std::cout << "Optimizing global graph." << std::endl;
       globalFactorsBufferPtr_->resize(0);
       globalGraphValuesBufferPtr_->clear();
       globalGraphKeysTimestampsMapBufferPtr_->clear();
-    } else {
-      std::cout << "Optimizing fallback graph." << std::endl;
     }
 
     // Empty Buffer Preintegrator --> everything missed during the update will be in here
@@ -668,7 +672,7 @@ gtsam::NavState GraphManager::updateActiveGraphAndGetState(double& currentPropag
 
   // Graph Update (time consuming) -------------------
   addFactorsToSmootherAndOptimize(activeSmootherPtr_, newActiveGraphFactors, newActiveGraphValues, newActiveGraphKeysTimestampsMap,
-                                  graphConfigPtr_, graphConfigPtr_->additionalIterations);
+                                  graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations);
 
   // Compute result
   gtsam::NavState resultNavState = calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey);

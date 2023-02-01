@@ -51,13 +51,13 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
 void ExcavatorEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
   pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_map_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_world_imu", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssL", ROS_QUEUE_SIZE);
-  pubMeasMapGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssR", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
+  pubEstWorldImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_gnssL", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_gnssR", ROS_QUEUE_SIZE);
+  pubMeasWorldLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_Lidar", ROS_QUEUE_SIZE);
 }
 
 void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -89,13 +89,13 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
 void ExcavatorEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
   odomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  mapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  worldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   // Path
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLeftGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapRightGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldLeftGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldRightGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
@@ -108,10 +108,15 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
   // Create Pointer for Carrying State
   std::shared_ptr<graph_msf::NavState> preIntegratedNavStatePtr;
-  graph_msf::GraphMsf::addImuMeasurement(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr);
-
+  if (graph_msf::GraphMsf::addImuMeasurement(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr)) {
+    // Encountered delay
+    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
+      std::cout << RED_START << "ExcavatorEstimator" << COLOR_END << " Encountered delay of "
+                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
+    }
     // Publish Odometry
     this->publishState_(preIntegratedNavStatePtr);
+  }
 }
 
 void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
@@ -155,11 +160,11 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   odometryKm1Ptr__ = odometryKPtr;
 
   // Add to path message
-  addToPathMsg(measMapLidarPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldLidarPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                odomLidarPtr->header.stamp, compslam_T_Wl_Lk.block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path
-  pubMeasMapLidarPath_.publish(measMapLidarPathPtr_);
+  pubMeasWorldLidarPath_.publish(measWorldLidarPathPtr_);
 }
 
 void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
@@ -226,59 +231,53 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // Left GNSS
   /// Add to Path
-  addToPathMsg(measMapLeftGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldLeftGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                leftGnssMsgPtr->header.stamp, W_t_W_GnssL, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssLPath_.publish(measMapLeftGnssPathPtr_);
+  pubMeasWorldGnssLPath_.publish(measWorldLeftGnssPathPtr_);
   // Right GNSS
   /// Add to path
-  addToPathMsg(measMapRightGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldRightGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                rightGnssMsgPtr->header.stamp, W_t_W_GnssR, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssRPath_.publish(measMapRightGnssPathPtr_);
+  pubMeasWorldGnssRPath_.publish(measWorldRightGnssPathPtr_);
 }
 
-void ExcavatorEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
-                                       const Eigen::Vector3d& Ic_v_W_Ic, const Eigen::Vector3d& I_w_W_I) {
-  // Used transforms
-  Eigen::Matrix4d T_I_L = staticTransformsPtr_
-                              ->rv_T_frame1_frame2(staticTransformsPtr_.get()->getImuFrame(),
-                                                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame())
-                              .inverse();
+void ExcavatorEstimator::publishState_(const std::shared_ptr<graph_msf::NavState> navStatePtr) {
+  // const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic, const
+  // Eigen::Vector3d& I_w_W_I Used transforms
+  Eigen::Isometry3d T_I_L = staticTransformsPtr_
+                                ->rv_T_frame1_frame2(staticTransformsPtr_.get()->getImuFrame(),
+                                                     dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame())
+                                .inverse();
 
   // Pose
-  Eigen::Matrix4d T_O_L = T_O_Ik * T_I_L;
-  Eigen::Matrix4d T_W_L = T_W_O * T_O_L;
+  Eigen::Isometry3d T_O_L = navStatePtr->getT_O_Ik_gravityAligned() * T_I_L;
+  Eigen::Isometry3d T_W_L = navStatePtr->getT_W_O() * T_O_L;
 
-  // Publish odometry message for odom->imu with 100 Hz
+  // Odometry messages
+  // odom->imu with 100 Hz
   addToOdometryMsg(odomImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(imuTimeK), T_O_Ik,
-                   Ic_v_W_Ic, I_w_W_I);
+                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
+                   navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I());
   pubEstOdomImu_.publish(odomImuMsgPtr_);
-  addToPathMsg(estOdomImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-               ros::Time(imuTimeK), T_O_Ik.block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 20);
-  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
-  // Publish odometry message for map->imu with 100 Hz
-  addToOdometryMsg(mapImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
-                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(imuTimeK), T_W_O * T_O_Ik,
-                   Ic_v_W_Ic, I_w_W_I);
-  pubEstOdomImu_.publish(mapImuMsgPtr_);
-  addToPathMsg(estMapImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(), ros::Time(imuTimeK),
-               (T_W_O * T_O_Ik).block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 20);
-  pubEstMapImuPath_.publish(estMapImuPathPtr_);
-
-  // Convert Measurements
+  // world->imu with 100 Hz
+  addToOdometryMsg(worldImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
+                   navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I());
+  pubEstOdomImu_.publish(worldImuMsgPtr_);
 
   // Publish to TF
   // W_O
   static tf::Transform transform_W_O;
+  Eigen::Isometry3d T_W_O = navStatePtr->getT_W_O();
   transform_W_O.setOrigin(tf::Vector3(T_W_O(0, 3), T_W_O(1, 3), T_W_O(2, 3)));
-  Eigen::Quaterniond q_W_O(T_W_O.block<3, 3>(0, 0));
+  Eigen::Quaterniond q_W_O(T_W_O.rotation());
   transform_W_O.setRotation(tf::Quaternion(q_W_O.x(), q_W_O.y(), q_W_O.z(), q_W_O.w()));
-  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(imuTimeK),
-                                                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(navStatePtr->getTimeK()),
+                                                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                                                     dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame()));
-  // I->B
+  // Lookup I->B, also influenced by rotation of cabin
   static tf::StampedTransform transform_I_B;
   tfListener_.waitForTransform(staticTransformsPtr_->getImuFrame(),
                                dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(), ros::Time(0),
@@ -287,15 +286,27 @@ void ExcavatorEstimator::publishState_(const double imuTimeK, const Eigen::Matri
                             dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(), ros::Time(0),
                             transform_I_B);
 
-  // Publish T_O_B
+  // O_B
   static tf::Transform transform_O_I;
+  Eigen::Isometry3d T_O_Ik = navStatePtr->getT_O_Ik_gravityAligned();
   transform_O_I.setOrigin(tf::Vector3(T_O_Ik(0, 3), T_O_Ik(1, 3), T_O_Ik(2, 3)));
-  Eigen::Quaterniond q_O_I(T_O_Ik.block<3, 3>(0, 0));
+  Eigen::Quaterniond q_O_I(T_O_Ik.rotation());
   transform_O_I.setRotation(tf::Quaternion(q_O_I.x(), q_O_I.y(), q_O_I.z(), q_O_I.w()));
   tfBroadcaster_.sendTransform(
-      tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(imuTimeK),
+      tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(navStatePtr->getTimeK()),
                            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
                            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame()));
+
+  // Publish paths
+  // odom->imu
+  addToPathMsg(estOdomImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
+               ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_O_Ik_gravityAligned().translation(),
+               graphConfigPtr_->imuBufferLength * 20);
+  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
+  // world->imu
+  addToPathMsg(estWorldImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+               ros::Time(navStatePtr->getTimeK()), (T_W_O * T_O_Ik).translation(), graphConfigPtr_->imuBufferLength * 20);
+  pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
 }
 
 }  // namespace excavator_se

@@ -50,19 +50,21 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingGnssFlag = tryGetParam<bool>("launch/usingGnss", privateNode);
 
   // Set frames
+  /// IMU
+  std::string frame = tryGetParam<std::string>("extrinsics/imuFrame", privateNode);
+  staticTransformsPtr_->setImuFrame(frame);
+  /// World
+  frame = tryGetParam<std::string>("extrinsics/worldFrame", privateNode);
+  staticTransformsPtr_->setWorldFrame(frame);
   /// Map
-  std::string frame = tryGetParam<std::string>("extrinsics/mapFrame", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setMapFrame(frame);
+  frame = tryGetParam<std::string>("extrinsics/mapFrame", privateNode);
+  staticTransformsPtr_->setMapFrame(frame);
   /// Odom
   frame = tryGetParam<std::string>("extrinsics/odomFrame", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setOdomFrame(frame);
+  staticTransformsPtr_->setOdomFrame(frame);
   /// base_link
   frame = tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setBaseLinkFrame(frame);
-  /// IMU
-  //// Cabin IMU
-  frame = tryGetParam<std::string>("extrinsics/imuFrame", privateNode);
-  staticTransformsPtr_->setImuFrame(frame);
   /// LiDAR frame
   frame = tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
@@ -79,7 +81,7 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // IMU gravity definition
   graphConfigPtr_->imuGravityDirection = tryGetParam<std::string>("launch/imuGravityDirection", privateNode);
 
-  // Factor Graph Parameters
+  // Sensor Params
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->maxSearchDeviation = 1.0 / graphConfigPtr_->imuRate;
   graphConfigPtr_->imuBufferLength = tryGetParam<double>("sensor_params/imuBufferLength", privateNode);
@@ -87,21 +89,22 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   gnssLeftRate_ = tryGetParam<double>("sensor_params/gnssRate", privateNode);
   gnssRightRate_ = tryGetParam<double>("sensor_params/gnssRate", privateNode);
   graphConfigPtr_->imuTimeOffset = tryGetParam<double>("sensor_params/imuTimeOffset", privateNode);
+
+  // Graph Params
   graphConfigPtr_->useIsam = tryGetParam<bool>("graph_params/useIsam", privateNode);
   graphConfigPtr_->smootherLag = tryGetParam<double>("graph_params/smootherLag", privateNode);
-
-  // TODO --> replace
-  graphConfigPtr_->additionalIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
+  graphConfigPtr_->additionalOptimizationIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlots = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResults = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
+  graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
+  graphConfigPtr_->usingCholeskyFactorization = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
 
   // Outlier Parameters
   graphConfigPtr_->gnssOutlierThresold = tryGetParam<double>("outlier_params/gnssOutlierThreshold", privateNode);
 
   // Noise Parameters
   /// Accelerometer
-
   graphConfigPtr_->accNoiseDensity = tryGetParam<double>("noise_params/accNoiseDensity", privateNode);
   graphConfigPtr_->accBiasRandomWalk = tryGetParam<double>("noise_params/accBiasRandomWalk", privateNode);
   {
@@ -132,7 +135,7 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   gnssPositionUnaryNoise_ = tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
   gnssHeadingUnaryNoise_ = tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
-  // Relinearization
+  // Re-linearization
   graphConfigPtr_->positionReLinTh = tryGetParam<double>("relinearization_params/positionReLinTh", privateNode);
   graphConfigPtr_->rotationReLinTh = tryGetParam<double>("relinearization_params/rotationReLinTh", privateNode);
   graphConfigPtr_->velocityReLinTh = tryGetParam<double>("relinearization_params/velocityReLinTh", privateNode);
