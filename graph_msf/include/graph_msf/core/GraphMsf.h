@@ -138,7 +138,7 @@ class GraphMsf {
   // Optimized NavState with Covariance
   std::shared_ptr<NavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
-  double lastGnssYaw_W_I;
+  double lastGnssYaw_W_I_;
 
   /// Gravity
   double gravityConstant_ = 9.81;  // Will be overwritten

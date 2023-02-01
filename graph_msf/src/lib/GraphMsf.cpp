@@ -293,8 +293,7 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
   }
 
   // Gnss jumping?
-  if (!gnssCovarianceViolatedFlag_ && (W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() < graphConfigPtr_->gnssOutlierThresold &&
-      !attemptGraphSwitching) {
+  if (!gnssCovarianceViolatedFlag_ && (W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() < graphConfigPtr_->gnssOutlierThresold) {
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "GMsf" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again." << COLOR_END
@@ -314,7 +313,7 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
       // Switch graph if desired
       gtsam::Rot3 R_W_I_meas(preIntegratedNavStatePtr_->getT_W_Ik().rotation());
       if (addedYawBefore) {
-        R_W_I_meas = gtsam::Rot3::Ypr(lastGnssYaw_W_I, R_W_I_meas.pitch(), R_W_I_meas.roll());
+        R_W_I_meas = gtsam::Rot3::Ypr(lastGnssYaw_W_I_, R_W_I_meas.pitch(), R_W_I_meas.roll());
       }
       // Switch graph
       graphMgrPtr_->activateGlobalGraph(W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.measurementVector(), W_t_W_frame.frameName(),
@@ -378,7 +377,7 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
   }
 
   // Set yaw for potential resetting
-  lastGnssYaw_W_I = yawR_W_I.yaw();
+  lastGnssYaw_W_I_ = yawR_W_I.yaw();
 }
 
 /// Worker Functions -----------------------
