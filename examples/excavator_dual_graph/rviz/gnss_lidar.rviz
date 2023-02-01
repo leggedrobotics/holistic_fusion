@@ -594,7 +594,7 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 25; 255; 0
+      Color: 255; 255; 255
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
@@ -723,7 +723,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 20.44490623474121
+      Distance: 14.593506813049316
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -731,17 +731,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -1.6344449520111084
+        Y: -0.7142348289489746
+        Z: -0.6361207365989685
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.30539846420288086
+      Pitch: 0.2653985023498535
       Target Frame: odom
-      Yaw: 5.368581295013428
+      Yaw: 5.0185675621032715
     Saved: ~
 Window Geometry:
   Displays:

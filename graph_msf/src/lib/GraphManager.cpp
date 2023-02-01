@@ -18,14 +18,6 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr) : graphC
   imuBuffer_.setImuBufferLength(graphConfigPtr_->imuBufferLength);
   imuBuffer_.setVerboseLevel(graphConfigPtr_->verboseLevel);
 
-  // Global Graph
-  globalSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
-                                                                            isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
-  globalSmootherPtr_->params().print("Factor Graph Parameters of global graph.");
-  // Fallback Graph
-  fallbackSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
-                                                                              isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
-
   // Buffer
   globalFactorsBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   fallbackFactorsBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
@@ -72,6 +64,7 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
 }
 
 bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& initialPose) {
+  // Configs ------------------------------------------------------------------
   // Set graph relinearization thresholds - must be lower case letters, check:gtsam::symbol_shorthand
   gtsam::FastMap<char, gtsam::Vector> relinTh;
   relinTh['x'] = (gtsam::Vector(6) << graphConfigPtr_->rotationReLinTh, graphConfigPtr_->rotationReLinTh, graphConfigPtr_->rotationReLinTh,
@@ -100,7 +93,16 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   // Enable particular relinearization check
   isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheck;
 
-  // Create Prior factor and Initialize factor graph
+  // Initialize Smoothers -----------------------------------------------
+  // Global Graph
+  globalSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
+                                                                            isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
+  globalSmootherPtr_->params().print("Factor Graph Parameters of global graph.");
+  // Fallback Graph
+  fallbackSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
+                                                                              isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
+
+  // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise =
       gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-6, 1e-6, 1e-6).finished());  // rad,rad,rad,m, m, m
@@ -117,7 +119,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
   writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMapPtr);
 
-  // Initialize both graphs
+  // Initialize both graphs -------------------------------------------------
   /// Global Factors
   globalFactorsBufferPtr_->resize(0);
   globalFactorsBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
@@ -133,7 +135,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   // Fallback Factors
   *fallbackFactorsBufferPtr_ = *globalFactorsBufferPtr_;
 
-  /// Add prior factor to graph and update
+  /// Add prior factor to graph and optimize for the first time ----------------
   if (graphConfigPtr_->useIsam) {
     addFactorsToSmootherAndOptimize(globalSmootherPtr_, *globalFactorsBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_,
                                     0);
@@ -150,6 +152,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   globalFactorsBufferPtr_->resize(0);
   fallbackFactorsBufferPtr_->resize(0);
 
+  // Wraup up ----------------------------------------------------------------
   // Set active graph to global graph in the beginning
   activeSmootherPtr_ = globalSmootherPtr_;
   activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
@@ -157,7 +160,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
   activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
 
-  // Update Current State
+  // Update Current State ---------------------------------------------------
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStep, gtsam::NavState(initialPose, gtsam::Vector3(0, 0, 0)),
                                              *imuBiasPriorPtr_);
   imuPropagatedState_ = gtsam::NavState(initialPose, gtsam::Vector3(0, 0, 0));
@@ -568,31 +571,6 @@ void GraphManager::activateGlobalGraph(const gtsam::Vector3& imuPosition, const 
           graphConfigPtr_->smootherLag, isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
       addFactorsToSmootherAndOptimize(globalSmootherPtr_, globalFactorsBuffer, globalGraphValues, globalGraphKeysTimestampsMap,
                                       graphConfigPtr_, 5);
-
-      // Compute result
-      //      gtsam::NavState resultNavState = calculateNavStateAtKey(globalSmootherPtr_, graphConfigPtr_, currentPropagatedKey);
-      //      gtsam::imuBias::ConstantBias resultBias =
-      //          globalSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentPropagatedKey));
-
-      // Update Values: Mutex block 2 ------------------
-      //      {
-      //        // Lock
-      //        const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-      //        // Update Graph State
-      //        optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState, resultBias);
-      //        // Predict from solution to obtain refined propagated state
-      //        // Resetting is done at beginning of next optimization
-      //        imuPropagatedState_ = globalImuBufferPreintegratorPtr_->predict(resultNavState, resultBias);
-      //
-      //        // Reset counter
-      //        numOptimizationsSinceGraphSwitching_ = 1;
-      //        sentRelocalizationCommandAlready_ = false;
-      //
-      //      }  // end of locking
-      //    } else {
-      //      numOptimizationsSinceGraphSwitching_ = 0;
-      //      sentRelocalizationCommandAlready_ = false;
-      //    }
     }
 
     {

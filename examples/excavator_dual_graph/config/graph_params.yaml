@@ -43,11 +43,11 @@ noise_params:
 
 # Relinearization
 relinearization_params:
-  positionReLinTh: 5.0e-10                    #Position linearization threshold
-  rotationReLinTh: 1.0e-10                    #Rotation linearization threshold
-  velocityReLinTh: 1.0e-10                     #Linear Velocity linearization threshold
-  accBiasReLinTh: 1.0e-10                      #Accelerometer bias linearization threshold
-  gyrBiasReLinTh: 1.0e-10                      #Gyroscope bias linearization threshold
+  positionReLinTh: 1.0e-02                    #Position linearization threshold
+  rotationReLinTh: 1.0e-02                    #Rotation linearization threshold
+  velocityReLinTh: 1.0e-02                     #Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-05                      #Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-05                      #Gyroscope bias linearization threshold
   relinearizeSkip: 1
   enableRelinearization: true
   evaluateNonlinearError: false
