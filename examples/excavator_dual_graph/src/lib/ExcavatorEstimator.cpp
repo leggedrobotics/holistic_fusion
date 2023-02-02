@@ -265,12 +265,12 @@ void ExcavatorEstimator::publishState_(
 
   // Covariances
   Eigen::Matrix<double, 6, 6> poseCovarianceRos;
-  Eigen::Matrix<double, 6, 6> velocityCovarianceRos;
-  velocityCovarianceRos.setZero();
+  Eigen::Matrix<double, 6, 6> twistCovarianceRos;
+  twistCovarianceRos.setZero();
   if (optimizedStateWithCovarianceAndBiasPtr != nullptr) {
     poseCovarianceRos =
         graph_msf::convertCovarianceGtsamConventionToRosConvention(optimizedStateWithCovarianceAndBiasPtr->getPoseCovariance());
-    velocityCovarianceRos.block<3, 3>(0, 0) = optimizedStateWithCovarianceAndBiasPtr->getVelocityCovariance();
+    twistCovarianceRos.block<3, 3>(0, 0) = optimizedStateWithCovarianceAndBiasPtr->getVelocityCovariance();
   } else {
     poseCovarianceRos.setZero();
   }
@@ -279,13 +279,14 @@ void ExcavatorEstimator::publishState_(
   // odom->imu with 100 Hz
   addToOdometryMsg(estOdomImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
-                   navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I());
+                   navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(), poseCovarianceRos,
+                   twistCovarianceRos);
   pubEstOdomImu_.publish(estOdomImuMsgPtr_);
   // world->imu with 100 Hz
   addToOdometryMsg(estWorldImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
-                   navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I());
-  pubEstOdomImu_.publish(estWorldImuMsgPtr_);
+                   navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
+  pubEstWorldImu_.publish(estWorldImuMsgPtr_);
 
   // Publish to TF
   // W_O
