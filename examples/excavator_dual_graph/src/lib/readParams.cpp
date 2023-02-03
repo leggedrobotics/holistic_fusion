@@ -97,7 +97,6 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->findUnusedFactorSlots = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResults = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
-  graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
   graphConfigPtr_->usingCholeskyFactorization = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
 
   // Outlier Parameters
@@ -107,30 +106,22 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   /// Accelerometer
   graphConfigPtr_->accNoiseDensity = tryGetParam<double>("noise_params/accNoiseDensity", privateNode);
   graphConfigPtr_->accBiasRandomWalk = tryGetParam<double>("noise_params/accBiasRandomWalk", privateNode);
-  {
-    const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
-    graphConfigPtr_->accBiasPrior = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
-  }
+  const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
+  graphConfigPtr_->accBiasPrior = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
   /// Gyro
   graphConfigPtr_->gyroNoiseDensity = tryGetParam<double>("noise_params/gyrNoiseDensity", privateNode);
   graphConfigPtr_->gyroBiasRandomWalk = tryGetParam<double>("noise_params/gyrBiasRandomWalk", privateNode);
-  {
-    const double gyroBiasPrior = tryGetParam<double>("noise_params/gyrBiasPrior", privateNode);
-    graphConfigPtr_->gyroBiasPrior = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
-  }
-  /// Preintegration
+  const double gyroBiasPrior = tryGetParam<double>("noise_params/gyrBiasPrior", privateNode);
+  graphConfigPtr_->gyroBiasPrior = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
+  /// Pre-integration
   graphConfigPtr_->integrationNoiseDensity = tryGetParam<double>("noise_params/integrationNoiseDensity", privateNode);
   graphConfigPtr_->biasAccOmegaPreint = tryGetParam<double>("noise_params/biasAccOmegaPreInt", privateNode);
   /// LiDAR Odometry
-  {
-    const auto poseBetweenNoise = tryGetParam<std::vector<double>>("noise_params/poseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
-    poseBetweenNoise_ << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2], poseBetweenNoise[3], poseBetweenNoise[4],
-        poseBetweenNoise[5];
-  }
-  {
-    const auto poseUnaryNoise = tryGetParam<std::vector<double>>("noise_params/poseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
-    poseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
-  }
+  const auto poseBetweenNoise = tryGetParam<std::vector<double>>("noise_params/poseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  poseBetweenNoise_ << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2], poseBetweenNoise[3], poseBetweenNoise[4],
+      poseBetweenNoise[5];
+  const auto poseUnaryNoise = tryGetParam<std::vector<double>>("noise_params/poseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  poseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Gnss
   gnssPositionUnaryNoise_ = tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
   gnssHeadingUnaryNoise_ = tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
@@ -150,28 +141,19 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   // Common Parameters
   graphConfigPtr_->verboseLevel = tryGetParam<int>("common_params/verbosity", privateNode);
-
   graphConfigPtr_->reLocalizeWorldToMapAtStart = tryGetParam<bool>("common_params/reLocalizeWorldToMapAtStart", privateNode);
 
   if (graphConfigPtr_->usingGnssFlag) {
     // Gnss parameters
     gnssHandlerPtr_->usingGnssReferenceFlag = tryGetParam<bool>("gnss/useGnssReference", privateNode);
-    {
-      const double referenceLatitude = tryGetParam<double>("gnss/referenceLatitude", privateNode);
-      gnssHandlerPtr_->setGnssReferenceLatitude(referenceLatitude);
-    }
-    {
-      const double referenceLongitude = tryGetParam<double>("gnss/referenceLongitude", privateNode);
-      gnssHandlerPtr_->setGnssReferenceLongitude(referenceLongitude);
-    }
-    {
-      const double referenceAltitude = tryGetParam<double>("gnss/referenceAltitude", privateNode);
-      gnssHandlerPtr_->setGnssReferenceAltitude(referenceAltitude);
-    }
-    {
-      const double referenceHeading = tryGetParam<double>("gnss/referenceHeading", privateNode);
-      gnssHandlerPtr_->setGnssReferenceHeading(referenceHeading);
-    }
+    const double referenceLatitude = tryGetParam<double>("gnss/referenceLatitude", privateNode);
+    gnssHandlerPtr_->setGnssReferenceLatitude(referenceLatitude);
+    const double referenceLongitude = tryGetParam<double>("gnss/referenceLongitude", privateNode);
+    gnssHandlerPtr_->setGnssReferenceLongitude(referenceLongitude);
+    const double referenceAltitude = tryGetParam<double>("gnss/referenceAltitude", privateNode);
+    gnssHandlerPtr_->setGnssReferenceAltitude(referenceAltitude);
+    const double referenceHeading = tryGetParam<double>("gnss/referenceHeading", privateNode);
+    gnssHandlerPtr_->setGnssReferenceHeading(referenceHeading);
   }
 }
 

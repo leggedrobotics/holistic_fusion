@@ -130,7 +130,7 @@ bool GraphMsf::addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, co
   // State Machine in form of if-else statements -----------------
   if (!alignedImuFlag_) {  // Case 1: IMU not aligned
     // Try to align
-    double imuAttitudeRoll, imuAttitudePitch;
+    double imuAttitudeRoll, imuAttitudePitch = 0.0;
     if (!alignImu_(imuAttitudeRoll, imuAttitudePitch)) {  // Case 1.1: IMU alignment failed --> try again next time
       // Print only once per second
       if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {

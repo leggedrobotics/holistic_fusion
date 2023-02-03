@@ -66,6 +66,13 @@ class NavState {
 
 class NavStateWithCovarianceAndBias : public NavState {
  public:
+  // Default Constructor
+  NavStateWithCovarianceAndBias() = default;
+
+  // Copy Constructor
+  NavStateWithCovarianceAndBias(const NavStateWithCovarianceAndBias& navState) = default;
+
+  // Regular Constructor
   NavStateWithCovarianceAndBias(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const double timeK,
                                 const Eigen::Matrix<double, 6, 6>& poseCovariance, const Eigen::Matrix<double, 3, 3>& velocityCovariance,
                                 const Eigen::Vector3d& accelerometerBias, const Eigen::Vector3d& gyroscopeBias)

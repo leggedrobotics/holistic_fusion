@@ -113,6 +113,7 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   // Create Pointer for Carrying State
   std::shared_ptr<graph_msf::NavState> preIntegratedNavStatePtr;
   std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
+  // Add Measurement and Get State
   if (graph_msf::GraphMsf::addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
                                                         optimizedStateWithCovarianceAndBiasPtr)) {
     // Encountered delay

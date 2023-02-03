@@ -81,12 +81,13 @@ class GraphMsf {
       throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");
     ;
   }
-  inline NavStateWithCovarianceAndBias getLatestOptimizedNavStateWithCovarianceAndBias() {
-    if (optimizedNavStateWithCovariancePtr_ != nullptr)
-      return *optimizedNavStateWithCovariancePtr_;
-    else
-      throw std::runtime_error("GraphMsf::getLatestOptimizedNavStateWithCovariance: optimizedNavStateWithCovariancePtr is NULL");
-    ;
+  void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
+      std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
+    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
+      returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+    } else {
+      returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
+    }
   }
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
