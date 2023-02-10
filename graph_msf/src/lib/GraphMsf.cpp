@@ -229,7 +229,18 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
 
 void GraphMsf::addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                           const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
-  // Valid measurement received
+    // Measurement
+    const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
+
+    // Check whether World->Map is already set
+    if (!validFirstMeasurementReceivedFlag_) {
+        Eigen::Isometry3d T_W_Ij_Graph = preIntegratedNavStatePtr_->getT_W_Ik();
+        Eigen::Isometry3d T_M_Ij =
+                Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
+        T_W_Mj_ = Eigen::Isometry3d(T_W_Ij_Graph.matrix()) * T_M_Ij.inverse();
+    }
+
+    // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
   }
@@ -255,8 +266,6 @@ void GraphMsf::addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1,
   }
 
   // Create Pseudo Unary Factor ---------------------------------------------------
-  // Measurement
-  const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
 
   if (graphMgrPtr_->globalGraphActiveFlag()) {  // Case 1: Global graph --> Compute World to Map frame    // Lidar State
                                                 // Calculate imu state of LiDAR timestamp
