@@ -229,18 +229,18 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
 
 void GraphMsf::addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                           const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
-    // Measurement
-    const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
+  // Measurement
+  const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
 
-    // Check whether World->Map is already set
-    if (!validFirstMeasurementReceivedFlag_) {
-        Eigen::Isometry3d T_W_Ij_Graph = preIntegratedNavStatePtr_->getT_W_Ik();
-        Eigen::Isometry3d T_M_Ij =
-                Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
-        T_W_Mj_ = Eigen::Isometry3d(T_W_Ij_Graph.matrix()) * T_M_Ij.inverse();
-    }
+  // Check whether World->Map is already set
+  if (!validFirstMeasurementReceivedFlag_) {
+    Eigen::Isometry3d T_W_Ij_Graph = preIntegratedNavStatePtr_->getT_W_Ik();
+    Eigen::Isometry3d T_M_Ij =
+        Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
+    T_W_Mj_ = Eigen::Isometry3d(T_W_Ij_Graph.matrix()) * T_M_Ij.inverse();
+  }
 
-    // Valid measurement received
+  // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
   }
@@ -345,7 +345,7 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
     gnssNotJumpingCounter_ = 0;
   }
 
-  // Case: Gnss is good --> Write to graph and perform logic
+  // Modifying graph
   if (!gnssCovarianceViolatedFlag_) {  // Case 1: Gnss is good --> Write to graph and perform logic
     gtsam::Rot3 R_W_I_meas(preIntegratedNavStatePtr_->getT_W_Ik().rotation());
     Eigen::Vector3d W_T_W_I = W_t_W_frame.measurementVector();
@@ -356,9 +356,9 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
     }
 
     // Check whether GNSS has just returned, if attempting graph switching then do it
-    if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED && attemptGraphSwitching) {
-      graphMgrPtr_->activateGlobalGraph(W_T_W_I, R_W_I_meas, W_t_W_frame.timeK());
-    }
+    // if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED && attemptGraphSwitching) {
+    graphMgrPtr_->activateGlobalGraph(W_T_W_I, R_W_I_meas, W_t_W_frame.timeK());
+    // }
     // If GNSS is not jumping already for a while, then add position measurement
     if ((gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
       addGnssPositionMeasurement(W_t_W_frame);
