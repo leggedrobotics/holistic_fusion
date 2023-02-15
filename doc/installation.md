@@ -6,15 +6,15 @@
 Make sure you have the Eigen3-headers in your include path. This is usually automatically the case if you have ROS installed.
 
 #### GTSAM
-We install GTSAM 4.1.1 from source, but also other versions and pre-built binaries might work. We recommend a local installation of GTSAM.
+We install the GTSAM fork of RSL from source. We recommend a local installation of GTSAM.
 
-* Version: [GTSAM 4.1.1](https://github.com/borglab/gtsam/tree/4.1.1)
+* Version: [GTSAM on branch gtsam_rsl](https://github.com/leggedrobotics/gtsam_fork/tree/gtsam_rsl). 
+* This version has already the latest bug fixes of the CombinedImuFactor. For more information we refer to this [issue](https://github.com/borglab/gtsam/commit/587678e0b761188e33db376cd552c417650c96ee#diff-278a5de28881129d36f253ed7fa64129312e5e1d9a042aa850424c2a93392e1f).
 * Clone and checkout at an arbitrary location.
-
 ```bash
-git clone git@github.com:borglab/gtsam.git
-cd gtsam
-git checkout 4.1.1
+git clone https://github.com/leggedrobotics/gtsam_fork
+cd gtsam_fork
+git checkout gtsam_rsl
 mkdir build && cd build
 ```
 

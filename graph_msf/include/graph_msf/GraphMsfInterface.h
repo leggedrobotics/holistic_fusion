@@ -58,6 +58,7 @@ class GraphMsfInterface {
 
   // Getters
   bool isInNormalOperation() const;
+  void getLatestOptimizedState(Eigen::Matrix4d& optState, double& time);
 
   // Member Variables
   /// GraphMsf
