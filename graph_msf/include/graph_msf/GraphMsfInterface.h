@@ -58,6 +58,8 @@ class GraphMsfInterface {
 
   // Getters
   bool isInNormalOperation() const;
+  Eigen::Vector3d getAccelBias();
+  Eigen::Vector3d getGyroBias();
 
   // Member Variables
   /// GraphMsf

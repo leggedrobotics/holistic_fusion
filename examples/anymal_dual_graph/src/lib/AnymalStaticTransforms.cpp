@@ -60,14 +60,19 @@ void AnymalStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(lidarFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarFrame_).inverse();
 
   // Imu to GNSS Link ---
-  listener_.waitForTransform(imuFrame_, gnssFrame_, ros::Time(0), ros::Duration(1.0));
-  listener_.lookupTransform(imuFrame_, gnssFrame_, ros::Time(0), transform);
-  // I_Gnss
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).block<3, 1>(0, 3) << std::endl;
-  // GnssL_I
-  lv_T_frame1_frame2(gnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssFrame_).inverse();
+  try {
+    listener_.waitForTransform(imuFrame_, gnssFrame_, ros::Time(0), ros::Duration(1.0));
+    listener_.lookupTransform(imuFrame_, gnssFrame_, ros::Time(0), transform);
+    // I_Gnss
+    graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
+    std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
+              << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).block<3, 1>(0, 3) << std::endl;
+    // GnssL_I
+    lv_T_frame1_frame2(gnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssFrame_).inverse();
+  } catch (const tf2::LookupException& e) {
+    std::cout << YELLOW_START << "CompslamEstimator" << RED_START << " Could not find transformations for GNSS in TF tree." << COLOR_END
+              << std::endl;
+  }
 
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }

@@ -77,6 +77,9 @@ class GraphMsf {
   }
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
+  Eigen::Vector3d getAccelBias();
+  Eigen::Vector3d getGyroBias();
+
  protected:
   // Methods -------------
   /// Worker functions

@@ -111,4 +111,12 @@ bool GraphMsfInterface::isInNormalOperation() const {
   return graphMsfPtr_->getNormalOperationFlag();
 }
 
+Eigen::Vector3d GraphMsfInterface::getAccelBias() {
+  return graphMsfPtr_->getAccelBias();
+}
+
+Eigen::Vector3d GraphMsfInterface::getGyroBias() {
+  return graphMsfPtr_->getGyroBias();
+}
+
 }  // namespace graph_msf

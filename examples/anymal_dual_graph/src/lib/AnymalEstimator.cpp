@@ -62,9 +62,12 @@ void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& pr
   // Paths
   pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
   pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnss", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
-
+  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_map_gnss", ROS_QUEUE_SIZE);
+  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
+  // Imu
+  pubAccelBias_ = privateNode_.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
+  pubGyroBias_ = privateNode_.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
+  // Debug
   lidarPoses_ = privateNode_.advertise<geometry_msgs::PoseStamped>("/graph_msf/lidarPoses", ROS_QUEUE_SIZE);
   lidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/lidarPath", ROS_QUEUE_SIZE);
   gnssPoses_ = privateNode_.advertise<geometry_msgs::PoseStamped>("/graph_msf/gnssPoses", ROS_QUEUE_SIZE);
@@ -109,8 +112,11 @@ void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& priv
   // Path
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measGnss_MapGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measLiDAR_MapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  // Imu
+  accelBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
+  gyroBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
 }
 
 bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req,
@@ -150,9 +156,14 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   Eigen::Matrix4d compslam_T_Wl_Lk;
   graph_msf::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
 
-  if (not initialized_ && graphConfigPtr_->usingGnssFlag) {
+  if (!initialized_ && graphConfigPtr_->usingGnssFlag) {
     trajectoryAlignmentHandlerPtr_->addLidarPose(compslam_T_Wl_Lk.block<3, 1>(0, 3), odomLidarPtr->header.stamp.toSec());
     --odometryCallbackCounter__;
+    return;
+  }
+
+  // First compslam pose bad (0,0,0)
+  if (odometryCallbackCounter__ <= 0) {
     return;
   }
 
@@ -166,9 +177,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
     odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
-    if (odometryCallbackCounter__ > 0) {
-      graph_msf::GraphMsfInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
-    }
+    graph_msf::GraphMsfInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
   } else {  // real unary factors
     odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
@@ -187,11 +196,16 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   odometryKm1Ptr__ = odometryKPtr;
 
   // Add to path message
-  addToPathMsg(measMapLidarPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
-               odomLidarPtr->header.stamp, compslam_T_Wl_Lk.block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 4);
+  addToPathMsg(measLiDAR_MapImuPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+               odomLidarPtr->header.stamp,
+               (compslam_T_Wl_Lk *
+                staticTransformsPtr_->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(),
+                                                         dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame()))
+                   .block<3, 1>(0, 3),
+               graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path
-  pubMeasMapLidarPath_.publish(measMapLidarPathPtr_);
+  pubMeasMapLidarPath_.publish(measLiDAR_MapImuPathPtr_);
 }
 
 void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
@@ -315,10 +329,10 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   W_t_W_Gnss_km1__ = W_t_W_Gnss;
 
   /// Add GNSS to Path
-  addToPathMsg(measMapGnssPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measGnss_MapGnssPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
                gnssMsgPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssPath_.publish(measMapGnssPathPtr_);
+  pubMeasMapGnssPath_.publish(measGnss_MapGnssPathPtr_);
 }
 
 void AnymalEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
@@ -377,7 +391,25 @@ void AnymalEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d
   transform_O_I.setRotation(tf::Quaternion(q_O_I.x(), q_O_I.y(), q_O_I.z(), q_O_I.w()));
   tfBroadcaster_.sendTransform(tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(imuTimeK),
                                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-                                                    "base_graph_msf"));
+                                                    dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame()));
+
+  // Bias
+  Eigen::Vector3d accelBias = graph_msf::GraphMsfInterface::getAccelBias();
+  Eigen::Vector3d gyroBias = graph_msf::GraphMsfInterface::getGyroBias();
+  // Publish accel bias
+  accelBiasMsgPtr_->header.stamp = ros::Time(imuTimeK);
+  accelBiasMsgPtr_->header.frame_id = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame();
+  accelBiasMsgPtr_->vector.x = accelBias(0);
+  accelBiasMsgPtr_->vector.y = accelBias(1);
+  accelBiasMsgPtr_->vector.z = accelBias(2);
+  pubAccelBias_.publish(accelBiasMsgPtr_);
+  // Publish gyro bias
+  gyroBiasMsgPtr_->header.stamp = ros::Time(imuTimeK);
+  gyroBiasMsgPtr_->header.frame_id = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame();
+  gyroBiasMsgPtr_->vector.x = gyroBias(0);
+  gyroBiasMsgPtr_->vector.y = gyroBias(1);
+  gyroBiasMsgPtr_->vector.z = gyroBias(2);
+  pubGyroBias_.publish(gyroBiasMsgPtr_);
 }
 
 }  // namespace anymal_se

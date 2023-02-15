@@ -141,6 +141,8 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Common Parameters
   verboseLevel_ = tryGetParam<int>("common_params/verbosity", privateNode);
   graphConfigPtr_->verboseLevel = verboseLevel_;
+  relocalizationAtStart_ = tryGetParam<bool>("common_params/relocalizationAtStart", privateNode);
+  graphConfigPtr_->relocalizationAtStartFlag = relocalizationAtStart_;
 
   if (graphConfigPtr_->usingGnssFlag) {
     // Gnss parameters

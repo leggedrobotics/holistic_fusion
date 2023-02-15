@@ -155,7 +155,11 @@ bool GraphMsf::addImuMeasurement(const Eigen::Vector3d& linearAcc, const Eigen::
     //    }
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     T_W_Ik_nav = gtsam::NavState(T_W_Ik_, I_v_W_I_);
-    relocalizationFlag = true;
+    if (graphConfigPtr_->relocalizationAtStartFlag) {
+      relocalizationFlag = true;
+    } else {
+      relocalizationFlag = false;
+    }
   } else {  // Normal operation
     normalOperationFlag_ = true;
     // Add IMU factor and get propagated state
@@ -365,6 +369,15 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
       optimizeGraphFlag_ = true;
     }
   }
+}
+
+// Getters
+Eigen::Vector3d GraphMsf::getAccelBias() {
+  return Eigen::Vector3d(graphMgrPtr_->getIMUBias().accelerometer());
+}
+
+Eigen::Vector3d GraphMsf::getGyroBias() {
+  return Eigen::Vector3d(graphMgrPtr_->getIMUBias().gyroscope());
 }
 
 /// Worker Functions -----------------------

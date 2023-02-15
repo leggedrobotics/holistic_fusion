@@ -21,9 +21,6 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/PriorFactor.h>
 
 // Package
 #include "graph_msf/GraphState.hpp"
@@ -87,7 +84,7 @@ class GraphManager {
   //  auto iterations() const { return additonalIterations_; }
   const State& getGraphState() { return graphState_; }
   const gtsam::Key getStateKey() { return stateKey_; }
-  const gtsam::imuBias::ConstantBias getIMUBias() { return graphState_.imuBias(); }
+  const gtsam::imuBias::ConstantBias& getIMUBias() { return graphState_.imuBias(); }
   gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
   // Status

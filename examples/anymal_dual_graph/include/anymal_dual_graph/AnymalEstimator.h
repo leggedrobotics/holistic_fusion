@@ -82,6 +82,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   /// Flags
   bool usingLioFlag_ = true;
+  bool relocalizationAtStart_ = true;
 
   // ROS Related stuff ----------------------------
 
@@ -112,6 +113,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubMeasMapGnssPath_;
   ros::Publisher pubMeasMapLidarPath_;
+  // Imu
+  ros::Publisher pubAccelBias_;
+  ros::Publisher pubGyroBias_;
   // Debug
   ros::Publisher lidarPoses_;
   ros::Publisher lidarPath_;
@@ -133,8 +137,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
   nav_msgs::PathPtr estMapImuPathPtr_;
-  nav_msgs::PathPtr measMapGnssPathPtr_;
-  nav_msgs::PathPtr measMapLidarPathPtr_;
+  nav_msgs::PathPtr measGnss_MapGnssPathPtr_;
+  nav_msgs::PathPtr measLiDAR_MapImuPathPtr_;
+  // Imu
+  geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;
+  geometry_msgs::Vector3StampedPtr gyroBiasMsgPtr_;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H

@@ -15,6 +15,7 @@ namespace graph_msf {
 
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
 #define COLOR_END "\033[0m"
 
 class StaticTransforms {
