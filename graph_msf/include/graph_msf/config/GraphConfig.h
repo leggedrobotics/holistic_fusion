@@ -15,54 +15,64 @@ namespace graph_msf {
 struct GraphConfig {
   GraphConfig() {}
 
+  // General Config
+  int verboseLevel = 0;
+  bool reLocalizeWorldToMapAtStart = false;
+
   // Strings
   std::string imuGravityDirection = "up";
 
-  // Booleans
-  /// ISAM
-  bool useIsam = true;
-  bool findUnusedFactorSlots = false;
-  bool enableDetailedResults = false;
-  bool enableRelinearization = true;
-  bool evaluateNonlinearError = true;
-  bool cacheLinearizedFactors = true;
-  bool enablePartialRelinearizationCheck = true;
-  /// Flags
-  bool usingFallbackGraphFlag = false;
+  // Sensor Config
   bool usingGnssFlag = true;
   bool usingLioFlag = true;
   bool relocalizationAtStartFlag = true;
 
-  // Integers
-  int verboseLevel = 0;
-  int imuBufferLength = 200;
-  int additionalIterations = 0;
-  int relinearizeSkip = 0;
-
-  // Doubles
+  // Sensor Params
   double imuRate = 100;
-  double maxSearchDeviation = 0.01;
+  int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
-  double smootherLag = 6.0;
-  double zeroMotionTh = 0.0;
+
+  // Factor Graph
+  bool useIsam = true;
+  double smootherLag = 1.5;
+  int additionalOptimizationIterations = 0;
+  bool findUnusedFactorSlots = false;
+  bool enableDetailedResults = false;
+  bool usingFallbackGraphFlag = true;
+  bool usingCholeskyFactorization = true;
+
+  // Outlier Rejection
   double gnssOutlierThresold = 0.3;
-  /// Noise Params
+
+  // Noise Params
+  // Accelerometer
   double accNoiseDensity = 1e-8;
   double accBiasRandomWalk = 1e-8;
+  Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
+  // Gyroscope
   double gyroNoiseDensity = 1e-8;
   double gyroBiasRandomWalk = 1e-8;
+  Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
+  // Preintegration
   double integrationNoiseDensity = 1.0;
   double biasAccOmegaPreint = 1.0;
-  /// Optimization
+
+  // Relinearization
+  // Thresholds
   double positionReLinTh = 1e-3;
   double rotationReLinTh = 1e-3;
   double velocityReLinTh = 1e-3;
   double accBiasReLinTh = 1e-3;
   double gyroBiasReLinTh = 1e-3;
+  // Flags
+  int relinearizeSkip = 0;
+  bool enableRelinearization = true;
+  bool evaluateNonlinearError = true;
+  bool cacheLinearizedFactors = true;
+  bool enablePartialRelinearizationCheck = true;
 
-  // Eigen
-  Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
-  Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
+  // Other
+  double maxSearchDeviation = 0.01;
 };
 
 }  // namespace graph_msf

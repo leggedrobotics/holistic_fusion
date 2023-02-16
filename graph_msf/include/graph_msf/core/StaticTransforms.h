@@ -23,23 +23,26 @@ class StaticTransforms {
   // Constructor
   StaticTransforms() { std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl; }
 
-  // Setters
-  void set_T_frame1_frame2_andInverse(const std::string& frame1, const std::string& frame2, const Eigen::Matrix4d& T_frame1_frame2) {
+  // Setters ------------------------------------------------------------
+  void set_T_frame1_frame2_andInverse(const std::string& frame1, const std::string& frame2, const Eigen::Isometry3d& T_frame1_frame2) {
     lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
     lv_T_frame1_frame2(frame2, frame1) = rv_T_frame1_frame2(frame1, frame2).inverse();
   }
 
   void setImuFrame(const std::string& s) { imuFrame_ = s; }
+  void setWorldFrame(const std::string& s) { worldFrame_ = s; }
+  void setMapFrame(const std::string& s) { mapFrame_ = s; }
+  void setOdomFrame(const std::string& s) { odomFrame_ = s; }
 
-  // Getters
+  // Getters ------------------------------------------------------------
   // Returns a left value of the requested transformation
-  Eigen::Matrix4d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+  Eigen::Isometry3d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     return T_frame1_frame2_map_[framePair];
   }
 
   // Returns a right value to the requested transformation
-  const Eigen::Matrix4d& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+  const Eigen::Isometry3d& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
     if (keyIterator == T_frame1_frame2_map_.end()) {
@@ -50,16 +53,23 @@ class StaticTransforms {
     return keyIterator->second;
   }
 
+  // Frames
   const std::string& getImuFrame() { return imuFrame_; }
+  const std::string& getWorldFrame() { return worldFrame_; }
+  const std::string& getMapFrame() { return mapFrame_; }
+  const std::string& getOdomFrame() { return odomFrame_; }
 
-  // Functionality
+  // Functionality ------------------------------------------------------------
   virtual void findTransformations() = 0;
 
- protected:
+ protected:  // Members
   // General container class
-  std::map<std::pair<std::string, std::string>, Eigen::Matrix4d> T_frame1_frame2_map_;
+  std::map<std::pair<std::string, std::string>, Eigen::Isometry3d> T_frame1_frame2_map_;
 
   // Required frames
+  std::string worldFrame_;
+  std::string mapFrame_;
+  std::string odomFrame_;
   std::string imuFrame_;  // If used --> copied to imuCabinFrame_
 };
 

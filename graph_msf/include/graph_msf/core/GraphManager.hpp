@@ -8,6 +8,11 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MANAGER_HPP_
 #define GRAPH_MANAGER_HPP_
 
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
+#define COLOR_END "\033[0m"
+
 // C++
 #include <chrono>
 #include <mutex>
@@ -23,18 +28,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/navigation/CombinedImuFactor.h>
 
 // Package
-#include "graph_msf/GraphState.hpp"
-#include "graph_msf/ImuBuffer.hpp"
 #include "graph_msf/config/GraphConfig.h"
+#include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/factors/HeadingFactor.h"
+#include "graph_msf/frontend/NavState.h"
+#include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 
 namespace graph_msf {
-
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
 
 class GraphManager {
  public:
@@ -58,11 +59,11 @@ class GraphManager {
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   // Graph selection
-  void activateGlobalGraph();
+  void activateGlobalGraph(const gtsam::Vector3& imuPosition, const gtsam::Rot3& imuRotation, const double measurementTime);
   void activateFallbackGraph();
 
   // Update graph and get new state
-  gtsam::NavState updateActiveGraphAndGetState(double& currentTime);
+  NavStateWithCovarianceAndBias updateActiveGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
   gtsam::NavState calculateActiveStateAtKey(const gtsam::Key& key);
@@ -82,9 +83,9 @@ class GraphManager {
   /// Getters
   Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior; }
   //  auto iterations() const { return additonalIterations_; }
-  const State& getGraphState() { return graphState_; }
-  const gtsam::Key getStateKey() { return stateKey_; }
-  const gtsam::imuBias::ConstantBias& getIMUBias() { return graphState_.imuBias(); }
+  const State& getOptimizedGraphState() { return optimizedGraphState_; }
+  const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
+  const gtsam::imuBias::ConstantBias getOptimizedImuBias() { return optimizedGraphState_.imuBias(); }
   gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
   // Status
@@ -96,6 +97,11 @@ class GraphManager {
     const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
     return activeSmootherPtr_ == fallbackSmootherPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
   }
+
+ protected:
+  // Calculate state at key for graph
+  static gtsam::NavState calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+                                                const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key);
 
  private:
   // Methods
@@ -109,19 +115,17 @@ class GraphManager {
                                const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
-  // Calculate state at key for graph
-  static gtsam::NavState calculateStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
-                                             const std::shared_ptr<GraphConfig> graphConfigPtr, const gtsam::Key& key);
+
   // Add Factors for a smoother
   static void addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
                                               const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                              const std::shared_ptr<GraphConfig> graphConfigPtr);
+                                              const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
                       const std::string& name = "lidar");
   /// Generate new key
-  const auto newStateKey_() { return ++stateKey_; }
+  const auto newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
   inline void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
                                                std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
@@ -133,7 +137,7 @@ class GraphManager {
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  State graphState_;
+  State optimizedGraphState_;
   gtsam::ISAM2Params isamParams_;
 
   // Graphs
@@ -182,8 +186,8 @@ class GraphManager {
   gtsam::NavState imuPropagatedState_;
 
   /// Factor Graph
-  gtsam::Key stateKey_ = 0;  // Current state key
-  double stateTime_;
+  gtsam::Key propagatedStateKey_ = 0;  // Current state key
+  double propagatedStateTime_;
 };
 }  // namespace graph_msf
 

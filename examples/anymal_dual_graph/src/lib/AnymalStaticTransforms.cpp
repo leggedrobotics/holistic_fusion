@@ -24,7 +24,7 @@ AnymalStaticTransforms::AnymalStaticTransforms(std::shared_ptr<ros::NodeHandle> 
 
 void AnymalStaticTransforms::findTransformations() {
   // Print to console --------------------------
-  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree.";
+  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " " << lidarFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", "
             << baseLinkFrame_ << std::endl;
@@ -42,9 +42,9 @@ void AnymalStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(100.0));
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
   // I_Cabin
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
+  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).block<3, 1>(0, 3) << std::endl;
+            << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
   // Cabin_I
   lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
 
@@ -53,9 +53,9 @@ void AnymalStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, lidarFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, lidarFrame_, ros::Time(0), transform);
   // I_Lidar
-  graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
+  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarFrame_).block<3, 1>(0, 3) << std::endl;
+            << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarFrame_).translation() << std::endl;
   // Lidar_I
   lv_T_frame1_frame2(lidarFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarFrame_).inverse();
 
@@ -64,9 +64,9 @@ void AnymalStaticTransforms::findTransformations() {
     listener_.waitForTransform(imuFrame_, gnssFrame_, ros::Time(0), ros::Duration(1.0));
     listener_.lookupTransform(imuFrame_, gnssFrame_, ros::Time(0), transform);
     // I_Gnss
-    graph_msf::tfToMatrix4(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
+    graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
     std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-              << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).block<3, 1>(0, 3) << std::endl;
+              << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).translation() << std::endl;
     // GnssL_I
     lv_T_frame1_frame2(gnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssFrame_).inverse();
   } catch (const tf2::LookupException& e) {

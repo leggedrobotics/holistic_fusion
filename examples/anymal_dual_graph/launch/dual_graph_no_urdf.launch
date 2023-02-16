@@ -10,7 +10,7 @@
     <arg name="gnss_topic_name"           default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
     <!-- Compslam Topics -->
-    <arg name="pointcloud_topic_name"            default="/point_cloud_filter/lidar/point_cloud_filtered" />
+    <arg name="pointcloud_topic_name"            default="/lidar/point_cloud" />
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
@@ -30,7 +30,7 @@
     <arg name="compslam_config_filename"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
 
     <!-- Node -->
-    <node pkg="anymal_dual_graph" type="anymal_dual_graph_node" name="dual_graph_node" output="screen"> <!--launch-prefix="gdb -ex run -args"-->
+    <node pkg="anymal_dual_graph" type="anymal_dual_graph_node" name="dual_graph_node" output="screen" launch-prefix="gdb -ex run -args">
         <!-- Launch Parameters -->
         <param name="launch/imuGravityDirection" type="string" value="$(arg imu_gravity_direction)" />
         <param name="launch/usingGnss" type="bool" value="$(arg using_gps)" />

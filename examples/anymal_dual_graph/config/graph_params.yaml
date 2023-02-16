@@ -11,9 +11,10 @@ graph_params:
   useIsam: true # if false, then levenberg-marquardt is used
   smootherLag: 0.5                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additionalOptimizationIterations: 0                  #Additional iterations of graph optimizer after update with new factors
-  findUnusedFactorSlots: false
-  enableDetailedResults: true
+  findUnusedFactorSlots: true
+  enableDetailedResults: false
   usingFallbackGraph: false
+  usingCholeskyFactorization: true # CHOLESKY faster, QR numerically more stable
 
 # Outlier Rejection
 outlier_params:
@@ -35,7 +36,7 @@ noise_params:
   biasAccOmegaPreInt: 1.0e-02             #covariance of bias used for preintegration, default: 1.0e-2
   ## LiDAR
   poseBetweenNoise: [ 5.0, 5.0, 5.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
-  poseUnaryNoise: [ 10.0, 10.0, 1, 5, 5, 5 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  poseUnaryNoise: [ 10.0, 10.0, 1.0, 5.0, 5.0, 5.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## GNSS
   gnssPositionUnaryNoise: 1.0 #1.0e-02 # x, y, z of global position
   gnssHeadingUnaryNoise: 1.0 # x,y,z of heading vector
@@ -51,4 +52,4 @@ relinearization_params:
   enableRelinearization: true
   evaluateNonlinearError: false
   cacheLinearizedFactors: true
-  enablePartialRelinearizationCheck: true
+  enablePartialRelinearizationCheck: false
