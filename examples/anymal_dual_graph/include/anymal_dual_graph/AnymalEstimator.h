@@ -42,9 +42,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
  public:
   AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
-protected:
-  virtual void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
-
  private:
   // Publish State
   void publishState_(const std::shared_ptr<graph_msf::NavState>& preIntegratedNavStatePtr,
@@ -57,7 +54,7 @@ protected:
 
   void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
-  void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+  void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 
   void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 

@@ -195,7 +195,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 
   if (!areYawAndPositionInited() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
     std::cout << YELLOW_START << "AnymalEstimator" << GREEN_START
-              << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
+              << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
   }
 
