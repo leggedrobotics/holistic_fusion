@@ -29,7 +29,6 @@ class GraphMsfRos : public GraphMsf {
   // Functions that need implementation
   virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) = 0;
   virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) = 0;
-  virtual void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) = 0;
 
   // Commodity Functions to be shared
   static void addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
