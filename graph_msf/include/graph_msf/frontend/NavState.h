@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define INTERFACE_NavState_H
 
 #include <Eigen/Eigen>
+#include <mutex>
 
 namespace graph_msf {
 
@@ -30,14 +31,14 @@ class NavState {
         I_v_W_I_(std::move(I_v_W_I)),
         I_w_W_I_(std::move(I_w_W_I)),
         timeK_(timeK),
-        relocalizeWorldToMap_(relocalizeWorldToMap) {}
+        relocalizedWorldToMap_(relocalizeWorldToMap) {}
 
   // Updates
-  void update(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
-              const bool reLocalizeWorldToMap);
-  void updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap);
-  void updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToMap);
-  void updateTime(const double timeK) { this->timeK_ = timeK; }
+  virtual void update(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
+                      const bool reLocalizeWorldToMap);
+  virtual void updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap);
+  virtual void updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToMap);
+  virtual void updateTime(const double timeK);
 
   // Calculate pose in world frame
   Eigen::Isometry3d getT_W_Ik() const { return T_W_M_ * T_M_O_ * T_O_Ik_gravityAligned_; }
@@ -49,7 +50,7 @@ class NavState {
   const Eigen::Vector3d& getI_v_W_I() const { return I_v_W_I_; }
   const Eigen::Vector3d& getI_w_W_I() const { return I_w_W_I_; }
   double getTimeK() const { return timeK_; }
-  bool getRelocalizeWorldToMap() const { return relocalizeWorldToMap_; }
+  bool isRelocalizedWorldToMap() const { return relocalizedWorldToMap_; }
 
  private:  // Member Variables
   Eigen::Isometry3d T_W_M_;
@@ -61,7 +62,36 @@ class NavState {
   // Time
   double timeK_;
   // Bool
-  bool relocalizeWorldToMap_;
+  bool relocalizedWorldToMap_;
+};
+
+class SafeNavState : public NavState {
+ public:
+  // Default Constructor
+  SafeNavState() = default;
+
+  // Copy Constructor
+  SafeNavState(const SafeNavState& safeNavState) {
+    std::lock_guard<std::mutex> stateUpdateLock(stateUpdateMutex_);
+    // Copy all member variables
+    NavState::update(safeNavState.getT_W_Ik(), safeNavState.getI_v_W_I(), safeNavState.getI_w_W_I(), safeNavState.getTimeK(),
+                     safeNavState.isRelocalizedWorldToMap());
+  }
+
+  // Regular Constructor
+  SafeNavState(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
+               const bool relocalizeWorldToMap = false)
+      : NavState(Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity(), T_W_Ik, I_v_W_I, I_w_W_I, timeK, relocalizeWorldToMap) {}
+
+  // Updates
+  void update(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
+              const bool reLocalizeWorldToMap) override;
+  void updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap) override;
+  void updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToMap) override;
+  void updateTime(const double timeK) override;
+
+ private:  // Member Variables
+  std::mutex stateUpdateMutex_;
 };
 
 class NavStateWithCovarianceAndBias : public NavState {

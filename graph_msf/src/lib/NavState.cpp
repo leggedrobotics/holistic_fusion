@@ -16,6 +16,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+// NavState -------------------------------------------------------------------
+
 void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
                       const double timeK, const bool reLocalizeWorldToMap) {
   // Velocities in body frame
@@ -26,7 +28,7 @@ void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d
   timeK_ = timeK;
 
   // Relocalize
-  relocalizeWorldToMap_ = reLocalizeWorldToMap;
+  relocalizedWorldToMap_ = reLocalizeWorldToMap;
 
   // Poses
   // Sanity check --> Make sure that roll and pitch is in odometry frame and not world to odometry frame
@@ -54,7 +56,7 @@ void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d
 
 void NavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
   // Relocalize
-  relocalizeWorldToMap_ = reLocalizeWorldToMap;
+  relocalizedWorldToMap_ = reLocalizeWorldToMap;
 
   // Use GTSAM for correcto yaw convention
   gtsam::Pose3 T_O_Ik_old(T_O_Ik_gravityAligned_.matrix());
@@ -68,18 +70,53 @@ void NavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorld
   }
 }
 
-void NavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToMap) {
+void NavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
   // Relocalize
-  relocalizeWorldToMap_ = reLocalizeWorldToMap;
+  relocalizedWorldToMap_ = reLocalizedWorldToMap;
 
   // Position in world frame needs distribution on poses
   gtsam::Pose3 T_O_Ik_old(T_O_Ik_gravityAligned_.matrix());
   gtsam::Pose3 T_W_Ik_old = gtsam::Pose3(T_W_M_ * T_M_O_ * T_O_Ik_old.matrix());
   gtsam::Pose3 T_W_Ik_new = gtsam::Pose3(T_W_Ik_old.rotation(), W_t_W_Ik);
-  if (reLocalizeWorldToMap) {
+  if (reLocalizedWorldToMap) {
     T_W_M_ = ((T_W_Ik_new * T_O_Ik_old.inverse()).matrix() * T_M_O_.inverse()).matrix();
   } else {
     T_O_Ik_gravityAligned_ = T_M_O_.inverse() * T_W_M_.inverse() * T_W_Ik_new.matrix();
   }
 }
+
+void NavState::updateTime(const double timeK) {
+  timeK_ = timeK;
+}
+
+// SafeNavState -----------------------------------------------------------------------------------------------
+void SafeNavState::update(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
+                          const double timeK, const bool reLocalizeWorldToMap) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::update(T_W_Ik, I_v_W_I, I_w_W_I, timeK, reLocalizeWorldToMap);
+}
+
+void SafeNavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::updateGlobalYaw(yaw_W_Ik, reLocalizeWorldToMap);
+}
+
+void SafeNavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::updateGlobalPosition(W_t_W_Ik, reLocalizedWorldToMap);
+}
+
+void SafeNavState::updateTime(const double timeK) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::updateTime(timeK);
+}
+
 }  // namespace graph_msf
