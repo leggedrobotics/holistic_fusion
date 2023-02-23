@@ -32,7 +32,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
-  if (not graph_msf::GraphMsfInterface::setup_()) {
+  if (not graph_msf::GraphMsf::setup()) {
     throw std::runtime_error("CompslamSeInterface could not be initiallized");
   }
 
@@ -50,14 +50,16 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
 
 void ExcavatorEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
-  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/odometry_map_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImu_ = privateNode_.advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssL", ROS_QUEUE_SIZE);
-  pubMeasMapGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_gnssR", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_map_Lidar", ROS_QUEUE_SIZE);
+  pubEstWorldImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImuPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssLPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_gnssL", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssRPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_gnssR", ROS_QUEUE_SIZE);
+  pubMeasWorldLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/meas_path_world_Lidar", ROS_QUEUE_SIZE);
 }
 
 void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -88,14 +90,16 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
 
 void ExcavatorEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Odometry
-  odomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  mapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  estWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  optWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   // Path
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLeftGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapRightGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measMapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  optWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldLeftGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldRightGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measWorldLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
@@ -103,9 +107,23 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   if (firstCallbackFlag__) {
     firstCallbackFlag__ = false;
   }
+  // Convert to Eigen
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  graph_msf::GraphMsfInterface::addImuMeasurementAndPublishState_(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec());
+  // Create Pointer for Carrying State
+  std::shared_ptr<graph_msf::NavState> preIntegratedNavStatePtr;
+  std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
+  // Add Measurement and Get State
+  if (graph_msf::GraphMsf::addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
+                                                        optimizedStateWithCovarianceAndBiasPtr)) {
+    // Encountered delay
+    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
+      std::cout << RED_START << "ExcavatorEstimator" << COLOR_END << " Encountered delay of "
+                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
+    }
+    // Publish Odometry
+    this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  }
 }
 
 void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
@@ -130,31 +148,30 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     if (odometryCallbackCounter__ > 0) {
-      graph_msf::GraphMsfInterface::addDualOdometryMeasurement_(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+      this->addDualOdometryMeasurement(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
     }
   } else {  // real unary factors
     odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
-    graph_msf::GraphMsfInterface::addUnaryPoseMeasurement_(*odometryKPtr);
+    this->addUnaryPoseMeasurement(*odometryKPtr);
   }
 
-  if (!areYawAndPositionInited_() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
+  if (!this->areYawAndPositionInited() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
     std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START
               << " LiDAR odometry callback is setting global cabin yaw to 0, as it was not set so far." << COLOR_END << std::endl;
-    graph_msf::GraphMsfInterface::initYawAndPosition_(
-        compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
+    this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
   }
 
   // Wrap up iteration
   odometryKm1Ptr__ = odometryKPtr;
 
   // Add to path message
-  addToPathMsg(measMapLidarPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldLidarPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                odomLidarPtr->header.stamp, compslam_T_Wl_Lk.block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path
-  pubMeasMapLidarPath_.publish(measMapLidarPathPtr_);
+  pubMeasWorldLidarPath_.publish(measWorldLidarPathPtr_);
 }
 
 void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssMsgPtr,
@@ -173,7 +190,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                    leftGnssMsgPtr->position_covariance[8]);
   if (!graphConfigPtr_->usingGnssFlag) {
     ROS_WARN("Received Gnss message, but usage is set to false.");
-    graph_msf::GraphMsfInterface::activateFallbackGraph();
+    this->activateFallbackGraph();
     return;
   } else if (gnssCallbackCounter__ < NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
     // Wait until measurements got accumulated
@@ -195,9 +212,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // Initialization
   if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
-    if (not graph_msf::GraphMsfInterface::initYawAndPosition_(
-            yaw_W_C, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(), W_t_W_GnssL,
-            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
+    if (!this->initYawAndPosition(yaw_W_C, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
+                                  W_t_W_GnssL, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
       // Decrease counter if not successfully initialized
       --gnssCallbackCounter__;
     }
@@ -205,76 +221,85 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
     graph_msf::UnaryMeasurement1D meas_yaw_W_C("Gnss yaw",
                                                dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
                                                int(gnssLeftRate_), leftGnssMsgPtr->header.stamp.toSec(), yaw_W_C, gnssHeadingUnaryNoise_);
-    graph_msf::GraphMsfInterface::addGnssHeadingMeasurement_(meas_yaw_W_C);
+    this->addGnssHeadingMeasurement(meas_yaw_W_C);
     graph_msf::UnaryMeasurement3D meas_W_t_W_GnssL(
         "Gnss left", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), gnssLeftRate_,
         leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssL,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ);
-    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
-        "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
-        leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
-        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    graph_msf::GraphMsfInterface::addDualGnssPositionMeasurement_(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
+    this->addDualGnssPositionMeasurement(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ, true, true);
+    //    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
+    //        "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
+    //        leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
+    //        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
+    //    this->addDualGnssPositionMeasurement(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
   }
   W_t_W_GnssL_km1__ = W_t_W_GnssL;
   W_t_W_GnssR_km1__ = W_t_W_GnssR;
 
   // Left GNSS
   /// Add to Path
-  addToPathMsg(measMapLeftGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldLeftGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                leftGnssMsgPtr->header.stamp, W_t_W_GnssL, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssLPath_.publish(measMapLeftGnssPathPtr_);
+  pubMeasWorldGnssLPath_.publish(measWorldLeftGnssPathPtr_);
   // Right GNSS
   /// Add to path
-  addToPathMsg(measMapRightGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measWorldRightGnssPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                rightGnssMsgPtr->header.stamp, W_t_W_GnssR, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssRPath_.publish(measMapRightGnssPathPtr_);
+  pubMeasWorldGnssRPath_.publish(measWorldRightGnssPathPtr_);
 }
 
-void ExcavatorEstimator::publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik,
-                                       const Eigen::Vector3d& Ic_v_W_Ic, const Eigen::Vector3d& I_w_W_I) {
-  // Used transforms
-  Eigen::Matrix4d T_I_L = staticTransformsPtr_
-                              ->rv_T_frame1_frame2(staticTransformsPtr_.get()->getImuFrame(),
-                                                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame())
-                              .inverse();
+void ExcavatorEstimator::publishState_(
+    const std::shared_ptr<graph_msf::NavState>& navStatePtr,
+    const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  // const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic, const
+  // Eigen::Vector3d& I_w_W_I Used transforms
+  Eigen::Isometry3d T_I_L = staticTransformsPtr_
+                                ->rv_T_frame1_frame2(staticTransformsPtr_.get()->getImuFrame(),
+                                                     dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame())
+                                .inverse();
 
   // Pose
-  Eigen::Matrix4d T_O_L = T_O_Ik * T_I_L;
-  Eigen::Matrix4d T_W_L = T_W_O * T_O_L;
+  Eigen::Isometry3d T_O_L = navStatePtr->getT_O_Ik_gravityAligned() * T_I_L;
+  Eigen::Isometry3d T_W_L = navStatePtr->getT_W_O() * T_O_L;
 
-  // Publish odometry message for odom->imu with 100 Hz
-  addToOdometryMsg(odomImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(imuTimeK), T_O_Ik,
-                   Ic_v_W_Ic, I_w_W_I);
-  pubEstOdomImu_.publish(odomImuMsgPtr_);
-  addToPathMsg(estOdomImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
-               ros::Time(imuTimeK), T_O_Ik.block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 20);
-  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
-  // Publish odometry message for map->imu with 100 Hz
-  addToOdometryMsg(mapImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
-                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(imuTimeK), T_W_O * T_O_Ik,
-                   Ic_v_W_Ic, I_w_W_I);
-  pubEstOdomImu_.publish(mapImuMsgPtr_);
-  addToPathMsg(estMapImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(), ros::Time(imuTimeK),
-               (T_W_O * T_O_Ik).block<3, 1>(0, 3), graphConfigPtr_->imuBufferLength * 20);
-  pubEstMapImuPath_.publish(estMapImuPathPtr_);
+  // Covariances
+  Eigen::Matrix<double, 6, 6> poseCovarianceRos;
+  Eigen::Matrix<double, 6, 6> twistCovarianceRos;
+  twistCovarianceRos.setZero();
+  if (optimizedStateWithCovarianceAndBiasPtr != nullptr) {
+    poseCovarianceRos =
+        graph_msf::convertCovarianceGtsamConventionToRosConvention(optimizedStateWithCovarianceAndBiasPtr->getPoseCovariance());
+    twistCovarianceRos.block<3, 3>(0, 0) = optimizedStateWithCovarianceAndBiasPtr->getVelocityCovariance();
+  } else {
+    poseCovarianceRos.setZero();
+  }
 
-  // Convert Measurements
+  // Odometry messages
+  // odom->imu with 100 Hz
+  addToOdometryMsg(estOdomImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
+                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
+                   navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(), poseCovarianceRos,
+                   twistCovarianceRos);
+  pubEstOdomImu_.publish(estOdomImuMsgPtr_);
+  // world->imu with 100 Hz
+  addToOdometryMsg(estWorldImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+                   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), ros::Time(navStatePtr->getTimeK()),
+                   navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
+  pubEstWorldImu_.publish(estWorldImuMsgPtr_);
 
   // Publish to TF
   // W_O
   static tf::Transform transform_W_O;
+  Eigen::Isometry3d T_W_O = navStatePtr->getT_W_O();
   transform_W_O.setOrigin(tf::Vector3(T_W_O(0, 3), T_W_O(1, 3), T_W_O(2, 3)));
-  Eigen::Quaterniond q_W_O(T_W_O.block<3, 3>(0, 0));
+  Eigen::Quaterniond q_W_O(T_W_O.rotation());
   transform_W_O.setRotation(tf::Quaternion(q_W_O.x(), q_W_O.y(), q_W_O.z(), q_W_O.w()));
-  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(imuTimeK),
-                                                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_W_O, ros::Time(navStatePtr->getTimeK()),
+                                                    dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
                                                     dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame()));
-  // I->B
+  // Lookup I->B, also influenced by rotation of cabin
   static tf::StampedTransform transform_I_B;
   tfListener_.waitForTransform(staticTransformsPtr_->getImuFrame(),
                                dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(), ros::Time(0),
@@ -283,15 +308,48 @@ void ExcavatorEstimator::publishState_(const double imuTimeK, const Eigen::Matri
                             dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(), ros::Time(0),
                             transform_I_B);
 
-  // Publish T_O_B
+  // O_B
   static tf::Transform transform_O_I;
+  Eigen::Isometry3d T_O_Ik = navStatePtr->getT_O_Ik_gravityAligned();
   transform_O_I.setOrigin(tf::Vector3(T_O_Ik(0, 3), T_O_Ik(1, 3), T_O_Ik(2, 3)));
-  Eigen::Quaterniond q_O_I(T_O_Ik.block<3, 3>(0, 0));
+  Eigen::Quaterniond q_O_I(T_O_Ik.rotation());
   transform_O_I.setRotation(tf::Quaternion(q_O_I.x(), q_O_I.y(), q_O_I.z(), q_O_I.w()));
   tfBroadcaster_.sendTransform(
-      tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(imuTimeK),
+      tf::StampedTransform(transform_O_I * transform_I_B, ros::Time(navStatePtr->getTimeK()),
                            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
                            dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame()));
+
+  // Publish paths
+  // odom->imu
+  addToPathMsg(estOdomImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getOdomFrame(),
+               ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_O_Ik_gravityAligned().translation(),
+               graphConfigPtr_->imuBufferLength * 20);
+  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
+  // world->imu
+  addToPathMsg(estWorldImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+               ros::Time(navStatePtr->getTimeK()), (T_W_O * T_O_Ik).translation(), graphConfigPtr_->imuBufferLength * 20);
+  pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
+
+  // Optimized estimate
+  if (optimizedStateWithCovarianceAndBiasPtr != nullptr &&
+      optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
+    lastOptimizedStateTimestamp_ = optimizedStateWithCovarianceAndBiasPtr->getTimeK();
+
+    // Odometry messages
+    // world->imu
+    addToOdometryMsg(optWorldImuMsgPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+                     dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(),
+                     ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik(),
+                     optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I());
+    pubOptWorldImu_.publish(optWorldImuMsgPtr_);
+
+    // Path
+    // world->imu
+    addToPathMsg(optWorldImuPathPtr_, dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getWorldFrame(),
+                 ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
+                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
+    pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
+  }
 }
 
 }  // namespace excavator_se

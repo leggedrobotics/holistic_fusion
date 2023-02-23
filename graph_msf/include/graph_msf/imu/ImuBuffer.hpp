@@ -4,6 +4,10 @@ All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
+#define GREEN_START "\033[92m"
+#define YELLOW_START "\033[33m"
+#define RED_START "\033[31m"
+#define COLOR_END "\033[0m"
 
 #ifndef IMU_MANAGER_HPP_
 #define IMU_MANAGER_HPP_
@@ -20,17 +24,15 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 
-// Package
-#include <mutex>
-#include "graph_msf/Datatypes.hpp"
-
 namespace graph_msf {
 
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
+// Datatypes
+// Map from time to 6D IMU measurements
+typedef std::map<double, gtsam::Vector6, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToImuMap;
+// Map from time to gtsam key
+typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToKeyMap;
 
+// Actual Class
 class ImuBuffer {
  public:
   // Constructor

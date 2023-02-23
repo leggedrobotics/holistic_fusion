@@ -12,7 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf/StaticTransforms.h"
+#include "graph_msf/core/StaticTransforms.h"
 
 namespace graph_msf {
 

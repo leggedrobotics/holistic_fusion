@@ -29,7 +29,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
-#define ROS_QUEUE_SIZE 100
+#define ROS_QUEUE_SIZE 1
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20  // 0
 
 namespace excavator_se {
@@ -40,8 +40,8 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Publish State
-  void publishState_(const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic,
-                     const Eigen::Vector3d& I_w_W_I) override;
+  void publishState_(const std::shared_ptr<graph_msf::NavState>& preIntegratedNavStatePtr,
+                     const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
 
   // Parameter Reading Commodity Function
   void readParams_(const ros::NodeHandle& privateNode);
@@ -98,29 +98,36 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // TF
   tf::TransformListener listener_;
 
+  // Last Optimized State Timestamp
+  double lastOptimizedStateTimestamp_ = 0.0;
+
   // Publishers
   // Odometry
   ros::Publisher pubEstOdomImu_;
-  ros::Publisher pubEstMapImu_;
+  ros::Publisher pubEstWorldImu_;
+  ros::Publisher pubOptWorldImu_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
-  ros::Publisher pubEstMapImuPath_;
-  ros::Publisher pubMeasMapGnssLPath_;
-  ros::Publisher pubMeasMapGnssRPath_;
-  ros::Publisher pubMeasMapLidarPath_;
+  ros::Publisher pubEstWorldImuPath_;
+  ros::Publisher pubOptWorldImuPath_;
+  ros::Publisher pubMeasWorldGnssLPath_;
+  ros::Publisher pubMeasWorldGnssRPath_;
+  ros::Publisher pubMeasWorldLidarPath_;
   // TF
   tf::TransformBroadcaster tfBroadcaster_;
 
   // Messages
   // Odometry
-  nav_msgs::OdometryPtr odomImuMsgPtr_;
-  nav_msgs::OdometryPtr mapImuMsgPtr_;
+  nav_msgs::OdometryPtr estOdomImuMsgPtr_;
+  nav_msgs::OdometryPtr estWorldImuMsgPtr_;
+  nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
-  nav_msgs::PathPtr estMapImuPathPtr_;
-  nav_msgs::PathPtr measMapLeftGnssPathPtr_;
-  nav_msgs::PathPtr measMapRightGnssPathPtr_;
-  nav_msgs::PathPtr measMapLidarPathPtr_;
+  nav_msgs::PathPtr estWorldImuPathPtr_;
+  nav_msgs::PathPtr optWorldImuPathPtr_;
+  nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
+  nav_msgs::PathPtr measWorldRightGnssPathPtr_;
+  nav_msgs::PathPtr measWorldLidarPathPtr_;
 };
 }  // namespace excavator_se
 #endif  // end M545ESTIMATORGRAPH_H
