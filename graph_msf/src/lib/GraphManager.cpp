@@ -109,6 +109,9 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   auto priorVelocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1e-3);                                        // m/s
   auto priorBiasNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
 
+  // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
   // Initial estimate
   gtsam::Values valuesEstimate;
   std::cout << YELLOW_START << "GraphManager" << COLOR_END << " Initial Pose: " << initialPose << std::endl;
@@ -316,7 +319,7 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 }
 
 void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate,
-                                                     const Eigen::Matrix<double, 6, 1>& poseUnaryNoise, const gtsam::Pose3& unaryPose) {
+                                                     const Eigen::Matrix<double, 6, 1>& poseUnaryNoise, const gtsam::Pose3& T_W_I) {
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
@@ -335,7 +338,7 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
 
   // Unary factor
-  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), unaryPose, errorFunction);
+  gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(gtsam::symbol_shorthand::X(closestKey), T_W_I, errorFunction);
 
   // Write to graph
   bool success = addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Pose3>*>(fallbackFactorsBufferPtr_, &poseUnaryFactor, lidarTimeK);
@@ -391,9 +394,9 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   double closestGraphTime;
   gtsam::Key closestKey;
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssUnary", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END
-              << std::endl;
-    return;
+    //    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END
+    //              << std::endl;
+    //    return;
   }
 
   // Create noise model
@@ -430,9 +433,9 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   double closestGraphTime;
   gtsam::Key closestKey;
   if (!imuBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssHeading", graphConfigPtr_->maxSearchDeviation, gnssTimeK)) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
-              << std::endl;
-    return;
+    //    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
+    //              << std::endl;
+    //    return;
   }
 
   // Create noise model
@@ -633,7 +636,7 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::Incr
   return gtsam::NavState(resultPose, resultVelocity);
 }
 
-NavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
+SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> activelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
 
@@ -697,9 +700,9 @@ NavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double&
   }  // end of locking
 
   // Return result
-  NavStateWithCovarianceAndBias resultNavStateWithCovarianceAndBias(Eigen::Isometry3d(resultNavState.pose().matrix()), resultNavState.v(),
-                                                                    currentPropagatedTime, poseCovariance, velocityCovariance,
-                                                                    resultBias.accelerometer(), resultBias.gyroscope());
+  SafeNavStateWithCovarianceAndBias resultNavStateWithCovarianceAndBias(
+      Eigen::Isometry3d(resultNavState.pose().matrix()), resultNavState.v(), currentPropagatedTime, poseCovariance, velocityCovariance,
+      resultBias.accelerometer(), resultBias.gyroscope());
 
   return resultNavStateWithCovarianceAndBias;
 }
@@ -746,6 +749,7 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::Increm
 }  // namespace graph_msf
 
 gtsam::NavState GraphManager::calculateActiveStateAtKey(const gtsam::Key& key) {
+  const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
   return calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, key);
 }
 
