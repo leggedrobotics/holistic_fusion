@@ -17,9 +17,20 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // NavState -------------------------------------------------------------------
+void NavState::updateAll(const Eigen::Isometry3d& T_W_M, const Eigen::Isometry3d& T_M_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned,
+                         const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
+                         const bool reLocalizeWorldToMap) {
+  T_W_M_ = T_W_M;
+  T_M_O_ = T_M_O;
+  T_O_Ik_gravityAligned_ = T_O_Ik_gravityAligned;
+  I_v_W_I_ = I_v_W_I;
+  I_w_W_I_ = I_w_W_I;
+  timeK_ = timeK;
+  relocalizedWorldToMap_ = reLocalizeWorldToMap;
+}
 
-void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
-                      const double timeK, const bool reLocalizeWorldToMap) {
+void NavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
+                             const double timeK, const bool reLocalizeWorldToMap) {
   // Velocities in body frame
   I_v_W_I_ = I_v_W_I;
   I_w_W_I_ = I_w_W_I;
@@ -32,10 +43,10 @@ void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d
 
   // Poses
   // Sanity check --> Make sure that roll and pitch is in odometry frame and not world to odometry frame
-  gtsam::Pose3 T_W_M_gtsam(T_W_M_.matrix());
-  if (T_W_M_gtsam.rotation().roll() > 1e-2 || T_W_M_gtsam.rotation().pitch() > 1e-2) {
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " T_W_M roll: " << T_W_M_gtsam.rotation().roll()
-              << ", pitch: " << T_W_M_gtsam.rotation().pitch() << COLOR_END << std::endl;
+  gtsam::Pose3 T_W_O_gtsam(getT_W_O().matrix());
+  if (T_W_O_gtsam.rotation().roll() > 1e-2 || T_W_O_gtsam.rotation().pitch() > 1e-2) {
+    std::cout << YELLOW_START << "GMsf" << RED_START << " T_W_O roll: " << T_W_O_gtsam.rotation().roll()
+              << ", pitch: " << T_W_O_gtsam.rotation().pitch() << ", which is supposed to be close to zero!" << COLOR_END << std::endl;
   }
   // Always update roll and pitch in odometry frame
   gtsam::Pose3 T_W_Ik_new_gtsam(T_W_Ik_new.matrix());
@@ -54,7 +65,7 @@ void NavState::update(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::Vector3d
   }
 }
 
-void NavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
+void NavState::updateYawInWorld(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
   // Relocalize
   relocalizedWorldToMap_ = reLocalizeWorldToMap;
 
@@ -70,7 +81,7 @@ void NavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorld
   }
 }
 
-void NavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
+void NavState::updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
   // Relocalize
   relocalizedWorldToMap_ = reLocalizedWorldToMap;
 
@@ -85,38 +96,64 @@ void NavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool r
   }
 }
 
-void NavState::updateTime(const double timeK) {
+void NavState::updatePoseInMap(const Eigen::Isometry3d& T_M_Ik) {
+  const Eigen::Isometry3d T_W_Ik_old = getT_W_Ik();
+  T_M_O_ = T_M_Ik * T_O_Ik_gravityAligned_.inverse();
+  T_W_M_ = T_W_Ik_old * getT_M_Ik().inverse();
+}
+
+void NavState::updateWorldToMap(const Eigen::Isometry3d& T_W_M) {
+  const Eigen::Isometry3d T_W_O_old = getT_W_O();
+  T_W_M_ = T_W_M;
+  T_M_O_ = T_W_M_.inverse() * T_W_O_old;
+}
+
+void NavState::updateLatestMeasurementTimestamp(const double timeK) {
   timeK_ = timeK;
 }
 
 // SafeNavState -----------------------------------------------------------------------------------------------
-void SafeNavState::update(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
-                          const double timeK, const bool reLocalizeWorldToMap) {
+void SafeNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
+                                 const double timeK, const bool reLocalizeWorldToMap) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
-  NavState::update(T_W_Ik, I_v_W_I, I_w_W_I, timeK, reLocalizeWorldToMap);
+  NavState::updateInWorld(T_W_Ik, I_v_W_I, I_w_W_I, timeK, reLocalizeWorldToMap);
 }
 
-void SafeNavState::updateGlobalYaw(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
+void SafeNavState::updateYawInWorld(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
-  NavState::updateGlobalYaw(yaw_W_Ik, reLocalizeWorldToMap);
+  NavState::updateYawInWorld(yaw_W_Ik, reLocalizeWorldToMap);
 }
 
-void SafeNavState::updateGlobalPosition(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
+void SafeNavState::updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
-  NavState::updateGlobalPosition(W_t_W_Ik, reLocalizedWorldToMap);
+  NavState::updatePositionInWorld(W_t_W_Ik, reLocalizedWorldToMap);
 }
 
-void SafeNavState::updateTime(const double timeK) {
+void SafeNavState::updatePoseInMap(const Eigen::Isometry3d& T_M_Ik) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
-  NavState::updateTime(timeK);
+  NavState::updatePoseInMap(T_M_Ik);
+}
+
+void SafeNavState::updateWorldToMap(const Eigen::Isometry3d& T_W_M) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::updateWorldToMap(T_W_M);
+}
+
+void SafeNavState::updateLatestMeasurementTimestamp(const double timeK) {
+  // Mutex for safety
+  std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
+  // Parent class
+  NavState::updateLatestMeasurementTimestamp(timeK);
 }
 
 }  // namespace graph_msf
