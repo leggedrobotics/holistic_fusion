@@ -636,7 +636,7 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::Incr
   return gtsam::NavState(resultPose, resultVelocity);
 }
 
-NavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
+SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double& currentPropagatedTime) {
   // Mutex, such s.t. the used graph is consistent
   const std::lock_guard<std::mutex> activelyUsingActiveGraphLock(activelyUsingActiveGraphMutex_);
 
@@ -700,9 +700,9 @@ NavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(double&
   }  // end of locking
 
   // Return result
-  NavStateWithCovarianceAndBias resultNavStateWithCovarianceAndBias(Eigen::Isometry3d(resultNavState.pose().matrix()), resultNavState.v(),
-                                                                    currentPropagatedTime, poseCovariance, velocityCovariance,
-                                                                    resultBias.accelerometer(), resultBias.gyroscope());
+  SafeNavStateWithCovarianceAndBias resultNavStateWithCovarianceAndBias(
+      Eigen::Isometry3d(resultNavState.pose().matrix()), resultNavState.v(), currentPropagatedTime, poseCovariance, velocityCovariance,
+      resultBias.accelerometer(), resultBias.gyroscope());
 
   return resultNavStateWithCovarianceAndBias;
 }

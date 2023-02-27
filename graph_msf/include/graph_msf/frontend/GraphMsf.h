@@ -61,13 +61,14 @@ class GraphMsf {
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                    std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr,
-                                    std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
+                                    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
-  void addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
-                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
+  std::shared_ptr<SafeNavState> addDualOdometryMeasurementAndReturnNavState(const UnaryMeasurement6D& odometryKm1,
+                                                                            const UnaryMeasurement6D& odometryK,
+                                                                            const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
                                       const Eigen::Vector3d& gnssCovarianceXYZ, const bool attemptGraphSwitching,
                                       const bool addedYawBefore);
@@ -75,7 +76,7 @@ class GraphMsf {
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
-  inline NavState getLatestPreintegratedNavState() {
+  inline SafeNavState getLatestPreintegratedNavState() {
     if (preIntegratedNavStatePtr_ != nullptr)
       return *preIntegratedNavStatePtr_;
     else
@@ -83,9 +84,10 @@ class GraphMsf {
     ;
   }
   void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
-      std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
+      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
     if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-      returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+      returnOptimizedStateWithCovarianceAndBiasPtr =
+          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
     } else {
       returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
     }
@@ -139,13 +141,11 @@ class GraphMsf {
 
   /// State Containers
   // Preintegrated NavState
-  std::shared_ptr<NavState> preIntegratedNavStatePtr_ = NULL;
+  std::shared_ptr<SafeNavState> preIntegratedNavStatePtr_ = NULL;
   // Optimized NavState with Covariance
-  std::shared_ptr<NavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I_;
-  /// Trasnform world to map
-  Eigen::Isometry3d T_W_Mj_ = Eigen::Isometry3d::Identity();
 
   /// Gravity
   double gravityConstant_ = 9.81;  // Will be overwritten
