@@ -69,7 +69,8 @@ class GraphMsf {
   void addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
                                   const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
-                                      const Eigen::Vector3d& estCovarianceXYZ, const bool attemptGraphSwitching, const bool addedYawBefore);
+                                      const Eigen::Vector3d& gnssCovarianceXYZ, const bool attemptGraphSwitching,
+                                      const bool addedYawBefore);
   void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
@@ -100,6 +101,8 @@ class GraphMsf {
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
+  //// GNSS Violation
+  bool isGnssCovarianceViolated_(const Eigen::Vector3d& gnssCovarianceXYZ);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
@@ -128,7 +131,7 @@ class GraphMsf {
   bool alignedImuFlag_ = false;
   bool foundInitialYawAndPositionFlag_ = false;
   bool initedGraphFlag_ = false;
-  bool receivedOdometryFlag_ = false;
+  bool validFirstMeasurementReceivedFlag_ = false;
   //// During operation
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
@@ -141,6 +144,8 @@ class GraphMsf {
   std::shared_ptr<NavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I_;
+  /// Trasnform world to map
+  Eigen::Isometry3d T_W_Mj_ = Eigen::Isometry3d::Identity();
 
   /// Gravity
   double gravityConstant_ = 9.81;  // Will be overwritten
