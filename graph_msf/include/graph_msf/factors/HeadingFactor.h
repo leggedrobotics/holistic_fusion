@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2022 by Julian Nubert, Timo Schoenegg, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -44,18 +44,19 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @brief vector of errors
    */
   gtsam::Vector evaluateError(const gtsam::Pose3& q, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
+    // calculate error
+    double yawError = q.rotation().yaw() - yaw_;
+
+    // Smaller half circle
+    while (yawError < -M_PI) yawError += 2 * M_PI;
+    while (yawError > M_PI) yawError -= 2 * M_PI;
+
     // Jacobian
     if (H_Ptr) {
       (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 0.0, -1.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
     }
 
-    // calculate error
-    double yaw_error = q.rotation().yaw() - yaw_;
-
-    while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
-    while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
-
-    return gtsam::Vector1(yaw_error);
+    return gtsam::Vector1(yawError);
   }
 
  private:

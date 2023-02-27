@@ -33,18 +33,26 @@ void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& fra
 }
 
 void GraphMsfRos::addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
-                                   const ros::Time& stamp, const Eigen::Matrix4d& T, const Eigen::Vector3d& W_v_W_F,
-                                   const Eigen::Vector3d& W_w_W_F) {
+                                   const ros::Time& stamp, const Eigen::Isometry3d& T, const Eigen::Vector3d& W_v_W_F,
+                                   const Eigen::Vector3d& W_w_W_F, const Eigen::Matrix<double, 6, 6>& poseCovariance,
+                                   const Eigen::Matrix<double, 6, 6>& twistCovariance) {
   msgPtr->header.frame_id = fixedFrame;
   msgPtr->child_frame_id = movingFrame;
   msgPtr->header.stamp = stamp;
-  tf::poseTFToMsg(matrix4ToTf(T), msgPtr->pose.pose);
+  tf::poseTFToMsg(isometry3ToTf(T), msgPtr->pose.pose);
   msgPtr->twist.twist.linear.x = W_v_W_F(0);
   msgPtr->twist.twist.linear.y = W_v_W_F(1);
   msgPtr->twist.twist.linear.z = W_v_W_F(2);
   msgPtr->twist.twist.angular.x = W_w_W_F(0);
   msgPtr->twist.twist.angular.y = W_w_W_F(1);
   msgPtr->twist.twist.angular.z = W_w_W_F(2);
+
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
+      msgPtr->pose.covariance[6 * i + j] = poseCovariance(i, j);
+      msgPtr->twist.covariance[6 * i + j] = twistCovariance(i, j);
+    }
+  }
 }
 
 long GraphMsfRos::secondsSinceStart_() {
