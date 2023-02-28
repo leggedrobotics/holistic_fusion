@@ -61,20 +61,22 @@ class GraphMsf {
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                    std::shared_ptr<NavState>& returnPreIntegratedNavStatePtr,
-                                    std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
+                                    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
-  void addDualOdometryMeasurement(const UnaryMeasurement6D& odometryKm1, const UnaryMeasurement6D& odometryK,
-                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
+  std::shared_ptr<SafeNavState> addDualOdometryMeasurementAndReturnNavState(const UnaryMeasurement6D& odometryKm1,
+                                                                            const UnaryMeasurement6D& odometryK,
+                                                                            const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
   void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
-                                      const Eigen::Vector3d& estCovarianceXYZ, const bool attemptGraphSwitching, const bool addedYawBefore);
+                                      const Eigen::Vector3d& gnssCovarianceXYZ, const bool attemptGraphSwitching,
+                                      const bool addedYawBefore);
   void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
-  inline NavState getLatestPreintegratedNavState() {
+  inline SafeNavState getLatestPreintegratedNavState() {
     if (preIntegratedNavStatePtr_ != nullptr)
       return *preIntegratedNavStatePtr_;
     else
@@ -82,9 +84,10 @@ class GraphMsf {
     ;
   }
   void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
-      std::shared_ptr<NavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
+      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
     if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-      returnOptimizedStateWithCovarianceAndBiasPtr = std::make_shared<NavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+      returnOptimizedStateWithCovarianceAndBiasPtr =
+          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
     } else {
       returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
     }
@@ -100,6 +103,8 @@ class GraphMsf {
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
+  //// GNSS Violation
+  bool isGnssCovarianceViolated_(const Eigen::Vector3d& gnssCovarianceXYZ);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
@@ -128,7 +133,7 @@ class GraphMsf {
   bool alignedImuFlag_ = false;
   bool foundInitialYawAndPositionFlag_ = false;
   bool initedGraphFlag_ = false;
-  bool receivedOdometryFlag_ = false;
+  bool validFirstMeasurementReceivedFlag_ = false;
   //// During operation
   bool optimizeGraphFlag_ = false;
   bool gnssCovarianceViolatedFlag_ = false;
@@ -136,9 +141,9 @@ class GraphMsf {
 
   /// State Containers
   // Preintegrated NavState
-  std::shared_ptr<NavState> preIntegratedNavStatePtr_ = NULL;
+  std::shared_ptr<SafeNavState> preIntegratedNavStatePtr_ = NULL;
   // Optimized NavState with Covariance
-  std::shared_ptr<NavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I_;
 
