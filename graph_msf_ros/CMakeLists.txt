@@ -47,8 +47,7 @@ add_library(${PROJECT_NAME}
         src/lib/StaticTransformsTf.cpp
         src/lib/StaticTransformsUrdf.cpp
         src/lib/GraphMsfRos.cpp
-        src/lib/readParams.cpp
-        include/graph_msf_ros/ros/read_ros_params.h)
+        src/lib/readParams.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
