@@ -42,6 +42,7 @@ struct GraphConfig {
   bool enableDetailedResultsFlag = false;
   bool usingFallbackGraphFlag = true;
   bool usingCholeskyFactorizationFlag = true;
+  bool usingBiasForPreIntegrationFlag = true;
 
   // Outlier Rejection
   double poseMotionOutlierThresold = 0.3;

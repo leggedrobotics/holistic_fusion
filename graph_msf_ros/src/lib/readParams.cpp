@@ -52,6 +52,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->enableDetailedResultsFlag = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
+  graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
 
   // Outlier Parameters
   graphConfigPtr_->poseMotionOutlierThresold = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);

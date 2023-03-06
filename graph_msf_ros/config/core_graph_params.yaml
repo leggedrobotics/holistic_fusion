@@ -17,6 +17,7 @@ graph_params:
   enableDetailedResults: false
   usingFallbackGraph: true
   usingCholeskyFactorization: true # CHOLESKY faster, QR numerically more stable
+  usingBiasForPreIntegration: true
 
 # Outlier Rejection
 outlier_params:
@@ -32,7 +33,7 @@ noise_params:
   ### Rotation
   gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
   omegaCoriolis: 0.0                      #Coriolis effect
-    ### Bias
+  ### Bias
   accBiasRandomWalk: 1.0e-05 #gnss:1.0e-06 #lidar: 1e-01              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   gyrBiasRandomWalk: 9.33e-08 #gnss:9.33e-08 #lidar: 9.33e-01            #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
   biasAccOmegaInit: 1.0e-03                 #covariance of bias used as initial estimate default: 1.0e-2

@@ -196,7 +196,11 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   // Update IMU preintegrator
   updateImuIntegrators_(imuMeas);
   // Predict propagated state
-  imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, optimizedGraphState_.imuBias());
+  if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+    imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, optimizedGraphState_.imuBias());
+  } else {
+    imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, gtsam::imuBias::ConstantBias());
+  }
 
   // Add IMU Factor to graph
   gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
@@ -529,7 +533,11 @@ void GraphManager::activateGlobalGraph(const gtsam::Vector3& imuPosition, const 
         globalFactorsBufferPtr_->resize(0);
         globalGraphValuesBufferPtr_->clear();
         globalGraphKeysTimestampsMapBufferPtr_->clear();
-        globalImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+        if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+          globalImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+        } else {
+          globalImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
+        }
       } else {
         std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Hence, previously optimized graph can be used." << COLOR_END
                   << std::endl;
@@ -665,7 +673,11 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
     }
 
     // Empty Buffer Preintegrator --> everything missed during the update will be in here
-    activeImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+    if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+      activeImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+    } else {
+      activeImuBufferPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
+    }
     // Get current key and time
     currentPropagatedKey = propagatedStateKey_;
     currentPropagatedTime = propagatedStateTime_;
@@ -693,7 +705,11 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
     optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState, resultBias);
     // Predict from solution to obtain refined propagated state
     // Resetting is done at beginning of next optimization
-    imuPropagatedState_ = activeImuBufferPreintegratorPtr_->predict(resultNavState, resultBias);
+    if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+      imuPropagatedState_ = activeImuBufferPreintegratorPtr_->predict(resultNavState, optimizedGraphState_.imuBias());
+    } else {
+      imuPropagatedState_ = activeImuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
+    }
 
     // Increase counter
     ++numOptimizationsSinceGraphSwitching_;
@@ -829,7 +845,11 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   }
 
   // Reset IMU Step Preintegration
-  imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+  if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+  } else {
+    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
+  }
 
   // Start integrating with imu_meas.begin()+1 meas to calculate dt, imu_meas.begin() meas was integrated before
   auto currItr = imuMeas.begin();

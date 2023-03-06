@@ -33,7 +33,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   staticTransformsPtr_->findTransformations();
 
   if (not graph_msf::GraphMsf::setup()) {
-    throw std::runtime_error("CompslamSeInterface could not be initiallized");
+    throw std::runtime_error("GraphMsf could not be initialized");
   }
 
   // Publishers ----------------------------
@@ -45,7 +45,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   // Messages ----------------------------
   initializeMessages_(privateNodePtr);
 
-  std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 
 void ExcavatorEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -66,12 +66,12 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
   // Imu
   subImu_ = privateNode_.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &ExcavatorEstimator::imuCallback_, this,
                                                      ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized IMU cabin subscriber." << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << COLOR_END << " Initialized IMU cabin subscriber." << std::endl;
 
   // LiDAR Odometry
   subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &ExcavatorEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized LiDAR Odometry subscriber." << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << COLOR_END << " Initialized LiDAR Odometry subscriber." << std::endl;
 
   // GNSS
   if (graphConfigPtr_->usingGnssFlag) {
@@ -82,7 +82,7 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
     gnssExactSyncPtr_->registerCallback(boost::bind(&ExcavatorEstimator::gnssCallback_, this, _1, _2));
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized Gnss subscriber (for both Gnss topics)." << std::endl;
   } else {
-    std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
+    std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START
               << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
               << std::endl;
   }
