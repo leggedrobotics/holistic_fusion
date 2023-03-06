@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/frontend/GraphMsf.h"
+#include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace graph_msf {
 
@@ -39,6 +40,9 @@ class GraphMsfRos : public GraphMsf {
                                const Eigen::Matrix<double, 6, 6>& poseCovariance = Eigen::Matrix<double, 6, 6>::Zero(),
                                const Eigen::Matrix<double, 6, 6>& twistCovariance = Eigen::Matrix<double, 6, 6>::Zero());
   long secondsSinceStart_();
+
+  // Commodity functions
+  virtual void readParams_(const ros::NodeHandle& privateNode);
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;

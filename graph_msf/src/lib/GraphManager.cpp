@@ -42,15 +42,15 @@ bool GraphManager::initImuIntegrators(const double g, const std::string& imuGrav
   imuParamsPtr_->setIntegrationCovariance(
       gtsam::Matrix33::Identity(3, 3) *
       graphConfigPtr_->integrationNoiseDensity);  // error committed in integrating position from velocities
-  // imuParamsPtr_->setUse2ndOrderCoriolis(false);
+  imuParamsPtr_->setUse2ndOrderCoriolis(graphConfigPtr_->use2ndOrderCoriolisFlag);
   /// Rotation
   imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity);
-  // imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1e-4, 1e-4, 1e-4));
+  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1, 1, 1) * graphConfigPtr_->omegaCoriolis);
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
-  imuParamsPtr_->biasAccOmegaInt =
-      gtsam::Matrix66::Identity(6, 6) * graphConfigPtr_->biasAccOmegaPreint;  // covariance of bias used for preintegration
+  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) *
+                                     graphConfigPtr_->biasAccOmegaInit);  // covariance of bias used for preintegration
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior, graphConfigPtr_->gyroBiasPrior);
@@ -77,7 +77,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                      .finished();
   isamParams_.relinearizeThreshold = relinTh;
   // Factorization
-  if (graphConfigPtr_->usingCholeskyFactorization) {
+  if (graphConfigPtr_->usingCholeskyFactorizationFlag) {
     isamParams_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
   } else {
     isamParams_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly conditioned problems
@@ -85,13 +85,13 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   // Set graph relinearization skip
   isamParams_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
   // Set relinearization
-  isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearization;
+  isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
   // Enable Nonlinear Error
-  isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearError;
+  isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
   // Cache linearized factors
-  isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactors;
+  isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
   // Enable particular relinearization check
-  isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheck;
+  isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
 
   // Initialize Smoothers -----------------------------------------------
   // Global Graph
@@ -139,7 +139,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   *fallbackFactorsBufferPtr_ = *globalFactorsBufferPtr_;
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  if (graphConfigPtr_->useIsam) {
+  if (graphConfigPtr_->useIsamFlag) {
     addFactorsToSmootherAndOptimize(globalSmootherPtr_, *globalFactorsBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_,
                                     0);
   } else {
@@ -147,7 +147,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   }
 
   /// Add prior factor to graph and update
-  if (graphConfigPtr_->useIsam) {
+  if (graphConfigPtr_->useIsamFlag) {
     addFactorsToSmootherAndOptimize(fallbackSmootherPtr_, *fallbackFactorsBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr,
                                     graphConfigPtr_, 0);
   }
