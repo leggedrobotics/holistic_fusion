@@ -46,7 +46,7 @@ class GraphManager {
   ~GraphManager(){};
 
   // Change Graph
-  bool initImuIntegrators(const double g, const std::string& imuGravityDirection);
+  bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
   gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
                                           bool& relocalizationFlag);
@@ -73,9 +73,8 @@ class GraphManager {
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
-  inline bool estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& initAttitude, double& gravityMagnitude,
-                                      Eigen::Vector3d& gyrBias) {
-    return imuBuffer_.estimateAttitudeFromImu(imuGravityDirection, initAttitude, gravityMagnitude, gyrBias);
+  inline bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
+    return imuBuffer_.estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
   inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {

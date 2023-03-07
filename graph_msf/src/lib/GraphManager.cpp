@@ -27,15 +27,10 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr) : graphC
   fallbackGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
 }
 
-bool GraphManager::initImuIntegrators(const double g, const std::string& imuGravityDirection) {
+bool GraphManager::initImuIntegrators(const double g) {
   // Gravity direction definition
-  if (imuGravityDirection == "up") {
-    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
-  } else if (imuGravityDirection == "down") {
-    imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(g);
-  } else {
-    throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
-  }
+  imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
+
   // Set noise and bias parameters
   /// Position
   imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accNoiseDensity);

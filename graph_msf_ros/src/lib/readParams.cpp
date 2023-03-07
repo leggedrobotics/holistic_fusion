@@ -32,9 +32,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   frame = tryGetParam<std::string>("extrinsics/imuFrame", privateNode);
   staticTransformsPtr_->setImuFrame(frame);
 
-  // IMU gravity definition
-  graphConfigPtr_->imuGravityDirection = tryGetParam<std::string>("launch/imuGravityDirection", privateNode);
-
   // Sensor Parameters
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->maxSearchDeviation = 1.0 / graphConfigPtr_->imuRate;

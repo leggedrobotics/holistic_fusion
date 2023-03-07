@@ -437,8 +437,7 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
   double gravityConstant;
-  if (graphMgrPtr_->estimateAttitudeFromImu(graphConfigPtr_->imuGravityDirection, imuAttitude, gravityConstant,
-                                            graphMgrPtr_->getInitGyrBiasReference())) {
+  if (graphMgrPtr_->estimateAttitudeFromImu(imuAttitude, gravityConstant, graphMgrPtr_->getInitGyrBiasReference())) {
     imuAttitudeRoll = imuAttitude.roll();
     imuAttitudePitch = imuAttitude.pitch();
     if (graphConfigPtr_->estimateGravityFromImuFlag) {
@@ -465,7 +464,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
             << std::endl;
 
   // Gravity
-  graphMgrPtr_->initImuIntegrators(gravityConstant_, graphConfigPtr_->imuGravityDirection);
+  graphMgrPtr_->initImuIntegrators(gravityConstant_);
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
 

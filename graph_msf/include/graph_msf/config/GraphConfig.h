@@ -19,9 +19,6 @@ struct GraphConfig {
   int verboseLevel = 0;
   bool reLocalizeWorldToMapAtStartFlag = false;
 
-  // Strings
-  std::string imuGravityDirection = "up";
-
   // Sensor Config
   bool usingGnssFlag = true;
   bool usingLioFlag = true;
