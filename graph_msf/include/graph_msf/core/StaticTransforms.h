@@ -32,24 +32,33 @@ class StaticTransforms {
   void setWorldFrame(const std::string& s) { worldFrame_ = s; }
   void setMapFrame(const std::string& s) { mapFrame_ = s; }
   void setOdomFrame(const std::string& s) { odomFrame_ = s; }
+  void setInitializationFrame(const std::string& s) { initializationFrame_ = s; }
 
   // Getters ------------------------------------------------------------
   // Returns a left value of the requested transformation
   Eigen::Isometry3d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
-    std::pair<std::string, std::string> framePair(frame1, frame2);
-    return T_frame1_frame2_map_[framePair];
+    if (frame1 == frame2) {
+      return identityTransform_;
+    } else {
+      std::pair<std::string, std::string> framePair(frame1, frame2);
+      return T_frame1_frame2_map_[framePair];
+    }
   }
 
   // Returns a right value to the requested transformation
   const Eigen::Isometry3d& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
-    std::pair<std::string, std::string> framePair(frame1, frame2);
-    auto keyIterator = T_frame1_frame2_map_.find(framePair);
-    if (keyIterator == T_frame1_frame2_map_.end()) {
-      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
-                << std::endl;
-      throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
+    if (frame1 == frame2) {
+      return identityTransform_;
+    } else {
+      std::pair<std::string, std::string> framePair(frame1, frame2);
+      auto keyIterator = T_frame1_frame2_map_.find(framePair);
+      if (keyIterator == T_frame1_frame2_map_.end()) {
+        std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
+                  << std::endl;
+        throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
+      }
+      return keyIterator->second;
     }
-    return keyIterator->second;
   }
 
   // Frames
@@ -57,6 +66,7 @@ class StaticTransforms {
   const std::string& getWorldFrame() { return worldFrame_; }
   const std::string& getMapFrame() { return mapFrame_; }
   const std::string& getOdomFrame() { return odomFrame_; }
+  const std::string& getInitializationFrame() { return initializationFrame_; }
 
   // Functionality ------------------------------------------------------------
   virtual void findTransformations() = 0;
@@ -65,11 +75,15 @@ class StaticTransforms {
   // General container class
   std::map<std::pair<std::string, std::string>, Eigen::Isometry3d> T_frame1_frame2_map_;
 
+  // Return reference object
+  Eigen::Isometry3d identityTransform_ = Eigen::Isometry3d::Identity();
+
   // Required frames
   std::string worldFrame_;
   std::string mapFrame_;
   std::string odomFrame_;
-  std::string imuFrame_;  // If used --> copied to imuCabinFrame_
+  std::string imuFrame_;
+  std::string initializationFrame_;
 };
 
 }  // namespace graph_msf

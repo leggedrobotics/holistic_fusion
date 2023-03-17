@@ -140,8 +140,25 @@ bool GraphMsf::addImuMeasurementAndGetState(
       return false;
     } else {  // Case 1.2: IMU alignment succeeded --> continue next call iteration
       Eigen::Matrix3d R_W_I0_attitude = gtsam::Rot3::Ypr(0.0, imuAttitudePitch, imuAttitudeRoll).matrix();
+      gtsam::Rot3 R_W_Init0_attitude(
+          R_W_I0_attitude *
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+              .rotation()
+              .matrix());
+      // Set yaw of base frame to zero
+      R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
+      R_W_I0_attitude =
+          R_W_Init0_attitude.matrix() *
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getInitializationFrame(), staticTransformsPtr_->getImuFrame())
+              .rotation()
+              .matrix();
       Eigen::Isometry3d T_O_Ik_attitude = Eigen::Isometry3d::Identity();
       T_O_Ik_attitude.matrix().block<3, 3>(0, 0) = R_W_I0_attitude;
+      T_O_Ik_attitude.matrix().block<3, 1>(0, 3) =
+          Eigen::Vector3d(0, 0, 0) -
+          R_W_I0_attitude *
+              staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+                  .translation();
       preIntegratedNavStatePtr_ =
           std::make_shared<SafeNavState>(T_O_Ik_attitude, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0), imuTimeK);
       alignedImuFlag_ = true;
