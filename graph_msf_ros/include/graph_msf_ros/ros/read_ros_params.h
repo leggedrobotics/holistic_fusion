@@ -8,12 +8,12 @@ namespace graph_msf {
 
 template <typename T>
 inline void printKey(const std::string& key, T value) {
-  std::cout << YELLOW_START << "AsopSe " << COLOR_END << key << "  set to: " << value << std::endl;
+  std::cout << YELLOW_START << "GraphMsfRos " << COLOR_END << key << "  set to: " << value << std::endl;
 }
 
 template <>
 inline void printKey(const std::string& key, std::vector<double> vector) {
-  std::cout << YELLOW_START << "AsopSe " << COLOR_END << key << " set to: ";
+  std::cout << YELLOW_START << "GraphMsfRos " << COLOR_END << key << " set to: ";
   for (const auto& element : vector) {
     std::cout << element << ",";
   }
@@ -28,7 +28,7 @@ T tryGetParam(const std::string& key, const ros::NodeHandle& privateNode) {
     printKey(key, value);
     return value;
   } else {
-    throw std::runtime_error("AsopSE - " + key + " not specified.");
+    throw std::runtime_error("GraphMsfRos - " + key + " not specified.");
   }
 }
 
