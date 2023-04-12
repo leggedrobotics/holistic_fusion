@@ -479,7 +479,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   /// Add Zero Pose Factor
   globalFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                              gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::Identity(),
+                                                              gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
                                                               gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   /// Add Zero Velocity Factor
   globalFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
@@ -487,7 +487,7 @@ bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeK
   // Fallback
   /// Add Zero Pose Factor
   fallbackFactorsBuffer_.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
-                                                                gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::Identity(),
+                                                                gtsam::symbol_shorthand::X(closestKeyK), gtsam::Pose3::identity(),
                                                                 gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
   /// Add Zero Velocity Factor
   fallbackFactorsBuffer_.add(gtsam::PriorFactor<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestKeyKm1), gtsam::Vector3::Zero(),
