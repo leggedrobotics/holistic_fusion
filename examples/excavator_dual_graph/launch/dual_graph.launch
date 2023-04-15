@@ -17,14 +17,6 @@
     <!-- Description -->
     <arg name="description_name"          default="/heap_description" />
 
-    <!-- Config Files -->
-    <arg name="graph_config_file"              default="$(find graph_msf_ros)/config/core_graph_config.yaml"/>
-    <arg name="core_graph_parameter_file"      default="$(find graph_msf_ros)/config/core_graph_params.yaml"/>
-    <arg name="excavator_graph_parameter_file" default="$(find excavator_dual_graph)/config/excavator_graph_params.yaml"/>
-    <arg name="core_extrinsic_file"            default="$(find graph_msf_ros)/config/core_extrinsic_params.yaml"/>
-    <arg name="excavator_extrinsic_file"       default="$(find excavator_dual_graph)/config/excavator_extrinsic_params.yaml"/>
-    <arg name="gnss_parameter_file"            default="$(find excavator_dual_graph)/config/excavator_gnss_params.yaml"/>
-
     <!-- Graph -->
     <include file="$(find excavator_dual_graph)/launch/dual_graph_no_urdf.launch" pass_all_args="true"/>
 
