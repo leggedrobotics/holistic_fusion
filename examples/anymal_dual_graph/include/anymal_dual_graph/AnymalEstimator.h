@@ -43,20 +43,14 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
  private:
-  // Publish State
-  void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
-                     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  // Virtual Functions
+  virtual void readParams_(const ros::NodeHandle& privateNode) override;
+  virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+  virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
-  // Parameter Reading Commodity Function
-  void readParams_(const ros::NodeHandle& privateNode);
-
-  void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-
-  void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-
+  // Custom
   void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
-
-  void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
@@ -80,10 +74,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   double gnssHeadingUnaryNoise_ = 1.0;   // in [rad]
 
-  /// Flags
-  bool usingLioFlag_ = true;
-  bool relocalizationAtStart_ = true;
-
   // ROS Related stuff ----------------------------
 
   // Callbacks
@@ -101,47 +91,21 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subLidarOdometry_;
   ros::Subscriber subGnss_;
   tf::TransformListener tfListener_;
-  // TF
-  tf::TransformListener listener_;
 
   // Publishers
-  // Odometry
-  ros::Publisher pubEstOdomImu_;
-  ros::Publisher pubEstMapImu_;
   // Path
-  ros::Publisher pubEstOdomImuPath_;
-  ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubMeasMapGnssPath_;
   ros::Publisher pubMeasMapLidarPath_;
-  // Imu
-  ros::Publisher pubAccelBias_;
-  ros::Publisher pubGyroBias_;
-  // Debug
-  ros::Publisher lidarPoses_;
-  ros::Publisher lidarPath_;
-  ros::Publisher gnssPoses_;
-  ros::Publisher gnssPath_;
+
+  // Messages
+  nav_msgs::PathPtr measGnss_MapGnssPathPtr_;
+  nav_msgs::PathPtr measLiDAR_MapImuPathPtr_;
 
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
-  // TF
-  tf::TransformBroadcaster tfBroadcaster_;
 
   // Initialization
   bool initialized_;
-
-  // Messages
-  // Odometry
-  nav_msgs::OdometryPtr odomImuMsgPtr_;
-  nav_msgs::OdometryPtr mapImuMsgPtr_;
-  // Path
-  nav_msgs::PathPtr estOdomImuPathPtr_;
-  nav_msgs::PathPtr estMapImuPathPtr_;
-  nav_msgs::PathPtr measGnss_MapGnssPathPtr_;
-  nav_msgs::PathPtr measLiDAR_MapImuPathPtr_;
-  // Imu
-  geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;
-  geometry_msgs::Vector3StampedPtr gyroBiasMsgPtr_;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H
