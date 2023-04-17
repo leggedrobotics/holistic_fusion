@@ -21,14 +21,12 @@ class ExcavatorStaticTransforms : public graph_msf::StaticTransformsTf {
   void setLeftGnssFrame(const std::string& s) { leftGnssFrame_ = s; }
   void setRightGnssFrame(const std::string& s) { rightGnssFrame_ = s; }
   void setCabinFrame(const std::string& s) { cabinFrame_ = s; }
-  void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
 
   // Getters ---------------------------------------------------------------
   const std::string& getLidarFrame() { return lidarFrame_; }
   const std::string& getLeftGnssFrame() { return leftGnssFrame_; }
   const std::string& getRightGnssFrame() { return rightGnssFrame_; }
   const std::string& getCabinFrame() { return cabinFrame_; }
-  const std::string& getBaseLinkFrame() { return baseLinkFrame_; }
 
  protected:  // Methods
   void findTransformations() override;
@@ -39,7 +37,6 @@ class ExcavatorStaticTransforms : public graph_msf::StaticTransformsTf {
   std::string leftGnssFrame_;
   std::string rightGnssFrame_;
   std::string cabinFrame_;
-  std::string baseLinkFrame_;
 };
 }  // namespace excavator_se
 #endif  // end AsopStaticTransforms_H

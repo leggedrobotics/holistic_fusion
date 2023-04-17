@@ -20,11 +20,8 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   graph_msf::GraphMsfRos::readParams_(privateNode);
 
   // Set frames
-  /// base_link
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setBaseLinkFrame(frame);
   /// LiDAR frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
+  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
   /// Cabin frame
   frame = graph_msf::tryGetParam<std::string>("extrinsics/cabinFrame", privateNode);
