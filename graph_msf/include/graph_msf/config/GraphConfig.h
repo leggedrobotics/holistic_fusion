@@ -17,10 +17,7 @@ struct GraphConfig {
 
   // General Config
   int verboseLevel = 0;
-  bool reLocalizeWorldToMapAtStart = false;
-
-  // Strings
-  std::string imuGravityDirection = "up";
+  bool reLocalizeWorldToMapAtStartFlag = false;
 
   // Sensor Config
   bool usingGnssFlag = true;
@@ -32,30 +29,37 @@ struct GraphConfig {
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
 
+  // Initialization
+  bool estimateGravityFromImuFlag = true;
+
   // Factor Graph
-  bool useIsam = true;
+  bool useIsamFlag = true;
   double smootherLag = 1.5;
   int additionalOptimizationIterations = 0;
-  bool findUnusedFactorSlots = false;
-  bool enableDetailedResults = false;
+  bool findUnusedFactorSlotsFlag = false;
+  bool enableDetailedResultsFlag = false;
   bool usingFallbackGraphFlag = true;
-  bool usingCholeskyFactorization = true;
+  bool usingCholeskyFactorizationFlag = true;
+  bool usingBiasForPreIntegrationFlag = true;
 
   // Outlier Rejection
-  double gnssOutlierThresold = 0.3;
+  double poseMotionOutlierThresold = 0.3;
 
   // Noise Params
-  // Accelerometer
+  // Position
   double accNoiseDensity = 1e-8;
-  double accBiasRandomWalk = 1e-8;
-  Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
-  // Gyroscope
+  double integrationNoiseDensity = 1.0;
+  bool use2ndOrderCoriolisFlag = true;
+  // Rotation
   double gyroNoiseDensity = 1e-8;
+  double omegaCoriolis = 0.0;
+  // Bias
+  double accBiasRandomWalk = 1e-8;
   double gyroBiasRandomWalk = 1e-8;
+  double biasAccOmegaInit = 0.0;
+  Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
   Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
   // Preintegration
-  double integrationNoiseDensity = 1.0;
-  double biasAccOmegaPreint = 1.0;
 
   // Relinearization
   // Thresholds
@@ -66,10 +70,10 @@ struct GraphConfig {
   double gyroBiasReLinTh = 1e-3;
   // Flags
   int relinearizeSkip = 0;
-  bool enableRelinearization = true;
-  bool evaluateNonlinearError = true;
-  bool cacheLinearizedFactors = true;
-  bool enablePartialRelinearizationCheck = true;
+  bool enableRelinearizationFlag = true;
+  bool evaluateNonlinearErrorFlag = true;
+  bool cacheLinearizedFactorsFlag = true;
+  bool enablePartialRelinearizationCheckFlag = true;
 
   // Other
   double maxSearchDeviation = 0.01;

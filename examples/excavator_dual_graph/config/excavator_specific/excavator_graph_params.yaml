@@ -1,0 +1,30 @@
+# Sensor Params
+sensor_params:
+  lidarOdometryRate: 5
+  gnssRate: 20
+
+# Factor Graph
+graph_params:
+  smootherLag: 1.5                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  usingFallbackGraph: true
+
+# Outlier Rejection
+outlier_params:
+  gnssOutlierThreshold: 0.3 # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
+
+# Noise Parameters
+noise_params:
+  ## IMU
+  ### Position
+  accNoiseDensity: 7.225e-07                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+  ### Rotation
+  gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
+  ### Bias
+  accBiasRandomWalk: 1.0e-06 #gnss:1.0e-06 #lidar: 1e-01              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
+  gyrBiasRandomWalk: 9.33e-08 #gnss:9.33e-08 #lidar: 9.33e-01            #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+  ## LiDAR
+  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseUnaryNoise: [ 100.0, 100.0, 100.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  ## GNSS
+  gnssPositionUnaryNoise: 1.0 # x, y, z of global position
+  gnssHeadingUnaryNoise: 10.0 # yaw

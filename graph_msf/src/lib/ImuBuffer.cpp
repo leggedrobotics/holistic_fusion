@@ -171,8 +171,7 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const do
   return true;
 }
 
-bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, gtsam::Rot3& initAttitude, double& gravityMagnitude,
-                                        Eigen::Vector3d& gyrBias) {
+bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
   // Make sure that imuBuffer is long enough
   if (imuBufferLength_ < (imuRate_ * imuPoseInitWaitSecs_)) {
     throw std::runtime_error("ImuBufferLength is not large enough for initialization. Must be at least 1 second.");
@@ -192,17 +191,11 @@ bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, 
     // Average IMU measurements and set assumed gravity direction
     initAccMean /= timeToImuBuffer_.size();
     gravityMagnitude = initAccMean.norm();
-    Eigen::Vector3d gUnitVec;
-    if (imuGravityDirection == "up") {
-      gUnitVec = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
-    } else if (imuGravityDirection == "down") {
-      gUnitVec = Eigen::Vector3d(0.0, 0.0, -1.0);
-    } else {
-      throw std::runtime_error("Gravity direction must be either 'up' or 'down'.");
-    }
+    Eigen::Vector3d gUnitVecInWorld = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
+
     // Normalize gravity vectors to remove the affect of gravity magnitude from place-to-place
     initAccMean.normalize();
-    initAttitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVec));
+    initAttitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVecInWorld));
 
     // Gyro
     initGyrMean /= timeToImuBuffer_.size();
@@ -211,7 +204,7 @@ bool ImuBuffer::estimateAttitudeFromImu(const std::string& imuGravityDirection, 
     // Calculate robot initial orientation using gravity vector.
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Gravity Magnitude: " << gravityMagnitude << std::endl;
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
-              << " - Gravity Unit Vector(x,y,z): " << gUnitVec.transpose() << std::endl;
+              << " - Gravity Unit Vector(x,y,z): " << gUnitVecInWorld.transpose() << std::endl;
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << GREEN_START
               << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;

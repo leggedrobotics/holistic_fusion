@@ -33,7 +33,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   staticTransformsPtr_->findTransformations();
 
   if (not graph_msf::GraphMsf::setup()) {
-    throw std::runtime_error("CompslamSeInterface could not be initiallized");
+    throw std::runtime_error("GraphMsf could not be initialized");
   }
 
   // Publishers ----------------------------
@@ -45,7 +45,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   // Messages ----------------------------
   initializeMessages_(privateNodePtr);
 
-  std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 
 void ExcavatorEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -66,12 +66,12 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
   // Imu
   subImu_ = privateNode_.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &ExcavatorEstimator::imuCallback_, this,
                                                      ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized IMU cabin subscriber." << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << COLOR_END << " Initialized IMU cabin subscriber." << std::endl;
 
   // LiDAR Odometry
   subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &ExcavatorEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized LiDAR Odometry subscriber." << std::endl;
+  std::cout << YELLOW_START << "ExcavatorEstimator" << COLOR_END << " Initialized LiDAR Odometry subscriber." << std::endl;
 
   // GNSS
   if (graphConfigPtr_->usingGnssFlag) {
@@ -82,7 +82,7 @@ void ExcavatorEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>
     gnssExactSyncPtr_->registerCallback(boost::bind(&ExcavatorEstimator::gnssCallback_, this, _1, _2));
     std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized Gnss subscriber (for both Gnss topics)." << std::endl;
   } else {
-    std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
+    std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START
               << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
               << std::endl;
   }
@@ -113,8 +113,8 @@ void ExcavatorEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPt
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
   // Create Pointer for Carrying State
-  std::shared_ptr<graph_msf::NavState> preIntegratedNavStatePtr;
-  std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
+  std::shared_ptr<graph_msf::SafeNavState> preIntegratedNavStatePtr;
+  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
   // Add Measurement and Get State
   if (graph_msf::GraphMsf::addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
                                                         optimizedStateWithCovarianceAndBiasPtr)) {
@@ -150,7 +150,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
         "Lidar 6D", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     if (odometryCallbackCounter__ > 0) {
-      this->addDualOdometryMeasurement(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
+      this->addDualOdometryMeasurementAndReturnNavState(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
     }
   } else {  // real unary factors
     odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
@@ -229,11 +229,6 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
         leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssL,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
     this->addDualGnssPositionMeasurement(meas_W_t_W_GnssL, W_t_W_GnssL_km1__, estCovarianceXYZ, true, true);
-    //    graph_msf::UnaryMeasurement3D meas_W_t_W_GnssR(
-    //        "Gnss right", dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), gnssRightRate_,
-    //        leftGnssMsgPtr->header.stamp.toSec(), W_t_W_GnssR,
-    //        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
-    //    this->addDualGnssPositionMeasurement(meas_W_t_W_GnssR, W_t_W_GnssR_km1__, estCovarianceXYZ);
   }
   W_t_W_GnssL_km1__ = W_t_W_GnssL;
   W_t_W_GnssR_km1__ = W_t_W_GnssR;
@@ -253,8 +248,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 }
 
 void ExcavatorEstimator::publishState_(
-    const std::shared_ptr<graph_msf::NavState>& navStatePtr,
-    const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+    const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr,
+    const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
   // const double imuTimeK, const Eigen::Matrix4d& T_W_O, const Eigen::Matrix4d& T_O_Ik, const Eigen::Vector3d& Ic_v_W_Ic, const
   // Eigen::Vector3d& I_w_W_I Used transforms
   Eigen::Isometry3d T_I_L = staticTransformsPtr_

@@ -13,17 +13,11 @@
     <arg name="extrinsics_from_urdf"      default="false" />
     <arg name="using_gps"                 default="true" />
     <arg name="using_lio"                 default="true" />
-    <arg name="imu_gravity_direction"     default="up" />
 
     <!-- Description -->
     <arg name="description_name"          default="/heap_description" />
 
-    <!-- Config Files -->
-    <arg name="graph_config_file"         default="$(find excavator_dual_graph)/config/graph_config.yaml"/>
-    <arg name="graph_parameter_file"      default="$(find excavator_dual_graph)/config/graph_params.yaml"/>
-    <arg name="extrinsic_file"            default="$(find excavator_dual_graph)/config/extrinsic_params.yaml"/>
-    <arg name="gnss_parameter_file"       default="$(find excavator_dual_graph)/config/gnss_params.yaml"/>
-
+    <!-- Graph -->
     <include file="$(find excavator_dual_graph)/launch/dual_graph_no_urdf.launch" pass_all_args="true"/>
 
     <!-- Robot Desription -->

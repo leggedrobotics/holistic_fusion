@@ -9,12 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
-message("Eigen Version:" ${EIGEN3_VERSION_STRING})
-message("Eigen Path:" ${Eigen3_DIR})
+message(STATUS "Eigen Version:" ${EIGEN3_VERSION_STRING})
+message(STATUS "Eigen Path:" ${Eigen3_DIR})
 
 find_package(GTSAM REQUIRED)
-message("GTSAM version: ${GTSAM_VERSION}")
-message("GTSAM path: ${GTSAM_DIR}")
+message(STATUS "GTSAM version: ${GTSAM_VERSION}")
+message(STATUS "GTSAM path: ${GTSAM_DIR}")
 
 #generate_messages(
 #  DEPENDENCIES
@@ -77,9 +77,4 @@ install(TARGETS ${PROJECT_NAME}
 
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-)
-
-## Mark cpp header files for installation
-install(DIRECTORY config
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

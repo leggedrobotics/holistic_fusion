@@ -40,11 +40,11 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Publish State
-  void publishState_(const std::shared_ptr<graph_msf::NavState>& preIntegratedNavStatePtr,
-                     const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+                     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
 
   // Parameter Reading Commodity Function
-  void readParams_(const ros::NodeHandle& privateNode);
+  virtual void readParams_(const ros::NodeHandle& privateNode) override;
 
   void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
