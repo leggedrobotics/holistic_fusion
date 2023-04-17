@@ -620,7 +620,8 @@ void GraphManager::activateFallbackGraph() {
 }
 
 gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
-                                                     const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key) {
+                                                     const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
+                                                     const char* callingFunctionName) {
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
   if (true) {
@@ -632,6 +633,8 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::Incr
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
                 << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
                    "not connected. Increase the lag in this case."
+                << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << "CalculateNavStateAtKey called by " << callingFunctionName
                 << COLOR_END << std::endl;
       throw std::out_of_range("");
     }
@@ -684,7 +687,7 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
 
   // Compute entire result
   // NavState
-  gtsam::NavState resultNavState = calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey);
+  gtsam::NavState resultNavState = calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
   // Bias
   gtsam::imuBias::ConstantBias resultBias =
       activeSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentPropagatedKey));
@@ -761,7 +764,7 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::Increm
 
 gtsam::NavState GraphManager::calculateActiveStateAtKey(const gtsam::Key& key) {
   const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
-  return calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, key);
+  return calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, key, __func__);
 }
 
 // Private --------------------------------------------------------------------

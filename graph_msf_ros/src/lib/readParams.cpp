@@ -34,6 +34,9 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Initialization Frame
   frame = tryGetParam<std::string>("extrinsics/initializeZeroYawAndPositionOfFrame", privateNode);
   staticTransformsPtr_->setInitializationFrame(frame);
+  // Base frame
+  frame = tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
+  staticTransformsPtr_->setBaseLinkFrame(frame);
 
   // Sensor Parameters
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);

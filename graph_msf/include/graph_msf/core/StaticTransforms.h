@@ -32,6 +32,7 @@ class StaticTransforms {
   void setWorldFrame(const std::string& s) { worldFrame_ = s; }
   void setMapFrame(const std::string& s) { mapFrame_ = s; }
   void setOdomFrame(const std::string& s) { odomFrame_ = s; }
+  void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
   void setInitializationFrame(const std::string& s) { initializationFrame_ = s; }
 
   // Getters ------------------------------------------------------------
@@ -66,6 +67,7 @@ class StaticTransforms {
   const std::string& getWorldFrame() { return worldFrame_; }
   const std::string& getMapFrame() { return mapFrame_; }
   const std::string& getOdomFrame() { return odomFrame_; }
+  const std::string& getBaseLinkFrame() { return baseLinkFrame_; }
   const std::string& getInitializationFrame() { return initializationFrame_; }
 
   // Functionality ------------------------------------------------------------
@@ -83,6 +85,7 @@ class StaticTransforms {
   std::string mapFrame_;
   std::string odomFrame_;
   std::string imuFrame_;
+  std::string baseLinkFrame_;
   std::string initializationFrame_;
 };
 
