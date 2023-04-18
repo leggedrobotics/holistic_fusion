@@ -1,0 +1,13 @@
+# Sensor Params
+sensor_params:
+  lidarOdometryRate: 5
+  gnssRate: 20
+
+# Noise Parameters
+noise_params:
+ ## LiDAR
+  poseBetweenNoise: [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ] # lidar: [ 1000.0, 1000.0, 1000.0, 100.0, 100.0, 100.0 ] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+  poseUnaryNoise: [ 100.0, 100.0, 100.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  ## GNSS
+  gnssPositionUnaryNoise: 1.0 # x, y, z of global position
+  gnssHeadingUnaryNoise: 10.0 # yaw

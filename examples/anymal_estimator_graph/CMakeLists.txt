@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(anymal_dual_graph)
+project(anymal_estimator_graph)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
   graph_msf
@@ -49,7 +49,7 @@ target_link_libraries(${PROJECT_NAME}
         ${catkin_LIBRARIES})
 
 # Executable
-add_executable(${PROJECT_NAME}_node src/dual_graph_node.cpp)
+add_executable(${PROJECT_NAME}_node src/anymal_estimator_node.cpp)
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 add_dependencies(${PROJECT_NAME}

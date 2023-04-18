@@ -4,7 +4,7 @@
     <arg name="use_sim_time" value="true"/>
 
     <!-- Launch Stack -->
-    <include file="$(find anymal_dual_graph)/launch/dual_graph_no_urdf.launch">
+    <include file="$(find anymal_estimator_graph)/launch/dual_graph_no_urdf.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
     </include>
 

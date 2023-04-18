@@ -94,12 +94,12 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Publishers
   // Path
-  ros::Publisher pubMeasMapGnssPath_;
-  ros::Publisher pubMeasMapLidarPath_;
+  ros::Publisher pubMeasWorldGnssPath_;
+  ros::Publisher pubMeasWorldLidarPath_;
 
   // Messages
-  nav_msgs::PathPtr measGnss_MapGnssPathPtr_;
-  nav_msgs::PathPtr measLiDAR_MapImuPathPtr_;
+  nav_msgs::PathPtr measGnss_worldGnssPathPtr_;
+  nav_msgs::PathPtr measLidar_worldImuPathPtr_;
 
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;

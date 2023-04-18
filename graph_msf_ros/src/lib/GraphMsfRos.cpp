@@ -25,6 +25,9 @@ void GraphMsfRos::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privat
   pubEstOdomImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
   pubEstWorldImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
+  // Imu Bias
+  pubAccelBias_ = privateNodePtr->advertise<geometry_msgs::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
+  pubGyroBias_ = privateNodePtr->advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
 }
 
 void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -36,6 +39,9 @@ void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateN
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   optWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  // Imu Bias
+  accelBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
+  gyroBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
 }
 
 void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,

@@ -59,16 +59,16 @@ void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& pr
   // Super
   graph_msf::GraphMsfRos::initializePublishers_(privateNodePtr);
   // Paths
-  pubMeasMapGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_map_gnss", ROS_QUEUE_SIZE);
-  pubMeasMapLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_map_gnss", ROS_QUEUE_SIZE);
+  pubMeasWorldLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
 }
 
 void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
   // Super
   graph_msf::GraphMsfRos::initializeMessages_(privateNodePtr);
   // Path
-  measGnss_MapGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measLiDAR_MapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measLidar_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -187,17 +187,16 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 
   // Add to path message
   addToPathMsg(
-      measLiDAR_MapImuPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
-      odomLidarPtr->header.stamp,
+      measLidar_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomLidarPtr->header.stamp,
       (compslam_T_Wl_Lk * staticTransformsPtr_
                               ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(),
-                                                   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame())
+                                                   staticTransformsPtr_->getImuFrame())
                               .matrix())
           .block<3, 1>(0, 3),
       graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path
-  pubMeasMapLidarPath_.publish(measLiDAR_MapImuPathPtr_);
+  pubMeasWorldLidarPath_.publish(measLidar_worldImuPathPtr_);
 }
 
 void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
@@ -267,10 +266,10 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   W_t_W_Gnss_km1__ = W_t_W_Gnss;
 
   /// Add GNSS to Path
-  addToPathMsg(measGnss_MapGnssPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
+  addToPathMsg(measGnss_worldGnssPathPtr_, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(),
                gnssMsgPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength * 4);
   /// Publish path
-  pubMeasMapGnssPath_.publish(measGnss_MapGnssPathPtr_);
+  pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
 }
 
 }  // namespace anymal_se
