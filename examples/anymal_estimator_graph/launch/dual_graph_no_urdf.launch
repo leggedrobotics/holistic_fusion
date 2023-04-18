@@ -2,6 +2,7 @@
 <launch>
     <!-- Parameters -->
     <arg name="use_sim_time"              default="false" />
+    <arg name="launch_compslam"           default="true" />
     <param name="use_sim_time"            value="$(arg use_sim_time)"/>
 
     <!-- GMSF Input Topics -->
@@ -10,7 +11,7 @@
     <arg name="gnss_topic_name"           default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
     <!-- Compslam Input Topics -->
-    <arg name="pointcloud_topic_name"            default="/lidar/point_cloud" />
+    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" />
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
@@ -33,7 +34,7 @@
     <arg name="compslam_config_file"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
 
     <!-- Node -->
-    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen"> #launch-prefix="gdb -ex run -args">
+    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen"> # launch-prefix="gdb -ex run -args">
         <!-- Launch Parameters -->
         <param name="launch/usingGnss" type="bool" value="$(arg using_gps)" />
         <param name="launch/usingLio" type="bool" value="$(arg using_lio)" />
@@ -53,23 +54,11 @@
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)" />
     </node>
 
-    <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_estimator_graph)/rviz/gnss_lidar.rviz" />
-
-    <!--node name="gps_path_publisher" type="gps_path_publisher_node" pkg="gps_path_publisher" output="screen" >
-        <param name="gpx_filename"                           value="/home/integration/glattpark_anymal_handdrawn.kml" />
-        <param name="remove_duplicate_nodes"                 value="true" />
-        <param name="output_frame"                           value="enu" />
-        <param name="path_creator/auto_orient_nodes"         value="true" />
-        <param name="path_creator/reset_node_height"         value="true" />
-        <param name="path_creator/keep_relative_node_height" value="true" />
-    </node-->
-
     <!-- TF for Aligning Compslam Map -->
     <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED world 10" />
 
     <!-- Launch compslam -->
-    <include file="$(find compslam_lio)/launch/compslam_lio_asop.launch">
+    <include file="$(find compslam_lio)/launch/compslam_lio_asop.launch" if="$(arg launch_compslam)">
         <arg name="pointcloud_topic_name"           value="$(arg pointcloud_topic_name)" />
         <arg name="imu_topic_name"                  value="$(arg imu_topic_name)" />
         <arg name="config_filename"                 value="$(arg compslam_config_file)" />
