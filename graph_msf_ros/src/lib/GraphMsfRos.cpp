@@ -117,24 +117,24 @@ void GraphMsfRos::publishState_(
   pubEstWorldImu_.publish(estWorldImuMsgPtr_);
 
   // Publish to TF
-  // W_O
-  static tf::Transform transform_W_O;
-  Eigen::Isometry3d T_W_O = navStatePtr->getT_W_O();
-  transform_W_O.setOrigin(tf::Vector3(T_W_O(0, 3), T_W_O(1, 3), T_W_O(2, 3)));
-  Eigen::Quaterniond q_W_O(T_W_O.rotation());
-  transform_W_O.setRotation(tf::Quaternion(q_W_O.x(), q_W_O.y(), q_W_O.z(), q_W_O.w()));
-  tfBroadcaster_.sendTransform(
-      tf::StampedTransform(transform_W_O, ros::Time(timeK), staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getOdomFrame()));
-
   // O_B
-  static tf::Transform transform_O_B;
-  Eigen::Isometry3d T_O_Bk =
-      T_O_Ik * staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getBaseLinkFrame());
-  transform_O_B.setOrigin(tf::Vector3(T_O_Bk(0, 3), T_O_Bk(1, 3), T_O_Bk(2, 3)));
-  Eigen::Quaterniond q_O_I(T_O_Bk.rotation());
-  transform_O_B.setRotation(tf::Quaternion(q_O_I.x(), q_O_I.y(), q_O_I.z(), q_O_I.w()));
-  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_O_B, ros::Time(timeK), staticTransformsPtr_->getOdomFrame(),
-                                                    staticTransformsPtr_->getBaseLinkFrame()));
+  static tf::Transform transform_B_O;
+  Eigen::Isometry3d T_B_Ok =
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
+      T_O_Ik.inverse();
+  transform_B_O.setOrigin(tf::Vector3(T_B_Ok(0, 3), T_B_Ok(1, 3), T_B_Ok(2, 3)));
+  Eigen::Quaterniond q_B_O(T_B_Ok.rotation());
+  transform_B_O.setRotation(tf::Quaternion(q_B_O.x(), q_B_O.y(), q_B_O.z(), q_B_O.w()));
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_B_O, ros::Time(timeK), staticTransformsPtr_->getBaseLinkFrame(),
+                                                    staticTransformsPtr_->getOdomFrame()));
+  // O_W
+  static tf::Transform transform_O_W;
+  Eigen::Isometry3d T_O_W = navStatePtr->getT_W_O().inverse();
+  transform_O_W.setOrigin(tf::Vector3(T_O_W(0, 3), T_O_W(1, 3), T_O_W(2, 3)));
+  Eigen::Quaterniond q_O_W(T_O_W.rotation());
+  transform_O_W.setRotation(tf::Quaternion(q_O_W.x(), q_O_W.y(), q_O_W.z(), q_O_W.w()));
+  tfBroadcaster_.sendTransform(
+      tf::StampedTransform(transform_O_W, ros::Time(timeK), staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame()));
 
   // Publish paths
   // odom->imu
@@ -142,7 +142,7 @@ void GraphMsfRos::publishState_(
                graphConfigPtr_->imuBufferLength * 20);
   pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
   // world->imu
-  addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(timeK), (T_W_O * T_O_Ik).translation(),
+  addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(timeK), (T_O_W.inverse() * T_O_Ik).translation(),
                graphConfigPtr_->imuBufferLength * 20);
   pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
 
