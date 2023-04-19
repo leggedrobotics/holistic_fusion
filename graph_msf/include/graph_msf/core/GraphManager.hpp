@@ -100,7 +100,8 @@ class GraphManager {
  protected:
   // Calculate state at key for graph
   static gtsam::NavState calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
-                                                const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key);
+                                                const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
+                                                const char* callingFunctionName);
 
  private:
   // Methods

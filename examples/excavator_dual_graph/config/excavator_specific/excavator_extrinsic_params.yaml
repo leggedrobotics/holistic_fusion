@@ -1,6 +1,5 @@
 #External Prior/Transform Input
 extrinsics:
-  baseLinkFrame: BASE
   lidarFrame: os_sensor        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
   imuBaseFrame: imu_box__link
   cabinFrame: CABIN

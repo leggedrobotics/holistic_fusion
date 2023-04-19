@@ -1,42 +1,44 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "excavator_dual_graph/ExcavatorEstimator.h"
+// Implementation
+#include "anymal_dual_graph/AnymalEstimator.h"
 
-namespace excavator_se {
+namespace anymal_se {
 
-void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
   double dParam;
   int iParam;
   bool bParam;
   std::string sParam;
 
+  // Check
+  if (!graphConfigPtr_) {
+    throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
+  }
+
   // Call super method
   graph_msf::GraphMsfRos::readParams_(privateNode);
 
   // Set frames
+  /// base_link
+  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setBaseLinkFrame(frame);
   /// LiDAR frame
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
-  /// Cabin frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/cabinFrame", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setCabinFrame(frame);
-  /// Left Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame1", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLeftGnssFrame(frame);
-  /// Right Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame2", privateNode);
-  dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setRightGnssFrame(frame);
+  frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
+  /// Gnss frame
+  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode);
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setGnssFrame(frame);
 
-  // Sensor Parameters
+  // Sensor Params
   lidarRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
-  gnssLeftRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
-  gnssRightRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters
   /// LiDAR Odometry
@@ -51,9 +53,8 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
   gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
-  // GNSS Parameters
+  // Gnss parameters
   if (graphConfigPtr_->usingGnssFlag) {
-    // Gnss parameters
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
     gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
@@ -62,4 +63,4 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 }
 
-}  // namespace excavator_se
+}  // namespace anymal_se
