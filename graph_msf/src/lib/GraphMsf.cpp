@@ -31,13 +31,13 @@ bool GraphMsf::setup() {
   graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_);
 
   // Configs
-  graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlots;
-  graphMgrPtr_->getIsamParamsReference().enableDetailedResults = graphConfigPtr_->enableDetailedResults;
+  graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
+  graphMgrPtr_->getIsamParamsReference().enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
   graphMgrPtr_->getIsamParamsReference().relinearizeSkip = graphConfigPtr_->relinearizeSkip;
-  graphMgrPtr_->getIsamParamsReference().enableRelinearization = graphConfigPtr_->enableRelinearization;
-  graphMgrPtr_->getIsamParamsReference().evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearError;
-  graphMgrPtr_->getIsamParamsReference().cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactors;
-  graphMgrPtr_->getIsamParamsReference().enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheck;
+  graphMgrPtr_->getIsamParamsReference().enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
+  graphMgrPtr_->getIsamParamsReference().evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
+  graphMgrPtr_->getIsamParamsReference().cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
+  graphMgrPtr_->getIsamParamsReference().enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
@@ -80,13 +80,13 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
             .yaw();
     // Set Yaw
-    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->reLocalizeWorldToMapAtStart);
+    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
     Eigen::Vector3d W_t_W_I0 = W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
     // Set Position
-    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->reLocalizeWorldToMapAtStart);
+    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
 
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
@@ -140,8 +140,25 @@ bool GraphMsf::addImuMeasurementAndGetState(
       return false;
     } else {  // Case 1.2: IMU alignment succeeded --> continue next call iteration
       Eigen::Matrix3d R_W_I0_attitude = gtsam::Rot3::Ypr(0.0, imuAttitudePitch, imuAttitudeRoll).matrix();
+      gtsam::Rot3 R_W_Init0_attitude(
+          R_W_I0_attitude *
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+              .rotation()
+              .matrix());
+      // Set yaw of base frame to zero
+      R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
+      R_W_I0_attitude =
+          R_W_Init0_attitude.matrix() *
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getInitializationFrame(), staticTransformsPtr_->getImuFrame())
+              .rotation()
+              .matrix();
       Eigen::Isometry3d T_O_Ik_attitude = Eigen::Isometry3d::Identity();
       T_O_Ik_attitude.matrix().block<3, 3>(0, 0) = R_W_I0_attitude;
+      T_O_Ik_attitude.matrix().block<3, 1>(0, 3) =
+          Eigen::Vector3d(0, 0, 0) -
+          R_W_I0_attitude *
+              staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+                  .translation();
       preIntegratedNavStatePtr_ =
           std::make_shared<SafeNavState>(T_O_Ik_attitude, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0), imuTimeK);
       alignedImuFlag_ = true;
@@ -337,16 +354,17 @@ void GraphMsf::addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_fr
   }
 
   // Gnss jumping?
-  if (!gnssCovarianceViolatedFlag_ && (W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() < graphConfigPtr_->gnssOutlierThresold) {
+  if (!gnssCovarianceViolatedFlag_ &&
+      (W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() < graphConfigPtr_->poseMotionOutlierThresold) {
     ++gnssNotJumpingCounter_;
     if (gnssNotJumpingCounter_ == REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "GMsf" << GREEN_START << " Gnss was not jumping recently. Jumping counter valid again." << COLOR_END
                 << std::endl;
     }
-  } else if ((W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() >= graphConfigPtr_->gnssOutlierThresold) {
+  } else if ((W_t_W_frame_km1 - W_t_W_frame.measurementVector()).norm() >= graphConfigPtr_->poseMotionOutlierThresold) {
     if (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED) {
       std::cout << YELLOW_START << "GMsf" << RED_START << " Gnss was jumping more than the allowed distance of  "
-                << graphConfigPtr_->gnssOutlierThresold << "m.  Reset outlier counter." << COLOR_END << std::endl;
+                << graphConfigPtr_->poseMotionOutlierThresold << "m.  Reset outlier counter." << COLOR_END << std::endl;
     }
     gnssNotJumpingCounter_ = 0;
   }
@@ -435,12 +453,18 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
   gtsam::Rot3 imuAttitude;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
-  if (graphMgrPtr_->estimateAttitudeFromImu(graphConfigPtr_->imuGravityDirection, imuAttitude, gravityConstant_,
-                                            graphMgrPtr_->getInitGyrBiasReference())) {
+  double gravityConstant;
+  if (graphMgrPtr_->estimateAttitudeFromImu(imuAttitude, gravityConstant, graphMgrPtr_->getInitGyrBiasReference())) {
     imuAttitudeRoll = imuAttitude.roll();
     imuAttitudePitch = imuAttitude.pitch();
-    std::cout << YELLOW_START << "GMsf" << COLOR_END
-              << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
+    if (graphConfigPtr_->estimateGravityFromImuFlag) {
+      gravityConstant_ = gravityConstant;
+      std::cout << YELLOW_START << "GMsf" << COLOR_END
+                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
+    } else {
+      std::cout << YELLOW_START << "GMsf" << COLOR_END
+                << " Attitude of IMU is initialized. Gravity Magnitude set to default: " << gravityConstant_ << std::endl;
+    }
     return true;
   } else {
     return false;
@@ -457,7 +481,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
             << std::endl;
 
   // Gravity
-  graphMgrPtr_->initImuIntegrators(gravityConstant_, graphConfigPtr_->imuGravityDirection);
+  graphMgrPtr_->initImuIntegrators(gravityConstant_);
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
 
