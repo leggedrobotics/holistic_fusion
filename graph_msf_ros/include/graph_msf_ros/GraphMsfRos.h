@@ -67,6 +67,9 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubMeasWorldLidarPath_;
   // TF
   tf::TransformBroadcaster tfBroadcaster_;
+  // Imu Bias
+  ros::Publisher pubAccelBias_;
+  ros::Publisher pubGyroBias_;
 
   // Messages
   // Odometry
@@ -80,6 +83,9 @@ class GraphMsfRos : public GraphMsf {
   nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
   nav_msgs::PathPtr measWorldRightGnssPathPtr_;
   nav_msgs::PathPtr measWorldLidarPathPtr_;
+  // Imu Bias
+  geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;
+  geometry_msgs::Vector3StampedPtr gyroBiasMsgPtr_;
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;

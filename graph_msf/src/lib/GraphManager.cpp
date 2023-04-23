@@ -7,6 +7,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 #include "graph_msf/core/GraphManager.hpp"
 
+// Factors
+#include <gtsam/navigation/GPSFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+
 #define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
 
 namespace graph_msf {
@@ -724,7 +729,7 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
 void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
                                                    const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                                    const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                                   const std::shared_ptr<GraphConfig> graphConfigPtr, const int additionalIterations) {
+                                                   const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
