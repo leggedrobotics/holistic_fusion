@@ -43,6 +43,32 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
   W_t_W_GnssL0_ = leftPosition;
 }
 
+void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
+  std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler position." << COLOR_END << std::endl;
+
+  // Initialize Gnss converter
+  if (usingGnssReferenceFlag) {
+    gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
+  } else {
+    gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+  }
+
+  // Get Positions
+  Eigen::Vector3d position;
+  convertNavSatToPosition(accumulatedCoordinates, position);
+
+  // Initial Gnss position
+  W_t_W_GnssL0_ = position;
+}
+
+void GnssHandler::initHandler(const double& initYaw) {
+  std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler yaw." << COLOR_END << std::endl;
+
+  // Get initial global yaw
+  globalAttitudeYaw_ = initYaw;
+  std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initial global yaw is: " << 180 / M_PI * globalAttitudeYaw_ << std::endl;
+}
+
 void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                            Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition) {
   /// Left
@@ -50,6 +76,10 @@ void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordi
 
   /// Right
   rightPosition = gnssSensor_.gpsToCartesian(rightGnssCoordinate(0), rightGnssCoordinate(1), rightGnssCoordinate(2));
+}
+
+void GnssHandler::convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position) {
+  position = gnssSensor_.gpsToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
 }
 
 // Heading is defined as the orthogonal vector pointing from gnssPos2 to gnssPos1, projected to x,y-plane
@@ -75,6 +105,10 @@ Eigen::Vector3d GnssHandler::computeHeading_(const Eigen::Vector3d& gnssPos1, co
 
 double GnssHandler::computeYawFromHeadingVector_(const Eigen::Vector3d& headingVector) {
   return atan2(headingVector(1), headingVector(0));
+}
+
+double GnssHandler::getInitYaw() {
+  return initYaw_;
 }
 
 }  // namespace graph_msf

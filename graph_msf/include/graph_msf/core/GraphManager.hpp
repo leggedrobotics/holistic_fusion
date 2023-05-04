@@ -26,9 +26,6 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/PriorFactor.h>
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
@@ -69,7 +66,7 @@ class GraphManager {
   SafeNavStateWithCovarianceAndBias updateActiveGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
-  gtsam::NavState calculateActiveStateAtKey(const gtsam::Key& key);
+  gtsam::NavState calculateActiveStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
 
   // IMU Buffer interface
   /// Estimate attitude from IMU
@@ -102,7 +99,8 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag,
+                                                const std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
                                                 const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
                                                 const char* callingFunctionName);
 
@@ -123,7 +121,7 @@ class GraphManager {
   static void addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
                                               const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                              const std::shared_ptr<GraphConfig> graphConfigPtr, const int additionalIterations);
+                                              const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
   bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
                       const std::string& name = "lidar");

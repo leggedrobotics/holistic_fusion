@@ -22,6 +22,7 @@ struct GraphConfig {
   // Sensor Config
   bool usingGnssFlag = true;
   bool usingLioFlag = true;
+  bool relocalizationAtStartFlag = true;
 
   // Sensor Params
   double imuRate = 100;

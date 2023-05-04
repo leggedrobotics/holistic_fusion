@@ -26,6 +26,12 @@ class Gnss {
   Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
   void setMercatorReferenceFrame(const Eigen::Vector3d newReferencePoint);
 
+  // Getters.
+  double getReferenceLongitude() { return referenceLongitude_; }
+  double getReferenceLatitude() { return referenceLatitude_; }
+  double getReferenceAltitude() { return referenceAltitude_; }
+  double getReferenceHeading() { return referenceHeading_; }
+
  protected:
   void calculateConversionParameters();
 

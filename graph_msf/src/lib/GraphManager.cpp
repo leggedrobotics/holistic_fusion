@@ -7,6 +7,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 #include "graph_msf/core/GraphManager.hpp"
 
+// Factors
+#include <gtsam/navigation/GPSFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+
 #define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
 
 namespace graph_msf {
@@ -619,7 +624,8 @@ void GraphManager::activateFallbackGraph() {
   }
 }
 
-gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag,
+                                                     const std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
                                                      const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
                                                      const char* callingFunctionName) {
   gtsam::Pose3 resultPose;
@@ -628,6 +634,7 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::Incr
     try {
       resultPose = graphPtr->calculateEstimate<gtsam::Pose3>(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
       resultVelocity = graphPtr->calculateEstimate<gtsam::Vector3>(gtsam::symbol_shorthand::V(key));
+      computeSuccessfulFlag = true;
     } catch (const std::out_of_range& outOfRangeExeception) {
       std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
@@ -636,7 +643,7 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(std::shared_ptr<gtsam::Incr
                 << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << "CalculateNavStateAtKey called by " << callingFunctionName
                 << COLOR_END << std::endl;
-      throw std::out_of_range("");
+      computeSuccessfulFlag = false;
     }
   }
   return gtsam::NavState(resultPose, resultVelocity);
@@ -687,7 +694,9 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
 
   // Compute entire result
   // NavState
-  gtsam::NavState resultNavState = calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
+  bool computeSuccessfulFlag = true;
+  gtsam::NavState resultNavState =
+      calculateNavStateAtKey(computeSuccessfulFlag, activeSmootherPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
   // Bias
   gtsam::imuBias::ConstantBias resultBias =
       activeSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(currentPropagatedKey));
@@ -724,7 +733,7 @@ SafeNavStateWithCovarianceAndBias GraphManager::updateActiveGraphAndGetState(dou
 void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
                                                    const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                                    const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                                   const std::shared_ptr<GraphConfig> graphConfigPtr, const int additionalIterations) {
+                                                   const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
@@ -762,9 +771,9 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::Increm
   }
 }  // namespace graph_msf
 
-gtsam::NavState GraphManager::calculateActiveStateAtKey(const gtsam::Key& key) {
+gtsam::NavState GraphManager::calculateActiveStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key) {
   const std::lock_guard<std::mutex> activelyUSingActiveGraphLock(activelyUsingActiveGraphMutex_);
-  return calculateNavStateAtKey(activeSmootherPtr_, graphConfigPtr_, key, __func__);
+  return calculateNavStateAtKey(computeSuccessfulFlag, activeSmootherPtr_, graphConfigPtr_, key, __func__);
 }
 
 // Private --------------------------------------------------------------------

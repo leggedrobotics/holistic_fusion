@@ -290,10 +290,13 @@ std::shared_ptr<SafeNavState> GraphMsf::addDualOdometryMeasurementAndReturnNavSt
 
   if (graphMgrPtr_->globalGraphActiveFlag()) {  // Case 1: Global graph --> Compute World to Map frame    // Lidar State
                                                 // Calculate imu state of LiDAR timestamp
-    Eigen::Isometry3d T_W_Ij_Graph(graphMgrPtr_->calculateActiveStateAtKey(keyAtMeasurementK).pose().matrix());
-    Eigen::Isometry3d T_M_Ij =
-        Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
-    preIntegratedNavStatePtr_->updateWorldToMap(T_W_Ij_Graph * T_M_Ij.inverse());
+    bool computeSuccessfulFlag = false;
+    Eigen::Isometry3d T_W_Ij_Graph(graphMgrPtr_->calculateActiveStateAtKey(computeSuccessfulFlag, keyAtMeasurementK).pose().matrix());
+    if (computeSuccessfulFlag) {
+      Eigen::Isometry3d T_M_Ij =
+          Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
+      preIntegratedNavStatePtr_->updateWorldToMap(T_W_Ij_Graph * T_M_Ij.inverse());
+    }
   } else if (graphMgrPtr_->fallbackGraphActiveFlag()) {  // Case 1: Fallback graph --> Add pseudo unary factor to fallback graph
     /// Pseudo Unary Factor
     gtsam::Pose3 pseudo_T_W_Ik(
