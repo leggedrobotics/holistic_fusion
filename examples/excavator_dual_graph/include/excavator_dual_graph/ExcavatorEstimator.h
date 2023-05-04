@@ -19,7 +19,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
-#include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
 // Workspace
@@ -40,17 +39,15 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Publish State
-  void publishState_(const std::shared_ptr<graph_msf::NavState>& preIntegratedNavStatePtr,
-                     const std::shared_ptr<graph_msf::NavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  virtual void publishState_(
+      const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
 
-  // Parameter Reading Commodity Function
-  void readParams_(const ros::NodeHandle& privateNode);
-
-  void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-
-  void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-
-  void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
+  // Virtual Functions
+  virtual void readParams_(const ros::NodeHandle& privateNode) override;
+  virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+  virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
+  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
@@ -98,33 +95,14 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // TF
   tf::TransformListener listener_;
 
-  // Last Optimized State Timestamp
-  double lastOptimizedStateTimestamp_ = 0.0;
-
   // Publishers
-  // Odometry
-  ros::Publisher pubEstOdomImu_;
-  ros::Publisher pubEstWorldImu_;
-  ros::Publisher pubOptWorldImu_;
   // Path
-  ros::Publisher pubEstOdomImuPath_;
-  ros::Publisher pubEstWorldImuPath_;
-  ros::Publisher pubOptWorldImuPath_;
   ros::Publisher pubMeasWorldGnssLPath_;
   ros::Publisher pubMeasWorldGnssRPath_;
   ros::Publisher pubMeasWorldLidarPath_;
-  // TF
-  tf::TransformBroadcaster tfBroadcaster_;
 
   // Messages
-  // Odometry
-  nav_msgs::OdometryPtr estOdomImuMsgPtr_;
-  nav_msgs::OdometryPtr estWorldImuMsgPtr_;
-  nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
-  nav_msgs::PathPtr estOdomImuPathPtr_;
-  nav_msgs::PathPtr estWorldImuPathPtr_;
-  nav_msgs::PathPtr optWorldImuPathPtr_;
   nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
   nav_msgs::PathPtr measWorldRightGnssPathPtr_;
   nav_msgs::PathPtr measWorldLidarPathPtr_;

@@ -1,0 +1,54 @@
+# Sensor Params
+sensor_params:
+  imuRate: 100                             #Rate of IMU input (Hz)
+  imuBufferLength: 250
+  imuTimeOffset: 0.0 # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
+
+# Initialization
+initialization_params:
+  estimateGravityFromImu: true # If true, the gravity is estimated in the beginning using the IMU, if false, the value of 9.81 is used
+
+# Factor Graph
+graph_params:
+  useIsam: true # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
+  smootherLag: 2.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  additionalOptimizationIterations: 0                  #Additional iterations of graph optimizer after update with new factors
+  findUnusedFactorSlots: true
+  enableDetailedResults: false
+  usingFallbackGraph: true
+  usingCholeskyFactorization: true # CHOLESKY faster, QR numerically more stable
+  usingBiasForPreIntegration: true
+
+# Outlier Rejection
+outlier_params:
+  poseMotionOutlierThreshold: 0.3 # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
+
+# Noise Parameters
+noise_params:
+  ## IMU
+  ### Position
+  accNoiseDensity: 7.225e-08                 #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+  integrationNoiseDensity: 1.0e-03         #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
+  use2ndOrderCoriolis: true                #Use 2nd order coriolis effect
+  ### Rotation
+  gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
+  omegaCoriolis: 0.0                      #Coriolis effect
+  ### Bias
+  accBiasRandomWalk: 1.0e-05 #gnss:1.0e-06 #lidar: 1e-01              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
+  gyrBiasRandomWalk: 9.33e-08 #gnss:9.33e-08 #lidar: 9.33e-01            #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+  biasAccOmegaInit: 1.0e-03                 #covariance of bias used as initial estimate default: 1.0e-2
+  accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
+  gyrBiasPrior: 0.0                        #Prior/starting value of gyroscope bias
+
+# Relinearization
+relinearization_params:
+  positionReLinTh: 1.0e-02                    #Position linearization threshold
+  rotationReLinTh: 1.0e-02                    #Rotation linearization threshold
+  velocityReLinTh: 1.0e-02                     #Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-05                      #Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-05                      #Gyroscope bias linearization threshold
+  relinearizeSkip: 1
+  enableRelinearization: true
+  evaluateNonlinearError: false
+  cacheLinearizedFactors: true
+  enablePartialRelinearizationCheck: false

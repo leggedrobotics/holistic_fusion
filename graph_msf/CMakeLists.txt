@@ -9,12 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
-message("Eigen Version:" ${EIGEN3_VERSION_STRING})
-message("Eigen Path:" ${Eigen3_DIR})
+message(STATUS "Eigen Version:" ${EIGEN3_VERSION_STRING})
+message(STATUS "Eigen Path:" ${Eigen3_DIR})
 
 find_package(GTSAM REQUIRED)
-message("GTSAM version: ${GTSAM_VERSION}")
-message("GTSAM path: ${GTSAM_DIR}")
+message(STATUS "GTSAM version: ${GTSAM_VERSION}")
+message(STATUS "GTSAM path: ${GTSAM_DIR}")
 
 #generate_messages(
 #  DEPENDENCIES
@@ -47,6 +47,8 @@ add_library(${PROJECT_NAME}
   src/lib/ImuBuffer.cpp
   src/lib/Gnss.cpp
   src/lib/GnssHandler.cpp
+  src/lib/TrajectoryAlignment.cpp
+  src/lib/TrajectoryAlignmentHandler.cpp
   src/lib/NavState.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
 

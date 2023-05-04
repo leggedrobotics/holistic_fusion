@@ -14,8 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
-message("Eigen Version:" ${EIGEN3_VERSION_STRING})
-message("Eigen Path:" ${Eigen3_DIR})
+message(STATUS "Eigen Version:" ${EIGEN3_VERSION_STRING})
+message(STATUS "Eigen Path:" ${Eigen3_DIR})
 
 #generate_messages(
 #  DEPENDENCIES
@@ -47,7 +47,7 @@ add_library(${PROJECT_NAME}
         src/lib/StaticTransformsTf.cpp
         src/lib/StaticTransformsUrdf.cpp
         src/lib/GraphMsfRos.cpp
-)
+        src/lib/readParams.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
@@ -78,6 +78,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark cpp header files for installation
-install(DIRECTORY launch config rviz
+install(DIRECTORY config rviz
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
