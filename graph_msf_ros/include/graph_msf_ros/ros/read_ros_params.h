@@ -27,12 +27,10 @@ T tryGetParam(const std::string& key, const ros::NodeHandle& privateNode) {
   if (privateNode.getParam(key, value)) {
     printKey(key, value);
     return value;
+  } else if (privateNode.getParam("/" + key, value)) {
+    printKey("/" + key, value);
+    return value;
   } else {
-    if (privateNode.getParam("/" + key, value)) {
-      printKey("/" + key, value);
-      return value;
-    }
-
     throw std::runtime_error("GraphMsfRos - " + key + " not specified.");
   }
 }
