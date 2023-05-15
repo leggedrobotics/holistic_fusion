@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>anymal_estimator_graph</name>
+  <name>pure_imu_integration</name>
   <version>0.0.0</version>
 
   <description>

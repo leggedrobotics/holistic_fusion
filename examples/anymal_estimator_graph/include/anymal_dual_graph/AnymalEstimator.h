@@ -77,13 +77,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // ROS Related stuff ----------------------------
 
   // Callbacks
-  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
   bool gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req, graph_msf_msgs::GetPathInEnu::Response& res);
-
-  // Node
-  ros::NodeHandle privateNode_;
 
   // Subscribers
   // Instances
@@ -105,7 +101,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::ServiceServer serverTransformGnssToEnu_;
 
   // Initialization
-  bool initialized_;
+  bool initialized_ = false;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H

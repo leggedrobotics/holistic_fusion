@@ -17,9 +17,10 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-AnymalStaticTransforms::AnymalStaticTransforms(std::shared_ptr<ros::NodeHandle> privateNodePtr)
-    : graph_msf::StaticTransformsTf(*privateNodePtr) {
-  std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
+AnymalStaticTransforms::AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr,
+                                               const graph_msf::StaticTransforms& staticTransforms)
+    : graph_msf::StaticTransformsTf(staticTransforms) {
+  std::cout << YELLOW_START << "AnymalStaticTransforms" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
 void AnymalStaticTransforms::findTransformations() {

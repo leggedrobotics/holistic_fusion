@@ -11,30 +11,10 @@ Please see the LICENSE file that has been included as part of this package.
 namespace anymal_se {
 
 void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
-  // Variables for parameter fetching
-  double dParam;
-  int iParam;
-  bool bParam;
-  std::string sParam;
-
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
   }
-
-  // Call super method
-  graph_msf::GraphMsfRos::readParams_(privateNode);
-
-  // Set frames
-  /// base_link
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setBaseLinkFrame(frame);
-  /// LiDAR frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
-  /// Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setGnssFrame(frame);
 
   // Sensor Params
   lidarRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
@@ -61,6 +41,14 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
   }
+
+  // Set frames
+  /// LiDAR frame
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
+      ->setLidarFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode));
+  /// Gnss frame
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
+      ->setGnssFrame(graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode));
 }
 
 }  // namespace anymal_se

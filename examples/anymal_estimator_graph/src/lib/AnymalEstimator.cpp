@@ -20,12 +20,13 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : privateNode_(*privateNodePtr) {
+AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
   std::cout << YELLOW_START << "AnymalEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
-  graphConfigPtr_ = std::make_shared<graph_msf::GraphConfig>();
-  staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
+  // Extend static transforms
+  staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr, *staticTransformsPtr_);
+  // Implementation specific
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
   trajectoryAlignmentHandlerPtr_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
 
@@ -33,26 +34,12 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
-  if (not this->setup()) {
-    throw std::runtime_error("CompslamSeInterface could not be initiallized");
-  }
-
-  // Publishers ----------------------------
-  initializePublishers_(privateNodePtr);
-
-  // Subscribers ----------------------------
-  initializeSubscribers_(privateNodePtr);
-
   // Server ----------------------------
   initializeServers_(privateNodePtr);
 
-  // Messages ----------------------------
-  initializeMessages_(privateNodePtr);
-
-  initialized_ = false;
   trajectoryAlignmentHandlerPtr_->initHandler();
 
-  std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "AnymalEstimatorGraph" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 
 void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -72,12 +59,6 @@ void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& priv
 }
 
 void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
-  // Imu
-  subImu_ = privateNode_.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &AnymalEstimator::imuCallback_, this,
-                                                     ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END << " Initialized IMU cabin subscriber with topic: " << subImu_.getTopic()
-            << std::endl;
-
   // LiDAR Odometry
   subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
@@ -116,26 +97,6 @@ bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu
   res.gnssEnuPath = *enuPathPtr;
 
   return true;
-}
-
-void AnymalEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
-  // Convert to Eigen
-  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
-  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  // Create pointer for carrying state
-  std::shared_ptr<graph_msf::SafeNavState> preIntegratedNavStatePtr;
-  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
-  // Add measurement and get state
-  if (this->addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
-                                         optimizedStateWithCovarianceAndBiasPtr)) {
-    // Encountered delay
-    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
-      std::cout << RED_START << "ExcavatorEstimator" << COLOR_END << " Encountered delay of "
-                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
-    }
-    // Publish Odometry
-    this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
-  }
 }
 
 void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {

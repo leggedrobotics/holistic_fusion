@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" value="true" />
+
+    <!-- Launch Node -->
+    <include file="$(find pure_imu_integration)/launch/dead_reckoning.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+    </include>
+
+    <!-- RVIZ for Visualization -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find pure_imu_integration)/rviz/imu_integration.rviz" />
+
+</launch>

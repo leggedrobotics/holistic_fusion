@@ -8,7 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "anymal_dual_graph/AnymalEstimator.h"
+#include "pure_imu_integration/ImuIntegrator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {
@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
   ros::MultiThreadedSpinner spinner(4);
 
   // Create Instance
-  anymal_se::AnymalEstimator anymalEstimator(privateNodePtr);
+  imu_integrator::ImuIntegrator imuIntegrator(privateNodePtr);
   spinner.spin();
 
   return 0;
