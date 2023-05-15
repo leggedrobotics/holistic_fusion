@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 // Workspace
 #include "graph_msf/frontend/GraphMsf.h"
@@ -24,13 +25,13 @@ namespace graph_msf {
 
 class GraphMsfRos : public GraphMsf {
  public:
-  GraphMsfRos() {}
+  GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
  protected:
   // Functions that need implementation
   virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
-  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) = 0;
+  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Commodity Functions to be shared
   static void addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
                            const int maxBufferLength);
@@ -44,6 +45,9 @@ class GraphMsfRos : public GraphMsf {
   // Commodity functions
   virtual void readParams_(const ros::NodeHandle& privateNode);
 
+  // Callbacks
+  virtual void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
+
   // Publish State
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
@@ -51,6 +55,9 @@ class GraphMsfRos : public GraphMsf {
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
+
+  // Node
+  ros::NodeHandle privateNode_;
 
  private:
   // Publishers
@@ -70,6 +77,9 @@ class GraphMsfRos : public GraphMsf {
   // Imu Bias
   ros::Publisher pubAccelBias_;
   ros::Publisher pubGyroBias_;
+
+  // Subscribers
+  ros::Subscriber subImu_;
 
   // Messages
   // Odometry

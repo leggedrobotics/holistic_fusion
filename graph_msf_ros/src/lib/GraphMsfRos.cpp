@@ -16,7 +16,33 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : privateNode_(*privateNodePtr) {
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+
+  // Configurations ----------------------------
+  graphConfigPtr_ = std::make_shared<GraphConfig>();
+  staticTransformsPtr_ = std::make_shared<StaticTransforms>();
+
+  // Publishers ----------------------------
+  initializePublishers_(privateNodePtr);
+
+  // Subscribers ----------------------------
+  initializeSubscribers_(privateNodePtr);
+
+  // Messages ----------------------------
+  initializeMessages_(privateNodePtr);
+
+  // Read parameters ----------------------------
+  readParams_(privateNode_);
+
+  // Core class
+  if (not this->setup()) {
+    throw std::runtime_error("GraphMsfRos could not be initialized");
+  }
+}
+
 void GraphMsfRos::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing publishers." << COLOR_END << std::endl;
   // Odometry
   pubEstOdomImu_ = privateNodePtr->advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
   pubEstWorldImu_ = privateNodePtr->advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
@@ -31,6 +57,7 @@ void GraphMsfRos::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privat
 }
 
 void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
   // Odometry
   estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   estWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
@@ -42,6 +69,35 @@ void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateN
   // Imu Bias
   accelBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
   gyroBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
+}
+
+void GraphMsfRos::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing subscribers." << COLOR_END << std::endl;
+  // Imu
+  subImu_ = privateNodePtr->subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
+                                                        ros::TransportHints().tcpNoDelay());
+  std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized IMU cabin subscriber with topic: " << subImu_.getTopic()
+            << std::endl;
+}
+
+void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
+  // Convert to Eigen
+  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
+  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
+  // Create pointer for carrying state
+  std::shared_ptr<graph_msf::SafeNavState> preIntegratedNavStatePtr;
+  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
+  // Add measurement and get state
+  if (this->addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
+                                         optimizedStateWithCovarianceAndBiasPtr)) {
+    // Encountered delay
+    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
+      std::cout << RED_START << "GraphMsfRos" << COLOR_END << " Encountered delay of "
+                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
+    }
+    // Publish Odometry
+    this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  }
 }
 
 void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,

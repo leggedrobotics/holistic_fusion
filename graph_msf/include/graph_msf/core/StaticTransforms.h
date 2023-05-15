@@ -72,7 +72,10 @@ class StaticTransforms {
   const std::string& getInitializationFrame() { return initializationFrame_; }
 
   // Functionality ------------------------------------------------------------
-  virtual void findTransformations() = 0;
+  virtual void findTransformations() {
+    std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " findTransformations() function not implemented." << std::endl;
+    std::runtime_error("findTransformations() function not implemented.");
+  }
 
  protected:  // Members
   // General container class

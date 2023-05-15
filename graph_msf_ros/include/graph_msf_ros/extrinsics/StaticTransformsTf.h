@@ -18,7 +18,7 @@ namespace graph_msf {
 
 class StaticTransformsTf : public StaticTransforms {
  public:
-  StaticTransformsTf(ros::NodeHandle& privateNode);
+  StaticTransformsTf(const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
 
  protected:
   virtual void findTransformations() = 0;

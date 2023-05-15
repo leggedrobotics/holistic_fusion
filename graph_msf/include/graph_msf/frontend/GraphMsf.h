@@ -48,12 +48,15 @@ class GraphMsf {
   // Setup
   bool setup();
 
-  // Required Initialization
+  // Initialization Interface
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                           const std::string& frame2);
   bool initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName);
   bool initYawAndPosition(Eigen::Matrix4d T_O_I);
+
+  // Getters
   bool areYawAndPositionInited();
+  bool areRollAndPitchInited();
 
   // Graph Manipulation
   void activateFallbackGraph();
@@ -118,6 +121,9 @@ class GraphMsf {
 
   // Extrinsics
   std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
+
+  // Initialization
+  void pretendFirstMeasurementReceived();
 
  private:  // Variables -------------
   // Threads

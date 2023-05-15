@@ -51,6 +51,10 @@ bool GraphMsf::areYawAndPositionInited() {
   return foundInitialYawAndPositionFlag_;
 }
 
+bool GraphMsf::areRollAndPitchInited() {
+  return alignedImuFlag_;
+}
+
 void GraphMsf::activateFallbackGraph() {
   if (graphConfigPtr_->usingFallbackGraphFlag) {
     graphMgrPtr_->activateFallbackGraph();
@@ -65,7 +69,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
 
   // Different Modes
-  if (not alignedImuFlag_) {  // Case 1: IMU not yet aligned --> wait for IMU callback to align roll and pitch of IMU
+  if (!alignedImuFlag_) {  // Case 1: IMU not yet aligned --> wait for IMU callback to align roll and pitch of IMU
 
     std::cout << YELLOW_START << "GMsf" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
               << std::endl;
@@ -543,6 +547,10 @@ Eigen::Vector3d GraphMsf::W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W
 
   /// Shift observed Gnss position to IMU frame (instead of Gnss antenna)
   return W_t_W_frame1 + W_t_frame1_frame2;
+}
+
+void GraphMsf::pretendFirstMeasurementReceived() {
+  validFirstMeasurementReceivedFlag_ = true;
 }
 
 }  // namespace graph_msf

@@ -3,11 +3,7 @@
 namespace graph_msf {
 
 void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
-  // Variables for parameter fetching
-  double dParam;
-  int iParam;
-  bool bParam;
-  std::string sParam;
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Reading parameters." << COLOR_END << std::endl;
 
   if (!graphConfigPtr_) {
     throw std::runtime_error("GraphMsfRos: graphConfigPtr must be initialized.");
@@ -16,27 +12,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Configuration
   /// Using Gnss
   graphConfigPtr_->usingGnssFlag = tryGetParam<bool>("launch/usingGnss", privateNode);
-
-  // Set frames
-  /// World
-  std::string frame = tryGetParam<std::string>("extrinsics/worldFrame", privateNode);
-  staticTransformsPtr_->setWorldFrame(frame);
-  /// Map
-  frame = tryGetParam<std::string>("extrinsics/mapFrame", privateNode);
-  staticTransformsPtr_->setMapFrame(frame);
-  /// Odom
-  frame = tryGetParam<std::string>("extrinsics/odomFrame", privateNode);
-  staticTransformsPtr_->setOdomFrame(frame);
-  /// IMU
-  //// Cabin IMU
-  frame = tryGetParam<std::string>("extrinsics/imuFrame", privateNode);
-  staticTransformsPtr_->setImuFrame(frame);
-  // Initialization Frame
-  frame = tryGetParam<std::string>("extrinsics/initializeZeroYawAndPositionOfFrame", privateNode);
-  staticTransformsPtr_->setInitializationFrame(frame);
-  // Base frame
-  frame = tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
-  staticTransformsPtr_->setBaseLinkFrame(frame);
 
   // Sensor Parameters
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);
@@ -93,6 +68,21 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Common Parameters
   graphConfigPtr_->verboseLevel = tryGetParam<int>("common_params/verbosity", privateNode);
   graphConfigPtr_->reLocalizeWorldToMapAtStartFlag = tryGetParam<bool>("common_params/reLocalizeWorldToMapAtStart", privateNode);
+
+  // Set frames
+  /// World
+  staticTransformsPtr_->setWorldFrame(tryGetParam<std::string>("extrinsics/worldFrame", privateNode));
+  /// Map
+  staticTransformsPtr_->setMapFrame(tryGetParam<std::string>("extrinsics/mapFrame", privateNode));
+  /// Odom
+  staticTransformsPtr_->setOdomFrame(tryGetParam<std::string>("extrinsics/odomFrame", privateNode));
+  /// IMU
+  //// Cabin IMU
+  staticTransformsPtr_->setImuFrame(tryGetParam<std::string>("extrinsics/imuFrame", privateNode));
+  // Initialization Frame
+  staticTransformsPtr_->setInitializationFrame(tryGetParam<std::string>("extrinsics/initializeZeroYawAndPositionOfFrame", privateNode));
+  // Base frame
+  staticTransformsPtr_->setBaseLinkFrame(tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode));
 }
 
 }  // namespace graph_msf

@@ -16,7 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-StaticTransformsTf::StaticTransformsTf(ros::NodeHandle& privateNode) {
+StaticTransformsTf::StaticTransformsTf(const graph_msf::StaticTransforms& staticTransforms) : StaticTransforms(staticTransforms) {
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
