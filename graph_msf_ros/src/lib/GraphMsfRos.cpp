@@ -87,6 +87,46 @@ long GraphMsfRos::secondsSinceStart_() {
   return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
 }
 
+void GraphMsfRos::publishOptimizedStateAndBias_(
+    const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  if (optimizedStateWithCovarianceAndBiasPtr != nullptr &&
+      optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
+    // Time of this optimized state
+    lastOptimizedStateTimestamp_ = optimizedStateWithCovarianceAndBiasPtr->getTimeK();
+
+    // Odometry messages
+    // world->imu
+    addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
+                     ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik(),
+                     optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I());
+    pubOptWorldImu_.publish(optWorldImuMsgPtr_);
+
+    // Path
+    // world->imu
+    addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
+                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
+    pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
+
+    // Biases
+    Eigen::Vector3d accelBias = optimizedStateWithCovarianceAndBiasPtr->getAccelerometerBias();
+    Eigen::Vector3d gyroBias = optimizedStateWithCovarianceAndBiasPtr->getGyroscopeBias();
+    // Publish accel bias
+    accelBiasMsgPtr_->header.stamp = ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK());
+    accelBiasMsgPtr_->header.frame_id = staticTransformsPtr_->getImuFrame();
+    accelBiasMsgPtr_->vector.x = accelBias(0);
+    accelBiasMsgPtr_->vector.y = accelBias(1);
+    accelBiasMsgPtr_->vector.z = accelBias(2);
+    pubAccelBias_.publish(accelBiasMsgPtr_);
+    // Publish gyro bias
+    gyroBiasMsgPtr_->header.stamp = ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK());
+    gyroBiasMsgPtr_->header.frame_id = staticTransformsPtr_->getImuFrame();
+    gyroBiasMsgPtr_->vector.x = gyroBias(0);
+    gyroBiasMsgPtr_->vector.y = gyroBias(1);
+    gyroBiasMsgPtr_->vector.z = gyroBias(2);
+    pubGyroBias_.publish(gyroBiasMsgPtr_);
+  }
+}
+
 void GraphMsfRos::publishState_(
     const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
@@ -147,42 +187,7 @@ void GraphMsfRos::publishState_(
   pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
 
   // Optimized estimate ----------------------
-  if (optimizedStateWithCovarianceAndBiasPtr != nullptr &&
-      optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
-    // Time of this optimized state
-    lastOptimizedStateTimestamp_ = optimizedStateWithCovarianceAndBiasPtr->getTimeK();
-
-    // Odometry messages
-    // world->imu
-    addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
-                     ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik(),
-                     optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I());
-    pubOptWorldImu_.publish(optWorldImuMsgPtr_);
-
-    // Path
-    // world->imu
-    addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
-                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
-    pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
-
-    // Biases
-    Eigen::Vector3d accelBias = optimizedStateWithCovarianceAndBiasPtr->getAccelerometerBias();
-    Eigen::Vector3d gyroBias = optimizedStateWithCovarianceAndBiasPtr->getGyroscopeBias();
-    // Publish accel bias
-    accelBiasMsgPtr_->header.stamp = ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK());
-    accelBiasMsgPtr_->header.frame_id = staticTransformsPtr_->getImuFrame();
-    accelBiasMsgPtr_->vector.x = accelBias(0);
-    accelBiasMsgPtr_->vector.y = accelBias(1);
-    accelBiasMsgPtr_->vector.z = accelBias(2);
-    pubAccelBias_.publish(accelBiasMsgPtr_);
-    // Publish gyro bias
-    gyroBiasMsgPtr_->header.stamp = ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK());
-    gyroBiasMsgPtr_->header.frame_id = staticTransformsPtr_->getImuFrame();
-    gyroBiasMsgPtr_->vector.x = gyroBias(0);
-    gyroBiasMsgPtr_->vector.y = gyroBias(1);
-    gyroBiasMsgPtr_->vector.z = gyroBias(2);
-    pubGyroBias_.publish(gyroBiasMsgPtr_);
-  }
+  publishOptimizedStateAndBias_(optimizedStateWithCovarianceAndBiasPtr);
 }
 
 }  // namespace graph_msf

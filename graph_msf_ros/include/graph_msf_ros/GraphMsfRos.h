@@ -45,6 +45,8 @@ class GraphMsfRos : public GraphMsf {
   virtual void readParams_(const ros::NodeHandle& privateNode);
 
   // Publish State
+  void publishOptimizedStateAndBias_(
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
 
