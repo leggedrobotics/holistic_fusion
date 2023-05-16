@@ -24,14 +24,16 @@ namespace graph_msf {
 
 class GraphMsfRos : public GraphMsf {
  public:
-  GraphMsfRos() {}
+  GraphMsfRos() = default;
 
  protected:
   // Functions that need implementation
   virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) = 0;
-  // Commodity Functions to be shared
+
+  // Commodity Functions to be shared -----------------------------------
+  // Static
   static void addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
                            const int maxBufferLength);
   static void addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
@@ -39,16 +41,30 @@ class GraphMsfRos : public GraphMsf {
                                const Eigen::Vector3d& W_w_W_F,
                                const Eigen::Matrix<double, 6, 6>& poseCovariance = Eigen::Matrix<double, 6, 6>::Zero(),
                                const Eigen::Matrix<double, 6, 6>& twistCovariance = Eigen::Matrix<double, 6, 6>::Zero());
+  static void extractCovariancesFromOptimizedState(
+      Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+
+  // Time Measurement
   long secondsSinceStart_();
 
-  // Commodity functions
+  // Parameter Loading -----------------------------------
   virtual void readParams_(const ros::NodeHandle& privateNode);
 
+  // Publishing -----------------------------------
   // Publish State
   void publishOptimizedStateAndBias_(
-      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
+      const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  // Publish Transform to TF
+  void publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,
+                         const Eigen::Isometry3d& T_frame_childFrame);
+
+  // Publish IMU Odometries
+  void publishImuOdom_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+                       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
