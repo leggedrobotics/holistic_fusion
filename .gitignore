@@ -28,6 +28,9 @@ dist/
 
 # VSCode
 .vscode*
+build*
+.cache*
+
 
 # Unit test reports
 TEST*.xml
