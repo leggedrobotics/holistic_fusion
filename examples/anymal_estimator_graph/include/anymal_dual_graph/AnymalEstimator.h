@@ -83,7 +83,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Subscribers
   // Instances
-  ros::Subscriber subImu_;
   ros::Subscriber subLidarOdometry_;
   ros::Subscriber subGnss_;
   tf::TransformListener tfListener_;

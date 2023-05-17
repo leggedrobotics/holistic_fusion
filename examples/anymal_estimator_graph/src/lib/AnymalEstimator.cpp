@@ -34,6 +34,15 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
+  // Publishers ----------------------------
+  initializePublishers_(privateNodePtr);
+
+  // Subscribers ----------------------------
+  initializeSubscribers_(privateNodePtr);
+
+  // Messages ----------------------------
+  initializeMessages_(privateNodePtr);
+
   // Server ----------------------------
   initializeServers_(privateNodePtr);
 
@@ -48,14 +57,6 @@ void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& pr
   // Paths
   pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_map_gnss", ROS_QUEUE_SIZE);
   pubMeasWorldLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
-}
-
-void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
-  // Super
-  graph_msf::GraphMsfRos::initializeMessages_(privateNodePtr);
-  // Path
-  measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  measLidar_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
@@ -76,6 +77,14 @@ void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& p
               << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
               << std::endl;
   }
+}
+
+void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+  // Super
+  graph_msf::GraphMsfRos::initializeMessages_(privateNodePtr);
+  // Path
+  measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  measLidar_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
 void AnymalEstimator::initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
