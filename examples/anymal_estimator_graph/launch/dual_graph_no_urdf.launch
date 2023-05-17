@@ -2,16 +2,12 @@
 <launch>
     <!-- Parameters -->
     <arg name="use_sim_time"              default="false" />
-    <arg name="launch_compslam"           default="true" />
     <param name="use_sim_time"            value="$(arg use_sim_time)"/>
 
     <!-- GMSF Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
     <arg name="lidar_odometry_topic_name" default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />
     <arg name="gnss_topic_name"           default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
-
-    <!-- Compslam Input Topics -->
-    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" />
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
@@ -30,8 +26,6 @@
     <arg name="anymal_gnss_param_file"           default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_gnss_params.yaml"/>
     <arg name="anymal_traj_alignment_param_file" default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_traj_align_params.yaml"/>
 
-    <!-- Compslam Config -->
-    <arg name="compslam_config_file"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
 
     <!-- Node -->
     <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen"> # launch-prefix="gdb -ex run -args">
@@ -56,12 +50,5 @@
 
     <!-- TF for Aligning Compslam Map -->
     <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 world compslam_lio/camera_init_CORRECTED 10" />
-
-    <!-- Launch compslam -->
-    <include file="$(find compslam_lio)/launch/compslam_lio_asop.launch" if="$(arg launch_compslam)">
-        <arg name="pointcloud_topic_name"           value="$(arg pointcloud_topic_name)" />
-        <arg name="imu_topic_name"                  value="$(arg imu_topic_name)" />
-        <arg name="config_filename"                 value="$(arg compslam_config_file)" />
-    </include>
 
 </launch>
