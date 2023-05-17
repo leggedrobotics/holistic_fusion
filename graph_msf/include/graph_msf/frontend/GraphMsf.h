@@ -43,7 +43,7 @@ class GraphMsf {
   // Constructor
   GraphMsf();
   // Destructor
-  ~GraphMsf(){};
+  ~GraphMsf() = default;
 
   // Setup
   bool setup();
@@ -52,9 +52,6 @@ class GraphMsf {
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                           const std::string& frame2);
   bool initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName);
-  bool initYawAndPosition(Eigen::Matrix4d T_O_I);
-
-  // Getters
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
@@ -79,7 +76,7 @@ class GraphMsf {
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
-  inline SafeNavState getLatestPreintegratedNavState() {
+  inline SafeNavState getLatestPreIntegratedNavState() {
     if (preIntegratedNavStatePtr_ != nullptr)
       return *preIntegratedNavStatePtr_;
     else
@@ -100,7 +97,6 @@ class GraphMsf {
 
  protected:
   // Methods -------------
- protected:  // Functions -------------
   /// Worker functions
   //// Set Imu Attitude
   bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);

@@ -13,7 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Main node entry point
 int main(int argc, char** argv) {
   // ROS related
-  ros::init(argc, argv, "laserOdometry");
+  ros::init(argc, argv, "anymal_estimator_graph");
   std::shared_ptr<ros::NodeHandle> privateNodePtr = std::make_shared<ros::NodeHandle>("~");
   /// Do multi-threaded spinner
   ros::MultiThreadedSpinner spinner(4);
