@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "anymal_dual_graph/AnymalStaticTransforms.h"
+#include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 // ROS
 #include <ros/ros.h>

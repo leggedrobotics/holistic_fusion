@@ -8,7 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "anymal_dual_graph/AnymalEstimator.h"
+#include "anymal_estimator_graph/AnymalEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {

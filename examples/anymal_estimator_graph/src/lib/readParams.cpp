@@ -6,7 +6,10 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "anymal_dual_graph/AnymalEstimator.h"
+#include "anymal_estimator_graph/AnymalEstimator.h"
+
+// Project
+#include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 namespace anymal_se {
 
