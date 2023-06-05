@@ -17,46 +17,58 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : privateNode_(*privateNodePtr) {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   graphConfigPtr_ = std::make_shared<GraphConfig>();
   staticTransformsPtr_ = std::make_shared<StaticTransforms>();
 
+  // Wrap up
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initialized." << COLOR_END << std::endl;
+}
+
+bool GraphMsfRos::setup() {
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+
   // Publishers ----------------------------
-  initializePublishers_(privateNodePtr);
+  GraphMsfRos::initializePublishers_(privateNode_);
 
   // Subscribers ----------------------------
-  initializeSubscribers_(privateNodePtr);
+  GraphMsfRos::initializeSubscribers_(privateNode_);
 
   // Messages ----------------------------
-  initializeMessages_(privateNodePtr);
+  GraphMsfRos::initializeMessages_(privateNode_);
 
   // Read parameters ----------------------------
-  readParams_(privateNode_);
+  GraphMsfRos::readParams_(privateNode_);
 
-  // Core class
-  if (not this->setup()) {
+  // Super class
+  if (not graph_msf::GraphMsf::setup()) {
     throw std::runtime_error("GraphMsfRos could not be initialized");
   }
+
+  // Wrap up
+  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+
+  return true;
 }
 
-void GraphMsfRos::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing publishers." << COLOR_END << std::endl;
   // Odometry
-  pubEstOdomImu_ = privateNodePtr->advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstWorldImu_ = privateNodePtr->advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
-  pubOptWorldImu_ = privateNodePtr->advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
   // Paths
-  pubEstOdomImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstWorldImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
-  pubOptWorldImuPath_ = privateNodePtr->advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
   // Imu Bias
-  pubAccelBias_ = privateNodePtr->advertise<geometry_msgs::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
-  pubGyroBias_ = privateNodePtr->advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
+  pubAccelBias_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
+  pubGyroBias_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
 }
 
-void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
   // Odometry
   estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
@@ -71,11 +83,11 @@ void GraphMsfRos::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateN
   gyroBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
 }
 
-void GraphMsfRos::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing subscribers." << COLOR_END << std::endl;
   // Imu
-  subImu_ = privateNodePtr->subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
-                                                        ros::TransportHints().tcpNoDelay());
+  subImu_ = privateNode.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
+                                                    ros::TransportHints().tcpNoDelay());
   std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized IMU cabin subscriber with topic: " << subImu_.getTopic()
             << std::endl;
 }
@@ -151,10 +163,6 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
     poseCovarianceRos.setZero();
     twistCovarianceRos.setZero();
   }
-}
-
-long GraphMsfRos::secondsSinceStart_() {
-  return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
 }
 
 void GraphMsfRos::publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,

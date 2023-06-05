@@ -41,6 +41,12 @@ class StaticTransforms {
   Eigen::Isometry3d& lv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
     if (frame1 == frame2) {
       return identityTransform_;
+    } else if (frame1 == "") {
+      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No frame1 given." << std::endl;
+      throw std::runtime_error("No frame1 given.");
+    } else if (frame2 == "") {
+      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No frame2 given." << std::endl;
+      throw std::runtime_error("No frame2 given.");
     } else {
       std::pair<std::string, std::string> framePair(frame1, frame2);
       return T_frame1_frame2_map_[framePair];
@@ -55,9 +61,9 @@ class StaticTransforms {
       std::pair<std::string, std::string> framePair(frame1, frame2);
       auto keyIterator = T_frame1_frame2_map_.find(framePair);
       if (keyIterator == T_frame1_frame2_map_.end()) {
-        std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2
+        std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " No transform found for " << frame1 << " and " << frame2 << "."
                   << std::endl;
-        throw std::runtime_error("No transform found for " + frame1 + " and " + frame2);
+        throw std::runtime_error("No transform found for " + frame1 + " and " + frame2 + ".");
       }
       return keyIterator->second;
     }

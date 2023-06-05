@@ -14,7 +14,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-StaticTransformsUrdf::StaticTransformsUrdf(ros::NodeHandle& privateNode) {
+StaticTransformsUrdf::StaticTransformsUrdf(const ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "StaticTransformsUrdf" << GREEN_START << " Initializing..." << COLOR_END << std::endl;
   privateNode_ = privateNode;
 }

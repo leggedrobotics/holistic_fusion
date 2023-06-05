@@ -21,7 +21,7 @@ namespace graph_msf {
 
 class StaticTransformsUrdf : public StaticTransforms {
  public:
-  StaticTransformsUrdf(ros::NodeHandle& privateNode);
+  StaticTransformsUrdf(const ros::NodeHandle& privateNode);
   void setup();
 
  protected:
@@ -41,9 +41,11 @@ class StaticTransformsUrdf : public StaticTransforms {
   void getRootTransformations(const KDL::SegmentMap::const_iterator element, std::string rootName = "");
   tf::Transform kdlToTransform(const KDL::Frame& k);
 
+  // ROS
+  ros::NodeHandle privateNode_;
+
  private:
   virtual void findTransformations() = 0;
-  ros::NodeHandle privateNode_;
 };
 }  // namespace graph_msf
 #endif  // end StaticTransformsUrdf_H

@@ -44,9 +44,8 @@ class GraphMsf {
   GraphMsf();
   // Destructor
   ~GraphMsf() = default;
-
   // Setup
-  bool setup();
+  virtual bool setup();
 
   // Initialization Interface
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,

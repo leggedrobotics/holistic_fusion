@@ -26,12 +26,16 @@ namespace graph_msf {
 class GraphMsfRos : public GraphMsf {
  public:
   GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr);
+  // Destructor
+  ~GraphMsfRos() = default;
+  // Setup
+  virtual bool setup() override;
 
  protected:
   // Functions that need implementation
-  virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
-  virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
-  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
+  virtual void initializePublishers_(ros::NodeHandle& privateNode);
+  virtual void initializeMessages_(ros::NodeHandle& privateNode);
+  virtual void initializeSubscribers_(ros::NodeHandle& privateNode);
 
   // Commodity Functions to be shared -----------------------------------
   // Static
@@ -45,9 +49,6 @@ class GraphMsfRos : public GraphMsf {
   static void extractCovariancesFromOptimizedState(
       Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
-
-  // Time Measurement
-  long secondsSinceStart_();
 
   // Parameter Loading -----------------------------------
   virtual void readParams_(const ros::NodeHandle& privateNode);
@@ -68,10 +69,6 @@ class GraphMsfRos : public GraphMsf {
   // Publish IMU Odometries
   void publishImuOdom_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
-
-  // Time
-  std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
-  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
   // Node
   ros::NodeHandle privateNode_;
