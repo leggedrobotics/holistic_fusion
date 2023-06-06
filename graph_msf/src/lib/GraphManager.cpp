@@ -336,7 +336,7 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   }
 
   assert(poseUnaryNoise.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(
+  auto noise = gtsam::noiseModel::Diagonal::Variances(
       (gtsam::Vector(6) << poseUnaryNoise(0), poseUnaryNoise(1), poseUnaryNoise(2), poseUnaryNoise(3), poseUnaryNoise(4), poseUnaryNoise(5))
           .finished());  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
@@ -371,7 +371,7 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   }
 
   assert(poseUnaryNoise.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(
+  auto noise = gtsam::noiseModel::Diagonal::Variances(
       (gtsam::Vector(6) << poseUnaryNoise(0), poseUnaryNoise(1), poseUnaryNoise(2), poseUnaryNoise(3), poseUnaryNoise(4), poseUnaryNoise(5))
           .finished());  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);

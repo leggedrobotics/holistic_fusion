@@ -129,19 +129,19 @@ void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& fra
 }
 
 void GraphMsfRos::addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
-                                   const ros::Time& stamp, const Eigen::Isometry3d& T, const Eigen::Vector3d& W_v_W_F,
-                                   const Eigen::Vector3d& W_w_W_F, const Eigen::Matrix<double, 6, 6>& poseCovariance,
+                                   const ros::Time& stamp, const Eigen::Isometry3d& T, const Eigen::Vector3d& F_v_W_F,
+                                   const Eigen::Vector3d& F_w_W_F, const Eigen::Matrix<double, 6, 6>& poseCovariance,
                                    const Eigen::Matrix<double, 6, 6>& twistCovariance) {
   msgPtr->header.frame_id = fixedFrame;
   msgPtr->child_frame_id = movingFrame;
   msgPtr->header.stamp = stamp;
   tf::poseTFToMsg(isometry3ToTf(T), msgPtr->pose.pose);
-  msgPtr->twist.twist.linear.x = W_v_W_F(0);
-  msgPtr->twist.twist.linear.y = W_v_W_F(1);
-  msgPtr->twist.twist.linear.z = W_v_W_F(2);
-  msgPtr->twist.twist.angular.x = W_w_W_F(0);
-  msgPtr->twist.twist.angular.y = W_w_W_F(1);
-  msgPtr->twist.twist.angular.z = W_w_W_F(2);
+  msgPtr->twist.twist.linear.x = F_v_W_F(0);
+  msgPtr->twist.twist.linear.y = F_v_W_F(1);
+  msgPtr->twist.twist.linear.z = F_v_W_F(2);
+  msgPtr->twist.twist.angular.x = F_w_W_F(0);
+  msgPtr->twist.twist.angular.y = F_w_W_F(1);
+  msgPtr->twist.twist.angular.z = F_w_W_F(2);
 
   for (int i = 0; i < 6; i++) {
     for (int j = 0; j < 6; j++) {
@@ -195,6 +195,10 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) {
   if (optimizedStateWithCovarianceAndBiasPtr != nullptr &&
       optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
+    // Covariances
+    Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
+    extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos, optimizedStateWithCovarianceAndBiasPtr);
+
     // Time of this optimized state
     lastOptimizedStateTimestamp_ = optimizedStateWithCovarianceAndBiasPtr->getTimeK();
 
@@ -202,7 +206,8 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // world->imu
     addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getMapFrame(), staticTransformsPtr_->getImuFrame(),
                      ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik(),
-                     optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I());
+                     optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
+                     poseCovarianceRos, twistCovarianceRos);
     pubOptWorldImu_.publish(optWorldImuMsgPtr_);
 
     // Path
