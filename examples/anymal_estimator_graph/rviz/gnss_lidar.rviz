@@ -156,8 +156,6 @@ Visualization Manager:
           Value: true
         base:
           Value: true
-        base_graph_msf:
-          Value: true
         base_inertia:
           Value: true
         battery:
@@ -193,8 +191,6 @@ Visualization Manager:
         compslam_lio/laser_odom:
           Value: true
         compslam_lio/laser_odom_CORRECTED:
-          Value: true
-        cube:
           Value: true
         depth_camera_front_lower_camera:
           Value: true
@@ -316,8 +312,6 @@ Visualization Manager:
           Value: true
         docking_station__docking_port_link__visual__docking_port_visual:
           Value: true
-        enu:
-          Value: true
         face_front:
           Value: true
         face_rear:
@@ -329,8 +323,6 @@ Visualization Manager:
         feetcenter:
           Value: true
         footprint:
-          Value: true
-        gps:
           Value: true
         ground_plane:
           Value: true
@@ -356,17 +348,11 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        map_graph_msf_replay:
-          Value: true
-        measurement:
+        map_graph_msf:
           Value: true
         odom:
           Value: true
-        odom2:
-          Value: true
         odom_graph_msf:
-          Value: true
-        odom_graph_msf_replay:
           Value: true
         top_shell:
           Value: true
@@ -378,7 +364,7 @@ Visualization Manager:
           Value: true
         wide_angle_camera_rear_camera_parent:
           Value: true
-        world_replay:
+        world:
           Value: true
       Marker Alpha: 1
       Marker Scale: 0.10000000149011612
@@ -387,8 +373,6 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        cube:
-          {}
         odom:
           base:
             LF_HAA_drive:
@@ -527,8 +511,6 @@ Visualization Manager:
               wide_angle_camera_rear_camera:
                 wide_angle_camera_rear_camera_parent:
                   {}
-            gps:
-              {}
             hatch_shell:
               {}
             hbc_receiver:
@@ -538,10 +520,8 @@ Visualization Manager:
             lidar_parent:
               lidar:
                 {}
-            odom2:
-              {}
-            odom_graph_msf_replay:
-              map_graph_msf_replay:
+            odom_graph_msf:
+              map_graph_msf:
                 compslam_lio/camera_init_CORRECTED:
                   compslam_lio/aft_mapped_to_init_CORRECTED:
                     {}
@@ -558,7 +538,7 @@ Visualization Manager:
                     {}
                   compslam_lio/laser_odom_CORRECTED:
                     {}
-              world_replay:
+              world:
                 {}
             top_shell:
               {}
@@ -605,12 +585,6 @@ Visualization Manager:
                 {}
               laser_odom_CORRECTED:
                 {}
-            enu:
-              odom_graph_msf:
-                base_graph_msf:
-                  {}
-                measurement:
-                  {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -810,7 +784,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         LF_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -841,7 +814,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         LF_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -861,7 +833,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         LH_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -892,7 +863,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         LH_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -913,7 +883,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         RF_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -944,7 +913,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         RF_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -964,7 +932,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         RH_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -995,7 +962,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         RH_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -1019,7 +985,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         body_top:
           Alpha: 1
           Show Axes: false
@@ -1028,7 +993,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         depth_camera_front_lower_camera:
           Alpha: 1
           Show Axes: false
@@ -1081,7 +1045,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         face_front:
           Alpha: 1
           Show Axes: false
@@ -1094,17 +1057,14 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         face_shell_rear:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         hatch_shell:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         hbc_receiver:
           Alpha: 1
           Show Axes: false
@@ -1126,7 +1086,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         wide_angle_camera_front_camera:
           Alpha: 1
           Show Axes: false
@@ -1223,7 +1182,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: map_graph_msf_replay
+    Fixed Frame: map_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
@@ -1247,7 +1206,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.133029937744141
+      Distance: 8.89932632446289
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1255,17 +1214,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.2455797791481018
-        Y: 0.809433102607727
-        Z: -0.31568393111228943
+        X: -0.037123821675777435
+        Y: 0.6141852140426636
+        Z: -0.015418697148561478
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.3447997570037842
+      Pitch: 0.7298000454902649
       Target Frame: <Fixed Frame>
-      Yaw: 1.0154534578323364
+      Yaw: 1.1354533433914185
     Saved: ~
 Window Geometry:
   Displays:

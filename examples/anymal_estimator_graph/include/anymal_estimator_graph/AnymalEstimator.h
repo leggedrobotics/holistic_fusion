@@ -40,16 +40,20 @@ namespace anymal_se {
 class AnymalEstimator : public graph_msf::GraphMsfRos {
  public:
   AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
+  // Destructor
+  ~AnymalEstimator() = default;
+  // Setup
+  virtual bool setup() override;
 
  private:
   // Virtual Functions
+  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
+  virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
+  virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
   virtual void readParams_(const ros::NodeHandle& privateNode) override;
-  virtual void initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-  virtual void initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
-  virtual void initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) override;
 
-  // Custom
-  void initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr);
+  // Other
+  void initializeServices_(ros::NodeHandle& privateNode);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;

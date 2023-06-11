@@ -49,6 +49,6 @@
     </node>
 
     <!-- TF for Aligning Compslam Map -->
-    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 world compslam_lio/camera_init_CORRECTED 10" />
+    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_graph_msf compslam_lio/camera_init_CORRECTED 10" />
 
 </launch>

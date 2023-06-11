@@ -21,45 +21,65 @@ Please see the LICENSE file that has been included as part of this package.
 namespace anymal_se {
 
 AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  std::cout << YELLOW_START << "AnymalEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  std::cout << YELLOW_START << "AnymalEstimator" << GREEN_START << " Initializing..." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
-  // Extend static transforms
-  staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr, *staticTransformsPtr_);
-  // Implementation specific
+  // Static transforms
+  staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
+  // GNSS
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
   trajectoryAlignmentHandlerPtr_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
 
-  // Get ROS params and set extrinsics
-  readParams_(privateNode_);
-  staticTransformsPtr_->findTransformations();
-
-  // Publishers ----------------------------
-  initializePublishers_(privateNodePtr);
-
-  // Subscribers ----------------------------
-  initializeSubscribers_(privateNodePtr);
-
-  // Messages ----------------------------
-  initializeMessages_(privateNodePtr);
-
-  // Server ----------------------------
-  initializeServers_(privateNodePtr);
-
-  trajectoryAlignmentHandlerPtr_->initHandler();
+  // Set up
+  if (!AnymalEstimator::setup()) {
+    std::cout << RED_START << "M545EstimatorGraph" << COLOR_END << " Failed to set up." << std::endl;
+    std::runtime_error("M545EstimatorGraph failed to set up.");
+  }
 
   std::cout << YELLOW_START << "AnymalEstimatorGraph" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 
-void AnymalEstimator::initializePublishers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+bool AnymalEstimator::setup() {
+  std::cout << YELLOW_START << "AnymalEstimatorGraph" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+
+  // Super class
+  if (not graph_msf::GraphMsfRos::setup()) {
+    throw std::runtime_error("GraphMsfRos could not be initialized");
+  }
+
+  // Publishers ----------------------------
+  AnymalEstimator::initializePublishers_(privateNode_);
+
+  // Subscribers ----------------------------
+  AnymalEstimator::initializeSubscribers_(privateNode_);
+
+  // Messages ----------------------------
+  AnymalEstimator::initializeMessages_(privateNode_);
+
+  // Server ----------------------------
+  AnymalEstimator::initializeServices_(privateNode_);
+
+  // Read parameters ----------------------------
+  AnymalEstimator::readParams_(privateNode_);
+  staticTransformsPtr_->findTransformations();
+
+  trajectoryAlignmentHandlerPtr_->initHandler();
+
+  // Wrap up ----------------------------
+  std::cout << YELLOW_START << "AnymalEstimatorGraph" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+
+  return true;
+}
+
+void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
   // Super
-  graph_msf::GraphMsfRos::initializePublishers_(privateNodePtr);
+  graph_msf::GraphMsfRos::initializePublishers_(privateNode);
   // Paths
   pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_map_gnss", ROS_QUEUE_SIZE);
   pubMeasWorldLidarPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
 }
 
-void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // LiDAR Odometry
   subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
@@ -74,20 +94,21 @@ void AnymalEstimator::initializeSubscribers_(std::shared_ptr<ros::NodeHandle>& p
               << std::endl;
   } else {
     std::cout << YELLOW_START << "CompslamEstimator" << GREEN_START
-              << " Gnss usage is set to false. Hence, lidar unary factors will be activated after graph initialization." << COLOR_END
-              << std::endl;
+              << " Gnss usage is set to false. Hence, lidar unary factors will "
+                 "be activated after graph initialization."
+              << COLOR_END << std::endl;
   }
 }
 
-void AnymalEstimator::initializeMessages_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
   // Super
-  graph_msf::GraphMsfRos::initializeMessages_(privateNodePtr);
+  graph_msf::GraphMsfRos::initializeMessages_(privateNode);
   // Path
   measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   measLidar_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
-void AnymalEstimator::initializeServers_(std::shared_ptr<ros::NodeHandle>& privateNodePtr) {
+void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
   serverTransformGnssToEnu_ =
       privateNode_.advertiseService("/gnss_coordinates_to_enu_topic", &AnymalEstimator::gnssCoordinatesToENUCallback_, this);
 }
@@ -148,7 +169,9 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 
   if (!areYawAndPositionInited() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
     std::cout << YELLOW_START << "AnymalEstimator" << GREEN_START
-              << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+              << " LiDAR odometry callback is setting global yaw, as it was "
+                 "not set so far."
+              << COLOR_END << std::endl;
     this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
   }
 

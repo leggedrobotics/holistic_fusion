@@ -70,8 +70,15 @@ class GraphMsfRos : public GraphMsf {
   void publishImuOdom_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
+  // Measure time
+  long secondsSinceStart_();
+
   // Node
   ros::NodeHandle privateNode_;
+
+  // Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
  private:
   // Publishers

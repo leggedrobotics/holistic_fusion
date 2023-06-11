@@ -47,6 +47,9 @@ bool GraphMsfRos::setup() {
     throw std::runtime_error("GraphMsfRos could not be initialized");
   }
 
+  // Time
+  startTime_ = std::chrono::high_resolution_clock::now();
+
   // Wrap up
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 
@@ -234,6 +237,11 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     gyroBiasMsgPtr_->vector.z = gyroBias(2);
     pubGyroBias_.publish(gyroBiasMsgPtr_);
   }
+}
+
+long GraphMsfRos::secondsSinceStart_() {
+  currentTime_ = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
 }
 
 // Publish state ---------------------------------------------------------------
