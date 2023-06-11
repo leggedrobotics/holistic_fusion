@@ -113,8 +113,8 @@ void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
       privateNode_.advertiseService("/gnss_coordinates_to_enu_topic", &AnymalEstimator::gnssCoordinatesToENUCallback_, this);
 }
 
-bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req,
-                                                    graph_msf_msgs::GetPathInEnu::Response& res) {
+bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_ros_msgs::GetPathInEnu::Request& req,
+                                                    graph_msf_ros_msgs::GetPathInEnu::Response& res) {
   nav_msgs::PathPtr enuPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
   for (auto& coordinate : req.wgs84Coordinates) {
     Eigen::Vector3d enuCoordinate;

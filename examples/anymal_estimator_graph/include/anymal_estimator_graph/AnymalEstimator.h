@@ -26,10 +26,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
-#include "graph_msf_msgs/GetPathInEnu.h"
-#include "graph_msf_msgs/GetPathInEnuRequest.h"
-#include "graph_msf_msgs/GetPathInEnuResponse.h"
 #include "graph_msf_ros/GraphMsfRos.h"
+#include "graph_msf_ros_msgs/GetPathInEnu.h"
+#include "graph_msf_ros_msgs/GetPathInEnuRequest.h"
+#include "graph_msf_ros_msgs/GetPathInEnuResponse.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -82,7 +82,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
-  bool gnssCoordinatesToENUCallback_(graph_msf_msgs::GetPathInEnu::Request& req, graph_msf_msgs::GetPathInEnu::Response& res);
+  bool gnssCoordinatesToENUCallback_(graph_msf_ros_msgs::GetPathInEnu::Request& req, graph_msf_ros_msgs::GetPathInEnu::Response& res);
 
   // Subscribers
   // Instances

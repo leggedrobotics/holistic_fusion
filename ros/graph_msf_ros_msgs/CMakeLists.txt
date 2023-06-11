@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(graph_msf_msgs)
+project(graph_msf_ros_msgs)
 
 find_package(catkin REQUIRED COMPONENTS
   message_generation
