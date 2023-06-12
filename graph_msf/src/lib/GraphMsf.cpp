@@ -263,10 +263,7 @@ std::shared_ptr<SafeNavState> GraphMsf::addDualOdometryMeasurementAndReturnNavSt
     Eigen::Isometry3d T_M_Ij =
         Eigen::Isometry3d(T_M_Lj) * staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
     preIntegratedNavStatePtr_->updatePoseInMap(T_M_Ij);
-  }
-
-  // Valid measurement received
-  if (!validFirstMeasurementReceivedFlag_) {
+    // Received
     validFirstMeasurementReceivedFlag_ = true;
   }
 

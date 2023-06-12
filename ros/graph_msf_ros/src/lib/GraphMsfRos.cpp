@@ -60,10 +60,12 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing publishers." << COLOR_END << std::endl;
   // Odometry
   pubEstOdomImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_map_imu", ROS_QUEUE_SIZE);
   pubEstWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
+  pubEstMapImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
   pubEstWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
   // Imu Bias
@@ -75,10 +77,12 @@ void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
   // Odometry
   estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  estMapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   estWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   optWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   // Path
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   optWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   // Imu Bias
@@ -170,27 +174,42 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
 
 void GraphMsfRos::publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,
                                     const Eigen::Isometry3d& T_frame_childFrame) {
-  static tf::Transform transform_frame_childFrame;
-  transform_frame_childFrame.setOrigin(tf::Vector3(T_frame_childFrame(0, 3), T_frame_childFrame(1, 3), T_frame_childFrame(2, 3)));
-  Eigen::Quaterniond q_frame_childFrame(T_frame_childFrame.rotation());
-  transform_frame_childFrame.setRotation(
-      tf::Quaternion(q_frame_childFrame.x(), q_frame_childFrame.y(), q_frame_childFrame.z(), q_frame_childFrame.w()));
+  tf::Transform transform_frame_childFrame = graph_msf::isometry3ToTf(T_frame_childFrame);
   tfBroadcaster_.sendTransform(tf::StampedTransform(transform_frame_childFrame, ros::Time(timeStamp), frameName, childFrameName));
 }
 
-void GraphMsfRos::publishImuOdom_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr,
-                                  const Eigen::Matrix<double, 6, 6>& poseCovarianceRos,
-                                  const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) {
-  // odom->imu with 100 Hz
+void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr,
+                                   const Eigen::Matrix<double, 6, 6>& poseCovarianceRos,
+                                   const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) {
+  // Odom->imu with 100 Hz
   addToOdometryMsg(estOdomImuMsgPtr_, staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getImuFrame(),
                    ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(),
                    navStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
   pubEstOdomImu_.publish(estOdomImuMsgPtr_);
-  // world->imu with 100 Hz
+  // Map->imu with 100 Hz
+  addToOdometryMsg(estMapImuMsgPtr_, staticTransformsPtr_->getMapFrame(), staticTransformsPtr_->getImuFrame(),
+                   ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_M_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(),
+                   poseCovarianceRos, twistCovarianceRos);
+  pubEstMapImu_.publish(estMapImuMsgPtr_);
+  // World->imu with 100 Hz
   addToOdometryMsg(estWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
                    ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(),
                    poseCovarianceRos, twistCovarianceRos);
   pubEstWorldImu_.publish(estWorldImuMsgPtr_);
+}
+
+void GraphMsfRos::publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr) {
+  // odom->imu
+  addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), ros::Time(navStatePtr->getTimeK()),
+               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength * 20);
+  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
+  // Map->imu
+  addToPathMsg(estMapImuPathPtr_, staticTransformsPtr_->getMapFrame(), ros::Time(navStatePtr->getTimeK()),
+               navStatePtr->getT_M_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
+  // world->imu
+  addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(navStatePtr->getTimeK()),
+               (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength * 20);
+  pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
 }
 
 void GraphMsfRos::publishOptimizedStateAndBias_(
@@ -207,7 +226,7 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
 
     // Odometry messages
     // world->imu
-    addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getMapFrame(), staticTransformsPtr_->getImuFrame(),
+    addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
                      ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik(),
                      optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
                      poseCovarianceRos, twistCovarianceRos);
@@ -215,7 +234,7 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
 
     // Path
     // world->imu
-    addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getMapFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
+    addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
                  optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
     pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
 
@@ -257,7 +276,7 @@ void GraphMsfRos::publishState_(
   const double& timeK = navStatePtr->getTimeK();
 
   // Odometry messages
-  publishImuOdom_(navStatePtr, poseCovarianceRos, twistCovarianceRos);
+  publishImuOdoms_(navStatePtr, poseCovarianceRos, twistCovarianceRos);
 
   // Publish to TF
   // B_O
@@ -273,14 +292,7 @@ void GraphMsfRos::publishState_(
   publishTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
 
   // Publish paths
-  // odom->imu
-  addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), ros::Time(timeK), T_O_Ik.translation(),
-               graphConfigPtr_->imuBufferLength * 20);
-  pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
-  // world->imu
-  addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(timeK), (T_O_W.inverse() * T_O_Ik).translation(),
-               graphConfigPtr_->imuBufferLength * 20);
-  pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
+  publishImuPaths_(navStatePtr);
 
   // Optimized estimate ----------------------
   publishOptimizedStateAndBias_(optimizedStateWithCovarianceAndBiasPtr, poseCovarianceRos, twistCovarianceRos);

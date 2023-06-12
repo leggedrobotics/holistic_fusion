@@ -67,8 +67,10 @@ class GraphMsfRos : public GraphMsf {
                          const Eigen::Isometry3d& T_frame_childFrame);
 
   // Publish IMU Odometries
-  void publishImuOdom_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
-                       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
+  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
+
+  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr);
 
   // Measure time
   long secondsSinceStart_();
@@ -84,10 +86,12 @@ class GraphMsfRos : public GraphMsf {
   // Publishers
   // Odometry
   ros::Publisher pubEstOdomImu_;
+  ros::Publisher pubEstMapImu_;
   ros::Publisher pubEstWorldImu_;
   ros::Publisher pubOptWorldImu_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
+  ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubEstWorldImuPath_;
   ros::Publisher pubOptWorldImuPath_;
   ros::Publisher pubMeasWorldGnssLPath_;
@@ -105,10 +109,12 @@ class GraphMsfRos : public GraphMsf {
   // Messages
   // Odometry
   nav_msgs::OdometryPtr estOdomImuMsgPtr_;
+  nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
+  nav_msgs::PathPtr estMapImuPathPtr_;
   nav_msgs::PathPtr estWorldImuPathPtr_;
   nav_msgs::PathPtr optWorldImuPathPtr_;
   nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
