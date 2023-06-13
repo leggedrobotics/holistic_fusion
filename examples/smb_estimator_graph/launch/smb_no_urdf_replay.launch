@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" value="true"/>
+    <arg name="dumped_param_file" default="$(find anymal_estimator_graph)/config/dumped_params_d/2023-01-13-16-27-14_anymal-d020-lpc_mission.yaml"/>
+    <arg name="joint_states_topic"       default="/state_estimator/joint_states"/>
+    <arg name="launch_compslam"           default="true" />
+    
+    <!-- Input Topics -->
+    <arg name="imu_topic_name"            default="/sensors/imu" />
+    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" />
+
+    <!-- Load dumped parameters, mainly for description -->
+    <rosparam command="load" file="$(arg dumped_param_file)" />
+
+    <!-- Compslam Config -->
+    <arg name="compslam_config_file"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
+
+    <!-- Robot state publisher -->
+    <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
+        <param name="publish_frequency" value="100"/>
+        <param name="use_tf_static"     value="true"/>
+        <remap from="robot_description" to="anymal_description"/>
+        <remap from="joint_states"      to="$(arg joint_states_topic)"/>
+    </node> -->
+
+    <!-- Launch Stack -->
+    <include file="$(find anymal_estimator_graph)/launch/dual_graph_no_urdf.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)" />
+    </include>
+
+    <!-- Launch compslam -->
+    <include file="$(find compslam_lio)/launch/compslam_lio.launch" if="$(arg launch_compslam)">
+        <arg name="pointcloud_topic_name"           value="$(arg pointcloud_topic_name)" />
+        <arg name="imu_topic_name"                  value="$(arg imu_topic_name)" />
+        <arg name="config_filename"                 value="$(arg compslam_config_file)" />
+    </include>
+
+    <!-- RVIZ for Visualization -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_estimator_graph)/rviz/gnss_lidar.rviz" />
+
+</launch>
