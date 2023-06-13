@@ -1,6 +1,6 @@
 # Sensor Params
 sensor_params:
-  imuRate: 400                            #Rate of IMU input (Hz)
+  imuRate: 200                            #Rate of IMU input (Hz)
   imuBufferLength: 800
   imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
