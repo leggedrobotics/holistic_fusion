@@ -1,0 +1,3 @@
+#External Prior/Transform Input
+extrinsics:
+  lidarFrame: rslidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame

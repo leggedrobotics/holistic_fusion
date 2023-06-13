@@ -1,4 +1,0 @@
-#External Prior/Transform Input
-extrinsics:
-  lidarFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
-  gnssFrame: gps

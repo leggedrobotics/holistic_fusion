@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
   ros::MultiThreadedSpinner spinner(4);
 
   // Create Instance
-  anymal_se::AnymalEstimator anymalEstimator(privateNodePtr);
+  smb_se::SmbEstimator anymalEstimator(privateNodePtr);
   spinner.spin();
 
   return 0;
