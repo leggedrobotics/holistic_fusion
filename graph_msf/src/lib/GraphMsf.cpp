@@ -132,6 +132,9 @@ bool GraphMsf::addImuMeasurementAndGetState(
   // Add measurement to buffer
   graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
 
+  // Locking
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+
   // State Machine in form of if-else statements -----------------
   if (!alignedImuFlag_) {  // Case 1: IMU not aligned
     // Try to align
@@ -163,13 +166,13 @@ bool GraphMsf::addImuMeasurementAndGetState(
           R_W_I0_attitude *
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
                   .translation();
-      preIntegratedNavStatePtr_ =
-          std::make_shared<SafeNavState>(T_O_Ik_attitude, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0), imuTimeK);
+      Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
+      preIntegratedNavStatePtr_ = std::make_shared<SafeNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
       alignedImuFlag_ = true;
       return false;
     }
   } else if (!areYawAndPositionInited()) {  // Case 2: IMU aligned, but yaw and position not initialized, waiting for external
-                                            // initialization, meanwhile publishing initial roll and pitch
+    // initialization, meanwhile publishing initial roll and pitch
     // Printing every second
     if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
       std::cout << YELLOW_START << "GMsf" << COLOR_END << " IMU callback waiting for initialization of global yaw and initial position."

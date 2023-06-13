@@ -1,20 +1,25 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>graph_msf</name>
-  <version>0.0.0</version>
+    <name>graph_msf</name>
+    <version>0.0.0</version>
 
-  <description>
-    State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry and GNSS estimates.
-  </description>
+    <description>
+        State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry
+        and GNSS estimates.
+    </description>
 
-  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
-  <license>BSD</license>
-  <author email="nubertj@ethz.ch">Julian Nubert</author>
+    <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+    <license>BSD</license>
+    <author email="nubertj@ethz.ch">Julian Nubert</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>eigen_conversions</build_depend>
-  <build_depend>cmake_clang_tools</build_depend>
+    <buildtool_depend>catkin</buildtool_depend>
+    <build_depend>cmake_clang_tools</build_depend>
+    <build_depend>Eigen3</build_depend>
+    <build_depend>GTSAM</build_depend>
+    #<build_depend>gtsam_catkin</build_depend>
 
-  <exec_depend>eigen_conversions</exec_depend>
+    <exec_depend>Eigen3</exec_depend>
+    <exec_depend>GTSAM</exec_depend>
+    <exec_depend>gtsam_catkin</exec_depend>
 
 </package>

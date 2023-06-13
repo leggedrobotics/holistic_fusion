@@ -172,10 +172,6 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
 gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc,
                                                       const Eigen::Vector3d& angularVel, bool& relocalizationFlag) {
-  // Keys
-  gtsam::Key oldKey;
-  gtsam::Key newKey;
-
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -183,8 +179,8 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   propagatedStateTime_ = imuTimeK;
 
   // Get new key
-  oldKey = propagatedStateKey_;
-  newKey = newPropagatedStateKey_();
+  gtsam::Key oldKey = propagatedStateKey_;
+  gtsam::Key newKey = newPropagatedStateKey_();
 
   // Add to key buffer
   imuBuffer_.addToKeyBuffer(imuTimeK, newKey);

@@ -5,91 +5,33 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
-#define MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
+#ifndef GMSF_EIGEN_CONVERSIONS_H
+#define GMSF_EIGEN_CONVERSIONS_H
 
 #include <nav_msgs/Odometry.h>
+#include <tf/transform_datatypes.h>
 #include <Eigen/Dense>
 
 namespace graph_msf {
 
-inline Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam) {
-  Eigen::Matrix<double, 6, 6> covRos;
-  covRos.setZero();
-  covRos.block<3, 3>(0, 0) = covGtsam.block<3, 3>(3, 3);
-  covRos.block<3, 3>(3, 3) = covGtsam.block<3, 3>(0, 0);
-  covRos.block<3, 3>(0, 3) = covGtsam.block<3, 3>(3, 0);
-  covRos.block<3, 3>(3, 0) = covGtsam.block<3, 3>(0, 3);
-  return covRos;
-}
+Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam);
 
-inline void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {
-  tf::Quaternion tf_q;
-  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
-  Eigen::Vector3d t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
-  Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
-  T.setIdentity();
-  T.block<3, 3>(0, 0) = q.matrix();
-  T.block<3, 1>(0, 3) = t;
-}
+void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T);
 
-inline void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T) {
-  tf::Quaternion tf_q;
-  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
-  tf::Vector3 tf_t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
-  T = tf::Transform(tf_q, tf_t);
-}
+void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T);
 
-inline tf::Transform matrix3ToTf(const Eigen::Matrix3d& R) {
-  Eigen::Quaterniond q(R);
-  tf::Transform tf_R;
-  tf_R.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
-  tf_R.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-  return tf_R;
-}
+tf::Transform matrix3ToTf(const Eigen::Matrix3d& R);
 
-inline tf::Transform matrix4ToTf(const Eigen::Matrix4d& T) {
-  Eigen::Quaterniond q(T.block<3, 3>(0, 0));
-  tf::Transform tf_T;
-  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
-  tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
-  return tf_T;
-}
+tf::Transform matrix4ToTf(const Eigen::Matrix4d& T);
 
-inline tf::Transform isometry3ToTf(const Eigen::Isometry3d& T) {
-  Eigen::Quaterniond q(T.rotation());
-  tf::Transform tf_T;
-  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
-  tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
-  return tf_T;
-}
+tf::Transform isometry3ToTf(const Eigen::Isometry3d& T);
 
-inline void tfToMatrix4(const tf::Transform& tf_T, Eigen::Matrix4d& T) {
-  tf::Quaternion tf_q = tf_T.getRotation();
-  Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
-  Eigen::Vector3d t(tf_T.getOrigin().getX(), tf_T.getOrigin().getY(), tf_T.getOrigin().getZ());
-  T.setIdentity();
-  T.block<3, 3>(0, 0) = q.matrix();
-  T.block<3, 1>(0, 3) = t;
-}
+void tfToMatrix4(const tf::Transform& tf_T, Eigen::Matrix4d& T);
 
-inline void tfToIsometry3(const tf::Transform& tf_T, Eigen::Isometry3d& T) {
-  tf::Quaternion tf_q = tf_T.getRotation();
-  Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
-  Eigen::Vector3d t(tf_T.getOrigin().getX(), tf_T.getOrigin().getY(), tf_T.getOrigin().getZ());
-  T.setIdentity();
-  T.rotate(q);
-  T.pretranslate(t);
-}
+void tfToIsometry3(const tf::Transform& tf_T, Eigen::Isometry3d& T);
 
-inline tf::Transform pose3ToTf(const Eigen::Matrix3d& T) {
-  Eigen::Quaterniond q(T);
-  tf::Transform tf_T;
-  tf_T.setRotation(tf::Quaternion(q.x(), q.y(), q.z(), q.w()));
-  tf_T.setOrigin(tf::Vector3(T(0, 3), T(1, 3), T(2, 3)));
-  return tf_T;
-}
+tf::Transform pose3ToTf(const Eigen::Matrix3d& T);
 
 }  // namespace graph_msf
 
-#endif  // MENZI_SIM_WS_202111_EIGEN_CONVERSIONS_H
+#endif  // GMSF_EIGEN_CONVERSIONS_H

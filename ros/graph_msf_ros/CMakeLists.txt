@@ -1,6 +1,31 @@
 cmake_minimum_required(VERSION 3.16)
 project(graph_msf_ros)
 
+## Compile as C++17, supported in ROS Noetic and newer
+add_compile_options(-std=c++17)
+
+# Find dependencies ------------------------------------------------------------
+find_package(Eigen3 REQUIRED)
+message("Eigen Version:" ${EIGEN3_VERSION_STRING})
+message("Eigen Path:" ${Eigen3_DIR})
+
+# Color
+if(NOT WIN32)
+  string(ASCII 27 Esc)
+  set(ColourReset "${Esc}[m")
+  set(BoldMagenta "${Esc}[1;35m")
+  set(Magenta     "${Esc}[35m")
+endif()
+
+# March native check
+#include(CheckCXXCompilerFlag)
+#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
+#if(COMPILER_SUPPORTS_MARCH_NATIVE)
+#  add_compile_options("-march=native")
+#  message("${BoldMagenta}INFO: Using -march=native${ColourReset}")
+#endif()
+
+# Catkin
 set(CATKIN_PACKAGE_DEPENDENCIES
   roscpp
   graph_msf
@@ -12,15 +37,6 @@ set(CATKIN_PACKAGE_DEPENDENCIES
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
 )
-
-find_package(Eigen3 REQUIRED)
-message(STATUS "Eigen Version:" ${EIGEN3_VERSION_STRING})
-message(STATUS "Eigen Path:" ${Eigen3_DIR})
-
-#generate_messages(
-#  DEPENDENCIES
-#  std_msgs
-#)
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
@@ -38,7 +54,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
-        ${GTSAM_INCLUDE_DIR}
+        ${EIGEN3_INCLUDE_DIR}
         ${Python3_INCLUDE_DIRS}
 )
 
@@ -47,7 +63,8 @@ add_library(${PROJECT_NAME}
         src/lib/StaticTransformsTf.cpp
         src/lib/StaticTransformsUrdf.cpp
         src/lib/GraphMsfRos.cpp
-        src/lib/readParams.cpp)
+        src/lib/readParams.cpp
+        src/lib/conversions.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
