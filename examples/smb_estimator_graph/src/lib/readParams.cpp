@@ -20,7 +20,8 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Sensor Params
-  lidarRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
+  lidarOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
+  wheelOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryRate", privateNode);
 
   // Noise Parameters
   /// LiDAR Odometry
@@ -33,9 +34,12 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   poseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
 
   // Set frames
-  /// LiDAR frame
+  /// LiDAR odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setLidarFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode));
+      ->setLidarOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
+  /// Wheel Odometry frame
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
+      ->setWheelOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelOdometryFrame", privateNode));
 }
 
 }  // namespace smb_se

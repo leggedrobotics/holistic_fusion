@@ -20,6 +20,8 @@ struct BinaryMeasurement : public Measurement {
 
   virtual MeasurementType measurementType() override { return measurementType_; }
 
+  double timeKm1() const { return timeKm1_; }
+
  protected:
   MeasurementType measurementType_ = MeasurementType::Binary;
   double timeKm1_;

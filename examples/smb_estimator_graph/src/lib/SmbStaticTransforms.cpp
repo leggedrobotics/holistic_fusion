@@ -50,14 +50,14 @@ void SmbStaticTransforms::findTransformations() {
 
   // Imu to LiDAR Link ---
   REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds.";
-  listener_.waitForTransform(imuFrame_, lidarFrame_, ros::Time(0), ros::Duration(1.0));
-  listener_.lookupTransform(imuFrame_, lidarFrame_, ros::Time(0), transform);
+  listener_.waitForTransform(imuFrame_, lidarOdometryFrame_, ros::Time(0), ros::Duration(1.0));
+  listener_.lookupTransform(imuFrame_, lidarOdometryFrame_, ros::Time(0), transform);
   // I_Lidar
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
+  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
-            << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarFrame_).translation() << std::endl;
+            << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
   // Lidar_I
-  lv_T_frame1_frame2(lidarFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarFrame_).inverse();
+  lv_T_frame1_frame2(lidarOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).inverse();
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }

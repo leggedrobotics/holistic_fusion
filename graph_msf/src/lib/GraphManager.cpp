@@ -278,7 +278,8 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
 }
 
 gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                                           const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose) {
+                                                           const Eigen::Matrix<double, 6, 1>& poseBetweenNoise,
+                                                           const gtsam::Pose3& deltaPose, const std::string& measurementType) {
   // Find corresponding keys in graph
   double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
@@ -298,7 +299,7 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
-                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), pose, errorFunction);
+                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), deltaPose, errorFunction);
 
   // Write to graph
   bool success =
@@ -306,13 +307,13 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
 
   // Print summary
   if (!success) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ","
-              << YELLOW_START << " LiDAR PoseBetween factor NOT added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK
-              << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ", "
+              << YELLOW_START << measurementType << " PoseBetween factor NOT added between key " << closestLidarKeyKm1 << " and key "
+              << closestLidarKeyK << COLOR_END << std::endl;
   } else if (graphConfigPtr_->verboseLevel > 1) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ","
-              << GREEN_START << " LiDAR PoseBetween factor added between key " << closestLidarKeyKm1 << " and key " << closestLidarKeyK
-              << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ", "
+              << GREEN_START << measurementType << " PoseBetween factor added between key " << closestLidarKeyKm1 << " and key "
+              << closestLidarKeyK << COLOR_END << std::endl;
   }
 
   return closestLidarKeyK;

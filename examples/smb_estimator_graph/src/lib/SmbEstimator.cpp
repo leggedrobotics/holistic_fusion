@@ -78,6 +78,10 @@ void SmbEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
       "/lidar_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
   REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLidarOdometry_.getTopic() << std::endl;
+
+  // Wheel Odometry
+  subWheelOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
+      "/wheel_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::wheelOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
 }
 
 void SmbEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
@@ -87,29 +91,13 @@ void SmbEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
   measLidar_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
-bool SmbEstimator::gnssCoordinatesToENUCallback_(graph_msf_ros_msgs::GetPathInEnu::Request& req,
-                                                 graph_msf_ros_msgs::GetPathInEnu::Response& res) {
-  nav_msgs::PathPtr enuPathPtr = nav_msgs::PathPtr(new nav_msgs::Path);
-  for (auto& coordinate : req.wgs84Coordinates) {
-    Eigen::Vector3d enuCoordinate;
-    Eigen::Vector3d gnssCoordinate = Eigen::Vector3d(coordinate.latitude, coordinate.longitude, coordinate.altitude);
-    gnssHandlerPtr_->convertNavSatToPosition(gnssCoordinate, enuCoordinate);
-
-    addToPathMsg(enuPathPtr, dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getMapFrame(), ros::Time::now(), enuCoordinate,
-                 std::numeric_limits<int>::max());
-  }
-  res.gnssEnuPath = *enuPathPtr;
-
-  return true;
-}
-
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
-  static int odometryCallbackCounter__ = -1;
-  static std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKm1Ptr__;
+  static int lidarOdometryCallbackCounter__ = -1;
+  static std::shared_ptr<graph_msf::UnaryMeasurement6D> lidarOdometryKm1Ptr__;
 
   // Counter
-  ++odometryCallbackCounter__;
+  ++lidarOdometryCallbackCounter__;
 
   Eigen::Matrix4d compslam_T_Wl_Lk;
   graph_msf::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
@@ -118,44 +106,68 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   double timeK = odomLidarPtr->header.stamp.toSec();
 
   // Measurement
-  std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKPtr;
-  // Create pseudo unary factors
-  if (graphConfigPtr_->usingGnssFlag) {
-    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
-        "Lidar 6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
-        compslam_T_Wl_Lk, poseUnaryNoise_);
-    if (odometryCallbackCounter__ > 0) {
-      this->addDualOdometryMeasurementAndReturnNavState(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
-    }
-  } else {  // real unary factors
-    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
-        "Lidar 6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
-        compslam_T_Wl_Lk, poseUnaryNoise_);
-    this->addUnaryPoseMeasurement(*odometryKPtr);
-  }
+  std::shared_ptr<graph_msf::UnaryMeasurement6D> lidarOdometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
+      "Lidar_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(), int(lidarOdometryRate_), timeK,
+      compslam_T_Wl_Lk, poseUnaryNoise_);
 
-  if (!areYawAndPositionInited() && (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15)) {
+  if (lidarOdometryCallbackCounter__ <= 0) {
+    return;
+  } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
+    this->addUnaryPoseMeasurement(*lidarOdometryKPtr);
+  } else if (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15) {  // Initializing
     REGULAR_COUT << GREEN_START
                  << " LiDAR odometry callback is setting global yaw, as it was "
                     "not set so far."
                  << COLOR_END << std::endl;
-    this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame());
+    this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame());
   }
 
   // Wrap up iteration
-  odometryKm1Ptr__ = odometryKPtr;
+  lidarOdometryKm1Ptr__ = lidarOdometryKPtr;
 
+  // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measLidar_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomLidarPtr->header.stamp,
-               (compslam_T_Wl_Lk * staticTransformsPtr_
-                                       ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(),
-                                                            staticTransformsPtr_->getImuFrame())
-                                       .matrix())
-                   .block<3, 1>(0, 3),
-               graphConfigPtr_->imuBufferLength * 4);
+  addToPathMsg(
+      measLidar_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomLidarPtr->header.stamp,
+      (compslam_T_Wl_Lk * staticTransformsPtr_
+                              ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(),
+                                                   staticTransformsPtr_->getImuFrame())
+                              .matrix())
+          .block<3, 1>(0, 3),
+      graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path
   pubMeasWorldLidarPath_.publish(measLidar_worldImuPathPtr_);
+}
+
+void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdometryKPtr) {
+  // Static members
+  static int wheelOdometryCallbackCounter__ = -1;
+  static Eigen::Isometry3d T_O_Wkm1__;
+  static double timeKm1__ = 0.0;
+
+  // Counter
+  ++wheelOdometryCallbackCounter__;
+
+  // Eigen Type
+  Eigen::Isometry3d T_O_Wk;
+  graph_msf::odomMsgToEigen(*wheelOdometryKPtr, T_O_Wk.matrix());
+  double timeK = wheelOdometryKPtr->header.stamp.toSec();
+
+  if (wheelOdometryCallbackCounter__ > 0) {
+    // Compute Delta
+    Eigen::Isometry3d T_Wkm1_Wk = T_O_Wkm1__.inverse() * T_O_Wk;
+    // Create measurement
+    graph_msf::BinaryMeasurement6D deltaMeasurement("Wheel_odometry_6D",
+                                                    dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(),
+                                                    wheelOdometryRate_, timeKm1__, timeK, T_Wkm1_Wk, poseBetweenNoise_);
+    // Add to graph
+    graph_msf::GraphMsf::addOdometryMeasurement(deltaMeasurement);
+  }
+
+  // Provide next iteration
+  T_O_Wkm1__ = T_O_Wk;
+  timeKm1__ = wheelOdometryKPtr->header.stamp.toSec();
 }
 
 }  // namespace smb_se

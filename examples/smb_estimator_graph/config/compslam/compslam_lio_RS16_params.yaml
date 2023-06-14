@@ -10,7 +10,7 @@ inputCloudRotation: [0.0, 0.0, 0.0]      #Rotation applied to input cloud - ORDE
 forceExtPriorUseMapping : true          #Flag to force use of FULL external prior instead of LaserOdometry TRANSLATION Only Estimate
 extPriorAvailable: true                 #Flag to check if 'Primary' external prior is available
 extOdomFrame: imu                       #External Prior odometry frame name
-extFixedFrame: odom_graph_msf           #External Prior fixed frame name
+extFixedFrame: odom           #External Prior fixed frame name
 extSensorFrame: imu_link                 #External Prior sensor frame name
 extOdomTimeOffset : 0.0                  #Timeoffset (seconds) between LiDAR pointcloud and external source
 fallbackExtPriorAvailable: false         #Flag to check if 'Fallback ' external prior is available

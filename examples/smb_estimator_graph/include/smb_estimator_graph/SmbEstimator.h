@@ -62,7 +62,8 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Config -------------------------------------
 
   // Rates
-  double lidarRate_ = 5.0;
+  double lidarOdometryRate_ = 5.0;
+  double wheelOdometryRate_ = 50.0;
 
   // Noise
   Eigen::Matrix<double, 6, 1> poseBetweenNoise_;
@@ -72,11 +73,12 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  bool gnssCoordinatesToENUCallback_(graph_msf_ros_msgs::GetPathInEnu::Request& req, graph_msf_ros_msgs::GetPathInEnu::Response& res);
+  void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheel_odom_ptr);
 
   // Subscribers
   // Instances
   ros::Subscriber subLidarOdometry_;
+  ros::Subscriber subWheelOdometry_;
   tf::TransformListener tfListener_;
 
   // Publishers

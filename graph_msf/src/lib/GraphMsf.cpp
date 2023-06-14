@@ -225,7 +225,31 @@ bool GraphMsf::addImuMeasurementAndGetState(
   return true;
 }
 
-void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& delta) {}  // TODO
+void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasurement) {
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {
+    return;
+  }
+
+  Eigen::Isometry3d T_fkm1_fk = deltaMeasurement.T_delta();
+
+  // Check frame of measuremnts
+  if (deltaMeasurement.measurementName() != staticTransformsPtr_->getImuFrame()) {
+    T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.frameName()) * T_fkm1_fk *
+                staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.frameName(), staticTransformsPtr_->getImuFrame());
+  }
+
+  const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(
+      deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate(), deltaMeasurement.measurementNoise(),
+      gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
+
+  // Optimize
+  //  {
+  //    // Mutex for optimizeGraph Flag
+  //    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+  //    optimizeGraphFlag_ = true;
+  //  }
+}
 
 void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
   // Valid measurement received
@@ -280,8 +304,9 @@ std::shared_ptr<SafeNavState> GraphMsf::addDualOdometryMeasurementAndReturnNavSt
   const Eigen::Isometry3d T_Ikm1_Ik =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), odometryKm1.frameName()) * T_Lkm1_Lk *
       staticTransformsPtr_->rv_T_frame1_frame2(odometryK.frameName(), staticTransformsPtr_->getImuFrame());
-  const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(
-      odometryKm1.timeK(), odometryK.timeK(), odometryK.measurementRate(), poseBetweenNoise, gtsam::Pose3(T_Ikm1_Ik.matrix()));
+  const gtsam::Key keyAtMeasurementK =
+      graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(odometryKm1.timeK(), odometryK.timeK(), odometryK.measurementRate(), poseBetweenNoise,
+                                                      gtsam::Pose3(T_Ikm1_Ik.matrix()), odometryK.measurementName());
 
   // Trigger Optimization
   {
