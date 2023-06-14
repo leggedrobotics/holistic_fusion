@@ -233,7 +233,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 255; 255; 255
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -252,7 +252,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /graph_msf/est_path_world_imu
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
