@@ -7,10 +7,10 @@ rotateInputCloud: false                  #Flag to rotate input cloud before esti
 inputCloudRotation: [0.0, 0.0, 0.0]      #Rotation applied to input cloud - ORDER YPR(radians) #90 deg = 1.5707963268 rad
 
 #External Prior/Transform Input
-forceExtPriorUseMapping : true          #Flag to force use of FULL external prior instead of LaserOdometry TRANSLATION Only Estimate
-extPriorAvailable: true                 #Flag to check if 'Primary' external prior is available
-extOdomFrame: imu                       #External Prior odometry frame name
-extFixedFrame: odom           #External Prior fixed frame name
+forceExtPriorUseMapping : false          #Flag to force use of FULL external prior instead of LaserOdometry TRANSLATION Only Estimate
+extPriorAvailable: true                  #Flag to check if 'Primary' external prior is available
+extOdomFrame: imu                        #External Prior odometry frame name
+extFixedFrame: odom                      #External Prior fixed frame name
 extSensorFrame: imu_link                 #External Prior sensor frame name
 extOdomTimeOffset : 0.0                  #Timeoffset (seconds) between LiDAR pointcloud and external source
 fallbackExtPriorAvailable: false         #Flag to check if 'Fallback ' external prior is available
@@ -20,7 +20,7 @@ fallbackExtSensorFrame: imu_sensor_frame #Fallback External Prior sensor frame n
 fallbackExtOdomTimeOffset: 0.00         #Timeoffset (seconds) between LiDAR pointcloud and Fallbackexternal source
 
 #MultiScanRegistration
-lidar: VLP-16                  #Choose LiDAR type - options: VLP-16  HDL-32  HDL-64E  O1-16 O1-64 Bperl-32
+lidar: VLP-16                            #Choose LiDAR type - options: VLP-16  HDL-32  HDL-64E  O1-16 O1-64 Bperl-32
 useCloudIntensityandRingFields : false   #Flag to use input pointcloud intensity or ring fields. Converts to custom PointXYZIR instead of PointXYZ. True for Bpearl
 uniformLidarRingDistance: true           # Whether the LiDAR rings are uniformly distributed in elevation, does not hold for e.g. Helios
 ringAngleTolerance: 0.5                  # [deg], Tolerance up to which angle rays are considered to belong to same ring, only impact if argument before is false
@@ -39,7 +39,7 @@ publishDebugArrowsToRemovedFeatures: false
 azimuthBoundaries: [1.1,1.5,1.7,2.2] #ANYmal
 
 #LaserOdometry
-undistortInputCloud: false               #If true External Prior or Motion Model will be used for LiDAR Ego Motion Compensation of input cloud
+undistortInputCloud: true                #If true External Prior or Motion Model will be used for LiDAR Ego Motion Compensation of input cloud
 odomMaxIterations: 25                    #Maximum Number of LO optimization iterations, default 25
 odomMinIterations: 1                     #Minimum Number of LO optimization iterations, default 4, (set 0 to perform only first iteration at minimum) 
 odomDeltaTAbort: 0.05                    #Translation threshold for optimization convergence, deafult 0.1 (m) 
@@ -61,7 +61,7 @@ mapCubeSize: 10.0                        #Size of Cube/Voxel used for saving int
 mapDimensionsInCubes: [101,21,101]       #WxHxD of internal map in CUBE UNITS, default:[21,11,21] #Width,Height,Depth
 mapStartLocationInCubes: [50,10,50]      #Robot start position in internal map in CUBE UNITS, default:[10,5,10] #Width,Height,Depth
 numNeighborSubmapCubes: 4                #Number of Neigboring cubes in +/- direction along each axis to build submap for matching 
-mapDegenEigVal: 40                       #Minimum eignevalue threshold for determining degeneracy of LM optimization, default 30
+mapDegenEigVal: 10                       #Minimum eignevalue threshold for determining degeneracy of LM optimization, default 30
 mapPriorNormThresh: 0.5                  #Max translation threshold between two pointclouds from external odometry to be considered valid input. Determined w.r.t set max robot movement speed
 useSavedSubmapsForInitialization: false  #Use saved submap on disc for initialization
 submapLocalizationInitGuess: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #Initialization guess of robot location in submap - ORDER: XYZ(meters) - YPR(radians)
