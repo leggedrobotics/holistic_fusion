@@ -45,7 +45,7 @@ bool GraphManager::initImuIntegrators(const double g) {
   imuParamsPtr_->setUse2ndOrderCoriolis(graphConfigPtr_->use2ndOrderCoriolisFlag);
   /// Rotation
   imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity);
-  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(1, 1, 1) * graphConfigPtr_->omegaCoriolis);
+  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis);
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
@@ -59,7 +59,7 @@ bool GraphManager::initImuIntegrators(const double g) {
   globalImuBufferPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
   fallbackImuBufferPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
   imuStepPreintegratorPtr_ = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(imuParamsPtr_, *imuBiasPriorPtr_);
-  imuParamsPtr_->print("IMU Preintegration Parameters:");
+  imuParamsPtr_->print("GraphMSF-IMU PreIntegration Parameters:");
   return true;
 }
 
@@ -97,7 +97,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   // Global Graph
   globalSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
                                                                             isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
-  globalSmootherPtr_->params().print("Factor Graph Parameters of global graph.");
+  globalSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of global graph.");
   // Fallback Graph
   fallbackSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
                                                                               isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
@@ -857,10 +857,10 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
 
   // Start integrating with imu_meas.begin()+1 meas to calculate dt, imu_meas.begin() meas was integrated before
   auto currItr = imuMeas.begin();
-  auto prevItr = currItr;
+  auto prevItr = currItr++;
 
   // Calculate dt and integrate IMU measurements for both preintegrators
-  for (++currItr; currItr != imuMeas.end(); ++currItr, ++prevItr) {
+  for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
     imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.head<3>(),          // acc
                                                    currItr->second.tail<3>(),          // gyro

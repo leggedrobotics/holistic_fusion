@@ -21,6 +21,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
 
   // Initialization Params
   graphConfigPtr_->estimateGravityFromImuFlag = tryGetParam<bool>("initialization_params/estimateGravityFromImu", privateNode);
+  graphConfigPtr_->gravityMagnitude = tryGetParam<double>("initialization_params/gravityMagnitude", privateNode);
 
   // Graph Params
   graphConfigPtr_->useIsamFlag = tryGetParam<bool>("graph_params/useIsam", privateNode);

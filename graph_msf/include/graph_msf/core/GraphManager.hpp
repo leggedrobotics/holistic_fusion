@@ -81,7 +81,9 @@ class GraphManager {
 
   // Accessors
   /// Getters
+  Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior; }
   Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior; }
+
   //  auto iterations() const { return additonalIterations_; }
   const State& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }

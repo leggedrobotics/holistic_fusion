@@ -6,7 +6,8 @@ sensor_params:
 
 # Initialization
 initialization_params:
-  estimateGravityFromImu: true            # If true, the gravity is estimated in the beginning using the IMU, if false, the value of 9.81 is used
+  estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU, if false, the value of 9.81 is used
+  gravityMagnitude: 9.80600                   # If estimateGravityFromImu is false, this value is used as gravity
 
 # Factor Graph
 graph_params:
@@ -28,15 +29,15 @@ noise_params:
   ## IMU
   ### Position
   accNoiseDensity: 7.84e-04               #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
-  integrationNoiseDensity: 1.0e-03        #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
+  integrationNoiseDensity: 1.0e-07        #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   use2ndOrderCoriolis: true               #Use 2nd order coriolis effect
   ### Rotation
   gyrNoiseDensity: 3.4906585e-05          #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
-  omegaCoriolis: 0.0                      #Coriolis effect
+  omegaCoriolis: 1.07e-04                     #Coriolis effect
   ### Bias
   accBiasRandomWalk: 1.0e-03              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   gyrBiasRandomWalk: 9.33e-04             #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
-  biasAccOmegaInit: 1.0e-02               #covariance of bias used as initial estimate default: 1.0e-2
+  biasAccOmegaInit: 1.0e-07               #covariance of bias used as initial estimate default: 1.0e-2
   accBiasPrior: 0.0                       #Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       #Prior/starting value of gyroscope bias
 

@@ -150,9 +150,6 @@ class GraphMsf {
   /// Yaw
   double lastGnssYaw_W_I_;
 
-  /// Gravity
-  double gravityConstant_ = 9.81;  // Will be overwritten
-
   // Counter
   long gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
   long imuCallbackCounter_ = 0;

@@ -482,20 +482,30 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
 
 /// Worker Functions -----------------------
 bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
-  gtsam::Rot3 imuAttitude;
+  gtsam::Rot3 R_W_I_rollPitch;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
-  double gravityConstant;
-  if (graphMgrPtr_->estimateAttitudeFromImu(imuAttitude, gravityConstant, graphMgrPtr_->getInitGyrBiasReference())) {
-    imuAttitudeRoll = imuAttitude.roll();
-    imuAttitudePitch = imuAttitude.pitch();
+  double estimatedGravityMagnitude;
+  if (graphMgrPtr_->estimateAttitudeFromImu(R_W_I_rollPitch, estimatedGravityMagnitude, graphMgrPtr_->getInitGyrBiasReference())) {
+    imuAttitudeRoll = R_W_I_rollPitch.roll();
+    imuAttitudePitch = R_W_I_rollPitch.pitch();
     if (graphConfigPtr_->estimateGravityFromImuFlag) {
-      gravityConstant_ = gravityConstant;
+      graphConfigPtr_->gravityMagnitude = estimatedGravityMagnitude;
       std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
+                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << estimatedGravityMagnitude << std::endl;
     } else {
+      std::cout << YELLOW_START << "GMsf" << COLOR_END << " Estimated gravity magnitude from IMU is: " << estimatedGravityMagnitude
+                << std::endl;
       std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " Attitude of IMU is initialized. Gravity Magnitude set to default: " << gravityConstant_ << std::endl;
+                << " This gravity is not used, because estimateGravityFromImu is set to false. Gravity set to "
+                << graphConfigPtr_->gravityMagnitude << "." << std::endl;
+      gtsam::Vector3 gravityVector = gtsam::Vector3(0, 0, graphConfigPtr_->gravityMagnitude);
+      gtsam::Vector3 estimatedGravityVector = gtsam::Vector3(0, 0, estimatedGravityMagnitude);
+      gtsam::Vector3 gravityVectorError = estimatedGravityVector - gravityVector;
+      gtsam::Vector3 gravityVectorErrorInImuFrame = R_W_I_rollPitch.inverse().rotate(gravityVectorError);
+      graphMgrPtr_->getInitAccBiasReference() = gravityVectorErrorInImuFrame;
+      std::cout << YELLOW_START << "GMsf" << COLOR_END << " Gravity error in IMU frame is: " << gravityVectorErrorInImuFrame.transpose()
+                << std::endl;
     }
     return true;
   } else {
@@ -513,7 +523,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
             << std::endl;
 
   // Gravity
-  graphMgrPtr_->initImuIntegrators(gravityConstant_);
+  graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude);
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
 

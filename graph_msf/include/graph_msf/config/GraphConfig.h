@@ -29,8 +29,9 @@ struct GraphConfig {
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
 
-  // Initialization
+  // Gravity
   bool estimateGravityFromImuFlag = true;
+  double gravityMagnitude = 9.81;
 
   // Factor Graph
   bool useIsamFlag = true;
