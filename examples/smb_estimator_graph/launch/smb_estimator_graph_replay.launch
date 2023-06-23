@@ -3,9 +3,6 @@
     <!-- Parameters -->
     <arg name="use_sim_time" value="true"/>
 
-    <!-- Description -->
-    <include file="$(find smb_description)/launch/load.launch" />
-
     <!-- Launch Stack -->
     <include file="$(find smb_estimator_graph)/launch/smb_estimator_graph.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />

@@ -193,9 +193,13 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   updateImuIntegrators_(imuMeas);
   // Predict propagated state
   if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
-    imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, optimizedGraphState_.imuBias());
+    imuPropagatedState_ = imuBuffer_.integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
+                                                                    optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector);
+    // imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, optimizedGraphState_.imuBias());
   } else {
-    imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, gtsam::imuBias::ConstantBias());
+    imuPropagatedState_ = imuBuffer_.integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
+                                                                    gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector);
+    // imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, gtsam::imuBias::ConstantBias());
   }
 
   // Add IMU Factor to graph
@@ -862,14 +866,14 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   // Calculate dt and integrate IMU measurements for both preintegrators
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
-    imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.head<3>(),          // acc
-                                                   currItr->second.tail<3>(),          // gyro
-                                                   dt);                                // delta t
-    globalImuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.head<3>(),  // acc
-                                                           currItr->second.tail<3>(),  // gyro
+    imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,             // acc
+                                                   currItr->second.angularVelocity,          // gyro
+                                                   dt);                                      // delta t
+    globalImuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
+                                                           currItr->second.angularVelocity,  // gyro
                                                            dt);
-    fallbackImuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.head<3>(),  // acc
-                                                             currItr->second.tail<3>(),  // gyro
+    fallbackImuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
+                                                             currItr->second.angularVelocity,  // gyro
                                                              dt);
   }
 }

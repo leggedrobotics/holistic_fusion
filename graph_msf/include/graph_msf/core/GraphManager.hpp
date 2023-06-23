@@ -76,7 +76,7 @@ class GraphManager {
   }
   /// Add to IMU buffer
   inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
-    imuBuffer_.addToIMUBuffer(ts, linearAcc(0), linearAcc(1), linearAcc(2), angularVel(0), angularVel(1), angularVel(2));
+    imuBuffer_.addToIMUBuffer(ts, linearAcc, angularVel);
   }
 
   // Accessors

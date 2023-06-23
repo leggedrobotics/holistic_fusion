@@ -32,6 +32,7 @@ struct GraphConfig {
   // Gravity
   bool estimateGravityFromImuFlag = true;
   double gravityMagnitude = 9.81;
+  Eigen::Vector3d W_gravityVector = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude;
 
   // Factor Graph
   bool useIsamFlag = true;

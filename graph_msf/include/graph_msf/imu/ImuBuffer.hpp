@@ -23,12 +23,19 @@ Please see the LICENSE file that has been included as part of this package.
 // GTSAM
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/ImuBias.h>
+
+// Workspace
+#include <graph_msf/core/Datatypes.hpp>
 
 namespace graph_msf {
 
 // Datatypes
 // Map from time to 6D IMU measurements
-typedef std::map<double, gtsam::Vector6, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToImuMap;
+typedef std::map<double, graph_msf::ImuMeasurement, std::less<double>,
+                 Eigen::aligned_allocator<std::pair<const double, graph_msf::ImuMeasurement>>>
+    TimeToImuMap;
 // Map from time to gtsam key
 typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToKeyMap;
 
@@ -50,7 +57,7 @@ class ImuBuffer {
   inline void setVerboseLevel(int i) { verboseLevel_ = i; }
 
   // Add to buffers
-  void addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ);
+  void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel);
   void addToKeyBuffer(double ts, gtsam::Key key);
 
   // Getters
@@ -59,12 +66,16 @@ class ImuBuffer {
   void getLastTwoMeasurements(TimeToImuMap& imuMap);
   bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
                                  const double tLidar);
-  bool getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, TimeToImuMap::iterator& s_itr,
-                                       TimeToImuMap::iterator& e_itr);
 
   // Public member functions
   /// Determine initial IMU pose w.r.t to gravity vector pointing up
-  bool estimateAttitudeFromImu(gtsam::Rot3& init_attitude, double& gravity_magnitude, Eigen::Vector3d& gyrBias);
+  bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias);
+
+  // Integrate NavState from Timestamp
+  bool getIMUBufferIteratorsInInterval(const double& tsStart, const double& tsEnd, TimeToImuMap::iterator& startIterator,
+                                       TimeToImuMap::iterator& endIterator);
+  gtsam::NavState integrateNavStateFromTimestamp(const double& tsStart, const double& tsEnd, const gtsam::NavState& stateStart,
+                                                 const gtsam::imuBias::ConstantBias& imuBias, const Eigen::Vector3d& W_gravityVector);
 
  private:
   // Member variables
