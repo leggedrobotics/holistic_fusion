@@ -10,9 +10,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Configuration
-  /// Using Gnss
-  graphConfigPtr_->usingGnssFlag = tryGetParam<bool>("launch/usingGnss", privateNode);
-
   // Sensor Parameters
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->useImuSignalLowPassFilter = tryGetParam<bool>("sensor_params/useImuSignalLowPassFilter", privateNode);
@@ -28,6 +25,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Graph Params
   graphConfigPtr_->useIsamFlag = tryGetParam<bool>("graph_params/useIsam", privateNode);
   graphConfigPtr_->smootherLag = tryGetParam<double>("graph_params/smootherLag", privateNode);
+  graphConfigPtr_->maxOptimizationFrequency = tryGetParam<double>("graph_params/maxOptimizationFrequency", privateNode);
   graphConfigPtr_->additionalOptimizationIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlotsFlag = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResultsFlag = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);

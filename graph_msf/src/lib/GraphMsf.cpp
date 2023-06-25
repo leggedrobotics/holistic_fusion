@@ -104,9 +104,9 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
   }
 }
 
-bool GraphMsf::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName) {
-  gtsam::Pose3 T_O_frame_gtsam(T_O_frame);
-  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.block<3, 1>(0, 3), frameName);
+bool GraphMsf::initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName) {
+  gtsam::Pose3 T_O_frame_gtsam(T_O_frame.matrix());
+  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.translation(), frameName);
 }
 
 // Private ---------------------------------------------------------------
@@ -227,6 +227,11 @@ bool GraphMsf::addImuMeasurementAndGetState(
 }
 
 void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasurement) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
   // Only take actions if graph has been initialized
   if (!initedGraphFlag_) {
     return;
@@ -245,11 +250,11 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasuremen
       gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
 
   // Optimize
-  //  {
-  //    // Mutex for optimizeGraph Flag
-  //    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-  //    optimizeGraphFlag_ = true;
-  //  }
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
 }
 
 void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
@@ -263,7 +268,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
     return;
   }
 
-  gtsam::Pose3 T_W_frame(unary.measurementPose());
+  gtsam::Pose3 T_W_frame(unary.measurementPose().matrix());
   gtsam::Pose3 T_W_I =
       T_W_frame * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.frameName(), staticTransformsPtr_->getImuFrame()).matrix());
 
@@ -284,7 +289,7 @@ std::shared_ptr<SafeNavState> GraphMsf::addDualOdometryMeasurementAndReturnNavSt
                                                                                     const UnaryMeasurement6D& odometryK,
                                                                                     const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
   // Measurement
-  const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
+  const Eigen::Isometry3d T_M_Lj = odometryK.measurementPose();
 
   // Check whether World->Map is already set
   if (!validFirstMeasurementReceivedFlag_) {
@@ -543,15 +548,21 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
 void GraphMsf::optimizeGraph_() {
   // While loop
   std::cout << YELLOW_START << "GMsf" << COLOR_END << " Thread for updating graph is ready." << std::endl;
+  double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  ;
+  double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  ;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
     {
       // Lock
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      if (optimizeGraphFlag_) {
+      currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+      if (optimizeGraphFlag_ && (currentTime - lastOptimizedTime > 1.0 / graphConfigPtr_->maxOptimizationFrequency)) {
         optimizeGraphFlag = optimizeGraphFlag_;
         optimizeGraphFlag_ = false;
+        lastOptimizedTime = currentTime;
       }
     }
 

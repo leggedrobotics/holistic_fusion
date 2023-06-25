@@ -126,8 +126,8 @@ class GraphManager {
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
                                               const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
-  bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
-                      const std::string& name = "lidar");
+  bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, const double maxTimestampDistance,
+                      const double timeKm1, const double timeK, const std::string& name);
   /// Generate new key
   const auto newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated

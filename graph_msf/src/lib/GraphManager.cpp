@@ -294,23 +294,33 @@ gtsam::Key GraphManager::addPoseBetweenFactorToGlobalGraph(const double lidarTim
   // Find corresponding keys in graph
   double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
   gtsam::Key closestLidarKeyKm1, closestLidarKeyK;
-
-  if (!findGraphKeys_(maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK, closestLidarKeyKm1, closestLidarKeyK, "lidar delta")) {
+  double keyTimeStampDisance;
+  if (!findGraphKeys_(closestLidarKeyKm1, closestLidarKeyK, keyTimeStampDisance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
+                      "lidar delta")) {
     std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Current propagated key: " << propagatedStateKey_
               << " , PoseBetween factor not added to graph at key " << closestLidarKeyK << COLOR_END << std::endl;
     return closestLidarKeyK;
   }
+
+  // Scale delta pose according to timeStampDistance
+  double scale = keyTimeStampDisance / (lidarTimeK - lidarTimeKm1);
+  std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Scale for " << measurementType << " delta pose: " << scale
+            << std::endl;
+  gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
 
   // Create noise model
   assert(poseBetweenNoise.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise(0), poseBetweenNoise(1), poseBetweenNoise(2),
                                                     poseBetweenNoise(3), poseBetweenNoise(4), poseBetweenNoise(5))
                                                        .finished());  // rad,rad,rad,m,m,m
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
+  // Regular error function with noise
+  // auto errorFunction = noise;
+  // Robust error function
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.3), noise);
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestLidarKeyKm1),
-                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), deltaPose, errorFunction);
+                                                       gtsam::symbol_shorthand::X(closestLidarKeyK), scaledDeltaPose, errorFunction);
 
   // Write to graph
   bool success =
@@ -476,7 +486,8 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
 bool GraphManager::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
-  if (!findGraphKeys_(maxTimestampDistance, timeKm1, timeK, closestKeyKm1, closestKeyK, "zero motion factor")) {
+  double keyTimeStampDisance;
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDisance, maxTimestampDistance, timeKm1, timeK, "zero motion factor")) {
     return false;
   }
 
@@ -817,8 +828,8 @@ bool GraphManager::addFactorSafelyToGraph_(std::shared_ptr<gtsam::NonlinearFacto
   return addFactorToGraph_<CHILDPTR>(modifiedGraphPtr, noiseModelFactorPtr, measurementTimestamp);
 }
 
-bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& closestKeyKm1,
-                                  gtsam::Key& closestKeyK, const std::string& name) {
+bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance,
+                                  const double maxTimestampDistance, const double timeKm1, const double timeK, const std::string& name) {
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
   {
@@ -840,8 +851,8 @@ bool GraphManager::findGraphKeys_(double maxTimestampDistance, double timeKm1, d
     return false;
   }
 
-  double keyTimestampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
-  if (keyTimestampDistance > maxTimestampDistance) {
+  keyTimeStampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
+  if (keyTimeStampDistance > maxTimestampDistance) {
     std::cerr << YELLOW_START << "GMsf-GraphManager"
               << " Distance of " << name << " timestamps is too big. Found timestamp difference is  "
               << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum admissible distance of "

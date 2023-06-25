@@ -30,6 +30,14 @@ GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : priv
 bool GraphMsfRos::setup() {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
+  // Read parameters ----------------------------
+  GraphMsfRos::readParams_(privateNode_);
+
+  // Super class
+  if (not graph_msf::GraphMsf::setup()) {
+    throw std::runtime_error("GraphMsfRos could not be initialized");
+  }
+
   // Publishers ----------------------------
   GraphMsfRos::initializePublishers_(privateNode_);
 
@@ -38,14 +46,6 @@ bool GraphMsfRos::setup() {
 
   // Messages ----------------------------
   GraphMsfRos::initializeMessages_(privateNode_);
-
-  // Read parameters ----------------------------
-  GraphMsfRos::readParams_(privateNode_);
-
-  // Super class
-  if (not graph_msf::GraphMsf::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
 
   // Time
   startTime_ = std::chrono::high_resolution_clock::now();

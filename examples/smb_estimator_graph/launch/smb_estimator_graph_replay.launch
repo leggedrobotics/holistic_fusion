@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?> 
 <launch>
     <!-- Parameters -->
-    <arg name="use_sim_time" value="true"/>
+    <arg name="use_sim_time" default="true"/>
+    <arg name="lidar_odometry_topic_name" default="/mapping_node/scan2map_odometry"/>
 
     <!-- Launch Stack -->
     <include file="$(find smb_estimator_graph)/launch/smb_estimator_graph.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)" />
     </include>
 
     <!-- RVIZ for Visualization -->

@@ -42,6 +42,9 @@ SmbEstimator::SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : gr
 bool SmbEstimator::setup() {
   REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
+  // Read parameters ----------------------------
+  SmbEstimator::readParams_(privateNode_);
+
   // Super class
   if (not graph_msf::GraphMsfRos::setup()) {
     throw std::runtime_error("GraphMsfRos could not be initialized");
@@ -56,8 +59,6 @@ bool SmbEstimator::setup() {
   // Messages ----------------------------
   SmbEstimator::initializeMessages_(privateNode_);
 
-  // Read parameters ----------------------------
-  SmbEstimator::readParams_(privateNode_);
   staticTransformsPtr_->findTransformations();
 
   // Wrap up ----------------------------
@@ -80,8 +81,18 @@ void SmbEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLidarOdometry_.getTopic() << std::endl;
 
   // Wheel Odometry
-  subWheelOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
-      "/wheel_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::wheelOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
+  if (useWheelOdometryFlag_) {
+    subWheelOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
+        "/wheel_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::wheelOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized Wheel Odometry subscriber with topic: " << subWheelOdometry_.getTopic() << std::endl;
+  }
+
+  // VIO
+  if (useVioOdometryFlag_) {
+    subVioOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>("/vio_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::vioOdometryCallback_,
+                                                                 this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized VIO Odometry subscriber with topic: " << subVioOdometry_.getTopic() << std::endl;
+  }
 }
 
 void SmbEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
@@ -94,45 +105,54 @@ void SmbEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int lidarOdometryCallbackCounter__ = -1;
-  static std::shared_ptr<graph_msf::UnaryMeasurement6D> lidarOdometryKm1Ptr__;
+  static Eigen::Isometry3d lio_T_Wl_LKm1__;
+  static double lidarOdometryTimeKm1__ = 0;
 
   // Counter
   ++lidarOdometryCallbackCounter__;
 
-  Eigen::Matrix4d compslam_T_Wl_Lk;
-  graph_msf::odomMsgToEigen(*odomLidarPtr, compslam_T_Wl_Lk);
+  Eigen::Isometry3d lio_T_Wl_Lk;
+  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_Wl_Lk.matrix());
 
   // Transform to IMU frame
-  double timeK = odomLidarPtr->header.stamp.toSec();
-
-  // Measurement
-  std::shared_ptr<graph_msf::UnaryMeasurement6D> lidarOdometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
-      "Lidar_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(), int(lidarOdometryRate_), timeK,
-      compslam_T_Wl_Lk, poseUnaryNoise_);
+  double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(*lidarOdometryKPtr);
-  } else if (!graphConfigPtr_->usingGnssFlag || secondsSinceStart_() > 15) {  // Initializing
-    REGULAR_COUT << GREEN_START
-                 << " LiDAR odometry callback is setting global yaw, as it was "
-                    "not set so far."
-                 << COLOR_END << std::endl;
-    this->initYawAndPosition(compslam_T_Wl_Lk, dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame());
+    if (useLidarUnaryFactorFlag_) {
+      // Measurement
+      std::shared_ptr<graph_msf::UnaryMeasurement6D> lidarOdometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
+          "Lidar_unary_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(),
+          int(lidarOdometryRate_), lidarOdometryTimeK, lio_T_Wl_Lk, lidarPoseUnaryNoise_);
+      this->addUnaryPoseMeasurement(*lidarOdometryKPtr);
+    } else {
+      // Compute Delta
+      Eigen::Isometry3d T_Lkm1_Lk = lio_T_Wl_LKm1__.inverse() * lio_T_Wl_Lk;
+      // Create measurement
+      graph_msf::BinaryMeasurement6D deltaMeasurement(
+          "LiDAR_between_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(), lidarOdometryRate_,
+          lidarOdometryTimeKm1__, lidarOdometryTimeK, T_Lkm1_Lk, lidarPoseBetweenNoise_);
+      // Add to graph
+      graph_msf::GraphMsf::addOdometryMeasurement(deltaMeasurement);
+    }
+  } else {  // Initializing
+    REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+    this->initYawAndPosition(lio_T_Wl_Lk, dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame());
   }
 
   // Wrap up iteration
-  lidarOdometryKm1Ptr__ = lidarOdometryKPtr;
+  lio_T_Wl_LKm1__ = lio_T_Wl_Lk;
+  lidarOdometryTimeKm1__ = lidarOdometryTimeK;
 
   // Visualization ----------------------------
   // Add to path message
   addToPathMsg(
       measLidar_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomLidarPtr->header.stamp,
-      (compslam_T_Wl_Lk * staticTransformsPtr_
-                              ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(),
-                                                   staticTransformsPtr_->getImuFrame())
-                              .matrix())
+      (lio_T_Wl_Lk * staticTransformsPtr_
+                         ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(),
+                                              staticTransformsPtr_->getImuFrame())
+                         .matrix())
           .block<3, 1>(0, 3),
       graphConfigPtr_->imuBufferLength * 4);
 
@@ -143,31 +163,35 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
 void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdometryKPtr) {
   // Static members
   static int wheelOdometryCallbackCounter__ = -1;
-  static Eigen::Isometry3d T_O_Wkm1__;
-  static double timeKm1__ = 0.0;
+  static Eigen::Isometry3d T_O_Wheel_km1__;
+  static double wheelOdometryTimeKm1__ = 0.0;
 
   // Counter
   ++wheelOdometryCallbackCounter__;
 
   // Eigen Type
-  Eigen::Isometry3d T_O_Wk;
-  graph_msf::odomMsgToEigen(*wheelOdometryKPtr, T_O_Wk.matrix());
-  double timeK = wheelOdometryKPtr->header.stamp.toSec();
+  Eigen::Isometry3d T_O_Wheel_k;
+  graph_msf::odomMsgToEigen(*wheelOdometryKPtr, T_O_Wheel_k.matrix());
+  double wheelOdometryTimeK = wheelOdometryKPtr->header.stamp.toSec();
 
   if (wheelOdometryCallbackCounter__ > 0) {
     // Compute Delta
-    Eigen::Isometry3d T_Wkm1_Wk = T_O_Wkm1__.inverse() * T_O_Wk;
+    Eigen::Isometry3d T_Wkm1_Wk = T_O_Wheel_km1__.inverse() * T_O_Wheel_k;
     // Create measurement
-    graph_msf::BinaryMeasurement6D deltaMeasurement("Wheel_odometry_6D",
-                                                    dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(),
-                                                    wheelOdometryRate_, timeKm1__, timeK, T_Wkm1_Wk, poseBetweenNoise_);
+    graph_msf::BinaryMeasurement6D deltaMeasurement(
+        "Wheel_odometry_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(), wheelOdometryRate_,
+        wheelOdometryTimeKm1__, wheelOdometryTimeK, T_Wkm1_Wk, wheelPoseBetweenNoise_);
     // Add to graph
     graph_msf::GraphMsf::addOdometryMeasurement(deltaMeasurement);
   }
 
   // Provide next iteration
-  T_O_Wkm1__ = T_O_Wk;
-  timeKm1__ = wheelOdometryKPtr->header.stamp.toSec();
+  T_O_Wheel_km1__ = T_O_Wheel_k;
+  wheelOdometryTimeKm1__ = wheelOdometryTimeK;
+}
+
+void SmbEstimator::vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr) {
+  std::cout << "VIO odometry not yet implemented, disable flag." << std::endl;
 }
 
 }  // namespace smb_se

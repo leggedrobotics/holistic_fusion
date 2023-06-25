@@ -246,10 +246,6 @@ gtsam::NavState ImuBuffer::integrateNavStateFromTimestamp(const double& tsStart,
   }
   nextToStartIterator = startIterator;
   ++nextToStartIterator;
-  std::cout << YELLOW_START << "tsStart" << tsStart << std::setprecision(14) << std::endl;
-  std::cout << YELLOW_START << "tsEnd" << tsEnd << std::setprecision(14) << std::endl;
-  std::cout << YELLOW_START << "startIterator->first" << std::setprecision(14) << startIterator->first << std::endl;
-  std::cout << YELLOW_START << "endIterator->first" << std::setprecision(14) << endIterator->first << std::endl;
 
   // Propagated state
   gtsam::NavState propagatedState = stateStart;
@@ -263,7 +259,6 @@ gtsam::NavState ImuBuffer::integrateNavStateFromTimestamp(const double& tsStart,
 
     // Calculate dt
     double dt = nextToStartIterator->first - startIterator->first;
-    std::cout << YELLOW_START << "dt" << std::setprecision(14) << dt << std::endl;
 
     // Update propagated state
     Eigen::Vector3d i_gravityVector = propagatedState.R().transpose() * W_gravityVector;

@@ -20,6 +20,7 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   // Setters
   void setLidarOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
   void setWheelOdometryFrame(const std::string& s) { wheelOdometryFrame_ = s; }
+  void setVioOdometryFrame(const std::string& s) { vioOdometryFrame_ = s; }
 
   // Getters
   const std::string& getLidarOdometryFrame() { return lidarOdometryFrame_; }
@@ -31,6 +32,7 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   // Members
   std::string lidarOdometryFrame_;
   std::string wheelOdometryFrame_;
+  std::string vioOdometryFrame_;
 };
 }  // namespace smb_se
 #endif  // end Smb_Static_Transforms_H

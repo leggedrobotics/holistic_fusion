@@ -20,8 +20,6 @@ struct GraphConfig {
   bool reLocalizeWorldToMapAtStartFlag = false;
 
   // Sensor Config
-  bool usingGnssFlag = true;
-  bool usingLioFlag = true;
   bool relocalizationAtStartFlag = true;
 
   // Sensor Params
@@ -39,6 +37,7 @@ struct GraphConfig {
   // Factor Graph
   bool useIsamFlag = true;
   double smootherLag = 1.5;
+  double maxOptimizationFrequency = 100;
   int additionalOptimizationIterations = 0;
   bool findUnusedFactorSlotsFlag = false;
   bool enableDetailedResultsFlag = false;
