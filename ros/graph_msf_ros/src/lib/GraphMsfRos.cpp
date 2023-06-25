@@ -71,6 +71,8 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   // Imu Bias
   pubAccelBias_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
   pubGyroBias_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
+  // Added Imu Measurements
+  pubAddedImuMeas_ = privateNode.advertise<sensor_msgs::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
 }
 
 void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
@@ -103,12 +105,14 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   // Convert to Eigen
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
+  Eigen::Matrix<double, 6, 1> addedImuMeasurements;  // accel, gyro
+  Eigen::Vector3d addedAngularVel(0.0, 0.0, 0.0);
   // Create pointer for carrying state
   std::shared_ptr<graph_msf::SafeNavState> preIntegratedNavStatePtr;
   std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
   // Add measurement and get state
   if (this->addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
-                                         optimizedStateWithCovarianceAndBiasPtr)) {
+                                         optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // Encountered delay
     if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
       std::cout << RED_START << "GraphMsfRos" << COLOR_END << " Encountered delay of "
@@ -116,6 +120,9 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
     }
     // Publish Odometry
     this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+
+    // Publish Filtered Imu Measurements
+    this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
   }
 }
 
@@ -210,6 +217,20 @@ void GraphMsfRos::publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState
   addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(navStatePtr->getTimeK()),
                (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength * 20);
   pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
+}
+
+void GraphMsfRos::publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) {
+  // Publish added imu measurement
+  sensor_msgs::Imu addedImuMeasMsg;
+  addedImuMeasMsg.header.stamp = stamp;
+  addedImuMeasMsg.header.frame_id = staticTransformsPtr_->getImuFrame();
+  addedImuMeasMsg.linear_acceleration.x = addedImuMeas(0);
+  addedImuMeasMsg.linear_acceleration.y = addedImuMeas(1);
+  addedImuMeasMsg.linear_acceleration.z = addedImuMeas(2);
+  addedImuMeasMsg.angular_velocity.x = addedImuMeas(3);
+  addedImuMeasMsg.angular_velocity.y = addedImuMeas(4);
+  addedImuMeasMsg.angular_velocity.z = addedImuMeas(5);
+  pubAddedImuMeas_.publish(addedImuMeasMsg);
 }
 
 void GraphMsfRos::publishOptimizedStateAndBias_(

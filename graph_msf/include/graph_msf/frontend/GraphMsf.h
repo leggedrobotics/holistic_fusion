@@ -61,7 +61,8 @@ class GraphMsf {
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                     std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
-                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
+                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
+                                    Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);

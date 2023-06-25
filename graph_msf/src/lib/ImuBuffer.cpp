@@ -17,17 +17,28 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Public --------------------------------------------------------
-void ImuBuffer::addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
+// Returns actually added IMU measurements
+Eigen::Matrix<double, 6, 1> ImuBuffer::addToImuBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
   // Check that imuBufferLength was set
   if (imuBufferLength_ < 0) {
     throw std::runtime_error("GMsfImuBuffer: imuBufferLength has to be set by the user.");
   }
 
+  // Copy of IMU measurements
+  Eigen::Matrix<double, 6, 1> filteredImuMeas;
+
+  // Potentially low pass filter IMU measurements
+  if (useImuSignalLowPassFilter_) {
+    filteredImuMeas = imuSignalLowPassFilterPtr_->filter(linearAcc, angularVel);
+  } else {
+    filteredImuMeas << linearAcc, angularVel;
+  }
+
   // Convert to gtsam type
   graph_msf::ImuMeasurement imuMeas;
   imuMeas.timestamp = ts;
-  imuMeas.acceleration = linearAcc;
-  imuMeas.angularVelocity = angularVel;
+  imuMeas.acceleration = filteredImuMeas.head<3>();
+  imuMeas.angularVelocity = filteredImuMeas.tail<3>();
 
   // Add to buffer
   {
@@ -50,6 +61,8 @@ void ImuBuffer::addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, cons
                 << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
     throw std::runtime_error(errorStream.str());
   }
+
+  return filteredImuMeas;
 }
 
 void ImuBuffer::addToKeyBuffer(double ts, gtsam::Key key) {
@@ -242,18 +255,20 @@ gtsam::NavState ImuBuffer::integrateNavStateFromTimestamp(const double& tsStart,
   gtsam::NavState propagatedState = stateStart;
 
   // For Loop for IMU integration
+  Eigen::Vector3d i_measAcceleration, i_measAngularVelocity;
   for (; startIterator != endIterator; ++startIterator, ++nextToStartIterator) {
     // Get IMU measurement
-    const ImuMeasurement& imuMeas = nextToStartIterator->second;  // alias
+    i_measAcceleration = imuBias.correctAccelerometer(nextToStartIterator->second.acceleration);
+    i_measAngularVelocity = imuBias.correctGyroscope(nextToStartIterator->second.angularVelocity);
 
     // Calculate dt
-    double dt = imuMeas.timestamp - startIterator->first;
+    double dt = nextToStartIterator->first - startIterator->first;
     std::cout << YELLOW_START << "dt" << std::setprecision(14) << dt << std::endl;
 
     // Update propagated state
     Eigen::Vector3d i_gravityVector = propagatedState.R().transpose() * W_gravityVector;
     propagatedState =
-        propagatedState.update(i_gravityVector + imuMeas.acceleration, imuMeas.angularVelocity, dt, boost::none, boost::none, boost::none);
+        propagatedState.update(i_gravityVector + i_measAcceleration, i_measAngularVelocity, dt, boost::none, boost::none, boost::none);
   }
   return propagatedState;
 }

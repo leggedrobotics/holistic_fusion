@@ -1,6 +1,8 @@
 # Sensor Params
 sensor_params:
-  imuRate: 200                            #Rate of IMU input (Hz)
+  imuRate: 200.0                            #Rate of IMU input (Hz)
+  useImuSignalLowPassFilter: false                 #If true, a low pass filter is applied to the IMU measurements
+  imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
   imuBufferLength: 800
   imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
@@ -28,11 +30,11 @@ outlier_params:
 noise_params:
   ## IMU
   ### Position
-  accNoiseDensity: 7.84e-04               #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
+  accNoiseDensity: 7.84e-06               #Continuous-time "Covariance" of accelerometer, microstrain: sigma^2=7.225e-7
   integrationNoiseDensity: 1.0e-07        #continuous-time "Covariance" describing integration uncertainty, default: 1.0e-06
   use2ndOrderCoriolis: true               #Use 2nd order coriolis effect
   ### Rotation
-  gyrNoiseDensity: 3.4906585e-05          #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
+  gyrNoiseDensity: 3.4906585e-07          #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
   omegaCoriolis: 1.07e-04                     #Coriolis effect
   ### Bias
   accBiasRandomWalk: 1.0e-03              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06

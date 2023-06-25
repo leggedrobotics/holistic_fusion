@@ -26,6 +26,8 @@ struct GraphConfig {
 
   // Sensor Params
   double imuRate = 100;
+  bool useImuSignalLowPassFilter = true;
+  double imuLowPassFilterCutoffFreq = 60;
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
 

@@ -72,11 +72,11 @@ class GraphManager {
   // IMU Buffer interface
   /// Estimate attitude from IMU
   inline bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
-    return imuBuffer_.estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
+    return imuBufferPtr_->estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
-  inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
-    imuBuffer_.addToIMUBuffer(ts, linearAcc, angularVel);
+  inline Eigen::Matrix<double, 6, 1> addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
+    return imuBufferPtr_->addToImuBuffer(ts, linearAcc, angularVel);
   }
 
   // Accessors
@@ -167,11 +167,11 @@ class GraphManager {
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
-  ImuBuffer imuBuffer_;  // Need to get rid of this
+  std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;  // Need to get rid of this
   gtsam::Vector6 lastImuVector_;
 
   /// Config
-  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
+  std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = NULL;
   /// Graph names
   std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
   /// Selector

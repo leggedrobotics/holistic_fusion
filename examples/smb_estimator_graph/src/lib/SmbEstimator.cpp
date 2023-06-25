@@ -110,7 +110,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
       "Lidar_6D", dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLidarOdometryFrame(), int(lidarOdometryRate_), timeK,
       compslam_T_Wl_Lk, poseUnaryNoise_);
 
-  if (lidarOdometryCallbackCounter__ <= 0) {
+  if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
     this->addUnaryPoseMeasurement(*lidarOdometryKPtr);

@@ -71,6 +71,8 @@ class GraphMsfRos : public GraphMsf {
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
   void publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr);
+  // Publish Added IMU Measurements
+  void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp);
 
   // Measure time
   long secondsSinceStart_();
@@ -102,6 +104,8 @@ class GraphMsfRos : public GraphMsf {
   // Imu Bias
   ros::Publisher pubAccelBias_;
   ros::Publisher pubGyroBias_;
+  // Added Imu Measurements
+  ros::Publisher pubAddedImuMeas_;
 
   // Subscribers
   ros::Subscriber subImu_;
