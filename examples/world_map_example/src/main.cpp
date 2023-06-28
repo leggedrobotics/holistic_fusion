@@ -73,5 +73,12 @@ int main(int argc, char** argv) {
   std::cout << "----------------------------------------\n";
   result.print("Final result:\n");
 
+  // Print ground truth vs optimized map to world
+  std::cout << "----------------------------------------\n";
+  std::cout << "Ground truth map to world:\n";
+  std::cout << T_M_W.matrix() << std::endl;
+  std::cout << "Optimized map to world:\n";
+  std::cout << result.at<gtsam::Pose3>(gtsam::symbol_shorthand::T(0)).matrix() << std::endl;
+
   return 0;
 }
