@@ -8,6 +8,16 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_DATATYPES_HPP
 #define GRAPH_MSF_DATATYPES_HPP
 
-namespace graph_msf {}  // namespace graph_msf
+#include <Eigen/Dense>
+
+namespace graph_msf {
+
+struct ImuMeasurement {
+  double timestamp;
+  Eigen::Vector3d acceleration;
+  Eigen::Vector3d angularVelocity;
+};
+
+}  // namespace graph_msf
 
 #endif  // GRAPH_MSF_DATATYPES_HPP

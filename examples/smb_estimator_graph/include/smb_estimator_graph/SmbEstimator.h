@@ -27,9 +27,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
-#include "graph_msf_ros_msgs/GetPathInEnu.h"
-#include "graph_msf_ros_msgs/GetPathInEnuRequest.h"
-#include "graph_msf_ros_msgs/GetPathInEnuResponse.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -64,21 +61,26 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Rates
   double lidarOdometryRate_ = 5.0;
   double wheelOdometryRate_ = 50.0;
+  double vioOdometryRate_ = 50.0;
 
   // Noise
-  Eigen::Matrix<double, 6, 1> poseBetweenNoise_;
-  Eigen::Matrix<double, 6, 1> poseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lidarPoseBetweenNoise_;
+  Eigen::Matrix<double, 6, 1> lidarPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_;
+  Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_;
 
   // ROS Related stuff ----------------------------
 
   // Callbacks
-  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheel_odom_ptr);
+  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
+  void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
+  void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
 
   // Subscribers
   // Instances
   ros::Subscriber subLidarOdometry_;
   ros::Subscriber subWheelOdometry_;
+  ros::Subscriber subVioOdometry_;
   tf::TransformListener tfListener_;
 
   // Publishers
@@ -88,8 +90,10 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Messages
   nav_msgs::PathPtr measLidar_worldImuPathPtr_;
 
-  // Initialization
-  bool initialized_ = false;
+  // Flags
+  bool useLidarUnaryFactorFlag_ = false;
+  bool useWheelOdometryFlag_ = false;
+  bool useVioOdometryFlag_ = false;
 };
 }  // namespace smb_se
 #endif  // end Smb_Estimator_H

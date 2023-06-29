@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 project(pure_imu_integration)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf
-  graph_msf_msgs
   graph_msf_ros
   geometry_msgs
   nav_msgs
@@ -11,7 +9,6 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   roscpp
   std_msgs
   tf
-  message_filters
   )
 
 find_package(catkin REQUIRED COMPONENTS

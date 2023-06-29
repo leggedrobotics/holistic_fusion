@@ -20,21 +20,24 @@ struct GraphConfig {
   bool reLocalizeWorldToMapAtStartFlag = false;
 
   // Sensor Config
-  bool usingGnssFlag = true;
-  bool usingLioFlag = true;
   bool relocalizationAtStartFlag = true;
 
   // Sensor Params
   double imuRate = 100;
+  bool useImuSignalLowPassFilter = true;
+  double imuLowPassFilterCutoffFreq = 60;
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
 
-  // Initialization
+  // Gravity
   bool estimateGravityFromImuFlag = true;
+  double gravityMagnitude = 9.81;
+  Eigen::Vector3d W_gravityVector = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude;
 
   // Factor Graph
   bool useIsamFlag = true;
   double smootherLag = 1.5;
+  double maxOptimizationFrequency = 100;
   int additionalOptimizationIterations = 0;
   bool findUnusedFactorSlotsFlag = false;
   bool enableDetailedResultsFlag = false;

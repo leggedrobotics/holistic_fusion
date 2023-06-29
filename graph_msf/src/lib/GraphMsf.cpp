@@ -104,9 +104,9 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
   }
 }
 
-bool GraphMsf::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName) {
-  gtsam::Pose3 T_O_frame_gtsam(T_O_frame);
-  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.block<3, 1>(0, 3), frameName);
+bool GraphMsf::initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName) {
+  gtsam::Pose3 T_O_frame_gtsam(T_O_frame.matrix());
+  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.translation(), frameName);
 }
 
 // Private ---------------------------------------------------------------
@@ -114,7 +114,8 @@ bool GraphMsf::initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::s
 bool GraphMsf::addImuMeasurementAndGetState(
     const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
     std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
-    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
+    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
+    Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements) {
   // Setup -------------------------
   // Increase counter
   ++imuCallbackCounter_;
@@ -130,7 +131,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
     return false;
   }
   // Add measurement to buffer
-  graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
+  returnAddedImuMeasurements = graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -226,6 +227,11 @@ bool GraphMsf::addImuMeasurementAndGetState(
 }
 
 void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasurement) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
   // Only take actions if graph has been initialized
   if (!initedGraphFlag_) {
     return;
@@ -244,11 +250,11 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasuremen
       gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
 
   // Optimize
-  //  {
-  //    // Mutex for optimizeGraph Flag
-  //    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-  //    optimizeGraphFlag_ = true;
-  //  }
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
 }
 
 void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
@@ -262,7 +268,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
     return;
   }
 
-  gtsam::Pose3 T_W_frame(unary.measurementPose());
+  gtsam::Pose3 T_W_frame(unary.measurementPose().matrix());
   gtsam::Pose3 T_W_I =
       T_W_frame * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.frameName(), staticTransformsPtr_->getImuFrame()).matrix());
 
@@ -283,7 +289,7 @@ std::shared_ptr<SafeNavState> GraphMsf::addDualOdometryMeasurementAndReturnNavSt
                                                                                     const UnaryMeasurement6D& odometryK,
                                                                                     const Eigen::Matrix<double, 6, 1>& poseBetweenNoise) {
   // Measurement
-  const Eigen::Matrix4d T_M_Lj = odometryK.measurementPose();
+  const Eigen::Isometry3d T_M_Lj = odometryK.measurementPose();
 
   // Check whether World->Map is already set
   if (!validFirstMeasurementReceivedFlag_) {
@@ -482,20 +488,30 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
 
 /// Worker Functions -----------------------
 bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
-  gtsam::Rot3 imuAttitude;
+  gtsam::Rot3 R_W_I_rollPitch;
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
-  double gravityConstant;
-  if (graphMgrPtr_->estimateAttitudeFromImu(imuAttitude, gravityConstant, graphMgrPtr_->getInitGyrBiasReference())) {
-    imuAttitudeRoll = imuAttitude.roll();
-    imuAttitudePitch = imuAttitude.pitch();
+  double estimatedGravityMagnitude;
+  if (graphMgrPtr_->estimateAttitudeFromImu(R_W_I_rollPitch, estimatedGravityMagnitude, graphMgrPtr_->getInitGyrBiasReference())) {
+    imuAttitudeRoll = R_W_I_rollPitch.roll();
+    imuAttitudePitch = R_W_I_rollPitch.pitch();
     if (graphConfigPtr_->estimateGravityFromImuFlag) {
-      gravityConstant_ = gravityConstant;
+      graphConfigPtr_->gravityMagnitude = estimatedGravityMagnitude;
       std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << gravityConstant_ << std::endl;
+                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << estimatedGravityMagnitude << std::endl;
     } else {
+      std::cout << YELLOW_START << "GMsf" << COLOR_END << " Estimated gravity magnitude from IMU is: " << estimatedGravityMagnitude
+                << std::endl;
       std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " Attitude of IMU is initialized. Gravity Magnitude set to default: " << gravityConstant_ << std::endl;
+                << " This gravity is not used, because estimateGravityFromImu is set to false. Gravity set to "
+                << graphConfigPtr_->gravityMagnitude << "." << std::endl;
+      gtsam::Vector3 gravityVector = gtsam::Vector3(0, 0, graphConfigPtr_->gravityMagnitude);
+      gtsam::Vector3 estimatedGravityVector = gtsam::Vector3(0, 0, estimatedGravityMagnitude);
+      gtsam::Vector3 gravityVectorError = estimatedGravityVector - gravityVector;
+      gtsam::Vector3 gravityVectorErrorInImuFrame = R_W_I_rollPitch.inverse().rotate(gravityVectorError);
+      graphMgrPtr_->getInitAccBiasReference() = gravityVectorErrorInImuFrame;
+      std::cout << YELLOW_START << "GMsf" << COLOR_END << " Gravity error in IMU frame is: " << gravityVectorErrorInImuFrame.transpose()
+                << std::endl;
     }
     return true;
   } else {
@@ -513,7 +529,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
             << std::endl;
 
   // Gravity
-  graphMgrPtr_->initImuIntegrators(gravityConstant_);
+  graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude);
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
 
@@ -532,15 +548,21 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
 void GraphMsf::optimizeGraph_() {
   // While loop
   std::cout << YELLOW_START << "GMsf" << COLOR_END << " Thread for updating graph is ready." << std::endl;
+  double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  ;
+  double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  ;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
     {
       // Lock
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      if (optimizeGraphFlag_) {
+      currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+      if (optimizeGraphFlag_ && (currentTime - lastOptimizedTime > 1.0 / graphConfigPtr_->maxOptimizationFrequency)) {
         optimizeGraphFlag = optimizeGraphFlag_;
         optimizeGraphFlag_ = false;
+        lastOptimizedTime = currentTime;
       }
     }
 

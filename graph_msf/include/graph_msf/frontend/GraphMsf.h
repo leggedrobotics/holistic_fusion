@@ -50,7 +50,7 @@ class GraphMsf {
   // Initialization Interface
   bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                           const std::string& frame2);
-  bool initYawAndPosition(const Eigen::Matrix4d& T_O_frame, const std::string& frameName);
+  bool initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName);
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
@@ -61,7 +61,8 @@ class GraphMsf {
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                     std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
-                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr);
+                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
+                                    Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
   void addOdometryMeasurement(const BinaryMeasurement6D& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
@@ -149,9 +150,6 @@ class GraphMsf {
   std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I_;
-
-  /// Gravity
-  double gravityConstant_ = 9.81;  // Will be overwritten
 
   // Counter
   long gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;

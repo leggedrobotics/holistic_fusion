@@ -72,16 +72,18 @@ class GraphManager {
   // IMU Buffer interface
   /// Estimate attitude from IMU
   inline bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
-    return imuBuffer_.estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
+    return imuBufferPtr_->estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
   }
   /// Add to IMU buffer
-  inline void addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
-    imuBuffer_.addToIMUBuffer(ts, linearAcc(0), linearAcc(1), linearAcc(2), angularVel(0), angularVel(1), angularVel(2));
+  inline Eigen::Matrix<double, 6, 1> addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
+    return imuBufferPtr_->addToImuBuffer(ts, linearAcc, angularVel);
   }
 
   // Accessors
   /// Getters
+  Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior; }
   Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior; }
+
   //  auto iterations() const { return additonalIterations_; }
   const State& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
@@ -124,8 +126,8 @@ class GraphManager {
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
                                               const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
-  bool findGraphKeys_(double maxTimestampDistance, double timeKm1, double timeK, gtsam::Key& keyKm1, gtsam::Key& keyK,
-                      const std::string& name = "lidar");
+  bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, const double maxTimestampDistance,
+                      const double timeKm1, const double timeK, const std::string& name);
   /// Generate new key
   const auto newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
@@ -165,11 +167,11 @@ class GraphManager {
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
-  ImuBuffer imuBuffer_;  // Need to get rid of this
+  std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;  // Need to get rid of this
   gtsam::Vector6 lastImuVector_;
 
   /// Config
-  std::shared_ptr<GraphConfig> graphConfigPtr_ = NULL;
+  std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = NULL;
   /// Graph names
   std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
   /// Selector
