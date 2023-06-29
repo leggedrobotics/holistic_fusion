@@ -5,7 +5,7 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/frontend/Terminal.h"
+#include "graph_msf/interface/Terminal.h"
 
 #ifndef SMB_CONSTANTS_H
 #define SMB_CONSTANTS_H

@@ -31,8 +31,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/factors/HeadingFactor.h"
-#include "graph_msf/frontend/NavState.h"
-#include "graph_msf/imu/ImuBuffer.hpp"
+#include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 
 namespace graph_msf {
@@ -167,7 +166,6 @@ class GraphManager {
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
   /// IMU Buffer
-  std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;  // Need to get rid of this
   gtsam::Vector6 lastImuVector_;
 
   /// Config

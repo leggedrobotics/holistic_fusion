@@ -18,7 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 // Workspace
-#include "graph_msf/frontend/GraphMsf.h"
+#include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace graph_msf {

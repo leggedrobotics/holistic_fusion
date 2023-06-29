@@ -26,6 +26,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/navigation/ImuBias.h>
 
 // Workspace
+#include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/Datatypes.hpp"
 #include "graph_msf/imu/ImuSignalLowPassFilter.hpp"
 
@@ -43,13 +44,15 @@ typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator
 class ImuBuffer {
  public:
   // Constructor
-  ImuBuffer(const bool useImuSignalLowPassFilter, const double cutoffFrequencyHz = 60.0, const double samplingTime = 0.01)
-      : useImuSignalLowPassFilter_(useImuSignalLowPassFilter) {
+  ImuBuffer(const std::shared_ptr<GraphConfig> graphConfigPtr)
+      : useImuSignalLowPassFilter_(graphConfigPtr->useImuSignalLowPassFilter) {
+    const bool useImuSignalLowPassFilter, const double cutoffFrequencyHz = 60.0, const double samplingTime = 0.01
+
     // Reset IMU Buffer
     timeToImuBuffer_.clear();
     // If low pass filter is used, initialize it
     if (useImuSignalLowPassFilter_) {
-      imuSignalLowPassFilterPtr_ = std::make_unique<ImuSignalLowPassFilter>(cutoffFrequencyHz, samplingTime);
+      imuSignalLowPassFilterPtr_ = std::make_unique<ImuSignalLowPassFilter>(graphConfigPtr->imuLowPassFilterCutoffFreqHz, 1.0 / graphConfigPtr_->imuRate);
     }
   }
 

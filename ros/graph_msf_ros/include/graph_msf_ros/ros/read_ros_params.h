@@ -2,7 +2,7 @@
 #define GRAPH_MSF_ROS_READ_ROS_PARAMS_H
 
 // Workspace
-#include "graph_msf/frontend/Terminal.h"
+#include "graph_msf/interface/Terminal.h"
 
 namespace graph_msf {
 

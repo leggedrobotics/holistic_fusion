@@ -19,14 +19,6 @@ namespace graph_msf {
 // Public --------------------------------------------------------------------
 
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr) : graphConfigPtr_(graphConfigPtr) {
-  // Initialize IMU buffer
-  imuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_->useImuSignalLowPassFilter,
-                                                         graphConfigPtr_->imuLowPassFilterCutoffFreq, 1.0 / graphConfigPtr->imuRate);
-
-  // Set IMU buffer parameters
-  imuBufferPtr_->setImuRate(graphConfigPtr_->imuRate);
-  imuBufferPtr_->setImuBufferLength(graphConfigPtr_->imuBufferLength);
-  imuBufferPtr_->setVerboseLevel(graphConfigPtr_->verboseLevel);
 
   // Buffer
   globalFactorsBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();

@@ -6,13 +6,13 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "graph_msf/frontend/NavState.h"
+#include "graph_msf/interface/NavState.h"
 
 // GTSAM
 #include <gtsam/geometry/Pose3.h>
 
 // Project
-#include "graph_msf/frontend/Terminal.h"
+#include "graph_msf/interface/Terminal.h"
 
 namespace graph_msf {
 
