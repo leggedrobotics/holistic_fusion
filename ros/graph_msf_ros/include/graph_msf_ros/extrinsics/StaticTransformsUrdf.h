@@ -14,7 +14,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "urdf/model.h"
 
 // Workspace
-#include "graph_msf/core/StaticTransforms.h"
+#include "graph_msf/config/StaticTransforms.h"
 #include "graph_msf_ros/extrinsics/ElementToRoot.h"
 
 namespace graph_msf {

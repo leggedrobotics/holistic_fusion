@@ -44,6 +44,7 @@ struct GraphConfig {
   bool usingFallbackGraphFlag = true;
   bool usingCholeskyFactorizationFlag = true;
   bool usingBiasForPreIntegrationFlag = true;
+  bool optimizeFixedFramePosesWrtWorld = true;
 
   // Outlier Rejection
   double poseMotionOutlierThresold = 0.3;

@@ -16,7 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
-#include "graph_msf/core/StaticTransforms.h"
+#include "graph_msf/config/StaticTransforms.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
