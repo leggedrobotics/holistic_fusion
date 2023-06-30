@@ -34,7 +34,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/factors/HeadingFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 namespace graph_msf {
 
@@ -59,7 +59,8 @@ class GraphManager {
                               const gtsam::Vector3& velocity, const std::string& measurementType);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
                                   const gtsam::Vector3& position);
-  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, const double measuredYaw);
+  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoise,
+                                 const double measuredYaw);
 
   // Update graph and get new state
   SafeNavStateWithCovarianceAndBias updateGraphAndGetState(double& currentTime);

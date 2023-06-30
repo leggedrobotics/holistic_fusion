@@ -53,8 +53,8 @@ bool GraphMsf::areRollAndPitchInited() {
   return alignedImuFlag_;
 }
 
-bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
-                                  const std::string& frame2) {
+bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                                  const std::string& fixedFrame, const std::string& frame1, const std::string& frame2) {
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
 
@@ -67,7 +67,8 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
 
   } else if (!areYawAndPositionInited()) {  // Case 2: Imu is aligned, but roll and pitch not yet --> do it
                                             // Transform yaw to imu frame
-    gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_W_frame1);
+    // TODO: here assume that world is fixed frame, which is not necessarily the case
+    gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
     double yaw_W_I0_ =
         (yawR_W_frame1 *
@@ -78,7 +79,9 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
-    Eigen::Vector3d W_t_W_I0 = W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
+    // TODO: fixedFrame not necessarily world
+    Eigen::Vector3d W_t_W_I0 =
+        W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
     // Set Position
     preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
 
@@ -94,9 +97,10 @@ bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& 
   }
 }
 
-bool GraphMsf::initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName) {
-  gtsam::Pose3 T_O_frame_gtsam(T_O_frame.matrix());
-  return initYawAndPosition(T_O_frame_gtsam.rotation().yaw(), frameName, T_O_frame.translation(), frameName);
+bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
+  gtsam::Pose3 T_fixedFrame_frame1(unary6DMeasurement.unaryMeasurement().matrix());
+  return initYawAndPosition(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(), unary6DMeasurement.fixedFrameName(),
+                            unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
 }
 
 // Private ---------------------------------------------------------------
@@ -209,7 +213,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
   return true;
 }
 
-void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasurement) {
+void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -220,12 +224,13 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasuremen
     return;
   }
 
-  Eigen::Isometry3d T_fkm1_fk = deltaMeasurement.T_delta();
+  Eigen::Isometry3d T_fkm1_fk = deltaMeasurement.deltaMeasurement();
 
   // Check frame of measuremnts
   if (deltaMeasurement.measurementName() != staticTransformsPtr_->getImuFrame()) {
-    T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.frameName()) * T_fkm1_fk *
-                staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.frameName(), staticTransformsPtr_->getImuFrame());
+    T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()) *
+                T_fkm1_fk *
+                staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
   const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactor(
@@ -240,7 +245,7 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasuremen
   }
 }
 
-void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
+void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -251,12 +256,13 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
     return;
   }
 
-  gtsam::Pose3 T_W_frame(unary.measurementPose().matrix());
+  gtsam::Pose3 T_W_frame(unary.unaryMeasurement().matrix());
   gtsam::Pose3 T_W_I =
-      T_W_frame * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.frameName(), staticTransformsPtr_->getImuFrame()).matrix());
+      T_W_frame *
+      gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.sensorFrameName(), staticTransformsPtr_->getImuFrame()).matrix());
 
   if (initedGraphFlag_) {
-    graphMgrPtr_->addPoseUnaryFactor(unary.timeK(), unary.measurementRate(), unary.measurementNoise(), T_W_I, unary.measurementName());
+    graphMgrPtr_->addPoseUnaryFactor(unary.timeK(), unary.measurementRate(), unary.unaryMeasurementNoise(), T_W_I, unary.measurementName());
 
     // Optimize
     {
@@ -272,7 +278,7 @@ bool GraphMsf::isGnssCovarianceViolated_(const Eigen::Vector3d& gnssCovarianceXY
          gnssCovarianceXYZ(2) > GNSS_COVARIANCE_VIOLATION_THRESHOLD;
 }
 
-void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame) {
+void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -290,10 +296,10 @@ void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame)
 
   // Add unary factor
   gtsam::Point3 W_t_W_I =
-      W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.measurementVector(), W_t_W_frame.frameName(), staticTransformsPtr_->getImuFrame(),
+      W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
                                     preIntegratedNavStatePtr_->getT_W_Ik().rotation());
 
-  graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.measurementNoise(), W_t_W_I);
+  graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.unaryMeasurement(), W_t_W_I);
   {
     // Mutex for optimizeGraph Flag
     const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -301,20 +307,20 @@ void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame)
   }
 }
 
-void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) {
+void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame) {
   // Only take actions if graph has been initialized
   if (!initedGraphFlag_) {
     return;
   }
 
   // Transform yaw to imu frame
-  gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame.measurementValue());
+  gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame.unaryMeasurement());
   gtsam::Rot3 yawR_W_I =
       yawR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.frameName(), staticTransformsPtr_->getImuFrame()).rotation());
+      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(yaw_W_frame.timeK(), yaw_W_frame.measurementRate(), yaw_W_frame.measurementNoise(),
+    graphMgrPtr_->addGnssHeadingUnaryFactor(yaw_W_frame.timeK(), yaw_W_frame.measurementRate(), yaw_W_frame.unaryMeasurementNoise(),
                                             yawR_W_I.yaw());
     {
       // Mutex for optimizeGraph Flag

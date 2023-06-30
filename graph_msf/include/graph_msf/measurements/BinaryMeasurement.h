@@ -14,17 +14,24 @@ namespace graph_msf {
 
 struct BinaryMeasurement : public Measurement {
  public:
-  BinaryMeasurement(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeKm1,
-                    const double timeK)
-      : Measurement(measurementName, frameName, measurementRate, timeK), timeKm1_(timeKm1) {}
+  BinaryMeasurement(const std::string& measurementName, const int measurementRate, const double timeKm1, const double timeK,
+                    const std::string& sensorFrameName)
+      : Measurement(measurementName, measurementRate), timeKm1_(timeKm1), timeK_(timeK), sensorFrameName_(sensorFrameName) {}
 
-  virtual MeasurementType measurementType() override { return measurementType_; }
-
+  // Getters
   double timeKm1() const { return timeKm1_; }
+  double timeK() const { return timeK_; }
+  const std::string& sensorFrameName() const { return sensorFrameName_; }
+
+  virtual const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
 
  protected:
-  MeasurementType measurementType_ = MeasurementType::Binary;
+  // Standard members
+  std::string sensorFrameName_;
   double timeKm1_;
+  double timeK_;
+  // Enum
+  MeasurementTypeEnum measurementTypeEnum_ = MeasurementTypeEnum::Binary;
 };
 
 }  // namespace graph_msf

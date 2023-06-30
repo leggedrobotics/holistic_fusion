@@ -19,10 +19,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/StaticTransforms.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
-#include "graph_msf/measurements/BinaryMeasurement6D.h"
-#include "graph_msf/measurements/UnaryMeasurement1D.h"
-#include "graph_msf/measurements/UnaryMeasurement3D.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/BinaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -49,9 +47,9 @@ class GraphMsf {
   virtual bool setup();
 
   // Initialization Interface
-  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
-                          const std::string& frame2);
-  bool initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName);
+  bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                          const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
+  bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
@@ -62,10 +60,10 @@ class GraphMsf {
                                     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
-  void addOdometryMeasurement(const BinaryMeasurement6D& delta);
-  void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
-  void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
-  void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
+  void addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
+  void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
+  void addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
+  void addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   // Getters

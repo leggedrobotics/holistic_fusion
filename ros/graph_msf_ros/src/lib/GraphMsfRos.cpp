@@ -126,15 +126,15 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   }
 }
 
-void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
-                               const int maxBufferLength) {
+void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& fixedFrameName, const ros::Time& stamp,
+                               const Eigen::Vector3d& t, const int maxBufferLength) {
   geometry_msgs::PoseStamped pose;
-  pose.header.frame_id = frameName;
+  pose.header.frame_id = fixedFrameName;
   pose.header.stamp = stamp;
   pose.pose.position.x = t(0);
   pose.pose.position.y = t(1);
   pose.pose.position.z = t(2);
-  pathPtr->header.frame_id = frameName;
+  pathPtr->header.frame_id = fixedFrameName;
   pathPtr->header.stamp = stamp;
   pathPtr->poses.push_back(pose);
   if (pathPtr->poses.size() > maxBufferLength) {

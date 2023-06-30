@@ -76,15 +76,23 @@ Visualization Manager:
           Value: true
         imu_link:
           Value: true
+        imu_odom:
+          Value: true
         lidar_mount_link:
+          Value: true
+        lidar_odom_base:
           Value: true
         map_graph_msf:
           Value: true
         map_o3d:
           Value: true
-        odom:
+        map_o3d_:
+          Value: true
+        odom_graph_msf:
           Value: true
         odom_o3d:
+          Value: true
+        odom_o3d_:
           Value: true
         range_sensor_o3d:
           Value: true
@@ -102,11 +110,7 @@ Visualization Manager:
           Value: true
         tracking_camera_link:
           Value: true
-        tracking_camera_odom:
-          Value: true
         tracking_camera_pose_frame:
-          Value: true
-        tracking_camera_pose_frame_odom:
           Value: true
         world_graph_msf:
           Value: true
@@ -117,45 +121,47 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        range_sensor_o3d:
-          {}
-        tracking_camera_odom:
-          base_link:
-            LF_WHEEL:
-              {}
-            LH_WHEEL:
-              {}
-            RF_WHEEL:
-              {}
-            RH_WHEEL:
-              {}
-            base_inertia:
-              {}
-            imu_link:
-              imu:
-                {}
-            lidar_mount_link:
-              rslidar:
-                odom_o3d:
-                  map_o3d:
-                    raw_odom_o3d:
-                      {}
-                    raw_rs_o3d:
-                      {}
-            odom:
-              map_graph_msf:
-                {}
-              world_graph_msf:
-                {}
-            rgb_camera_link:
-              rgb_camera_optical_link:
-                {}
-            top:
-              {}
-            tracking_camera_link:
-              tracking_camera_pose_frame:
-                {}
-          tracking_camera_pose_frame_odom:
+        lidar_odom_base:
+          imu_odom:
+            {}
+        map_o3d:
+          odom_o3d:
+            range_sensor_o3d:
+              base_link:
+                LF_WHEEL:
+                  {}
+                LH_WHEEL:
+                  {}
+                RF_WHEEL:
+                  {}
+                RH_WHEEL:
+                  {}
+                base_inertia:
+                  {}
+                imu_link:
+                  imu:
+                    {}
+                lidar_mount_link:
+                  rslidar:
+                    odom_o3d_:
+                      map_o3d_:
+                        {}
+                odom_graph_msf:
+                  map_graph_msf:
+                    {}
+                  world_graph_msf:
+                    {}
+                rgb_camera_link:
+                  rgb_camera_optical_link:
+                    {}
+                top:
+                  {}
+                tracking_camera_link:
+                  tracking_camera_pose_frame:
+                    {}
+          raw_odom_o3d:
+            {}
+          raw_rs_o3d:
             {}
       Update Interval: 0
       Value: true
@@ -594,7 +600,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom
+    Fixed Frame: odom_graph_msf
     Frame Rate: 30
   Name: root
   Tools:

@@ -12,20 +12,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 
 // ROS
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/exact_time.h>
-#include <message_filters/synchronizer.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
-#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
@@ -48,9 +40,6 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
   virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
   virtual void readParams_(const ros::NodeHandle& privateNode) override;
-
-  // GNSS Handler
-  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
@@ -88,7 +77,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubMeasWorldLidarPath_;
 
   // Messages
-  nav_msgs::PathPtr measLidar_worldImuPathPtr_;
+  nav_msgs::PathPtr measLidar_mapImuPathPtr_;
 
   // Flags
   bool useLidarUnaryFactorFlag_ = false;

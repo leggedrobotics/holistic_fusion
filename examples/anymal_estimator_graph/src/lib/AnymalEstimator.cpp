@@ -12,10 +12,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 // Workspace
-#include "graph_msf/measurements/BinaryMeasurement6D.h"
-#include "graph_msf/measurements/UnaryMeasurement1D.h"
-#include "graph_msf/measurements/UnaryMeasurement3D.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/BinaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurement1D_.h"
+#include "graph_msf/measurements/UnaryMeasurement3D_.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/util/conversions.h"
 
 namespace anymal_se {
@@ -132,7 +132,7 @@ bool AnymalEstimator::gnssCoordinatesToENUCallback_(graph_msf_ros_msgs::GetPathI
 void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int odometryCallbackCounter__ = -1;
-  static std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKm1Ptr__;
+  static std::shared_ptr<graph_msf::UnaryMeasurementXD> odometryKm1Ptr__;
 
   // Counter
   ++odometryCallbackCounter__;
@@ -151,17 +151,17 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   double timeK = odomLidarPtr->header.stamp.toSec();
 
   // Measurement
-  std::shared_ptr<graph_msf::UnaryMeasurement6D> odometryKPtr;
+  std::shared_ptr<graph_msf::UnaryMeasurementXD> odometryKPtr;
   // Create pseudo unary factors
   if (graphConfigPtr_->usingGnssFlag) {
-    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
+    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurementXD>(
         "Lidar 6D", dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     if (odometryCallbackCounter__ > 0) {
       this->addDualOdometryMeasurementAndReturnNavState(*odometryKm1Ptr__, *odometryKPtr, poseBetweenNoise_);
     }
   } else {  // real unary factors
-    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurement6D>(
+    odometryKPtr = std::make_unique<graph_msf::UnaryMeasurementXD>(
         "Lidar 6D", dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLidarFrame(), int(lidarRate_), timeK,
         compslam_T_Wl_Lk, poseUnaryNoise_);
     this->addUnaryPoseMeasurement(*odometryKPtr);

@@ -417,7 +417,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   }
 }
 
-void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate, const double gnssHeadingUnaryNoise,
+void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoise,
                                              const double measuredYaw) {
   // Print information
   if (graphConfigPtr_->verboseLevel > 2) {
