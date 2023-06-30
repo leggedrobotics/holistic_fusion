@@ -30,6 +30,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
+#include "graph_msf/core/GtsamExpressionTransforms.h"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/factors/HeadingFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
@@ -41,7 +42,7 @@ namespace graph_msf {
 // Actual Class
 class GraphManager {
  public:
-  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr);
+  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame);
   ~GraphManager(){};
 
   // Change Graph
@@ -53,8 +54,7 @@ class GraphManager {
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
                                   const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose,
                                   const std::string& measurementType);
-  void addPoseUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
-                          const gtsam::Pose3& pose, const std::string& measurementType);
+  void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoise,
                               const gtsam::Vector3& velocity, const std::string& measurementType);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
@@ -88,13 +88,11 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  bool addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr, const gtsam::NoiseModelFactor* noiseModelFactorPtr,
-                         const double measurementTimestamp);
+  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   template <class CHILDPTR>
-  bool addFactorSafelyToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr,
-                               const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
+  bool addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
@@ -114,6 +112,10 @@ class GraphManager {
 
   // Buffers
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
+
+  // Optimization Transformations
+  std::string worldFrame_;
+  GtsamExpressionTransforms gtsamExpressionTransforms_;
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;

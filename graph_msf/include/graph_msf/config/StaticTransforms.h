@@ -8,9 +8,6 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef STATIC_TRANSFORMS_H
 #define STATIC_TRANSFORMS_H
 
-// C++
-#include <iostream>
-
 // Eigen
 #include <Eigen/Eigen>
 
@@ -19,15 +16,10 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
-
 class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
  public:
   // Constructor
-  StaticTransforms() : TransformsDictionary<Eigen::Isometry3d>(Eigen::Isometry3d::Identity()) {
+  StaticTransforms() : TransformsDictionary<Eigen::Isometry3d>() {
     std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl;
   }
 

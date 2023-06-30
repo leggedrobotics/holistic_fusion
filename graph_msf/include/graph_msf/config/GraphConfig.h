@@ -72,6 +72,7 @@ struct GraphConfig {
   double velocityReLinTh = 1e-3;
   double accBiasReLinTh = 1e-3;
   double gyroBiasReLinTh = 1e-3;
+  double fixedFrameReLinTh = 1e-3;
   // Flags
   int relinearizeSkip = 0;
   bool enableRelinearizationFlag = true;

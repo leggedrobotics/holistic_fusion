@@ -21,7 +21,8 @@ graph_params:
   enableDetailedResults: false
   usingFallbackGraph: true
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
-  usingBiasForPreIntegration: true
+  usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
 
 # Outlier Rejection
 outlier_params:
@@ -51,6 +52,7 @@ relinearization_params:
   velocityReLinTh: 1.0e-02                #Linear Velocity linearization threshold
   accBiasReLinTh: 1.0e-05                 #Accelerometer bias linearization threshold
   gyrBiasReLinTh: 1.0e-05                 #Gyroscope bias linearization threshold
+  fixedFrameReLinTh: 1.0e-02              #Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
   relinearizeSkip: 1
   enableRelinearization: true
   evaluateNonlinearError: false

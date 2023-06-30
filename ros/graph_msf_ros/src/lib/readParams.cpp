@@ -32,6 +32,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
+  graphConfigPtr_->optimizeFixedFramePosesWrtWorld = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
 
   // Outlier Parameters
   graphConfigPtr_->poseMotionOutlierThresold = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);
@@ -54,11 +55,14 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->gyroBiasPrior = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
 
   // Re-linearization
+  /// Thresholds
   graphConfigPtr_->positionReLinTh = tryGetParam<double>("relinearization_params/positionReLinTh", privateNode);
   graphConfigPtr_->rotationReLinTh = tryGetParam<double>("relinearization_params/rotationReLinTh", privateNode);
   graphConfigPtr_->velocityReLinTh = tryGetParam<double>("relinearization_params/velocityReLinTh", privateNode);
   graphConfigPtr_->accBiasReLinTh = tryGetParam<double>("relinearization_params/accBiasReLinTh", privateNode);
   graphConfigPtr_->gyroBiasReLinTh = tryGetParam<double>("relinearization_params/gyrBiasReLinTh", privateNode);
+  graphConfigPtr_->fixedFrameReLinTh = tryGetParam<double>("relinearization_params/fixedFrameReLinTh", privateNode);
+  /// Others
   graphConfigPtr_->relinearizeSkip = tryGetParam<int>("relinearization_params/relinearizeSkip", privateNode);
   graphConfigPtr_->enableRelinearizationFlag = tryGetParam<bool>("relinearization_params/enableRelinearization", privateNode);
   graphConfigPtr_->evaluateNonlinearErrorFlag = tryGetParam<bool>("relinearization_params/evaluateNonlinearError", privateNode);

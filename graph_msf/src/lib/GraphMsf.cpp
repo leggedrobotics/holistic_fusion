@@ -35,7 +35,7 @@ bool GraphMsf::setup() {
   imuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_);
 
   // Graph Manager
-  graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_);
+  graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getWorldFrame());
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
@@ -231,6 +231,7 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
     T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()) *
                 T_fkm1_fk *
                 staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
+    staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
   const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactor(
@@ -245,7 +246,7 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
   }
 }
 
-void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary) {
+void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -256,20 +257,15 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
     return;
   }
 
-  gtsam::Pose3 T_W_frame(unary.unaryMeasurement().matrix());
-  gtsam::Pose3 T_W_I =
-      T_W_frame *
-      gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.sensorFrameName(), staticTransformsPtr_->getImuFrame()).matrix());
-
   if (initedGraphFlag_) {
-    graphMgrPtr_->addPoseUnaryFactor(unary.timeK(), unary.measurementRate(), unary.unaryMeasurementNoise(), T_W_I, unary.measurementName());
-
-    // Optimize
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
-    }
+    graphMgrPtr_->addPoseUnaryFactor(unary6DMeasurement, staticTransformsPtr_->rv_T_frame1_frame2(unary6DMeasurement.sensorFrameName(),
+                                                                                                  staticTransformsPtr_->getImuFrame()));
+  }
+  // Optimize ---------------------------------------------------------------
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
   }
 }
 
