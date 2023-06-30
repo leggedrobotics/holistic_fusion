@@ -55,9 +55,6 @@ class GraphMsf {
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
-  // Graph Manipulation
-  void activateFallbackGraph();
-
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
@@ -69,6 +66,7 @@ class GraphMsf {
   void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
   void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
   void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
+  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   // Getters
   inline SafeNavState getLatestPreIntegratedNavState() {
@@ -129,7 +127,6 @@ class GraphMsf {
 
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
-
   // Imu Buffer
   std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;
 

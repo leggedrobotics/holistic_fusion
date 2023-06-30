@@ -51,14 +51,6 @@ bool GraphMsf::areRollAndPitchInited() {
   return alignedImuFlag_;
 }
 
-void GraphMsf::activateFallbackGraph() {
-  if (graphConfigPtr_->usingFallbackGraphFlag) {
-    graphMgrPtr_->activateFallbackGraph();
-  } else {
-    std::cout << YELLOW_START << "GMsf" << RED_START << " Not activating fallback graph, disabled in config." << COLOR_END << std::endl;
-  }
-}
-
 bool GraphMsf::initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
                                   const std::string& frame2) {
   // Locking
@@ -241,7 +233,7 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurement6D& deltaMeasuremen
                 staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.frameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactorToGlobalGraph(
+  const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactor(
       deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate(), deltaMeasurement.measurementNoise(),
       gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
 
@@ -269,8 +261,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurement6D& unary) {
       T_W_frame * gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(unary.frameName(), staticTransformsPtr_->getImuFrame()).matrix());
 
   if (initedGraphFlag_) {
-    graphMgrPtr_->addPoseUnaryFactorToGlobalGraph(unary.timeK(), unary.measurementRate(), unary.measurementNoise(), T_W_I);
-    graphMgrPtr_->addPoseUnaryFactorToFallbackGraph(unary.timeK(), unary.measurementRate(), unary.measurementNoise(), T_W_I);
+    graphMgrPtr_->addPoseUnaryFactor(unary.timeK(), unary.measurementRate(), unary.measurementNoise(), T_W_I, unary.measurementName());
 
     // Optimize
     {
@@ -339,6 +330,18 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame) 
 
   // Set yaw for potential resetting
   lastGnssYaw_W_I_ = yawR_W_I.yaw();
+}
+
+bool GraphMsf::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
+  // Find corresponding keys in graph
+  gtsam::Key closestKeyKm1, closestKeyK;
+
+  graphMgrPtr_->addPoseBetweenFactor(timeKm1, timeK, 10, 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), gtsam::Pose3::Identity(),
+                                     "zero motion between factor");
+  graphMgrPtr_->addVelocityUnaryFactor(timeKm1, 10, 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), gtsam::Vector3::Zero(),
+                                       "zero motion velocity factor");
+
+  return true;
 }
 
 /// Worker Functions -----------------------
@@ -425,7 +428,7 @@ void GraphMsf::optimizeGraph_() {
       // Get result
       double currentTime;
 
-      SafeNavStateWithCovarianceAndBias optimizedStateWithCovarianceAndBias = graphMgrPtr_->updateActiveGraphAndGetState(currentTime);
+      SafeNavStateWithCovarianceAndBias optimizedStateWithCovarianceAndBias = graphMgrPtr_->updateGraphAndGetState(currentTime);
       optimizedNavStateWithCovariancePtr_ = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedStateWithCovarianceAndBias);
 
     }  // else just sleep for a short amount of time before polling again

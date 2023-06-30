@@ -22,6 +22,7 @@ void TimeGraphKeyBuffer::addToKeyBuffer(const double ts, const gtsam::Key& key) 
     // Writing to IMU buffer --> acquire mutex
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
     timeToKeyBuffer_[ts] = key;
+    keyToTimeBuffer_[key] = ts;
     if (ts > tLatestInBuffer_) {
       tLatestInBuffer_ = ts;
     }
@@ -30,13 +31,7 @@ void TimeGraphKeyBuffer::addToKeyBuffer(const double ts, const gtsam::Key& key) 
   // If Key buffer is too large, remove first element
   if (timeToKeyBuffer_.size() > imuBufferLength_) {
     timeToKeyBuffer_.erase(timeToKeyBuffer_.begin());
-  }
-
-  if (timeToKeyBuffer_.size() > imuBufferLength_) {
-    std::ostringstream errorStream;
-    errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Key Buffer has grown too large. It contains "
-                << timeToKeyBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
-    throw std::runtime_error(errorStream.str());
+    keyToTimeBuffer_.erase(keyToTimeBuffer_.begin());
   }
 }
 

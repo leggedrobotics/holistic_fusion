@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToKeyMap;
+typedef std::map<gtsam::Key, double, std::less<gtsam::Key>> KeyToTimeMap;
 
 class TimeGraphKeyBuffer {
  public:
@@ -31,6 +32,8 @@ class TimeGraphKeyBuffer {
   bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
                                  const double tK);
   double getLatestTimestampInBuffer() const { return tLatestInBuffer_; }
+  const TimeToKeyMap& getTimeToKeyBuffer() { return timeToKeyBuffer_; }
+  const KeyToTimeMap& getKeyToTimeBuffer() { return keyToTimeBuffer_; }
 
   // Setters
   inline void setVerboseLevel(const int verboseLevel) { verboseLevel_ = verboseLevel; }
@@ -42,6 +45,7 @@ class TimeGraphKeyBuffer {
  private:
   // Key buffer
   TimeToKeyMap timeToKeyBuffer_;
+  KeyToTimeMap keyToTimeBuffer_;
   // Mutex
   std::mutex writeInBufferMutex_;
   // Verbose level

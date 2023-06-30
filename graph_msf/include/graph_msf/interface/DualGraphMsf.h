@@ -32,7 +32,8 @@ class DualGraphMsf : GraphMsf {
   // Setup
   virtual bool setup();
 
-  // Graph Manipulation
+  // Graph selection
+  void activateGlobalGraph(const gtsam::Vector3& imuPosition, const gtsam::Rot3& imuRotation, const double measurementTime);
   void activateFallbackGraph();
 
   // Adder functions
@@ -44,6 +45,19 @@ class DualGraphMsf : GraphMsf {
   void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
                                       const Eigen::Vector3d& gnssCovarianceXYZ, const bool attemptGraphSwitching,
                                       const bool addedYawBefore);
+
+  // Status
+  bool globalGraphActiveFlag() {
+    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
+    return activeSmootherPtr_ == globalSmootherPtr_;
+  }
+  bool fallbackGraphActiveFlag() {
+    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
+    return activeSmootherPtr_ == fallbackSmootherPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
+  }
+
+  // Graph Manipulation
+  void activateFallbackGraph();
 
  protected:
   // Methods -------------
@@ -61,6 +75,24 @@ class DualGraphMsf : GraphMsf {
  private:  // Variables -------------
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
+
+  /// Graph names
+  std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
+
+  // Timestamp Maps
+  std::shared_ptr<std::map<gtsam::Key, double>> globalGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> fallbackGraphKeysTimestampsMapBufferPtr_;
+
+  /// Selector
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeSmootherPtr_ = globalSmootherPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> activeImuBufferPreintegratorPtr_ = globalImuBufferPreintegratorPtr_;
+  std::shared_ptr<gtsam::Values> activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
+
+  // Mutex
+  std::mutex activelyUsingActiveGraphMutex_;
+  std::mutex swappingActiveGraphMutex_;
 };
 
 }  // namespace graph_msf

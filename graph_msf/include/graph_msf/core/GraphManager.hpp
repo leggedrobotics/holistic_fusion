@@ -48,27 +48,24 @@ class GraphManager {
   bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
   gtsam::NavState addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr, bool& relocalizationFlag);
-  gtsam::Key addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                               const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose,
-                                               const std::string& measurementType);
-  void addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
-                                       const gtsam::Pose3& unaryPose);
-  void addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
-                                         const gtsam::Pose3& pose);
+
+  // TODO: Remove explicit functions
+  gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
+                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose,
+                                  const std::string& measurementType);
+  void addPoseUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 6, 1>& poseUnaryNoise,
+                          const gtsam::Pose3& pose, const std::string& measurementType);
+  void addVelocityUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoise,
+                              const gtsam::Vector3& velocity, const std::string& measurementType);
   void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
                                   const gtsam::Vector3& position);
   void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const double gnssHeadingUnaryNoise, const double measuredYaw);
-  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
-
-  // Graph selection
-  void activateGlobalGraph(const gtsam::Vector3& imuPosition, const gtsam::Rot3& imuRotation, const double measurementTime);
-  void activateFallbackGraph();
 
   // Update graph and get new state
-  SafeNavStateWithCovarianceAndBias updateActiveGraphAndGetState(double& currentTime);
+  SafeNavStateWithCovarianceAndBias updateGraphAndGetState(double& currentTime);
 
   // Compute state at specific key
-  gtsam::NavState calculateActiveStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
+  gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
 
   // Accessors
   /// Getters
@@ -79,16 +76,6 @@ class GraphManager {
   const State& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
   const gtsam::imuBias::ConstantBias getOptimizedImuBias() { return optimizedGraphState_.imuBias(); }
-
-  // Status
-  bool globalGraphActiveFlag() {
-    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
-    return activeSmootherPtr_ == globalSmootherPtr_;
-  }
-  bool fallbackGraphActiveFlag() {
-    const std::lock_guard<std::mutex> swappingActiveGraphLock(swappingActiveGraphMutex_);
-    return activeSmootherPtr_ == fallbackSmootherPtr_;  //&& numOptimizationsSinceGraphSwitching_ >= 1;
-  }
 
  protected:
   // Calculate state at key for graph
@@ -137,47 +124,34 @@ class GraphManager {
   State optimizedGraphState_;
   gtsam::ISAM2Params isamParams_;
 
-  // Graphs
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> globalSmootherPtr_;
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fallbackSmootherPtr_;
-  /// Data buffers
-  std::shared_ptr<gtsam::NonlinearFactorGraph> globalFactorsBufferPtr_;
-  std::shared_ptr<gtsam::NonlinearFactorGraph> fallbackFactorsBufferPtr_;
+  // Graph
+  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
+  /// Data buffer
+  std::shared_ptr<gtsam::NonlinearFactorGraph> factorGraphBufferPtr_;
   // Values map
-  std::shared_ptr<gtsam::Values> globalGraphValuesBufferPtr_;
-  std::shared_ptr<gtsam::Values> fallbackGraphValuesBufferPtr_;
-  // Timestampmaps
-  std::shared_ptr<std::map<gtsam::Key, double>> globalGraphKeysTimestampsMapBufferPtr_;
-  std::shared_ptr<std::map<gtsam::Key, double>> fallbackGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<gtsam::Values> graphValuesBufferPtr_;
+  // Keys timestamp map
+  std::shared_ptr<std::map<gtsam::Key, double>> graphKeysTimestampsMapBufferPtr_;
 
   /// Counter
   int numOptimizationsSinceGraphSwitching_ = 0;
   bool sentRelocalizationCommandAlready_ = true;
 
-  /// Buffer Preintegrator
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> globalImuBufferPreintegratorPtr_;
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> fallbackImuBufferPreintegratorPtr_;
+  // Preintegration
   /// Step Preintegrator
   std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
+  /// Buffer Preintegrator
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
+
   /// IMU Buffer
   gtsam::Vector6 lastImuVector_;
 
   /// Config
   std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = NULL;
-  /// Graph names
-  std::vector<std::string> graphNames_{"globalGraph", "fallbackGraph"};
-  /// Selector
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> activeSmootherPtr_ = globalSmootherPtr_;
-  std::shared_ptr<gtsam::NonlinearFactorGraph> activeFactorsBufferPtr_ = globalFactorsBufferPtr_;
-  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> activeImuBufferPreintegratorPtr_ = globalImuBufferPreintegratorPtr_;
-  std::shared_ptr<gtsam::Values> activeGraphValuesBufferPtr_ = globalGraphValuesBufferPtr_;
-  std::shared_ptr<std::map<gtsam::Key, double>> activeGraphKeysTimestampsMapBufferPtr_ = globalGraphKeysTimestampsMapBufferPtr_;
 
   // Member variables
   /// Mutex
   std::mutex operateOnGraphDataMutex_;
-  std::mutex activelyUsingActiveGraphMutex_;
-  std::mutex swappingActiveGraphMutex_;
 
   /// Propagated state (at IMU frequency)
   gtsam::NavState imuPropagatedState_;
