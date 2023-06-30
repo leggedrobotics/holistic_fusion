@@ -5,21 +5,21 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/core/GraphManager.hpp"
+#define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
 
 // Factors
 #include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
+// Workspace
+#include "graph_msf/core/GraphManager.hpp"
 
 namespace graph_msf {
 
 // Public --------------------------------------------------------------------
 
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr) : graphConfigPtr_(graphConfigPtr) {
-
   // Buffer
   globalFactorsBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   fallbackFactorsBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
@@ -27,6 +27,15 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr) : graphC
   fallbackGraphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
   globalGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
   fallbackGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
+
+  // ISAM
+  isamParams_.findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
+  isamParams_.enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
+  isamParams_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
+  isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
+  isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
+  isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
+  isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
 }
 
 bool GraphManager::initImuIntegrators(const double g) {
@@ -167,8 +176,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   return true;
 }
 
-gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc,
-                                                      const Eigen::Vector3d& angularVel, bool& relocalizationFlag) {
+gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr,
+                                                      bool& relocalizationFlag) {
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -180,24 +189,22 @@ gtsam::NavState GraphManager::addImuFactorAndGetState(const double imuTimeK, con
   gtsam::Key newKey = newPropagatedStateKey_();
 
   // Add to key buffer
-  imuBufferPtr_->addToKeyBuffer(imuTimeK, newKey);
+  timeToKeyBuffer_.addToKeyBuffer(imuTimeK, newKey);
 
   // Get last two measurements from buffer to determine dt
   TimeToImuMap imuMeas;
-  imuBufferPtr_->getLastTwoMeasurements(imuMeas);
+  imuBufferPtr->getLastTwoMeasurements(imuMeas);
 
   // Update IMU preintegrator
   updateImuIntegrators_(imuMeas);
   // Predict propagated state
   if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
-    imuPropagatedState_ =
-        imuBufferPtr_->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
-                                                      optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector);
+    imuPropagatedState_ = imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
+                                                                       optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector);
     // imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, optimizedGraphState_.imuBias());
   } else {
-    imuPropagatedState_ =
-        imuBufferPtr_->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
-                                                      gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector);
+    imuPropagatedState_ = imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, imuPropagatedState_,
+                                                                       gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector);
     // imuPropagatedState_ = imuStepPreintegratorPtr_->predict(imuPropagatedState_, gtsam::imuBias::ConstantBias());
   }
 
@@ -338,8 +345,8 @@ void GraphManager::addPoseUnaryFactorToFallbackGraph(const double lidarTimeK, co
   double closestGraphTime;
   gtsam::Key closestKey;
 
-  if (!imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "FallbackLidarUnary", graphConfigPtr_->maxSearchDeviation,
-                                                lidarTimeK)) {
+  if (!timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "FallbackLidarUnary", graphConfigPtr_->maxSearchDeviation,
+                                                  lidarTimeK)) {
     std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
               << std::endl;
     return;
@@ -373,8 +380,8 @@ void GraphManager::addPoseUnaryFactorToGlobalGraph(const double lidarTimeK, cons
   double closestGraphTime;
   gtsam::Key closestKey;
 
-  if (!imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GlobalLidarUnary", graphConfigPtr_->maxSearchDeviation,
-                                                lidarTimeK)) {
+  if (!timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GlobalLidarUnary", graphConfigPtr_->maxSearchDeviation,
+                                                  lidarTimeK)) {
     std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding lidar unary constraint to graph." << COLOR_END
               << std::endl;
     return;
@@ -407,11 +414,9 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  if (!imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssUnary", graphConfigPtr_->maxSearchDeviation,
-                                                gnssTimeK)) {
-    //    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss unary constraint to graph." << COLOR_END
-    //              << std::endl;
-    //    return;
+  if (!timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssUnary", graphConfigPtr_->maxSearchDeviation,
+                                                  gnssTimeK)) {
+    // TODO
   }
 
   // Create noise model
@@ -447,11 +452,9 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  if (!imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssHeading", graphConfigPtr_->maxSearchDeviation,
-                                                gnssTimeK)) {
-    //    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding gnss heading constraint to graph." << COLOR_END
-    //              << std::endl;
-    //    return;
+  if (!timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssHeading", graphConfigPtr_->maxSearchDeviation,
+                                                  gnssTimeK)) {
+    // TODO
   }
 
   // Create noise model
@@ -561,8 +564,8 @@ void GraphManager::activateGlobalGraph(const gtsam::Vector3& imuPosition, const 
       // Find closest key
       double closestGraphTimeToGnssMeasurement;
       gtsam::Key closestKeyToGnssMeasurement;
-      imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeToGnssMeasurement, closestKeyToGnssMeasurement, "GnssUnary",
-                                               graphConfigPtr_->maxSearchDeviation, measurementTime);
+      timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTimeToGnssMeasurement, closestKeyToGnssMeasurement, "GnssUnary",
+                                                 graphConfigPtr_->maxSearchDeviation, measurementTime);
 
       // Reoptimization of global graph outside of lock ---------------
       // Add prior factor for observability
@@ -801,7 +804,7 @@ template <class CHILDPTR>
 bool GraphManager::addFactorToGraph_(std::shared_ptr<gtsam::NonlinearFactorGraph> modifiedGraphPtr,
                                      const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Check Timestamp of Measurement on Delay
-  if (imuBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp > graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
+  if (timeToKeyBuffer_.getLatestTimestampInBuffer() - measurementTimestamp > graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
     std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
               << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
               << COLOR_END << std::endl;
@@ -827,10 +830,10 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
   {
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    bool successKm1 = imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeKm1, closestKeyKm1, name + " km1",
-                                                               graphConfigPtr_->maxSearchDeviation, timeKm1);
+    bool successKm1 = timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTimeKm1, closestKeyKm1, name + " km1",
+                                                                 graphConfigPtr_->maxSearchDeviation, timeKm1);
     bool successK =
-        imuBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k", graphConfigPtr_->maxSearchDeviation, timeK);
+        timeToKeyBuffer_.getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k", graphConfigPtr_->maxSearchDeviation, timeK);
     if (!successKm1 || !successK) {
       return false;
     }

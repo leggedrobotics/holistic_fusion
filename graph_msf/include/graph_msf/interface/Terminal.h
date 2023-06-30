@@ -13,4 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define RED_START "\033[31m"
 #define COLOR_END "\033[0m"
 
+#include <iomanip>
+#include <iostream>
+
 #endif  // GMSF_TERMINAL_H

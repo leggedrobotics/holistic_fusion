@@ -70,6 +70,7 @@ add_library(${PROJECT_NAME}
         src/lib/ImuBuffer.cpp
         src/lib/Gnss.cpp
         src/lib/GnssHandler.cpp
+        src/lib/TimeGraphKeyBuffer.cpp
         src/lib/TrajectoryAlignment.cpp
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp)

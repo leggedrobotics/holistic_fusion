@@ -26,8 +26,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
-#define REQUIRED_GNSS_NUM_NOT_JUMPED 20 // 2*singleGnssJumping = 2*20 = 40
-#define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.2 // 10000
+#define REQUIRED_GNSS_NUM_NOT_JUMPED 20          // 2*singleGnssJumping = 2*20 = 40
+#define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.2  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
@@ -40,7 +40,7 @@ class GraphManager;
 
 // Actual Class
 class GraphMsf {
-public: // Interface
+ public:  // Interface
   // Constructor
   GraphMsf();
   // Destructor
@@ -49,11 +49,9 @@ public: // Interface
   virtual bool setup();
 
   // Initialization Interface
-  bool initYawAndPosition(const double yaw_W_frame1, const std::string &frame1,
-                          const Eigen::Vector3d &W_t_W_frame2,
-                          const std::string &frame2);
-  bool initYawAndPosition(const Eigen::Isometry3d &T_O_frame,
-                          const std::string &frameName);
+  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
+                          const std::string& frame2);
+  bool initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName);
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
@@ -62,35 +60,31 @@ public: // Interface
 
   // Adder functions
   /// Return
-  bool addImuMeasurementAndGetState(
-      const Eigen::Vector3d &linearAcc, const Eigen::Vector3d &angularVel,
-      const double imuTimeK,
-      std::shared_ptr<SafeNavState> &returnPreIntegratedNavStatePtr,
-      std::shared_ptr<SafeNavStateWithCovarianceAndBias>
-          &returnOptimizedStateWithCovarianceAndBiasPtr,
-      Eigen::Matrix<double, 6, 1> &returnAddedImuMeasurements);
+  bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+                                    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
+                                    Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
-  void addOdometryMeasurement(const BinaryMeasurement6D &delta);
-  void addUnaryPoseMeasurement(const UnaryMeasurement6D &unary);
-  void addGnssPositionMeasurement(const UnaryMeasurement3D &W_t_W_frame);
-  void addGnssHeadingMeasurement(const UnaryMeasurement1D &yaw_W_frame);
+  void addOdometryMeasurement(const BinaryMeasurement6D& delta);
+  void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
+  void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
+  void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
 
   // Getters
   inline SafeNavState getLatestPreIntegratedNavState() {
     if (preIntegratedNavStatePtr_ != nullptr)
       return *preIntegratedNavStatePtr_;
     else
-      throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: "
-                               "preIntegratedNavStatePtr_ is NULL");
+      throw std::runtime_error(
+          "GraphMsf::getLatestPreintegratedNavState: "
+          "preIntegratedNavStatePtr_ is NULL");
     ;
   }
   void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
-      std::shared_ptr<SafeNavStateWithCovarianceAndBias>
-          &returnOptimizedStateWithCovarianceAndBiasPtr) {
+      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
     if (optimizedNavStateWithCovariancePtr_ != nullptr) {
       returnOptimizedStateWithCovarianceAndBiasPtr =
-          std::make_shared<SafeNavStateWithCovarianceAndBias>(
-              *optimizedNavStateWithCovariancePtr_);
+          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
     } else {
       returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
     }
@@ -98,23 +92,22 @@ public: // Interface
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
-protected:
+ protected:
   // Methods -------------
   /// Worker functions
   //// Set Imu Attitude
-  bool alignImu_(double &imuAttitudeRoll, double &imuAttitudePitch);
+  bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
   //// Initialize the graph
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
   //// GNSS Violation
-  bool isGnssCovarianceViolated_(const Eigen::Vector3d &gnssCovarianceXYZ);
+  bool isGnssCovarianceViolated_(const Eigen::Vector3d& gnssCovarianceXYZ);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
-  Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(
-      const Eigen::Vector3d &W_t_W_frame1, const std::string &frame1,
-      const std::string &frame2, const Eigen::Matrix3d &R_W_frame2);
+  Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
+                                                const Eigen::Matrix3d& R_W_frame2);
 
   // Graph Config
   std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
@@ -125,10 +118,10 @@ protected:
   // Initialization
   void pretendFirstMeasurementReceived();
 
-private: // Variables -------------
+ private:  // Variables -------------
   // Threads
-  std::thread optimizeGraphThread_; /// Thread 5: Update of the graph as soon as
-                                    /// new lidar measurement has arrived
+  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
+                                     /// new lidar measurement has arrived
 
   // Mutex
   std::mutex initYawAndPositionMutex_;
@@ -155,8 +148,7 @@ private: // Variables -------------
   // Preintegrated NavState
   std::shared_ptr<SafeNavState> preIntegratedNavStatePtr_ = NULL;
   // Optimized NavState with Covariance
-  std::shared_ptr<SafeNavStateWithCovarianceAndBias>
-      optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
   /// Yaw
   double lastGnssYaw_W_I_;
 
@@ -165,6 +157,6 @@ private: // Variables -------------
   long imuCallbackCounter_ = 0;
 };
 
-} // namespace graph_msf
+}  // namespace graph_msf
 
-#endif // GRAPH_MSF_H
+#endif  // GRAPH_MSF_H

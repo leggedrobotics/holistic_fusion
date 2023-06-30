@@ -59,10 +59,8 @@ class DualGraphMsf : GraphMsf {
                                                 const Eigen::Matrix3d& R_W_frame2);
 
  private:  // Variables -------------
-
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
-
 };
 
 }  // namespace graph_msf

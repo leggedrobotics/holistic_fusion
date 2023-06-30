@@ -30,12 +30,15 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
+#include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/factors/HeadingFactor.h"
+#include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/UnaryMeasurement6D.h"
 
 namespace graph_msf {
 
+// Actual Class
 class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr);
@@ -44,8 +47,7 @@ class GraphManager {
   // Change Graph
   bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel,
-                                          bool& relocalizationFlag);
+  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr, bool& relocalizationFlag);
   gtsam::Key addPoseBetweenFactorToGlobalGraph(const double lidarTimeKm1, const double lidarTimeK, const double rate,
                                                const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose,
                                                const std::string& measurementType);
@@ -68,16 +70,6 @@ class GraphManager {
   // Compute state at specific key
   gtsam::NavState calculateActiveStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
 
-  // IMU Buffer interface
-  /// Estimate attitude from IMU
-  inline bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
-    return imuBufferPtr_->estimateAttitudeFromImu(initAttitude, gravityMagnitude, gyrBias);
-  }
-  /// Add to IMU buffer
-  inline Eigen::Matrix<double, 6, 1> addToIMUBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
-    return imuBufferPtr_->addToImuBuffer(ts, linearAcc, angularVel);
-  }
-
   // Accessors
   /// Getters
   Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior; }
@@ -87,7 +79,6 @@ class GraphManager {
   const State& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
   const gtsam::imuBias::ConstantBias getOptimizedImuBias() { return optimizedGraphState_.imuBias(); }
-  gtsam::ISAM2Params& getIsamParamsReference() { return isamParams_; }
 
   // Status
   bool globalGraphActiveFlag() {
@@ -137,6 +128,9 @@ class GraphManager {
     }
   }
 
+  // Buffers
+  TimeGraphKeyBuffer timeToKeyBuffer_;
+
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
@@ -184,6 +178,7 @@ class GraphManager {
   std::mutex operateOnGraphDataMutex_;
   std::mutex activelyUsingActiveGraphMutex_;
   std::mutex swappingActiveGraphMutex_;
+
   /// Propagated state (at IMU frequency)
   gtsam::NavState imuPropagatedState_;
 

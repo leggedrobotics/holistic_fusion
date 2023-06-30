@@ -30,25 +30,10 @@ bool GraphMsf::setup() {
 
   // Imu Buffer
   // Initialize IMU buffer
-  imuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_->useImuSignalLowPassFilter,
-                                                         graphConfigPtr_->imuLowPassFilterCutoffFreq, );
-
-  // Set IMU buffer parameters
-  imuBufferPtr_->setImuRate(graphConfigPtr_->imuRate);
-  imuBufferPtr_->setImuBufferLength(graphConfigPtr_->imuBufferLength);
-  imuBufferPtr_->setVerboseLevel(graphConfigPtr_->verboseLevel);
+  imuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_);
 
   // Graph Manager
   graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_);
-
-  // Configs
-  graphMgrPtr_->getIsamParamsReference().findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
-  graphMgrPtr_->getIsamParamsReference().enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
-  graphMgrPtr_->getIsamParamsReference().relinearizeSkip = graphConfigPtr_->relinearizeSkip;
-  graphMgrPtr_->getIsamParamsReference().enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
-  graphMgrPtr_->getIsamParamsReference().evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
-  graphMgrPtr_->getIsamParamsReference().cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
-  graphMgrPtr_->getIsamParamsReference().enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
@@ -142,7 +127,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
     return false;
   }
   // Add measurement to buffer
-  returnAddedImuMeasurements = graphMgrPtr_->addToIMUBuffer(imuTimeK, linearAcc, angularVel);
+  returnAddedImuMeasurements = imuBufferPtr_->addToImuBuffer(imuTimeK, linearAcc, angularVel);
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
@@ -220,7 +205,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
   // Normal operation ------------------------------------------------------------
   bool relocalizeWorldToMapFlag = false;
   // Add IMU factor and get propagated state
-  gtsam::NavState T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, linearAcc, angularVel, relocalizeWorldToMapFlag);
+  gtsam::NavState T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, imuBufferPtr_, relocalizeWorldToMapFlag);
 
   // Assign poses and velocities ---------------------------------------------------
   preIntegratedNavStatePtr_->updateInWorld(Eigen::Isometry3d(T_W_Ik_nav.pose().matrix()), T_W_Ik_nav.bodyVelocity(),
@@ -362,7 +347,7 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
   static int alignImuCounter__ = -1;
   ++alignImuCounter__;
   double estimatedGravityMagnitude;
-  if (graphMgrPtr_->estimateAttitudeFromImu(R_W_I_rollPitch, estimatedGravityMagnitude, graphMgrPtr_->getInitGyrBiasReference())) {
+  if (imuBufferPtr_->estimateAttitudeFromImu(R_W_I_rollPitch, estimatedGravityMagnitude, graphMgrPtr_->getInitGyrBiasReference())) {
     imuAttitudeRoll = R_W_I_rollPitch.roll();
     imuAttitudePitch = R_W_I_rollPitch.pitch();
     if (graphConfigPtr_->estimateGravityFromImuFlag) {
