@@ -47,7 +47,7 @@ class GraphManager {
   // Change Graph
   bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr, bool& relocalizationFlag);
+  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr);
 
   // TODO: Remove explicit functions
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
@@ -106,17 +106,13 @@ class GraphManager {
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, const double maxTimestampDistance,
                       const double timeKm1, const double timeK, const std::string& name);
   /// Generate new key
-  const auto newPropagatedStateKey_() { return ++propagatedStateKey_; }
+  const uint64_t newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  inline void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
-                                               std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
-    for (const auto& value : values) {
-      (*keyTimestampMapPtr)[value.key] = measurementTime;
-    }
-  }
+  void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
+                                        std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
 
   // Buffers
-  TimeGraphKeyBuffer timeToKeyBuffer_;
+  std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
@@ -135,7 +131,6 @@ class GraphManager {
 
   /// Counter
   int numOptimizationsSinceGraphSwitching_ = 0;
-  bool sentRelocalizationCommandAlready_ = true;
 
   // Preintegration
   /// Step Preintegrator

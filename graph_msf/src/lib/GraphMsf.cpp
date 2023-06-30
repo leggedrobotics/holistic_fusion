@@ -5,7 +5,9 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// sleep for
 #include "graph_msf/interface/GraphMsf.h"
+#include <chrono>
 #include "graph_msf/core/GraphManager.hpp"
 
 namespace graph_msf {
@@ -181,28 +183,21 @@ bool GraphMsf::addImuMeasurementAndGetState(
                                    // initialized
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     initGraph_(imuTimeK);
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);
-    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-      returnOptimizedStateWithCovarianceAndBiasPtr =
-          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
-    }
+    std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
   } else if (!normalOperationFlag_) {  // Case 5: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning
                                        // predicting the next state
                                        // via integration
     normalOperationFlag_ = true;
   }
-
-  // Normal operation ------------------------------------------------------------
-  bool relocalizeWorldToMapFlag = false;
+  // Case 6: Normal operation, meaning predicting the next state via integration -------------
   // Add IMU factor and get propagated state
-  gtsam::NavState T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, imuBufferPtr_, relocalizeWorldToMapFlag);
+  gtsam::NavState T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, imuBufferPtr_);
 
   // Assign poses and velocities ---------------------------------------------------
   preIntegratedNavStatePtr_->updateInWorld(Eigen::Isometry3d(T_W_Ik_nav.pose().matrix()), T_W_Ik_nav.bodyVelocity(),
-                                           graphMgrPtr_->getOptimizedImuBias().correctGyroscope(angularVel), imuTimeK,
-                                           relocalizeWorldToMapFlag);
+                                           graphMgrPtr_->getOptimizedImuBias().correctGyroscope(angularVel), imuTimeK, false);
 
   // Return Corresponding State ----------------------------------------------------------------
   returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);

@@ -23,7 +23,7 @@ typedef std::map<gtsam::Key, double, std::less<gtsam::Key>> KeyToTimeMap;
 class TimeGraphKeyBuffer {
  public:
   // Constructor
-  TimeGraphKeyBuffer() = default;
+  TimeGraphKeyBuffer(const int bufferLength, const int verboseLevel) : bufferLength_(bufferLength), verboseLevel_(verboseLevel){};
 
   // Destructor
   ~TimeGraphKeyBuffer() = default;
@@ -35,12 +35,8 @@ class TimeGraphKeyBuffer {
   const TimeToKeyMap& getTimeToKeyBuffer() { return timeToKeyBuffer_; }
   const KeyToTimeMap& getKeyToTimeBuffer() { return keyToTimeBuffer_; }
 
-  // Setters
-  inline void setVerboseLevel(const int verboseLevel) { verboseLevel_ = verboseLevel; }
-  inline void setImuBufferLength(const int imuBufferLength) { imuBufferLength_ = imuBufferLength; }
-
   // Add to buffers
-  void addToKeyBuffer(const double ts, const gtsam::Key& key);
+  void addToBuffer(const double ts, const gtsam::Key& key);
 
  private:
   // Key buffer
@@ -50,7 +46,7 @@ class TimeGraphKeyBuffer {
   std::mutex writeInBufferMutex_;
   // Verbose level
   int verboseLevel_ = 0;
-  int imuBufferLength_ = -1;
+  int bufferLength_ = -1;
   double tLatestInBuffer_ = 0.0;
 };
 
