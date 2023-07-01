@@ -14,7 +14,7 @@ initialization_params:
 # Factor Graph
 graph_params:
   useIsam: true                           # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
-  smootherLag: 2.0                        #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  smootherLag: 4.0                        #Lag of fixed lag smoother[seconds], not needed for ISAM2
   maxOptimizationFrequency: 10.0          #Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
@@ -22,7 +22,7 @@ graph_params:
   usingFallbackGraph: true
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
-  optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
+  optimizeFixedFramePosesWrtWorld: true  # If true, the poses of the fixed frames are optimized w.r.t. world
 
 # Outlier Rejection
 outlier_params:

@@ -20,17 +20,12 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/inference/Symbol.h>
-#include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/nonlinear/NonlinearISAM.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
-
-// Factors
-#include <gtsam/navigation/CombinedImuFactor.h>
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/GtsamExpressionTransforms.h"
+#include "graph_msf/core/Optimizer.h"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/factors/HeadingFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
@@ -80,8 +75,7 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag,
-                                                const std::shared_ptr<gtsam::IncrementalFixedLagSmoother> graphPtr,
+  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::Optimizer> graphPtr,
                                                 const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
                                                 const char* callingFunctionName);
 
@@ -97,7 +91,7 @@ class GraphManager {
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
-  static void addFactorsToSmootherAndOptimize(std::shared_ptr<gtsam::IncrementalFixedLagSmoother> smootherPtr,
+  static void addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> smootherPtr,
                                               const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
                                               const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
@@ -121,10 +115,9 @@ class GraphManager {
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   State optimizedGraphState_;
-  gtsam::ISAM2Params isamParams_;
 
-  // Graph
-  std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
+  // Optimizer
+  std::shared_ptr<graph_msf::Optimizer> optimizerPtr_;
   /// Data buffer
   std::shared_ptr<gtsam::NonlinearFactorGraph> factorGraphBufferPtr_;
   // Values map

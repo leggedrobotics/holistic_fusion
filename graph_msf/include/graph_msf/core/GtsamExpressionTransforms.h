@@ -27,7 +27,6 @@ class GtsamExpressionTransforms : public TransformsDictionary<gtsam::Key> {
   void addNewExpressionTransformation(const std::string& frame1, const std::string& frame2) {
     set_T_frame1_frame2(frame1, frame2, gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs()));
   }
-
 };
 
 }  // namespace graph_msf

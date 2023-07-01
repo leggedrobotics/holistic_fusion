@@ -2,7 +2,7 @@
 sensor_params:
   ## Config
   useLidarUnaryFactor: true
-  useWheelOdometry: true
+  useWheelOdometry: false
   useVioOdometry: false
   ## Rates
   lidarOdometryRate: 10
