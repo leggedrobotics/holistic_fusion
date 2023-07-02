@@ -52,7 +52,7 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Set frames
   /// LiDAR odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setLidarOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
+      ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
   /// Wheel Odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
       ->setWheelOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelOdometryFrame", privateNode));

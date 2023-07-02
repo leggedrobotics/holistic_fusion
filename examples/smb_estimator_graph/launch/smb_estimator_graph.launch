@@ -32,6 +32,7 @@
         <remap from="/imu_topic"            to="$(arg imu_topic_name)" />
         <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)" />
         <remap from="/wheel_odometry_topic" to="$(arg wheel_odometry_topic_name)" />
+        <remap from="/vio_odometry_topic"   to="$(arg vio_odometry_topic_name)" />
     </node>
 
 </launch>

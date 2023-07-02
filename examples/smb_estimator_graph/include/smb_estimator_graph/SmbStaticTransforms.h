@@ -18,13 +18,14 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
                       const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
 
   // Setters
-  void setLidarOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
+  void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
   void setWheelOdometryFrame(const std::string& s) { wheelOdometryFrame_ = s; }
   void setVioOdometryFrame(const std::string& s) { vioOdometryFrame_ = s; }
 
   // Getters
-  const std::string& getLidarOdometryFrame() { return lidarOdometryFrame_; }
+  const std::string& getLioOdometryFrame() { return lidarOdometryFrame_; }
   const std::string& getWheelOdometryFrame() { return wheelOdometryFrame_; }
+  const std::string& getVioOdometryFrame() { return vioOdometryFrame_; }
 
  private:
   void findTransformations() override;

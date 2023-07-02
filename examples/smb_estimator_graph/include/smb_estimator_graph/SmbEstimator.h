@@ -67,17 +67,19 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Subscribers
   // Instances
-  ros::Subscriber subLidarOdometry_;
+  ros::Subscriber subLioOdometry_;
   ros::Subscriber subWheelOdometry_;
   ros::Subscriber subVioOdometry_;
   tf::TransformListener tfListener_;
 
   // Publishers
   // Path
-  ros::Publisher pubMeasWorldLidarPath_;
+  ros::Publisher pubMeasMapLioPath_;
+  ros::Publisher pubMeasMapVioPath_;
 
   // Messages
-  nav_msgs::PathPtr measLidar_mapImuPathPtr_;
+  nav_msgs::PathPtr measLio_mapImuPathPtr_;
+  nav_msgs::PathPtr measVio_mapImuPathPtr_;
 
   // Flags
   bool useLidarUnaryFactorFlag_ = false;
