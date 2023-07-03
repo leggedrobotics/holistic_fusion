@@ -8,8 +8,8 @@ sensor_params:
 
 # Initialization
 initialization_params:
-  estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU, if false, the value of 9.81 is used
-  gravityMagnitude: 9.80600                   # If estimateGravityFromImu is false, this value is used as gravity
+  estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU
+  gravityMagnitude: 9.80600                # If estimateGravityFromImu is false, this value is used as gravity
 
 # Factor Graph
 graph_params:

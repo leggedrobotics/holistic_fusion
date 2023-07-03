@@ -12,23 +12,24 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/tf.h>
 
 // Workspace
+#include "graph_msf_ros/constants.h"
 #include "graph_msf_ros/util/conversions.h"
 
 namespace graph_msf {
 
 GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : privateNode_(*privateNodePtr) {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initializing." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   graphConfigPtr_ = std::make_shared<GraphConfig>();
   staticTransformsPtr_ = std::make_shared<StaticTransforms>();
 
   // Wrap up
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initialized." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initialized." << COLOR_END << std::endl;
 }
 
 bool GraphMsfRos::setup() {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
   GraphMsfRos::readParams_(privateNode_);
@@ -51,13 +52,13 @@ bool GraphMsfRos::setup() {
   startTime_ = std::chrono::high_resolution_clock::now();
 
   // Wrap up
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 
   return true;
 }
 
 void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing publishers." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initializing publishers." << COLOR_END << std::endl;
   // Odometry
   pubEstOdomImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
   pubEstMapImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_map_imu", ROS_QUEUE_SIZE);
@@ -76,7 +77,7 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
 }
 
 void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
   // Odometry
   estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   //  estMapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
@@ -93,7 +94,7 @@ void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
 }
 
 void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
-  std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Initializing subscribers." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initializing subscribers." << COLOR_END << std::endl;
   // Imu
   subImu_ = privateNode.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
                                                     ros::TransportHints().tcpNoDelay());
@@ -193,11 +194,6 @@ void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegrat
                    ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(),
                    navStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
   pubEstOdomImu_.publish(estOdomImuMsgPtr_);
-  //  // Map->imu with 100 Hz
-  //  addToOdometryMsg(estMapImuMsgPtr_, staticTransformsPtr_->getMapFrame(), staticTransformsPtr_->getImuFrame(),
-  //                   ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_M_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(),
-  //                   poseCovarianceRos, twistCovarianceRos);
-  //  pubEstMapImu_.publish(estMapImuMsgPtr_);
   // World->imu with 100 Hz
   addToOdometryMsg(estWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
                    ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(),
@@ -210,9 +206,6 @@ void GraphMsfRos::publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegrat
   addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), ros::Time(navStatePtr->getTimeK()),
                navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength * 20);
   pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
-  //  // Map->imu
-  //  addToPathMsg(estMapImuPathPtr_, staticTransformsPtr_->getMapFrame(), ros::Time(navStatePtr->getTimeK()),
-  //               navStatePtr->getT_M_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
   // world->imu
   addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(navStatePtr->getTimeK()),
                (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength * 20);
@@ -310,9 +303,6 @@ void GraphMsfRos::publishState_(
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
       T_O_Ik.inverse();
   publishTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
-  //  // O_M
-  //  Eigen::Isometry3d T_O_M = integratedNavStatePtr->getT_M_O().inverse();
-  //  publishTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getMapFrame(), timeK, T_O_M);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
   publishTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);

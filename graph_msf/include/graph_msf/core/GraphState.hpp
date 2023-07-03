@@ -23,8 +23,8 @@ namespace graph_msf {
 // Class defining Robot State
 class GraphState {
  public:
-  GraphState(){};   // Constructor
-  ~GraphState(){};  // Destructor
+  GraphState() : fixedFrameTransforms_(Eigen::Isometry3d::Identity()){};  // Constructor
+  ~GraphState(){};                                                        // Destructor
 
   // Accessors
   bool isOptimized() const { return isOptimizedStatus_; }

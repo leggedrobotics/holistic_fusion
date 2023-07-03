@@ -23,7 +23,7 @@ namespace graph_msf {
 // Public --------------------------------------------------------------------
 
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame)
-    : graphConfigPtr_(graphConfigPtr), worldFrame_(worldFrame) {
+    : graphConfigPtr_(graphConfigPtr), worldFrame_(worldFrame), resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()) {
   // Buffer
   factorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   graphValuesBufferPtr_ = std::make_shared<gtsam::Values>();

@@ -1,7 +1,6 @@
 # Sensor Params
 sensor_params:
   ## Config
-  useLidarUnaryFactor: true
   useWheelOdometry: false
   useVioOdometry: false
   ## Rates
@@ -12,8 +11,7 @@ sensor_params:
 # Noise Parameters
 noise_params:
   ## LiDAR
-  lidarPoseBetweenNoise: [ 5, 5, 5, 0.1, 0.1, 0.1 ] # ORDER RPY(rad) - XYZ(meters)
-  lidarPoseUnaryNoise: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  lioPoseUnaryNoise: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## Wheel
   wheelPoseBetweenNoise: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
   ## VIO

@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /RobotModel1/Status1
       Splitter Ratio: 0.5843023061752319
     Tree Height: 2428
   - Class: rviz/Selection
@@ -146,10 +147,6 @@ Visualization Manager:
           Value: true
         RH_thigh_fixed:
           Value: true
-        aft_mapped:
-          Value: true
-        aft_mapped_to_init_CORRECTED:
-          Value: true
         base:
           Value: true
         base_inertia:
@@ -160,15 +157,9 @@ Visualization Manager:
           Value: true
         bottom_shell:
           Value: true
-        camera:
-          Value: true
-        camera_CORRECTED:
-          Value: true
         camera_init:
           Value: true
         camera_init_CORRECTED:
-          Value: true
-        camera_init_GRAVITY_ALIGNED:
           Value: true
         compslam_lio/aft_mapped:
           Value: true
@@ -192,121 +183,27 @@ Visualization Manager:
           Value: true
         depth_camera_front_lower_camera_parent:
           Value: true
-        depth_camera_front_lower_depth_frame:
-          Value: true
-        depth_camera_front_lower_depth_optical_frame:
-          Value: true
-        depth_camera_front_lower_infra1_frame:
-          Value: true
-        depth_camera_front_lower_infra1_optical_frame:
-          Value: true
-        depth_camera_front_lower_infra2_frame:
-          Value: true
-        depth_camera_front_lower_infra2_optical_frame:
-          Value: true
         depth_camera_front_upper_camera:
           Value: true
         depth_camera_front_upper_camera_parent:
-          Value: true
-        depth_camera_front_upper_depth_frame:
-          Value: true
-        depth_camera_front_upper_depth_optical_frame:
-          Value: true
-        depth_camera_front_upper_infra1_frame:
-          Value: true
-        depth_camera_front_upper_infra1_optical_frame:
-          Value: true
-        depth_camera_front_upper_infra2_frame:
-          Value: true
-        depth_camera_front_upper_infra2_optical_frame:
           Value: true
         depth_camera_left_camera:
           Value: true
         depth_camera_left_camera_parent:
           Value: true
-        depth_camera_left_depth_frame:
-          Value: true
-        depth_camera_left_depth_optical_frame:
-          Value: true
-        depth_camera_left_infra1_frame:
-          Value: true
-        depth_camera_left_infra1_optical_frame:
-          Value: true
-        depth_camera_left_infra2_frame:
-          Value: true
-        depth_camera_left_infra2_optical_frame:
-          Value: true
         depth_camera_rear_lower_camera:
           Value: true
         depth_camera_rear_lower_camera_parent:
-          Value: true
-        depth_camera_rear_lower_depth_frame:
-          Value: true
-        depth_camera_rear_lower_depth_optical_frame:
-          Value: true
-        depth_camera_rear_lower_infra1_frame:
-          Value: true
-        depth_camera_rear_lower_infra1_optical_frame:
-          Value: true
-        depth_camera_rear_lower_infra2_frame:
-          Value: true
-        depth_camera_rear_lower_infra2_optical_frame:
           Value: true
         depth_camera_rear_upper_camera:
           Value: true
         depth_camera_rear_upper_camera_parent:
           Value: true
-        depth_camera_rear_upper_depth_frame:
-          Value: true
-        depth_camera_rear_upper_depth_optical_frame:
-          Value: true
-        depth_camera_rear_upper_infra1_frame:
-          Value: true
-        depth_camera_rear_upper_infra1_optical_frame:
-          Value: true
-        depth_camera_rear_upper_infra2_frame:
-          Value: true
-        depth_camera_rear_upper_infra2_optical_frame:
-          Value: true
         depth_camera_right_camera:
           Value: true
         depth_camera_right_camera_parent:
           Value: true
-        depth_camera_right_depth_frame:
-          Value: true
-        depth_camera_right_depth_optical_frame:
-          Value: true
-        depth_camera_right_infra1_frame:
-          Value: true
-        depth_camera_right_infra1_optical_frame:
-          Value: true
-        depth_camera_right_infra2_frame:
-          Value: true
-        depth_camera_right_infra2_optical_frame:
-          Value: true
         docking_socket:
-          Value: true
-        docking_station:
-          Value: true
-        docking_station__apriltag36_11_00000_link:
-          Value: true
-        docking_station__apriltag36_11_00000_link__visual__apriltag36_11_00000_visual:
-          Value: true
-        docking_station__apriltag36_11_00001_link:
-          Value: true
-        docking_station__apriltag36_11_00001_link__visual__apriltag36_11_00001_visual:
-          Value: true
-        docking_station__apriltag36_11_00002_link:
-          Value: true
-        docking_station__apriltag36_11_00002_link__visual__apriltag36_11_00002_visual:
-          Value: true
-        docking_station__apriltag36_11_00003_link:
-          Value: true
-        docking_station__apriltag36_11_00003_link__visual__apriltag36_11_00003_visual:
-          Value: true
-        docking_station__docking_port_link:
-          Value: true
-        docking_station__docking_port_link__visual__docking_port_visual:
           Value: true
         face_front:
           Value: true
@@ -320,23 +217,11 @@ Visualization Manager:
           Value: true
         footprint:
           Value: true
-        ground_plane:
-          Value: true
-        ground_plane__link:
-          Value: true
-        ground_plane__link__collision__collision:
-          Value: true
-        ground_plane__link__visual__visual:
-          Value: true
         hatch_shell:
           Value: true
         hbc_receiver:
           Value: true
         imu_link:
-          Value: true
-        laser_odom:
-          Value: true
-        laser_odom_CORRECTED:
           Value: true
         lidar:
           Value: true
@@ -369,6 +254,23 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
+        map_graph_msf:
+          compslam_lio/camera_init_CORRECTED:
+            compslam_lio/aft_mapped_to_init_CORRECTED:
+              {}
+            compslam_lio/camera_CORRECTED:
+              {}
+            compslam_lio/camera_init:
+              compslam_lio/aft_mapped:
+                {}
+              compslam_lio/camera:
+                {}
+              compslam_lio/laser_odom:
+                {}
+            compslam_lio/camera_init_GRAVITY_ALIGNED:
+              {}
+            compslam_lio/laser_odom_CORRECTED:
+              {}
         odom:
           base:
             LF_HAA_drive:
@@ -429,51 +331,19 @@ Visualization Manager:
               {}
             depth_camera_left_camera:
               depth_camera_left_camera_parent:
-                depth_camera_left_depth_frame:
-                  depth_camera_left_depth_optical_frame:
-                    {}
-                depth_camera_left_infra1_frame:
-                  depth_camera_left_infra1_optical_frame:
-                    {}
-                depth_camera_left_infra2_frame:
-                  depth_camera_left_infra2_optical_frame:
-                    {}
+                {}
             depth_camera_right_camera:
               depth_camera_right_camera_parent:
-                depth_camera_right_depth_frame:
-                  depth_camera_right_depth_optical_frame:
-                    {}
-                depth_camera_right_infra1_frame:
-                  depth_camera_right_infra1_optical_frame:
-                    {}
-                depth_camera_right_infra2_frame:
-                  depth_camera_right_infra2_optical_frame:
-                    {}
+                {}
             docking_socket:
               {}
             face_front:
               depth_camera_front_lower_camera:
                 depth_camera_front_lower_camera_parent:
-                  depth_camera_front_lower_depth_frame:
-                    depth_camera_front_lower_depth_optical_frame:
-                      {}
-                  depth_camera_front_lower_infra1_frame:
-                    depth_camera_front_lower_infra1_optical_frame:
-                      {}
-                  depth_camera_front_lower_infra2_frame:
-                    depth_camera_front_lower_infra2_optical_frame:
-                      {}
+                  {}
               depth_camera_front_upper_camera:
                 depth_camera_front_upper_camera_parent:
-                  depth_camera_front_upper_depth_frame:
-                    depth_camera_front_upper_depth_optical_frame:
-                      {}
-                  depth_camera_front_upper_infra1_frame:
-                    depth_camera_front_upper_infra1_optical_frame:
-                      {}
-                  depth_camera_front_upper_infra2_frame:
-                    depth_camera_front_upper_infra2_optical_frame:
-                      {}
+                  {}
               face_shell_front:
                 {}
               wide_angle_camera_front_camera:
@@ -482,26 +352,10 @@ Visualization Manager:
             face_rear:
               depth_camera_rear_lower_camera:
                 depth_camera_rear_lower_camera_parent:
-                  depth_camera_rear_lower_depth_frame:
-                    depth_camera_rear_lower_depth_optical_frame:
-                      {}
-                  depth_camera_rear_lower_infra1_frame:
-                    depth_camera_rear_lower_infra1_optical_frame:
-                      {}
-                  depth_camera_rear_lower_infra2_frame:
-                    depth_camera_rear_lower_infra2_optical_frame:
-                      {}
+                  {}
               depth_camera_rear_upper_camera:
                 depth_camera_rear_upper_camera_parent:
-                  depth_camera_rear_upper_depth_frame:
-                    depth_camera_rear_upper_depth_optical_frame:
-                      {}
-                  depth_camera_rear_upper_infra1_frame:
-                    depth_camera_rear_upper_infra1_optical_frame:
-                      {}
-                  depth_camera_rear_upper_infra2_frame:
-                    depth_camera_rear_upper_infra2_optical_frame:
-                      {}
+                  {}
               face_shell_rear:
                 {}
               wide_angle_camera_rear_camera:
@@ -517,69 +371,17 @@ Visualization Manager:
               lidar:
                 {}
             odom_graph_msf:
-              map_graph_msf:
-                compslam_lio/camera_init_CORRECTED:
-                  compslam_lio/aft_mapped_to_init_CORRECTED:
-                    {}
-                  compslam_lio/camera_CORRECTED:
-                    {}
-                  compslam_lio/camera_init:
-                    compslam_lio/aft_mapped:
-                      {}
-                    compslam_lio/camera:
-                      {}
-                    compslam_lio/laser_odom:
-                      {}
-                  compslam_lio/camera_init_GRAVITY_ALIGNED:
-                    {}
-                  compslam_lio/laser_odom_CORRECTED:
-                    {}
               world:
                 {}
             top_shell:
               {}
-          docking_station:
-            docking_station__apriltag36_11_00000_link:
-              docking_station__apriltag36_11_00000_link__visual__apriltag36_11_00000_visual:
-                {}
-            docking_station__apriltag36_11_00001_link:
-              docking_station__apriltag36_11_00001_link__visual__apriltag36_11_00001_visual:
-                {}
-            docking_station__apriltag36_11_00002_link:
-              docking_station__apriltag36_11_00002_link__visual__apriltag36_11_00002_visual:
-                {}
-            docking_station__apriltag36_11_00003_link:
-              docking_station__apriltag36_11_00003_link__visual__apriltag36_11_00003_visual:
-                {}
-            docking_station__docking_port_link:
-              docking_station__docking_port_link__visual__docking_port_visual:
-                {}
           feetcenter:
             {}
           footprint:
             {}
-          ground_plane:
-            ground_plane__link:
-              ground_plane__link__collision__collision:
-                {}
-              ground_plane__link__visual__visual:
-                {}
           map:
             camera_init_CORRECTED:
-              aft_mapped_to_init_CORRECTED:
-                {}
-              camera_CORRECTED:
-                {}
               camera_init:
-                aft_mapped:
-                  {}
-                camera:
-                  {}
-                laser_odom:
-                  {}
-              camera_init_GRAVITY_ALIGNED:
-                {}
-              laser_odom_CORRECTED:
                 {}
       Update Interval: 0
       Value: true
@@ -644,7 +446,31 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: MapImuEstimated
+      Name: OdomImuEstimated
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /graph_msf/est_path_odom_imu
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 114; 159; 207
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: WorldImuEstimated
       Offset:
         X: 0
         Y: 0
@@ -656,6 +482,30 @@ Visualization Manager:
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
       Topic: /graph_msf/est_path_world_imu
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 191; 64; 170
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: WorldImuOptimized
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /graph_msf/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -680,30 +530,6 @@ Visualization Manager:
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
       Topic: /graph_msf/measLiDAR_path_map_imu
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 191; 64; 170
-      Enabled: true
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: MapImuOptimized
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Queue Size: 10
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -780,6 +606,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         LF_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -810,6 +637,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         LF_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -829,6 +657,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         LH_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -859,6 +688,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         LH_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -879,6 +709,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         RF_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -909,6 +740,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         RF_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -928,6 +760,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         RH_HFE_drive:
           Alpha: 1
           Show Axes: false
@@ -958,6 +791,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         RH_shank_fixed:
           Alpha: 1
           Show Axes: false
@@ -981,6 +815,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         body_top:
           Alpha: 1
           Show Axes: false
@@ -989,6 +824,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         depth_camera_front_lower_camera:
           Alpha: 1
           Show Axes: false
@@ -1041,6 +877,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         face_front:
           Alpha: 1
           Show Axes: false
@@ -1053,14 +890,17 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         face_shell_rear:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         hatch_shell:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         hbc_receiver:
           Alpha: 1
           Show Axes: false
@@ -1082,6 +922,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         wide_angle_camera_front_camera:
           Alpha: 1
           Show Axes: false
@@ -1178,7 +1019,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: map_graph_msf
+    Fixed Frame: odom_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
@@ -1202,7 +1043,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.5084328651428223
+      Distance: 5.275063514709473
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1210,17 +1051,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.0513857863843441
-        Y: 0.3315160572528839
-        Z: 0.2778189778327942
+        X: -1.407129168510437
+        Y: -0.30708593130111694
+        Z: 0.943118155002594
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4848002791404724
+      Pitch: 0.4548003077507019
       Target Frame: <Fixed Frame>
-      Yaw: 1.5554530620574951
+      Yaw: 1.5954530239105225
     Saved: ~
 Window Geometry:
   Displays:
@@ -1228,7 +1069,7 @@ Window Geometry:
   Height: 2832
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f700000a74fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e00000a740000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010200000431fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000004310000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000077d00fffffffb0000000800540069006d00650100000000000004500000000000000000000011fd00000a7400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000031500000a74fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e00000a740000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010200000431fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000004310000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000077d00fffffffb0000000800540069006d00650100000000000004500000000000000000000010df00000a7400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

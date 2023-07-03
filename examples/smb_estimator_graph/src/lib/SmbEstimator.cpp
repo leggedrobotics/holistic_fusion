@@ -118,27 +118,16 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    if (useLidarUnaryFactorFlag_) {
-      // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(lidarOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
-          dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lidarPoseUnaryNoise_);
-      this->addUnaryPoseMeasurement(unary6DMeasurement);
-    } else {
-      // Compute Delta
-      Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_LKm1__.inverse() * lio_T_M_Lk;
-      // Create measurement
-      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-          "LiDAR_between_6D", int(lidarOdometryRate_), lidarOdometryTimeKm1__, lidarOdometryTimeK,
-          dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), T_Lkm1_Lk, lidarPoseBetweenNoise_);
-      // Add to graph
-      graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
-    }
+    // Measurement
+    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+        "Lidar_unary_6D", int(lidarOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
+        dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
+    this->addUnaryPoseMeasurement(unary6DMeasurement);
   } else {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
         "Lidar_unary_6D", int(lidarOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
-        dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lidarPoseUnaryNoise_);
+        dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->initYawAndPosition(unary6DMeasurement);
   }
 

@@ -20,7 +20,6 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Flags
-  useLidarUnaryFactorFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useLidarUnaryFactor", privateNode);
   useWheelOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelOdometry", privateNode);
   useVioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useVioOdometry", privateNode);
 
@@ -31,13 +30,9 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   // Noise Parameters
   /// LiDAR Odometry
-  const auto poseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lidarPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
-  lidarPoseBetweenNoise_ << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2], poseBetweenNoise[3], poseBetweenNoise[4],
-      poseBetweenNoise[5];
   const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lidarPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
-  lidarPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
   const auto wheelPoseBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z

@@ -20,7 +20,7 @@ template <class TRANSFORM_TYPE>
 class TransformsDictionary {
  public:
   // Constructor
-  TransformsDictionary() = default;
+  TransformsDictionary(TRANSFORM_TYPE identityObject) : identity_(identityObject) {}
 
   // Getters ------------------------------------------------------------
   // Check for specific transformation pair
@@ -53,6 +53,11 @@ class TransformsDictionary {
 
   // Returns a right value to the requested transformation
   const TRANSFORM_TYPE& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+    // Check whether it is identity
+    if (frame1 == frame2) {
+      return identity_;
+    }
+    // Normal Operation
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
     if (keyIterator == T_frame1_frame2_map_.end()) {
@@ -93,6 +98,9 @@ class TransformsDictionary {
  private:
   // General container class
   std::map<std::pair<std::string, std::string>, TRANSFORM_TYPE> T_frame1_frame2_map_;
+
+  // Identity transformation
+  TRANSFORM_TYPE identity_;
 
   // Number of stored transformations
   size_t numStoredTransforms_ = 0;

@@ -19,7 +19,7 @@ namespace graph_msf {
 class TransformsExpressionKeys : public TransformsDictionary<gtsam::Key> {
  public:
   // Constructor
-  TransformsExpressionKeys() : TransformsDictionary<gtsam::Key>() {
+  TransformsExpressionKeys() : TransformsDictionary<gtsam::Key>(-1) {
     std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl;
   }
 

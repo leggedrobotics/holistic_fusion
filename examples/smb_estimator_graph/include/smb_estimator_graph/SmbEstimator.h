@@ -53,8 +53,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   double vioOdometryRate_ = 50.0;
 
   // Noise
-  Eigen::Matrix<double, 6, 1> lidarPoseBetweenNoise_;
-  Eigen::Matrix<double, 6, 1> lidarPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_;
 

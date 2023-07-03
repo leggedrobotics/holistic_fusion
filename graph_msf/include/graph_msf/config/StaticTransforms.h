@@ -19,7 +19,7 @@ namespace graph_msf {
 class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
  public:
   // Constructor
-  StaticTransforms() : TransformsDictionary<Eigen::Isometry3d>() {
+  StaticTransforms() : TransformsDictionary<Eigen::Isometry3d>(Eigen::Isometry3d::Identity()) {
     std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl;
   }
 
