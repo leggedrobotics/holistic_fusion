@@ -107,7 +107,7 @@ bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>
 /// Callbacks -----------------------
 bool GraphMsf::addImuMeasurementAndGetState(
     const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+    std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements) {
   // Setup -------------------------
@@ -115,7 +115,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
   ++imuCallbackCounter_;
   // First Iteration
   if (preIntegratedNavStatePtr_ == nullptr) {
-    preIntegratedNavStatePtr_ = std::make_shared<SafeNavState>();
+    preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>();
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
   }
   // Filter out imu messages with same time stamp
@@ -162,7 +162,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
                   .translation();
       Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
-      preIntegratedNavStatePtr_ = std::make_shared<SafeNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
+      preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
       alignedImuFlag_ = true;
       return false;
     }
@@ -175,19 +175,19 @@ bool GraphMsf::addImuMeasurementAndGetState(
     }
     // Publish state with correct roll and pitch, nothing has changed compared to Case 1.2
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
-    returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);
+    returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
   } else if (!validFirstMeasurementReceivedFlag_) {  // Case 3: No valid measurement received yet, e.g. because GNSS Covariance is too high
     std::cout << YELLOW_START << "GMsf" << RED_START << " ...waiting for first valid measurement before initializing graph." << COLOR_END
               << std::endl;
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
-    returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);
+    returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
   } else if (!initedGraphFlag_) {  // Case 4: IMU aligned, yaw and position initialized, valid measurement received, but graph not yet
                                    // initialized
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     initGraph_(imuTimeK);
-    returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);
+    returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
   } else if (!normalOperationFlag_) {  // Case 5: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning
@@ -196,18 +196,10 @@ bool GraphMsf::addImuMeasurementAndGetState(
     normalOperationFlag_ = true;
   }
   // Case 6: Normal operation, meaning predicting the next state via integration -------------
-  // Add IMU factor and get propagated state
-  gtsam::NavState T_W_Ik_nav = graphMgrPtr_->addImuFactorAndGetState(imuTimeK, imuBufferPtr_);
-
-  // Assign poses and velocities ---------------------------------------------------
-  preIntegratedNavStatePtr_->updateInWorld(Eigen::Isometry3d(T_W_Ik_nav.pose().matrix()), T_W_Ik_nav.bodyVelocity(),
-                                           graphMgrPtr_->getOptimizedImuBias().correctGyroscope(angularVel), imuTimeK, false);
-
-  // Return Corresponding State ----------------------------------------------------------------
-  returnPreIntegratedNavStatePtr = std::make_shared<SafeNavState>(*preIntegratedNavStatePtr_);
-  if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-    returnOptimizedStateWithCovarianceAndBiasPtr =
-        std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
+  // Add IMU factor and return propagated & optimized state
+  graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, imuBufferPtr_, imuTimeK);
+  returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
+  if (returnOptimizedStateWithCovarianceAndBiasPtr != nullptr) {
   }
 
   return true;
@@ -404,9 +396,7 @@ void GraphMsf::optimizeGraph_() {
   // While loop
   std::cout << YELLOW_START << "GMsf" << COLOR_END << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-  ;
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-  ;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
@@ -422,12 +412,7 @@ void GraphMsf::optimizeGraph_() {
     }
 
     if (optimizeGraphFlag) {
-      // Get result
-      double currentTime;
-
-      SafeNavStateWithCovarianceAndBias optimizedStateWithCovarianceAndBias = graphMgrPtr_->updateGraphAndGetState(currentTime);
-      optimizedNavStateWithCovariancePtr_ = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedStateWithCovarianceAndBias);
-
+      graphMgrPtr_->updateGraph();
     }  // else just sleep for a short amount of time before polling again
     else {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));

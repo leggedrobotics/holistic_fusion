@@ -20,7 +20,7 @@ template <class TRANSFORM_TYPE>
 class TransformsDictionary {
  public:
   // Constructor
-  TransformsDictionary() { std::cout << YELLOW_START << "GMsf" << COLOR_END << " TransformsDictionary instance created." << std::endl; }
+  TransformsDictionary() = default;
 
   // Getters ------------------------------------------------------------
   // Check for specific transformation pair
@@ -63,6 +63,9 @@ class TransformsDictionary {
     return keyIterator->second;
   }
 
+  // Return reference to the map
+  const std::map<std::pair<std::string, std::string>, TRANSFORM_TYPE>& getTransformsMap() const { return T_frame1_frame2_map_; }
+
   // Setters ------------------------------------------------------------
   // With inverse
   void set_T_frame1_frame2_andInverse(const std::string& frame1, const std::string& frame2, const TRANSFORM_TYPE& T_frame1_frame2) {
@@ -81,12 +84,10 @@ class TransformsDictionary {
   void set_T_frame1_frame2(const std::string& frame1, const std::string& frame2, const TRANSFORM_TYPE T_frame1_frame2) {
     // Check whether transformation pair is already there
     if (!isFramePairInDictionary(frame1, frame2)) {
-      lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
       ++numStoredTransforms_;
-    } else {
-      std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " Transformation pair " << frame1 << " and " << frame2
-                << " already exists. Not adding it to the transforms." << std::endl;
     }
+    // Set transformation
+    lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
   }
 
  private:

@@ -60,17 +60,17 @@ class GraphMsfRos : public GraphMsf {
   void publishOptimizedStateAndBias_(
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
-  virtual void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+  virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   // Publish Transform to TF
   void publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,
                          const Eigen::Isometry3d& T_frame_childFrame);
 
   // Publish IMU Odometries
-  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
-  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr);
+  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr);
   // Publish Added IMU Measurements
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp);
 
@@ -113,12 +113,12 @@ class GraphMsfRos : public GraphMsf {
   // Messages
   // Odometry
   nav_msgs::OdometryPtr estOdomImuMsgPtr_;
-  nav_msgs::OdometryPtr estMapImuMsgPtr_;
+  //  nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
   nav_msgs::PathPtr estOdomImuPathPtr_;
-  nav_msgs::PathPtr estMapImuPathPtr_;
+  //  nav_msgs::PathPtr estMapImuPathPtr_;
   nav_msgs::PathPtr estWorldImuPathPtr_;
   nav_msgs::PathPtr optWorldImuPathPtr_;
   nav_msgs::PathPtr measWorldLeftGnssPathPtr_;

@@ -56,7 +56,7 @@ class GraphMsf {
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
                                     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
@@ -65,26 +65,6 @@ class GraphMsf {
   void addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
   void addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
-
-  // Getters
-  inline SafeNavState getLatestPreIntegratedNavState() {
-    if (preIntegratedNavStatePtr_ != nullptr)
-      return *preIntegratedNavStatePtr_;
-    else
-      throw std::runtime_error(
-          "GraphMsf::getLatestPreintegratedNavState: "
-          "preIntegratedNavStatePtr_ is NULL");
-    ;
-  }
-  void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
-      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
-    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-      returnOptimizedStateWithCovarianceAndBiasPtr =
-          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
-    } else {
-      returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
-    }
-  }
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
@@ -141,9 +121,7 @@ class GraphMsf {
 
   /// State Containers
   // Preintegrated NavState
-  std::shared_ptr<SafeNavState> preIntegratedNavStatePtr_ = NULL;
-  // Optimized NavState with Covariance
-  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
   /// Yaw
   double lastGnssYaw_W_I_;
 

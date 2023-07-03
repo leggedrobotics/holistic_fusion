@@ -24,9 +24,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
-#include "graph_msf/core/GtsamExpressionTransforms.h"
 #include "graph_msf/core/Optimizer.h"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
+#include "graph_msf/core/TransformsExpressionKeys.h"
 #include "graph_msf/factors/HeadingFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
@@ -43,7 +43,9 @@ class GraphManager {
   // Change Graph
   bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
-  gtsam::NavState addImuFactorAndGetState(const double imuTimeK, std::shared_ptr<ImuBuffer> imuBufferPtr);
+  void addImuFactorAndGetState(SafeIntegratedNavState& changedPreIntegratedNavStatePtr,
+                               std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
+                               const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK);
 
   // TODO: Remove explicit functions
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
@@ -58,7 +60,7 @@ class GraphManager {
                                  const double measuredYaw);
 
   // Update graph and get new state
-  SafeNavStateWithCovarianceAndBias updateGraphAndGetState(double& currentTime);
+  void updateGraph();
 
   // Compute state at specific key
   gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
@@ -69,9 +71,8 @@ class GraphManager {
   Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior; }
 
   //  auto iterations() const { return additonalIterations_; }
-  const State& getOptimizedGraphState() { return optimizedGraphState_; }
+  const GraphState& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
-  const gtsam::imuBias::ConstantBias getOptimizedImuBias() { return optimizedGraphState_.imuBias(); }
 
  protected:
   // Calculate state at key for graph
@@ -82,11 +83,11 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
+  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   template <class CHILDPTR>
-  bool addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
+  void addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
@@ -109,12 +110,19 @@ class GraphManager {
 
   // Optimization Transformations
   std::string worldFrame_;
-  GtsamExpressionTransforms gtsamExpressionTransforms_;
+  TransformsExpressionKeys gtsamExpressionTransformsKeys_;
+  TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
-  State optimizedGraphState_;
+  graph_msf::GraphState optimizedGraphState_;
+  /// Propagated state (at IMU frequency)
+  gtsam::NavState O_imuPropagatedState_;
+  Eigen::Isometry3d T_W_O_;            // Current state pose, depending on whether propagated state jumps or not
+  gtsam::Key propagatedStateKey_ = 0;  // Current state key
+  double propagatedStateTime_ = 0.0;   // Current state time
+  gtsam::Vector3 currentAngularVelocity_;
 
   // Optimizer
   std::shared_ptr<graph_msf::Optimizer> optimizerPtr_;
@@ -124,9 +132,6 @@ class GraphManager {
   std::shared_ptr<gtsam::Values> graphValuesBufferPtr_;
   // Keys timestamp map
   std::shared_ptr<std::map<gtsam::Key, double>> graphKeysTimestampsMapBufferPtr_;
-
-  /// Counter
-  int numOptimizationsSinceGraphSwitching_ = 0;
 
   // Preintegration
   /// Step Preintegrator
@@ -138,18 +143,11 @@ class GraphManager {
   gtsam::Vector6 lastImuVector_;
 
   /// Config
-  std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = NULL;
+  std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = nullptr;
 
   // Member variables
   /// Mutex
   std::mutex operateOnGraphDataMutex_;
-
-  /// Propagated state (at IMU frequency)
-  gtsam::NavState imuPropagatedState_;
-
-  /// Factor Graph
-  gtsam::Key propagatedStateKey_ = 0;  // Current state key
-  double propagatedStateTime_;
 };
 }  // namespace graph_msf
 

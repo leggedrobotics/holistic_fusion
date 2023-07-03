@@ -199,7 +199,7 @@ void SmbEstimator::vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioO
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measVio_mapImuPathPtr_, staticTransformsPtr_->getMapFrame(), vioOdomPtr->header.stamp,
+  addToPathMsg(measVio_mapImuPathPtr_, vioOdomPtr->header.frame_id, vioOdomPtr->header.stamp,
                (vio_T_M_Ck * staticTransformsPtr_
                                  ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getVioOdometryFrame(),
                                                       staticTransformsPtr_->getImuFrame())
