@@ -28,6 +28,7 @@ struct GraphConfig {
   double imuRate = 100;
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
+  bool gnssExactSyncPolicy = true;
 
   // Initialization
   bool estimateGravityFromImuFlag = true;
