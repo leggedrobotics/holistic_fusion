@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /MapImuOdometry1/Shape1
         - /WheelOdometry1/Shape1
         - /O3dOdometry1/Shape1
       Splitter Ratio: 0.5
@@ -78,6 +79,8 @@ Visualization Manager:
           Value: true
         lidar_mount_link:
           Value: true
+        map_graph_msf:
+          Value: true
         map_o3d:
           Value: true
         odom_graph_msf:
@@ -135,7 +138,8 @@ Visualization Manager:
                     {}
             odom_graph_msf:
               world_graph_msf:
-                {}
+                map_graph_msf:
+                  {}
             rgb_camera_link:
               rgb_camera_optical_link:
                 {}
@@ -450,7 +454,7 @@ Visualization Manager:
         Value: false
       Enabled: true
       Keep: 1
-      Name: EstimatedOdometry
+      Name: OdomImuOdometry
       Position Tolerance: 0
       Queue Size: 10
       Shape:
@@ -458,6 +462,41 @@ Visualization Manager:
         Axes Length: 1
         Axes Radius: 0.10000000149011612
         Color: 255; 255; 255
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /graph_msf/est_odometry_odom_imu
+      Unreliable: false
+      Value: true
+    - Angle Tolerance: 0
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 1
+      Name: MapImuOdometry
+      Position Tolerance: 0
+      Queue Size: 10
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 114; 159; 207
         Head Length: 0.30000001192092896
         Head Radius: 0.10000000149011612
         Shaft Length: 1
