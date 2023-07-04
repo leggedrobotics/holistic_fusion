@@ -24,9 +24,6 @@ class ImuSignalLowPassFilter {
     samplingTime_ = samplingTime;
     // Calculate filter coefficients
     filteringFactor_ = 1.0 - std::exp(-samplingTime_ * cutoffFrequencyRad_);
-    //    b0_ = 1.0 - a;
-    //    b1_ = 0.0;
-    //    a1_ = -a;
   }
 
   void reset() {
@@ -37,12 +34,6 @@ class ImuSignalLowPassFilter {
   }
 
   Eigen::Matrix<double, 6, 1> filter(const Eigen::Vector3d& inputAcceleration_x0, const Eigen::Vector3d& inputAngularVel_x0) {
-    //    Eigen::Vector3d acceleration_y0 = b0_ * acceleration_x0 + b1_ * acceleratioin_x1_ + a1_ * acceleration_y1_;
-    //    Eigen::Vector3d angularVel_y0 = b0_ * angularVel_x0 + b1_ * angularVel_x1_ + a1_ * angularVel_y1_;
-    //    acceleratioin_x1_ = acceleration_x0;
-    //    angularVel_x1_ = angularVel_x0;
-    //    acceleration_y1_ = acceleration_y0;
-    //    angularVel_y1_ = angularVel_y0;
     outputAcceleration_y1_ += (inputAcceleration_x0 - outputAcceleration_y1_) * filteringFactor_;
     outputAngularVel_y1_ += (inputAngularVel_x0 - outputAngularVel_y1_) * filteringFactor_;
 
@@ -54,12 +45,7 @@ class ImuSignalLowPassFilter {
   double cutoffFrequencyRad_;
   double samplingTime_;
   double filteringFactor_;
-  //  double a1_;
-  //  double b0_;
-  //  double b1_;
 
-  //  Eigen::Vector3d acceleratioin_x1_ = Eigen::Vector3d::Zero();
-  //  Eigen::Vector3d angularVel_x1_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d outputAcceleration_y1_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d outputAngularVel_y1_ = Eigen::Vector3d::Zero();
 };

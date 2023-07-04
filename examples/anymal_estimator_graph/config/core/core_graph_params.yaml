@@ -22,7 +22,7 @@ graph_params:
   usingFallbackGraph: true
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true
-  optimizeFixedFramePosesWrtWorld: false  # If true, the poses of the fixed frames are optimized w.r.t. world
+  optimizeFixedFramePosesWrtWorld: true  # If true, the poses of the fixed frames are optimized w.r.t. world
 
 # Outlier Rejection
 outlier_params:
