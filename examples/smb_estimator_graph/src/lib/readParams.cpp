@@ -31,16 +31,16 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Noise Parameters
   /// LiDAR Odometry
   const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
   const auto wheelPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   wheelPoseBetweenNoise_ << wheelPoseBetweenNoise[0], wheelPoseBetweenNoise[1], wheelPoseBetweenNoise[2], wheelPoseBetweenNoise[3],
       wheelPoseBetweenNoise[4], wheelPoseBetweenNoise[5];
   /// VIO Odometry
   const auto vioPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   vioPoseBetweenNoise_ << vioPoseBetweenNoise[0], vioPoseBetweenNoise[1], vioPoseBetweenNoise[2], vioPoseBetweenNoise[3],
       vioPoseBetweenNoise[4], vioPoseBetweenNoise[5];
 

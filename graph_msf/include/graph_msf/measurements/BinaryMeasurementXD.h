@@ -17,17 +17,17 @@ struct BinaryMeasurementXD : public BinaryMeasurement {
  public:
   BinaryMeasurementXD(const std::string& measurementName, const int measurementRate, const double timeKm1, const double timeK,
                       const std::string& sensorFrameName, const MEASUREMENT_TYPE& deltaMeasurement,
-                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoise)
+                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity)
       : BinaryMeasurement(measurementName, measurementRate, timeKm1, timeK, sensorFrameName),
         deltaMeasurement_(deltaMeasurement),
-        deltaMeasurementNoise_(deltaMeasurementNoise) {}
+        deltaMeasurementNoiseDensity_(deltaMeasurementNoiseDensity) {}
 
   const MEASUREMENT_TYPE& deltaMeasurement() const { return deltaMeasurement_; }
-  const Eigen::Matrix<double, DIM, 1>& measurementNoise() const { return deltaMeasurementNoise_; }
+  const Eigen::Matrix<double, DIM, 1>& measurementNoiseDensity() const { return deltaMeasurementNoiseDensity_; }
 
  protected:
   MEASUREMENT_TYPE deltaMeasurement_;
-  Eigen::Matrix<double, DIM, 1> deltaMeasurementNoise_;
+  Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity_;  // StdDev
 };
 
 }  // namespace graph_msf

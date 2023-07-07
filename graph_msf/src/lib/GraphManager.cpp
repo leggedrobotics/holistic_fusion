@@ -49,19 +49,18 @@ bool GraphManager::initImuIntegrators(const double g) {
 
   // Set noise and bias parameters
   /// Position
-  imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accNoiseDensity);
+  imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accNoiseDensity, 2));
   imuParamsPtr_->setIntegrationCovariance(gtsam::Matrix33::Identity(3, 3) *
-                                          graphConfigPtr_->integrationNoiseDensity);  // error committed in integrating position
-                                                                                      // from velocities
+                                          std::pow(graphConfigPtr_->integrationNoiseDensity, 2));  // error committed in integrating
+                                                                                                   // position from velocities
   imuParamsPtr_->setUse2ndOrderCoriolis(graphConfigPtr_->use2ndOrderCoriolisFlag);
   /// Rotation
-  imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroNoiseDensity);
+  imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroNoiseDensity, 2));
   imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis);
   /// Bias
-  imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->accBiasRandomWalk);
-  imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * graphConfigPtr_->gyroBiasRandomWalk);
-  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) *
-                                     graphConfigPtr_->biasAccOmegaInit);  // covariance of bias used for preintegration
+  imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity, 2));
+  imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity, 2));
+  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) * std::pow(graphConfigPtr_->biasAccOmegaInit, 2));
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior, graphConfigPtr_->gyroBiasPrior);
@@ -185,7 +184,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreInt
 }
 
 gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                              const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& deltaPose,
+                                              const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity, const gtsam::Pose3& deltaPose,
                                               const std::string& measurementType) {
   // Find corresponding keys in graph
   // Find corresponding keys in graph
@@ -209,11 +208,8 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
   gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
 
   // Create noise model
-  assert(poseBetweenNoise.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << poseBetweenNoise(0), poseBetweenNoise(1), poseBetweenNoise(2),
-                                                    poseBetweenNoise(3), poseBetweenNoise(4),
-                                                    poseBetweenNoise(5))
-                                                       .finished());  // rad,rad,rad,m,m,m
+  assert(poseBetweenNoiseDensity.size() == 6);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
   // Regular error function with noise
   // auto errorFunction = noise;
   // Robust error function
@@ -253,7 +249,8 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
 
   // Noise Set up
   const gtsam::Key statePoseKey = gtsam::symbol_shorthand::X(closestKey);
-  auto noiseModel = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector(unary6DMeasurement.unaryMeasurementNoise()));  // rad,rad,rad,x,y,z
+  auto noiseModel =
+      gtsam::noiseModel::Diagonal::Variances(gtsam::Vector(unary6DMeasurement.unaryMeasurementNoiseVariances()));  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noiseModel);
 
   // Also optimize over fixedFrame Transformation
@@ -305,8 +302,9 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   }
 }
 
-void GraphManager::addVelocityUnaryFactor(const double timeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoise,
-                                          const gtsam::Vector3& velocity, const std::string& measurementType) {
+void GraphManager::addVelocityUnaryFactor(const double timeK, const double rate,
+                                          const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity, const gtsam::Vector3& velocity,
+                                          const std::string& measurementType) {
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
@@ -318,8 +316,8 @@ void GraphManager::addVelocityUnaryFactor(const double timeK, const double rate,
     return;
   }
 
-  assert(velocityUnaryNoise.size() == 3);
-  auto noise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector(velocityUnaryNoise));  // rad,rad,rad,x,y,z
+  assert(velocityUnaryNoiseDensity.size() == 3);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(velocityUnaryNoiseDensity));  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
 
   gtsam::PriorFactor<gtsam::Vector3> velocityUnaryFactor(gtsam::symbol_shorthand::V(closestKey), gtsam::Vector3::Zero(), errorFunction);
@@ -334,7 +332,7 @@ void GraphManager::addVelocityUnaryFactor(const double timeK, const double rate,
   }
 }
 
-void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
+void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
                                               const gtsam::Vector3& position) {
   // Find closest key in existing graph
   double closestGraphTime;
@@ -345,9 +343,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   }
 
   // Create noise model
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(3) << gnssPositionUnaryNoise[0], gnssPositionUnaryNoise[1],
-                                                    gnssPositionUnaryNoise[2])
-                                                       .finished());  // rad,rad,rad,m,m,m
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(gnssPositionUnaryNoiseDensity)));  // rad,rad,rad,m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noise);
 
   // Create unary factor and add it
@@ -363,8 +359,8 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   }
 }
 
-void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoise,
-                                             const double measuredYaw) {
+void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate,
+                                             const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, const double measuredYaw) {
   // Print information
   if (graphConfigPtr_->verboseLevel > 2) {
     std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_
@@ -379,7 +375,7 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
     // TODO
   }
 
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << gnssHeadingUnaryNoise).finished());  // rad,rad,rad,m,m,m
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(gnssHeadingUnaryNoiseDensity));  // rad,rad,rad,m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
 
   HeadingFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredYaw, tukeyErrorFunction);

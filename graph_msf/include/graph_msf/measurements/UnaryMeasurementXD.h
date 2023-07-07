@@ -17,17 +17,21 @@ struct UnaryMeasurementXD : public UnaryMeasurement {
  public:
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const double timeStamp,
                      const std::string& fixedFrameName, const std::string& sensorFrameName, const MEASUREMENT_TYPE& unaryMeasurement,
-                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoise)
+                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
       : UnaryMeasurement(measurementName, measurementRate, timeStamp, fixedFrameName, sensorFrameName),
         unaryMeasurement_(unaryMeasurement),
-        unaryMeasurementNoise_(unaryMeasurementNoise) {}
+        unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
+        unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}
 
   const MEASUREMENT_TYPE& unaryMeasurement() const { return unaryMeasurement_; }
-  const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoise() const { return unaryMeasurementNoise_; }
+  const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity() const { return unaryMeasurementNoiseDensity_; }
+  const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseVariances() const { return unaryMeasurementNoiseVariances_; }
+  const Eigen::Matrix<double, DIM, DIM> unaryMeasurementNoiseCovariance() const { return unaryMeasurementNoiseVariances_.asDiagonal(); }
 
  protected:
   MEASUREMENT_TYPE unaryMeasurement_;
-  Eigen::Matrix<double, DIM, 1> unaryMeasurementNoise_;
+  Eigen::Matrix<double, DIM, 1> unaryMeasurementNoiseDensity_;    // StdDev
+  Eigen::Matrix<double, DIM, 1> unaryMeasurementNoiseVariances_;  // Variances
 };
 
 }  // namespace graph_msf

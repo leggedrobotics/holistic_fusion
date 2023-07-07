@@ -49,14 +49,14 @@ class GraphManager {
 
   // TODO: Remove explicit functions
   gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoise, const gtsam::Pose3& pose,
+                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity, const gtsam::Pose3& pose,
                                   const std::string& measurementType);
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
-  void addVelocityUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoise,
+  void addVelocityUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                               const gtsam::Vector3& velocity, const std::string& measurementType);
-  void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoise,
+  void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
                                   const gtsam::Vector3& position);
-  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoise,
+  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
                                  const double measuredYaw);
 
   // Update graph and get new state

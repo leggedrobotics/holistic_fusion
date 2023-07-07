@@ -49,17 +49,17 @@ struct GraphConfig {
   // Outlier Rejection
   double poseMotionOutlierThresold = 0.3;
 
-  // Noise Params
+  // Noise Params (Noise Amplitude Spectral Density)
   // Position
-  double accNoiseDensity = 1e-8;
-  double integrationNoiseDensity = 1.0;
+  double accNoiseDensity = 1e-3;  // [m/s^2/√Hz)]
+  double integrationNoiseDensity = 1.0e-4;
   bool use2ndOrderCoriolisFlag = true;
   // Rotation
-  double gyroNoiseDensity = 1e-8;
+  double gyroNoiseDensity = 1e-4;  // [rad/s/√Hz]
   double omegaCoriolis = 0.0;
   // Bias
-  double accBiasRandomWalk = 1e-8;
-  double gyroBiasRandomWalk = 1e-8;
+  double accBiasRandomWalkNoiseDensity = 1e-4;   // [m/s^3/√Hz]
+  double gyroBiasRandomWalkNoiseDensity = 1e-5;  // [rad/s^2/√Hz]
   double biasAccOmegaInit = 0.0;
   Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
   Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);

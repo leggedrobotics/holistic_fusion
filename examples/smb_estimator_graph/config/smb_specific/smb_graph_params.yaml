@@ -11,9 +11,9 @@ sensor_params:
 # Noise Parameters
 noise_params:
   ## LiDAR
-  lioPoseUnaryNoise: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  lioPoseUnaryNoiseDensity: [ 0.02, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## Wheel
-  wheelPoseBetweenNoise: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  wheelPoseBetweenNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
   ## VIO
-  vioPoseBetweenNoise: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
-  vioPoseUnaryNoise: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  vioPoseUnaryNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]

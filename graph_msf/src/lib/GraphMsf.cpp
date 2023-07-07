@@ -227,7 +227,7 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
   }
 
   const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactor(
-      deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate(), deltaMeasurement.measurementNoise(),
+      deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate(), deltaMeasurement.measurementNoiseDensity(),
       gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
 
   // Optimize
@@ -308,7 +308,7 @@ void GraphMsf::addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& ya
       gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
   if (!gnssCovarianceViolatedFlag_ && (gnssNotJumpingCounter_ >= REQUIRED_GNSS_NUM_NOT_JUMPED)) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(yaw_W_frame.timeK(), yaw_W_frame.measurementRate(), yaw_W_frame.unaryMeasurementNoise(),
+    graphMgrPtr_->addGnssHeadingUnaryFactor(yaw_W_frame.timeK(), yaw_W_frame.measurementRate(), yaw_W_frame.unaryMeasurementNoiseDensity(),
                                             yawR_W_I.yaw());
     {
       // Mutex for optimizeGraph Flag
