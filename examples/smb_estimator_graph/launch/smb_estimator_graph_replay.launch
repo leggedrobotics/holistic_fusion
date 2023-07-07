@@ -3,11 +3,15 @@
     <!-- Parameters -->
     <arg name="use_sim_time" default="true"/>
     <arg name="lidar_odometry_topic_name" default="/mapping_node/scan2map_odometry"/>
+    <arg name="core_graph_param_file" default="$(find smb_estimator_graph)/config/core/core_graph_params.yaml"/>
+    <arg name="smb_graph_param_file" default="$(find smb_estimator_graph)/config/smb_specific/smb_graph_params.yaml"/>
 
     <!-- Launch Stack -->
     <include file="$(find smb_estimator_graph)/launch/smb_estimator_graph.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)" />
+        <arg name="core_graph_param_file" value="$(arg core_graph_param_file)" />
+        <arg name="smb_graph_param_file"  value="$(arg smb_graph_param_file)" />
     </include>
 
     <!-- RVIZ for Visualization -->

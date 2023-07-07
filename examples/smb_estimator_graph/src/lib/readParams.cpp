@@ -20,11 +20,12 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Flags
+  useLioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useLioOdometry", privateNode);
   useWheelOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelOdometry", privateNode);
   useVioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useVioOdometry", privateNode);
 
   // Sensor Params
-  lidarOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
+  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   wheelOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryRate", privateNode);
   vioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
 

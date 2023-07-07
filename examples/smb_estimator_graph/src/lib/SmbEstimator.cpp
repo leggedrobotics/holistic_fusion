@@ -73,9 +73,11 @@ void SmbEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
 
 void SmbEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // LiDAR Odometry
-  subLioOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
-      "/lidar_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
-  REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLioOdometry_.getTopic() << std::endl;
+  if (useLioOdometryFlag_) {
+    subLioOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
+        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLioOdometry_.getTopic() << std::endl;
+  }
 
   // Wheel Odometry
   if (useWheelOdometryFlag_) {
@@ -100,6 +102,23 @@ void SmbEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
   measVio_mapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
+void SmbEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) {
+  // Check whether any of the measurements is available, otherwise do pure imu integration
+  if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
+      !useWheelOdometryFlag_ && !useVioOdometryFlag_) {
+    graph_msf::GraphMsf::pretendFirstMeasurementReceived();
+    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+        "Lidar_unary_6D", int(graphConfigPtr_->imuRate), imuPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(),
+        dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getImuFrame(), Eigen::Isometry3d::Identity(),
+        Eigen::MatrixXd::Identity(6, 6));
+    graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+    REGULAR_COUT << "Initialized yaw and position to identity, as lio, wheel and vio are all set to false." << std::endl;
+  }
+
+  // Call super class method
+  GraphMsfRos::imuCallback_(imuPtr);
+}
+
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int lidarOdometryCallbackCounter__ = -1;
@@ -120,13 +139,13 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lidarOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
+        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
         dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->addUnaryPoseMeasurement(unary6DMeasurement);
   } else {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lidarOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
+        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
         dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->initYawAndPosition(unary6DMeasurement);
   }
@@ -164,14 +183,24 @@ void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wh
   double wheelOdometryTimeK = wheelOdometryKPtr->header.stamp.toSec();
 
   if (wheelOdometryCallbackCounter__ > 0) {
-    // Compute Delta
-    Eigen::Isometry3d T_Wkm1_Wk = T_O_Wheel_km1__.inverse() * T_O_Wheel_k;
-    // Create measurement
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Wheel_odometry_6D", int(wheelOdometryRate_), wheelOdometryTimeKm1__, wheelOdometryTimeK,
-        dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(), T_Wkm1_Wk, wheelPoseBetweenNoise_);
-    // Add to graph
-    graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
+    if (areYawAndPositionInited()) {
+      // Compute Delta
+      Eigen::Isometry3d T_Wkm1_Wk = T_O_Wheel_km1__.inverse() * T_O_Wheel_k;
+      // Create measurement
+      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+          "Wheel_odometry_6D", int(wheelOdometryRate_), wheelOdometryTimeKm1__, wheelOdometryTimeK,
+          dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(), T_Wkm1_Wk, wheelPoseBetweenNoise_);
+      // Add to graph
+      graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
+    } else if (!useLioOdometryFlag_ && areRollAndPitchInited()) {
+      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+          "Lidar_unary_6D", int(graphConfigPtr_->imuRate), wheelOdometryTimeK, staticTransformsPtr_->getWorldFrame(),
+          dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(), Eigen::Isometry3d::Identity(),
+          Eigen::MatrixXd::Identity(6, 6));
+      graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+      REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
+                   << std::endl;
+    }
   }
 
   // Provide next iteration

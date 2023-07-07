@@ -48,7 +48,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Config -------------------------------------
 
   // Rates
-  double lidarOdometryRate_ = 5.0;
+  double lioOdometryRate_ = 5.0;
   double wheelOdometryRate_ = 50.0;
   double vioOdometryRate_ = 50.0;
 
@@ -60,6 +60,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // ROS Related stuff ----------------------------
 
   // Callbacks
+  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
   void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
   void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
@@ -81,7 +82,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   nav_msgs::PathPtr measVio_mapImuPathPtr_;
 
   // Flags
-  bool useLidarUnaryFactorFlag_ = false;
+  bool useLioOdometryFlag_ = true;
   bool useWheelOdometryFlag_ = false;
   bool useVioOdometryFlag_ = false;
 };
