@@ -171,7 +171,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreInt
   writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
 
   // Generate return objects -------------------------------------------------
-  gtsam::NavState T_O_Ik_nav = O_imuPropagatedState_;
+  gtsam::NavState& T_O_Ik_nav = O_imuPropagatedState_;  // Alias
   // Assign poses and velocities
   changedPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
                                       optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,

@@ -118,11 +118,11 @@ class GraphManager {
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   graph_msf::GraphState optimizedGraphState_;
   /// Propagated state (at IMU frequency)
-  gtsam::NavState O_imuPropagatedState_;
-  Eigen::Isometry3d T_W_O_;            // Current state pose, depending on whether propagated state jumps or not
-  gtsam::Key propagatedStateKey_ = 0;  // Current state key
-  double propagatedStateTime_ = 0.0;   // Current state time
-  gtsam::Vector3 currentAngularVelocity_;
+  gtsam::NavState O_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
+  Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
+  gtsam::Key propagatedStateKey_ = 0;                        // Current state key
+  double propagatedStateTime_ = 0.0;                         // Current state time
+  gtsam::Vector3 currentAngularVelocity_ = gtsam::Vector3(0, 0, 0);
 
   // Optimizer
   std::shared_ptr<graph_msf::Optimizer> optimizerPtr_;
