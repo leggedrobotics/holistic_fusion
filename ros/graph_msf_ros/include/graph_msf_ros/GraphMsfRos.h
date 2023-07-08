@@ -93,7 +93,6 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubOptWorldImu_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
-  ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubEstWorldImuPath_;
   ros::Publisher pubOptWorldImuPath_;
   ros::Publisher pubMeasWorldGnssLPath_;
@@ -113,16 +112,15 @@ class GraphMsfRos : public GraphMsf {
   // Messages
   // Odometry
   nav_msgs::OdometryPtr estOdomImuMsgPtr_;
-  //  nav_msgs::OdometryPtr estMapImuMsgPtr_;
+  nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
+  // Estimated
   nav_msgs::PathPtr estOdomImuPathPtr_;
-  //  nav_msgs::PathPtr estMapImuPathPtr_;
   nav_msgs::PathPtr estWorldImuPathPtr_;
   nav_msgs::PathPtr optWorldImuPathPtr_;
-  nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
-  nav_msgs::PathPtr measWorldRightGnssPathPtr_;
+  // Measured
   nav_msgs::PathPtr measWorldLidarPathPtr_;
   // Imu Bias
   geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;

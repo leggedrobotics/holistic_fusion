@@ -66,7 +66,6 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   pubOptWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstMapImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_map_imu", ROS_QUEUE_SIZE);
   pubEstWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
   // Imu Bias
@@ -80,12 +79,11 @@ void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
   REGULAR_COUT << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
   // Odometry
   estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  //  estMapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
+  estMapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   estWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   optWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
   // Path
   estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  //  estMapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   optWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   // Imu Bias
@@ -269,10 +267,17 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // TFs in Optimized State
     for (const auto transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
       // Get transform
-      Eigen::Isometry3d transform = transformIterator.second;
+      Eigen::Isometry3d T_M_W = transformIterator.second;
+      Eigen::Isometry3d T_M_Ik = T_M_W * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+      // Map->imu
+      addToOdometryMsg(estMapImuMsgPtr_, staticTransformsPtr_->getMapFrame(), staticTransformsPtr_->getImuFrame(),
+                       ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
+                       optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
+                       poseCovarianceRos, twistCovarianceRos);
+      pubEstMapImu_.publish(estMapImuMsgPtr_);
       // Publish TF
       publishTransform_(transformIterator.first.second, transformIterator.first.first, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
-                        transform.inverse());
+                        T_M_W.inverse());
     }
   }
 }
