@@ -194,7 +194,7 @@ void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wh
       graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
     } else if (!useLioOdometryFlag_ && areRollAndPitchInited()) {
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(graphConfigPtr_->imuRate), wheelOdometryTimeK, staticTransformsPtr_->getWorldFrame(),
+          "Lidar_unary_6D", int(wheelOdometryRate_), wheelOdometryTimeK, staticTransformsPtr_->getWorldFrame(),
           dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getWheelOdometryFrame(), Eigen::Isometry3d::Identity(),
           Eigen::MatrixXd::Identity(6, 6));
       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
