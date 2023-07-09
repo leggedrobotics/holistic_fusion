@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /O3dMap1
         - /WorldImuOdometry1/Shape1
         - /MapImuOdometry1/Shape1
         - /WheelOdometry1/Shape1
@@ -79,13 +80,13 @@ Visualization Manager:
           Value: true
         lidar_mount_link:
           Value: true
-        map_graph_msf:
+        map_o3d:
           Value: true
-        map_o3d_:
+        odom:
           Value: true
         odom_graph_msf:
           Value: true
-        odom_o3d_:
+        odom_o3d:
           Value: true
         rgb_camera_link:
           Value: true
@@ -97,11 +98,7 @@ Visualization Manager:
           Value: true
         tracking_camera_link:
           Value: true
-        tracking_camera_odom:
-          Value: true
         tracking_camera_pose_frame:
-          Value: true
-        tracking_camera_pose_frame_odom:
           Value: true
         world_graph_msf:
           Value: true
@@ -112,40 +109,37 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        tracking_camera_odom:
-          base_link:
-            LF_WHEEL:
-              {}
-            LH_WHEEL:
-              {}
-            RF_WHEEL:
-              {}
-            RH_WHEEL:
-              {}
-            base_inertia:
-              {}
-            imu_link:
-              imu:
-                {}
-            lidar_mount_link:
-              rslidar:
-                odom_o3d_:
-                  map_o3d_:
-                    {}
-            odom_graph_msf:
-              world_graph_msf:
-                map_graph_msf:
-                  {}
-            rgb_camera_link:
-              rgb_camera_optical_link:
-                {}
-            top:
-              {}
-            tracking_camera_link:
-              tracking_camera_pose_frame:
-                {}
-          tracking_camera_pose_frame_odom:
+        base_link:
+          LF_WHEEL:
             {}
+          LH_WHEEL:
+            {}
+          RF_WHEEL:
+            {}
+          RH_WHEEL:
+            {}
+          base_inertia:
+            {}
+          imu_link:
+            imu:
+              {}
+          lidar_mount_link:
+            rslidar:
+              odom_o3d:
+                map_o3d:
+                  {}
+          odom_graph_msf:
+            world_graph_msf:
+              odom:
+                {}
+          rgb_camera_link:
+            rgb_camera_optical_link:
+              {}
+          top:
+            {}
+          tracking_camera_link:
+            tracking_camera_pose_frame:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -382,7 +376,7 @@ Visualization Manager:
         Min Value: -10
         Value: true
       Axis: Z
-      Channel Name: intensity
+      Channel Name: z
       Class: rviz/PointCloud2
       Color: 255; 255; 255
       Color Transformer: Intensity
@@ -760,7 +754,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.335112571716309
+      Distance: 8.047088623046875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
