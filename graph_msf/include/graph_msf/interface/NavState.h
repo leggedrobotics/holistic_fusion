@@ -67,16 +67,16 @@ class SafeIntegratedNavState : public NavState {
   SafeIntegratedNavState(const SafeIntegratedNavState& safeIntegratedNavState) : NavState(safeIntegratedNavState) {
     T_W_O_ = safeIntegratedNavState.T_W_O_;
     T_O_Ik_gravityAligned_ = safeIntegratedNavState.T_O_Ik_gravityAligned_;
-    relocalizedWorldToMap_ = safeIntegratedNavState.relocalizedWorldToMap_;
+    relocalizedWorldToOdom_ = safeIntegratedNavState.relocalizedWorldToOdom_;
   }
 
   // Regular Constructor
   SafeIntegratedNavState(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned, const Eigen::Vector3d& I_v_W_I,
-                         const Eigen::Vector3d& I_w_W_I, const double timeK, const bool reLocalizeWorldToMap)
+                         const Eigen::Vector3d& I_w_W_I, const double timeK, const bool relocalizeWorldToOdom)
       : NavState(T_W_O * T_O_Ik_gravityAligned, I_v_W_I, I_w_W_I, timeK),
         T_W_O_(T_W_O),
         T_O_Ik_gravityAligned_(T_O_Ik_gravityAligned),
-        relocalizedWorldToMap_(reLocalizeWorldToMap) {}
+        relocalizedWorldToOdom_(relocalizeWorldToOdom) {}
 
   SafeIntegratedNavState(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
                          const double timeK)
@@ -84,11 +84,11 @@ class SafeIntegratedNavState : public NavState {
 
   // Stters/updaters
   void update(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned, const Eigen::Vector3d& I_v_W_I,
-              const Eigen::Vector3d& I_w_W_I, const double timeK, const bool reLocalizeWorldToMap);
+              const Eigen::Vector3d& I_w_W_I, const double timeK, const bool relocalizeWorldToOdom);
   void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
-                     const bool reLocalizeWorldToMap);
-  void updateYawInWorld(const double yaw_W_Ik, const bool reLocalizeWorldToMap);
-  void updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToMap);
+                     const bool relocalizeWorldToOdom);
+  void updateYawInWorld(const double yaw_W_Ik, const bool relocalizeWorldToOdom);
+  void updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool relocalizeWorldToOdom);
 
   // General Update
   void updateLatestMeasurementTimestamp(const double timeK) override;
@@ -98,14 +98,14 @@ class SafeIntegratedNavState : public NavState {
 
   const Eigen::Isometry3d& getT_O_Ik_gravityAligned() const { return T_O_Ik_gravityAligned_; }
 
-  bool isRelocalizedWorldToMap() const { return relocalizedWorldToMap_; }
+  bool isrelocalizedWorldToOdom() const { return relocalizedWorldToOdom_; }
 
  private:
   // Transformations
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();
   Eigen::Isometry3d T_O_Ik_gravityAligned_ = Eigen::Isometry3d::Identity();
   // Bool
-  bool relocalizedWorldToMap_;
+  bool relocalizedWorldToOdom_;
   // Mutex
   std::mutex stateUpdateMutex_;
 };

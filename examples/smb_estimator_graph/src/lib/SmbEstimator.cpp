@@ -28,8 +28,8 @@ SmbEstimator::SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : gr
 
   // Set up
   if (!SmbEstimator::setup()) {
-    REGULAR_COUT << RED_START << "M545EstimatorGraph" << COLOR_END << " Failed to set up." << std::endl;
-    std::runtime_error("M545EstimatorGraph failed to set up.");
+    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
+    std::runtime_error("SmbEstimator failed to set up.");
   }
 
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
@@ -55,6 +55,7 @@ bool SmbEstimator::setup() {
   // Messages ----------------------------
   SmbEstimator::initializeMessages_(privateNode_);
 
+  // Transforms ----------------------------
   staticTransformsPtr_->findTransformations();
 
   // Wrap up ----------------------------

@@ -343,7 +343,7 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   }
 
   // Create noise model
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(gnssPositionUnaryNoiseDensity)));  // rad,rad,rad,m,m,m
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(gnssPositionUnaryNoiseDensity)));  // m,m,m
   auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noise);
 
   // Create unary factor and add it

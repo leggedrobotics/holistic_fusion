@@ -84,6 +84,10 @@ class GraphMsfRos : public GraphMsf {
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
+  // Publishers
+  // TF
+  tf::TransformBroadcaster tfBroadcaster_;
+
  private:
   // Publishers
   // Odometry
@@ -98,8 +102,6 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubMeasWorldGnssLPath_;
   ros::Publisher pubMeasWorldGnssRPath_;
   ros::Publisher pubMeasWorldLidarPath_;
-  // TF
-  tf::TransformBroadcaster tfBroadcaster_;
   // Imu Bias
   ros::Publisher pubAccelBias_;
   ros::Publisher pubGyroBias_;

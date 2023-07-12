@@ -41,7 +41,7 @@ void NavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::V
   //  double globalRoll = T_W_Ik_new_gtsam.rotation().roll();
   //  double globalPitch = T_W_Ik_new_gtsam.rotation().pitch();
   //  // Decide on relocalization
-  //  if (reLocalizeWorldToMap) {
+  //  if (relocalizeWorldToOdom) {
   //    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Relocalization is needed. Publishing to world->map." << COLOR_END <<
   //    std::endl;
   //    // For this computation step assume T_O_Ik ~ T_O_Ikm1 --> there will be no robot translation in the odometry frame
@@ -61,7 +61,7 @@ void NavState::updateYawInWorld(const double yaw_W_Ik) {
   gtsam::Pose3 T_W_Ik_new =
       gtsam::Pose3(gtsam::Rot3::Ypr(yaw_W_Ik, T_W_Ik_old.rotation().pitch(), T_W_Ik_old.rotation().roll()), T_W_Ik_old.translation());
   T_W_Ik_ = T_W_Ik_new.matrix();
-  //  if (reLocalizeWorldToMap) {
+  //  if (relocalizeWorldToOdom) {
   //    T_W_M_ = ((T_W_Ik_new * T_O_Ik_old.inverse()).matrix() * T_M_O_.inverse()).matrix();
   //  } else {
   //    T_O_Ik_gravityAligned_ = T_M_O_.inverse() * T_W_M_.inverse() * T_W_Ik_new.matrix();
@@ -69,14 +69,7 @@ void NavState::updateYawInWorld(const double yaw_W_Ik) {
 }
 
 void NavState::updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik) {
-  // Position in world frame needs distribution on poses
-  gtsam::Pose3 T_W_Ik_old = gtsam::Pose3(T_W_Ik_.matrix());
-  gtsam::Pose3 T_W_Ik_new = gtsam::Pose3(T_W_Ik_old.rotation(), W_t_W_Ik);
-  //  if (reLocalizedWorldToMap) {
-  //    T_W_M_ = ((T_W_Ik_new * T_O_Ik_old.inverse()).matrix() * T_M_O_.inverse()).matrix();
-  //  } else {
-  //    T_O_Ik_gravityAligned_ = T_M_O_.inverse() * T_W_M_.inverse() * T_W_Ik_new.matrix();
-  //  }
+  T_W_Ik_.translation() = W_t_W_Ik;
 }
 
 void NavState::updateLatestMeasurementTimestamp(const double timeK) {
@@ -86,7 +79,7 @@ void NavState::updateLatestMeasurementTimestamp(const double timeK) {
 // SafeIntegratedNavState -----------------------------------------------------------------------------------------------
 void SafeIntegratedNavState::update(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned,
                                     const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
-                                    const bool reLocalizeWorldToMap) {
+                                    const bool relocalizeWorldToOdom) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Assign
@@ -99,7 +92,7 @@ void SafeIntegratedNavState::update(const Eigen::Isometry3d& T_W_O, const Eigen:
 }
 
 void SafeIntegratedNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
-                                           const double timeK, const bool reLocalizeWorldToMap) {
+                                           const double timeK, const bool relocalizeWorldToOdom) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
@@ -107,18 +100,30 @@ void SafeIntegratedNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, cons
   T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
 }
 
-void SafeIntegratedNavState::updateYawInWorld(const double yaw_W_Ik, const bool reLocalizeWorldToMap) {
+void SafeIntegratedNavState::updateYawInWorld(const double yaw_W_Ik, const bool reLocalizeWorldToOdom) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
   NavState::updateYawInWorld(yaw_W_Ik);
+  // Update Variables of this child class
+  if (reLocalizeWorldToOdom) {
+    T_W_O_ = T_W_Ik_ * T_O_Ik_gravityAligned_.inverse();
+  } else {
+    T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
+  }
 }
 
-void SafeIntegratedNavState::updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizedWorldToMap) {
+void SafeIntegratedNavState::updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool reLocalizeWorldToOdom) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
   NavState::updatePositionInWorld(W_t_W_Ik);
+  // Update Variables of this child class
+  if (reLocalizeWorldToOdom) {
+    T_W_O_ = T_W_Ik_ * T_O_Ik_gravityAligned_.inverse();
+  } else {
+    T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
+  }
 }
 
 void SafeIntegratedNavState::updateLatestMeasurementTimestamp(const double timeK) {

@@ -5,27 +5,30 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-// sleep for
-#include "graph_msf/interface/GraphMsf.h"
+// C++
 #include <chrono>
+
+// Workspace
 #include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/interface/GraphMsf.h"
+#include "graph_msf/interface/constants.h"
 
 namespace graph_msf {
 
 // Public -----------------------------------------------------------
 /// Constructor -----------
 GraphMsf::GraphMsf() {
-  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Instance created." << COLOR_END
-            << " Waiting for setup() with graphConfiguration and staticTransforms." << std::endl;
+  REGULAR_COUT << GREEN_START << " Instance created." << COLOR_END << " Waiting for setup() with graphConfiguration and staticTransforms."
+               << std::endl;
 }
 
 /// Setup ------------
 bool GraphMsf::setup() {
-  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   // Graph Config
   if (graphConfigPtr_ == nullptr || staticTransformsPtr_ == nullptr) {
-    std::cout << YELLOW_START << "GMsf" << RED_START << " GraphConfig or StaticTransforms not set. Finishing" << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " GraphConfig or StaticTransforms not set. Finishing" << COLOR_END << std::endl;
     std::runtime_error("GraphConfig or StaticTransforms not set. Finishing");
     return false;
   }
@@ -39,9 +42,9 @@ bool GraphMsf::setup() {
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
-  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Initialized thread for optimizing the graph in parallel." << std::endl;
+  REGULAR_COUT << " Initialized thread for optimizing the graph in parallel." << std::endl;
 
-  std::cout << YELLOW_START << "GMsf" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
   return true;
 }
 
@@ -61,15 +64,14 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
   // Different Modes
   if (!alignedImuFlag_) {  // Case 1: IMU not yet aligned --> wait for IMU callback to align roll and pitch of IMU
 
-    std::cout << YELLOW_START << "GMsf" << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END
-              << std::endl;
+    REGULAR_COUT << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END << std::endl;
     return false;
 
   } else if (!areYawAndPositionInited()) {  // Case 2: Imu is aligned, but roll and pitch not yet --> do it
                                             // Transform yaw to imu frame
     // TODO: here assume that world is fixed frame, which is not necessarily the case
     gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
     double yaw_W_I0_ =
         (yawR_W_frame1 *
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
@@ -87,12 +89,13 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
 
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) "
-              << 180.0 * yaw_W_I0_ / M_PI << "." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
+                 << "." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
+                 << "." << COLOR_END << std::endl;
     return true;
-
   } else {  // Case 3: Initial yaw and position already set --> do nothing
-    std::cout << YELLOW_START << "GMsf" << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END << std::endl;
     return false;
   }
 }
@@ -120,8 +123,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
   }
   // Filter out imu messages with same time stamp
   if (std::abs(imuTimeK - preIntegratedNavStatePtr_->getTimeK()) < 1e-8 && imuCallbackCounter_ > 1) {
-    std::cout << YELLOW_START << " GMsf" << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated." << COLOR_END
-              << std::endl;
+    REGULAR_COUT << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated." << COLOR_END << std::endl;
     return false;
   }
   // Add measurement to buffer
@@ -137,7 +139,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
     if (!alignImu_(imuAttitudeRoll, imuAttitudePitch)) {  // Case 1.1: IMU alignment failed --> try again next time
       // Print only once per second
       if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
-        std::cout << YELLOW_START << "GMsf" << COLOR_END << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..." << std::endl;
+        REGULAR_COUT << " NOT ENOUGH IMU MESSAGES TO INITIALIZE POSE. WAITING FOR MORE..." << std::endl;
       }
       return false;
     } else {  // Case 1.2: IMU alignment succeeded --> continue next call iteration
@@ -170,16 +172,14 @@ bool GraphMsf::addImuMeasurementAndGetState(
     // initialization, meanwhile publishing initial roll and pitch
     // Printing every second
     if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
-      std::cout << YELLOW_START << "GMsf" << COLOR_END << " IMU callback waiting for initialization of global yaw and initial position."
-                << std::endl;
+      REGULAR_COUT << " IMU callback waiting for initialization of global yaw and initial position." << std::endl;
     }
     // Publish state with correct roll and pitch, nothing has changed compared to Case 1.2
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
   } else if (!validFirstMeasurementReceivedFlag_) {  // Case 3: No valid measurement received yet, e.g. because GNSS Covariance is too high
-    std::cout << YELLOW_START << "GMsf" << RED_START << " ...waiting for first valid measurement before initializing graph." << COLOR_END
-              << std::endl;
+    REGULAR_COUT << RED_START << " ...waiting for first valid measurement before initializing graph." << COLOR_END << std::endl;
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
@@ -188,7 +188,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     initGraph_(imuTimeK);
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
-    std::cout << YELLOW_START << "GMsf" << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
   } else if (!normalOperationFlag_) {  // Case 5: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning
                                        // predicting the next state
@@ -286,8 +286,10 @@ void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector
   gtsam::Point3 W_t_W_I =
       W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
                                     preIntegratedNavStatePtr_->getT_W_Ik().rotation());
+  std::cout << preIntegratedNavStatePtr_->getT_W_Ik().rotation() << std::endl;
 
-  graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.unaryMeasurement(), W_t_W_I);
+  graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.unaryMeasurementNoiseDensity(),
+                                           W_t_W_I);
   {
     // Mutex for optimizeGraph Flag
     const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -344,14 +346,11 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
     imuAttitudePitch = R_W_I_rollPitch.pitch();
     if (graphConfigPtr_->estimateGravityFromImuFlag) {
       graphConfigPtr_->gravityMagnitude = estimatedGravityMagnitude;
-      std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << estimatedGravityMagnitude << std::endl;
+      REGULAR_COUT << " Attitude of IMU is initialized. Determined Gravity Magnitude: " << estimatedGravityMagnitude << std::endl;
     } else {
-      std::cout << YELLOW_START << "GMsf" << COLOR_END << " Estimated gravity magnitude from IMU is: " << estimatedGravityMagnitude
-                << std::endl;
-      std::cout << YELLOW_START << "GMsf" << COLOR_END
-                << " This gravity is not used, because estimateGravityFromImu is set to false. Gravity set to "
-                << graphConfigPtr_->gravityMagnitude << "." << std::endl;
+      REGULAR_COUT << " Estimated gravity magnitude from IMU is: " << estimatedGravityMagnitude << std::endl;
+      REGULAR_COUT << " This gravity is not used, because estimateGravityFromImu is set to false. Gravity set to "
+                   << graphConfigPtr_->gravityMagnitude << "." << std::endl;
       gtsam::Vector3 gravityVector = gtsam::Vector3(0, 0, graphConfigPtr_->gravityMagnitude);
       gtsam::Vector3 estimatedGravityVector = gtsam::Vector3(0, 0, estimatedGravityMagnitude);
       gtsam::Vector3 gravityVectorError = estimatedGravityVector - gravityVector;
@@ -371,9 +370,9 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   // Calculate initial attitude;
   gtsam::Pose3 T_W_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_W_Ik().matrix());
   // Print
-  std::cout << YELLOW_START << "GMsf" << GREEN_START
-            << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << T_W_I0.rotation().ypr().transpose() * (180.0 / M_PI) << COLOR_END
-            << std::endl;
+  REGULAR_COUT << GREEN_START
+               << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << T_W_I0.rotation().ypr().transpose() * (180.0 / M_PI)
+               << COLOR_END << std::endl;
 
   // Gravity
   graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude);
@@ -382,11 +381,10 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
 
   // Read initial pose from graph
   T_W_I0 = graphMgrPtr_->getOptimizedGraphState().navState().pose();
-  std::cout << YELLOW_START << "GMsf " << GREEN_START
-            << " INITIAL POSE after first optimization, x,y,z (m): " << T_W_I0.translation().transpose()
-            << ", RPY (deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
-  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Factor graph key of very first node: " << graphMgrPtr_->getPropagatedStateKey()
-            << std::endl;
+  REGULAR_COUT << GREEN_START
+               << " INITIAL POSE of IMU in world frame after first optimization, x,y,z (m): " << T_W_I0.translation().transpose()
+               << ", RPY (deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
+  REGULAR_COUT << " Factor graph key of very first node: " << graphMgrPtr_->getPropagatedStateKey() << std::endl;
 
   // Set flag
   initedGraphFlag_ = true;
@@ -394,7 +392,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
 
 void GraphMsf::optimizeGraph_() {
   // While loop
-  std::cout << YELLOW_START << "GMsf" << COLOR_END << " Thread for updating graph is ready." << std::endl;
+  REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   while (true) {

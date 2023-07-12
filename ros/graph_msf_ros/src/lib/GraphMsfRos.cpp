@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : privateNode_(*privateNodePtr) {
+GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : GraphMsf(), privateNode_(*privateNodePtr) {
   REGULAR_COUT << GREEN_START << " Initializing." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -291,6 +291,7 @@ long GraphMsfRos::secondsSinceStart_() {
 void GraphMsfRos::publishState_(
     const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  std::cout << "no" << std::endl;
   // Covariances
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
   extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos, optimizedStateWithCovarianceAndBiasPtr);

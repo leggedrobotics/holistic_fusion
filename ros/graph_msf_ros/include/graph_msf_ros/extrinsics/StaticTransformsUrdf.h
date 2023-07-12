@@ -21,7 +21,7 @@ namespace graph_msf {
 
 class StaticTransformsUrdf : public StaticTransforms {
  public:
-  StaticTransformsUrdf(const ros::NodeHandle& privateNode);
+  StaticTransformsUrdf(const std::shared_ptr<ros::NodeHandle> privateNodePtr);
   void setup();
 
  protected:

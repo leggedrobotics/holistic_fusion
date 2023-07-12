@@ -37,8 +37,8 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
  private:
   // Virtual Functions
   virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
+  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
+  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
   virtual void readParams_(const ros::NodeHandle& privateNode) override;
 
   // Time
