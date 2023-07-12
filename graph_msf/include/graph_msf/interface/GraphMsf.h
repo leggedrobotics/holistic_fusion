@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -16,12 +16,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
-#include "graph_msf/core/StaticTransforms.h"
-#include "graph_msf/frontend/NavState.h"
-#include "graph_msf/measurements/BinaryMeasurement6D.h"
-#include "graph_msf/measurements/UnaryMeasurement1D.h"
-#include "graph_msf/measurements/UnaryMeasurement3D.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/config/StaticTransforms.h"
+#include "graph_msf/imu/ImuBuffer.hpp"
+#include "graph_msf/interface/NavState.h"
+#include "graph_msf/measurements/BinaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // Defined macros
 #define ROS_QUEUE_SIZE 100
@@ -48,50 +47,24 @@ class GraphMsf {
   virtual bool setup();
 
   // Initialization Interface
-  bool initYawAndPosition(const double yaw_W_frame1, const std::string& frame1, const Eigen::Vector3d& W_t_W_frame2,
-                          const std::string& frame2);
-  bool initYawAndPosition(const Eigen::Isometry3d& T_O_frame, const std::string& frameName);
+  bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                          const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
+  bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
-
-  // Graph Manipulation
-  void activateFallbackGraph();
 
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                    std::shared_ptr<SafeNavState>& returnPreIntegratedNavStatePtr,
+                                    std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
                                     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// No return
-  void addOdometryMeasurement(const BinaryMeasurement6D& delta);
-  void addUnaryPoseMeasurement(const UnaryMeasurement6D& unary);
-  std::shared_ptr<SafeNavState> addDualOdometryMeasurementAndReturnNavState(const UnaryMeasurement6D& odometryKm1,
-                                                                            const UnaryMeasurement6D& odometryK,
-                                                                            const Eigen::Matrix<double, 6, 1>& poseBetweenNoise);
-  void addDualGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame, const Eigen::Vector3d& lastPosition,
-                                      const Eigen::Vector3d& gnssCovarianceXYZ, const bool attemptGraphSwitching,
-                                      const bool addedYawBefore);
-  void addGnssPositionMeasurement(const UnaryMeasurement3D& W_t_W_frame);
-  void addGnssHeadingMeasurement(const UnaryMeasurement1D& yaw_W_frame);
-
-  // Getters
-  inline SafeNavState getLatestPreIntegratedNavState() {
-    if (preIntegratedNavStatePtr_ != nullptr)
-      return *preIntegratedNavStatePtr_;
-    else
-      throw std::runtime_error("GraphMsf::getLatestPreintegratedNavState: preIntegratedNavStatePtr_ is NULL");
-    ;
-  }
-  void getLatestOptimizedNavStateWithCovarianceAndBiasPtr(
-      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr) {
-    if (optimizedNavStateWithCovariancePtr_ != nullptr) {
-      returnOptimizedStateWithCovarianceAndBiasPtr =
-          std::make_shared<SafeNavStateWithCovarianceAndBias>(*optimizedNavStateWithCovariancePtr_);
-    } else {
-      returnOptimizedStateWithCovarianceAndBiasPtr = nullptr;
-    }
-  }
+  void addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
+  void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
+  void addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
+  void addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
+  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
@@ -123,7 +96,8 @@ class GraphMsf {
 
  private:  // Variables -------------
   // Threads
-  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as new lidar measurement has arrived
+  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
+                                     /// new lidar measurement has arrived
 
   // Mutex
   std::mutex initYawAndPositionMutex_;
@@ -131,6 +105,8 @@ class GraphMsf {
 
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
+  // Imu Buffer
+  std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;
 
   /// Flags
   //// Initialization
@@ -145,9 +121,7 @@ class GraphMsf {
 
   /// State Containers
   // Preintegrated NavState
-  std::shared_ptr<SafeNavState> preIntegratedNavStatePtr_ = NULL;
-  // Optimized NavState with Covariance
-  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedNavStateWithCovariancePtr_ = NULL;
+  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
   /// Yaw
   double lastGnssYaw_W_I_;
 

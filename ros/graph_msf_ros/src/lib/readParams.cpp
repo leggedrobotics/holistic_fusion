@@ -13,7 +13,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Sensor Parameters
   graphConfigPtr_->imuRate = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->useImuSignalLowPassFilter = tryGetParam<bool>("sensor_params/useImuSignalLowPassFilter", privateNode);
-  graphConfigPtr_->imuLowPassFilterCutoffFreq = tryGetParam<double>("sensor_params/imuLowPassFilterCutoffFreq", privateNode);
+  graphConfigPtr_->imuLowPassFilterCutoffFreqHz = tryGetParam<double>("sensor_params/imuLowPassFilterCutoffFreq", privateNode);
   graphConfigPtr_->maxSearchDeviation = 1.0 / graphConfigPtr_->imuRate;
   graphConfigPtr_->imuBufferLength = tryGetParam<int>("sensor_params/imuBufferLength", privateNode);
   graphConfigPtr_->imuTimeOffset = tryGetParam<double>("sensor_params/imuTimeOffset", privateNode);
@@ -32,6 +32,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
+  graphConfigPtr_->optimizeFixedFramePosesWrtWorld = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
 
   // Outlier Parameters
   graphConfigPtr_->poseMotionOutlierThresold = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);
@@ -45,8 +46,8 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->gyroNoiseDensity = tryGetParam<double>("noise_params/gyrNoiseDensity", privateNode);
   graphConfigPtr_->omegaCoriolis = tryGetParam<double>("noise_params/omegaCoriolis", privateNode);
   /// Bias
-  graphConfigPtr_->accBiasRandomWalk = tryGetParam<double>("noise_params/accBiasRandomWalk", privateNode);
-  graphConfigPtr_->gyroBiasRandomWalk = tryGetParam<double>("noise_params/gyrBiasRandomWalk", privateNode);
+  graphConfigPtr_->accBiasRandomWalkNoiseDensity = tryGetParam<double>("noise_params/accBiasRandomWalkNoiseDensity", privateNode);
+  graphConfigPtr_->gyroBiasRandomWalkNoiseDensity = tryGetParam<double>("noise_params/gyrBiasRandomWalkNoiseDensity", privateNode);
   graphConfigPtr_->biasAccOmegaInit = tryGetParam<double>("noise_params/biasAccOmegaInit", privateNode);
   const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
   graphConfigPtr_->accBiasPrior = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
@@ -54,11 +55,14 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->gyroBiasPrior = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
 
   // Re-linearization
+  /// Thresholds
   graphConfigPtr_->positionReLinTh = tryGetParam<double>("relinearization_params/positionReLinTh", privateNode);
   graphConfigPtr_->rotationReLinTh = tryGetParam<double>("relinearization_params/rotationReLinTh", privateNode);
   graphConfigPtr_->velocityReLinTh = tryGetParam<double>("relinearization_params/velocityReLinTh", privateNode);
   graphConfigPtr_->accBiasReLinTh = tryGetParam<double>("relinearization_params/accBiasReLinTh", privateNode);
   graphConfigPtr_->gyroBiasReLinTh = tryGetParam<double>("relinearization_params/gyrBiasReLinTh", privateNode);
+  graphConfigPtr_->fixedFrameReLinTh = tryGetParam<double>("relinearization_params/fixedFrameReLinTh", privateNode);
+  /// Others
   graphConfigPtr_->relinearizeSkip = tryGetParam<int>("relinearization_params/relinearizeSkip", privateNode);
   graphConfigPtr_->enableRelinearizationFlag = tryGetParam<bool>("relinearization_params/enableRelinearization", privateNode);
   graphConfigPtr_->evaluateNonlinearErrorFlag = tryGetParam<bool>("relinearization_params/evaluateNonlinearError", privateNode);

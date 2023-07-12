@@ -34,7 +34,8 @@ void SmbStaticTransforms::findTransformations() {
   static tf::StampedTransform transform;
 
   // Look up transforms ----------------------------
-  // Sleep before subscribing, otherwise sometimes dying in the beginning of rosbag
+  // Sleep before subscribing, otherwise sometimes dying in the beginning of
+  // rosbag
   ros::Rate rosRate(10);
   rosRate.sleep();
 
@@ -43,7 +44,7 @@ void SmbStaticTransforms::findTransformations() {
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
   // I_Cabin
   graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
+  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
             << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
   // Cabin_I
   lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
@@ -54,10 +55,21 @@ void SmbStaticTransforms::findTransformations() {
   listener_.lookupTransform(imuFrame_, lidarOdometryFrame_, ros::Time(0), transform);
   // I_Lidar
   graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_));
-  std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
+  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
             << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
   // Lidar_I
   lv_T_frame1_frame2(lidarOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).inverse();
+
+  // Imu to VIO Link ---
+  REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds.";
+  listener_.waitForTransform(imuFrame_, vioOdometryFrame_, ros::Time(0), ros::Duration(1.0));
+  listener_.lookupTransform(imuFrame_, vioOdometryFrame_, ros::Time(0), transform);
+  // I_VIO
+  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_));
+  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
+            << " Translation I_VIO: " << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
+  // VIO_I
+  lv_T_frame1_frame2(vioOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).inverse();
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }

@@ -14,13 +14,27 @@ namespace graph_msf {
 
 struct UnaryMeasurement : public Measurement {
  public:
-  UnaryMeasurement(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeStamp)
-      : Measurement(measurementName, frameName, measurementRate, timeStamp) {}
+  UnaryMeasurement(const std::string& measurementName, const int measurementRate, const double timeStamp, const std::string& fixedFrameName,
+                   const std::string& sensorFrameName)
+      : Measurement(measurementName, measurementRate),
+        timeK_(timeStamp),
+        fixedFrameName_(fixedFrameName),
+        sensorFrameName_(sensorFrameName) {}
 
-  virtual MeasurementType measurementType() override { return measurementType_; }
+  // Getters
+  const std::string& fixedFrameName() const { return fixedFrameName_; }
+  const std::string& sensorFrameName() const { return sensorFrameName_; }
+  double timeK() const { return timeK_; }
+
+  virtual const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
 
  protected:
-  MeasurementType measurementType_ = MeasurementType::Unary;
+  // Standard members
+  std::string fixedFrameName_;
+  std::string sensorFrameName_;
+  double timeK_;
+  // Enum
+  MeasurementTypeEnum measurementTypeEnum_ = MeasurementTypeEnum::Unary;
 };
 
 }  // namespace graph_msf

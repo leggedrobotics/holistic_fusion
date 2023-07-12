@@ -7,9 +7,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 #include "graph_msf/interface/Terminal.h"
 
-#ifndef SMB_CONSTANTS_H
+#ifndef GRAPHMSF_CONSTANTS_H
 #define SMB_CONSTANTS_H
 
-#define REGULAR_COUT std::cout << YELLOW_START << "SmbEstimator" << COLOR_END
+#define REGULAR_COUT std::cout << YELLOW_START << "GraphMsf" << COLOR_END
 
-#endif  // SMB_CONSTANTS_H
+#endif  // GRAPHMSF_CONSTANTS_H

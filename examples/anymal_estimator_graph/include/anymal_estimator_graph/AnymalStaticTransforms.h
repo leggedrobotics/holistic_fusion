@@ -18,18 +18,18 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
                          const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
 
   // Setters
-  void setLidarFrame(const std::string& s) { lidarFrame_ = s; }
+  void setLioOdometryFrame(const std::string& s) { lioOdometryFrame_ = s; }
   void setGnssFrame(const std::string& s) { gnssFrame_ = s; }
 
   // Getters
-  const std::string& getLidarFrame() { return lidarFrame_; }
+  const std::string& getLioOdometryFrame() { return lioOdometryFrame_; }
   const std::string& getGnssFrame() { return gnssFrame_; }
 
  private:
   void findTransformations() override;
 
   // Members
-  std::string lidarFrame_;
+  std::string lioOdometryFrame_;
   std::string gnssFrame_;
 };
 }  // namespace anymal_se

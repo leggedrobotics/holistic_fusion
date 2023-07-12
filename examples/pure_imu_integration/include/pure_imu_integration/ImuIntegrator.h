@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros

@@ -18,7 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 // Workspace
-#include "graph_msf/frontend/GraphMsf.h"
+#include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace graph_msf {
@@ -60,17 +60,17 @@ class GraphMsfRos : public GraphMsf {
   void publishOptimizedStateAndBias_(
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
-  virtual void publishState_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+  virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   // Publish Transform to TF
   void publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,
                          const Eigen::Isometry3d& T_frame_childFrame);
 
   // Publish IMU Odometries
-  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeNavState>& preIntegratedNavStatePtr,
+  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
-  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeNavState>& navStatePtr);
+  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr);
   // Publish Added IMU Measurements
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp);
 
@@ -84,6 +84,10 @@ class GraphMsfRos : public GraphMsf {
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
+  // Publishers
+  // TF
+  tf::TransformBroadcaster tfBroadcaster_;
+
  private:
   // Publishers
   // Odometry
@@ -93,14 +97,11 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubOptWorldImu_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
-  ros::Publisher pubEstMapImuPath_;
   ros::Publisher pubEstWorldImuPath_;
   ros::Publisher pubOptWorldImuPath_;
   ros::Publisher pubMeasWorldGnssLPath_;
   ros::Publisher pubMeasWorldGnssRPath_;
   ros::Publisher pubMeasWorldLidarPath_;
-  // TF
-  tf::TransformBroadcaster tfBroadcaster_;
   // Imu Bias
   ros::Publisher pubAccelBias_;
   ros::Publisher pubGyroBias_;
@@ -117,12 +118,11 @@ class GraphMsfRos : public GraphMsf {
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Path
+  // Estimated
   nav_msgs::PathPtr estOdomImuPathPtr_;
-  nav_msgs::PathPtr estMapImuPathPtr_;
   nav_msgs::PathPtr estWorldImuPathPtr_;
   nav_msgs::PathPtr optWorldImuPathPtr_;
-  nav_msgs::PathPtr measWorldLeftGnssPathPtr_;
-  nav_msgs::PathPtr measWorldRightGnssPathPtr_;
+  // Measured
   nav_msgs::PathPtr measWorldLidarPathPtr_;
   // Imu Bias
   geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;

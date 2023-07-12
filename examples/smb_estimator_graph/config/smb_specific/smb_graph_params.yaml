@@ -1,20 +1,20 @@
 # Sensor Params
 sensor_params:
   ## Config
-  useLidarUnaryFactor: true
-  useWheelOdometry: true
+  useLioOdometry: true
+  useWheelOdometry: false
   useVioOdometry: false
   ## Rates
-  lidarOdometryRate: 10
+  lioOdometryRate: 10
   wheelOdometryRate: 50
   vioOdometryRate: 50
 
 # Noise Parameters
 noise_params:
   ## LiDAR
-  lidarPoseBetweenNoise: [ 5, 5, 5, 0.1, 0.1, 0.1 ] # ORDER RPY(rad) - XYZ(meters)
-  lidarPoseUnaryNoise: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
+  lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]
   ## Wheel
-  wheelPoseBetweenNoise: [ 10.0, 10.0, 10.0, 1.0, 1.0, 0.1 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  wheelPoseBetweenNoiseDensity: [ 0.2, 0.2, 0.2, 0.05, 0.05, 0.05 ] # StdDev, [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
   ## VIO
-  vioPoseBetweenNoise: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # gnss [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]
+  vioPoseUnaryNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, [ 10.0, 10.0, 10.0, 2.0, 2.0, 2.0 ]

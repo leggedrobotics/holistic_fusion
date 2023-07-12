@@ -12,10 +12,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include "excavator_dual_graph/ExcavatorStaticTransforms.h"
 
 // Workspace
-#include "graph_msf/measurements/BinaryMeasurement6D.h"
-#include "graph_msf/measurements/UnaryMeasurement1D.h"
-#include "graph_msf/measurements/UnaryMeasurement3D.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/BinaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurement1D_.h"
+#include "graph_msf/measurements/UnaryMeasurement3D_.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/util/conversions.h"
 
 namespace excavator_se {

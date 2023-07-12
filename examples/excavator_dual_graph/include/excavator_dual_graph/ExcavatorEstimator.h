@@ -24,7 +24,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "excavator_dual_graph/ExcavatorStaticTransforms.h"
 #include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
+#include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros

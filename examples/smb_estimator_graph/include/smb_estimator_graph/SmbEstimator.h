@@ -12,20 +12,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 
 // ROS
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/exact_time.h>
-#include <message_filters/synchronizer.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurement6D.h"
-#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
@@ -45,12 +37,9 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
  private:
   // Virtual Functions
   virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
+  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
+  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
   virtual void readParams_(const ros::NodeHandle& privateNode) override;
-
-  // GNSS Handler
-  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
@@ -59,39 +48,41 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Config -------------------------------------
 
   // Rates
-  double lidarOdometryRate_ = 5.0;
+  double lioOdometryRate_ = 5.0;
   double wheelOdometryRate_ = 50.0;
   double vioOdometryRate_ = 50.0;
 
   // Noise
-  Eigen::Matrix<double, 6, 1> lidarPoseBetweenNoise_;
-  Eigen::Matrix<double, 6, 1> lidarPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_;
 
   // ROS Related stuff ----------------------------
 
   // Callbacks
+  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
   void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
   void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
 
   // Subscribers
   // Instances
-  ros::Subscriber subLidarOdometry_;
+  ros::Subscriber subLioOdometry_;
   ros::Subscriber subWheelOdometry_;
   ros::Subscriber subVioOdometry_;
   tf::TransformListener tfListener_;
 
   // Publishers
   // Path
-  ros::Publisher pubMeasWorldLidarPath_;
+  ros::Publisher pubMeasMapLioPath_;
+  ros::Publisher pubMeasMapVioPath_;
 
   // Messages
-  nav_msgs::PathPtr measLidar_worldImuPathPtr_;
+  nav_msgs::PathPtr measLio_mapImuPathPtr_;
+  nav_msgs::PathPtr measVio_mapImuPathPtr_;
 
   // Flags
-  bool useLidarUnaryFactorFlag_ = false;
+  bool useLioOdometryFlag_ = true;
   bool useWheelOdometryFlag_ = false;
   bool useVioOdometryFlag_ = false;
 };

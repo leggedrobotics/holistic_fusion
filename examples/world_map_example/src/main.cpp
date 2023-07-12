@@ -54,8 +54,10 @@ int main(int argc, char** argv) {
   // graph.addPrior(gtsam::symbol_shorthand::X(graphKey), lidarPose1, priorModel);
   initialValues.insert(gtsam::symbol_shorthand::X(graphKey), T_W_I_0);
   ++graphKey;
-  graph.addPrior(gtsam::symbol_shorthand::X(graphKey), T_W_I_2, priorModel);
-  graph.addExpressionFactor(gtsam::Pose3_(T_M_W_ * x2_), T_M_I_2, priorModel);
+  gtsam::PriorFactor<gtsam::Pose3> priorFactor(gtsam::symbol_shorthand::X(graphKey), T_W_I_2, priorModel);
+  graph.add(priorFactor);
+  gtsam::ExpressionFactor<gtsam::Pose3> expressionFactor(priorModel, T_M_I_2, gtsam::Pose3_(T_M_W_ * x2_));
+  graph.add(expressionFactor);
   // graph.addPrior(gtsam::symbol_shorthand::X(graphKey), lidarPose2, priorModel);
   initialValues.insert(gtsam::symbol_shorthand::X(graphKey), T_W_I_0);
 

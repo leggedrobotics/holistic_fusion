@@ -5,12 +5,11 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GMSF_TERMINAL_H
-#define GMSF_TERMINAL_H
+#include "graph_msf/interface/Terminal.h"
 
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
+#ifndef GraphMsfRos_CONSTANTS_H
+#define GraphMsfRos_CONSTANTS_H
 
-#endif  // GMSF_TERMINAL_H
+#define REGULAR_COUT std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END
+
+#endif  // GraphMsfRos_CONSTANTS_H
