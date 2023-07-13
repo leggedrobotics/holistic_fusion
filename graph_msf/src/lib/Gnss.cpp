@@ -31,6 +31,14 @@ void Gnss::setReference(const double& referenceLatitude, const double& reference
   calculateConversionParameters();
 }
 
+double Gnss::convertEllipsoidalEvelationToGeoidElevation(double latitude, double longitude, double ellipsoidalHeight) {
+  GeographicLib::Geoid geoid("egm2008-1"); // https://geographiclib.sourceforge.io/C++/doc/geoid.html
+  double undulation = geoid(latitude, longitude);
+  double geoidElevation = ellipsoidalHeight - undulation;
+
+  return geoidElevation;
+}
+
 Eigen::Vector3d Gnss::gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude) {
   const double cn = cos(referenceHeading_);
   const double sn = sin(referenceHeading_);
@@ -42,7 +50,8 @@ Eigen::Vector3d Gnss::gpsToCartesian(const double& latitudeInDegrees, const doub
   Eigen::Vector3d position;
   position(0) = cn * lat_tmp + sn * lon_tmp;
   position(1) = sn * lat_tmp - cn * lon_tmp;
-  position(2) = altitude - referenceAltitude_;
+  double new_altitude = convertEllipsoidalEvelationToGeoidElevation(latitudeInDegrees, longitudeInDegrees, altitude);
+  position(2) = new_altitude - referenceAltitude_;
 
   return position;
 }

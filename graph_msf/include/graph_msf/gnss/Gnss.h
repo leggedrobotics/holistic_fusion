@@ -11,6 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 #pragma once
 
 #include <Eigen/Dense>
+#include <GeographicLib/Geoid.hpp>
 
 namespace graph_msf {
 
@@ -21,6 +22,7 @@ class Gnss {
 
   void setReference(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
                     const double& referenceHeading);
+  double convertEllipsoidalEvelationToGeoidElevation(double latitude, double longitude, double ellipsoidalHeight);
   Eigen::Vector3d gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
   Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position);
   Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);

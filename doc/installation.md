@@ -39,6 +39,15 @@ export LIBRARY_PATH=${LIBRARY_PATH}:${LD_LIBRARY_PATH}
 ```
 This is usually only needed if you you choose a non-standard (local) install directory.
 
+#### GeographicLib
+
+Geographic Lib is used to convert the ellipsoidal elevation measured by the GNSS to the true elevation based on `geoid data files` as described [here](https://geographiclib.sourceforge.io/C++/doc/geoid.html)
+
+`sudo apt install libgeographic-dev`
+`sudo apt install geographiclib-tools`
+`cd /usr/share/GeographicLib`
+`sudo geographiclib-get-geoids best`
+
 ## graph_msf
 ### Workspace
 GraphMsf only has two main dependencies: Eigen3 and GTSAM. These were installed in the last step.

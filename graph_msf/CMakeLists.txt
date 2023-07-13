@@ -16,6 +16,10 @@ find_package(GTSAM REQUIRED)
 message(STATUS "GTSAM version: ${GTSAM_VERSION}")
 message(STATUS "GTSAM path: ${GTSAM_DIR}")
 
+# Geographiclib installs FindGeographicLib.cmake to this non-standard location
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
+find_package(GeographicLib REQUIRED)
+
 #generate_messages(
 #  DEPENDENCIES
 #  std_msgs
@@ -23,7 +27,7 @@ message(STATUS "GTSAM path: ${GTSAM_DIR}")
 
 catkin_package(
   CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-  DEPENDS
+  DEPENDS GeographicLib
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -37,6 +41,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
+        ${GeographicLib_INCLUDE_DIRS}
         ${GTSAM_INCLUDE_DIR}
         ${Python3_INCLUDE_DIRS}
 )
@@ -50,7 +55,7 @@ add_library(${PROJECT_NAME}
   src/lib/TrajectoryAlignment.cpp
   src/lib/TrajectoryAlignmentHandler.cpp
   src/lib/NavState.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam gtsam_unstable  ${GeographicLib_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
