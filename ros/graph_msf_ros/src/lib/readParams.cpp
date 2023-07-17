@@ -77,8 +77,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Set frames
   /// World
   staticTransformsPtr_->setWorldFrame(tryGetParam<std::string>("extrinsics/worldFrame", privateNode));
-  /// Map
-  staticTransformsPtr_->setMapFrame(tryGetParam<std::string>("extrinsics/mapFrame", privateNode));
   /// Odom
   staticTransformsPtr_->setOdomFrame(tryGetParam<std::string>("extrinsics/odomFrame", privateNode));
   /// IMU

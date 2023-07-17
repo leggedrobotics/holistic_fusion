@@ -25,7 +25,6 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
 
   void setImuFrame(const std::string& s) { imuFrame_ = s; }
   void setWorldFrame(const std::string& s) { worldFrame_ = s; }
-  void setMapFrame(const std::string& s) { mapFrame_ = s; }
   void setOdomFrame(const std::string& s) { odomFrame_ = s; }
   void setBaseLinkFrame(const std::string& s) { baseLinkFrame_ = s; }
   void setInitializationFrame(const std::string& s) { initializationFrame_ = s; }
@@ -34,7 +33,6 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
   // Frames
   const std::string& getImuFrame() { return imuFrame_; }
   const std::string& getWorldFrame() { return worldFrame_; }
-  const std::string& getMapFrame() { return mapFrame_; }
   const std::string& getOdomFrame() { return odomFrame_; }
   const std::string& getBaseLinkFrame() { return baseLinkFrame_; }
   const std::string& getInitializationFrame() { return initializationFrame_; }
@@ -48,7 +46,6 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
  protected:
   // Required frames
   std::string worldFrame_;
-  std::string mapFrame_;
   std::string odomFrame_;
   std::string imuFrame_;
   std::string baseLinkFrame_;
