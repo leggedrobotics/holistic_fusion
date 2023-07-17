@@ -286,7 +286,6 @@ void GraphMsf::addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector
   gtsam::Point3 W_t_W_I =
       W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
                                     preIntegratedNavStatePtr_->getT_W_Ik().rotation());
-  std::cout << preIntegratedNavStatePtr_->getT_W_Ik().rotation() << std::endl;
 
   graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.unaryMeasurementNoiseDensity(),
                                            W_t_W_I);
