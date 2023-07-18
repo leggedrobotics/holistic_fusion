@@ -164,8 +164,8 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreInt
 
   // Add IMU values
   gtsam::Values valuesEstimate;
-  valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), O_imuPropagatedState_.pose());
-  valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), O_imuPropagatedState_.velocity());
+  valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
+  valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
   valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
   graphValuesBufferPtr_->insert(valuesEstimate);
   writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
@@ -258,15 +258,16 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
     if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(unary6DMeasurement.fixedFrameName(),
                                                                            worldFrame_)) {  // Newly added to dictionary
+      gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
+
       // Values for T_M_W
       gtsam::Values valuesEstimate;
-      gtsam::Pose3 T_W_I = O_imuPropagatedState_.pose();
+      gtsam::Pose3 T_W_I = W_imuPropagatedState_.pose();
       gtsam::Pose3 T_M_W_approx = T_fixedFrame_imu * T_W_I.inverse();
-      valuesEstimate.insert(gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_),
-                            T_M_W_approx);
+      valuesEstimate.insert(T_M_W_key, T_M_W_approx);
 
       // Expression Factor (copy from below)
-      gtsam::Pose3_ T_M_W_(gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_));
+      gtsam::Pose3_ T_M_W_(T_M_W_key);
       //    gtsam::Pose3_ T_M_W(gtsam::symbol_shorthand::T(0));
       gtsam::Pose3_ X_(statePoseKey);
       gtsam::ExpressionFactor<gtsam::Pose3> poseUnaryExpressionFactor(errorFunction, T_fixedFrame_imu, gtsam::Pose3_(T_M_W_ * X_));
@@ -274,9 +275,11 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
       // Operating on graph data
       const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
       graphValuesBufferPtr_->insert(valuesEstimate);
-      // writeValueKeysToKeyTimeStampMap_(valuesEstimate,
-      // unary6DMeasurement.timeK(), graphKeysTimestampsMapBufferPtr_);
       addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Pose3>*>(&poseUnaryExpressionFactor, unary6DMeasurement.timeK());
+      writeValueKeysToKeyTimeStampMap_(valuesEstimate, unary6DMeasurement.timeK(), graphKeysTimestampsMapBufferPtr_);
+      gtsam::Symbol keySymbol = gtsam::Symbol(T_M_W_key);
+      std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Initialized new map to world variable: " << keySymbol.string()
+                << std::endl;
     } else {  // Already in the transformation dictionary
       // Expression key
       gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
@@ -286,7 +289,9 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
       gtsam::Pose3_ X_(statePoseKey);
       gtsam::ExpressionFactor<gtsam::Pose3> poseUnaryExpressionFactor(errorFunction, T_fixedFrame_imu, gtsam::Pose3_(T_M_W_ * X_));
       // Write to graph
-      addFactorSafelyToGraph_<const gtsam::ExpressionFactor<gtsam::Pose3>*>(&poseUnaryExpressionFactor, unary6DMeasurement.timeK());
+      const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+      addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Pose3>*>(&poseUnaryExpressionFactor, unary6DMeasurement.timeK());
+      writeKeyToKeyTimeStampMap_(T_M_W_key, unary6DMeasurement.timeK(), graphKeysTimestampsMapBufferPtr_);
     }
   } else {  // Simple unary factor --------------------------------------
     // Regular Unary factor
@@ -493,15 +498,14 @@ void GraphManager::updateGraph() {
     optimizedGraphState_.updateFixedFrameTransforms(resultFixedFrameTransformations_);
     optimizedGraphState_.updateCovariances(resultPoseCovariance, resultVelocityCovariance);
     // Predict from solution to obtain refined propagated state
-    gtsam::NavState W_propagatedStateJumping;
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
-      W_propagatedStateJumping = imuBufferPreintegratorPtr_->predict(resultNavState, optimizedGraphState_.imuBias());
-      O_imuPropagatedState_ = gtsam::NavState(W_propagatedStateJumping.pose().rotation(), O_imuPropagatedState_.pose().translation(),
-                                              W_propagatedStateJumping.velocity());
-      T_W_O_ = Eigen::Isometry3d((W_propagatedStateJumping.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+      W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, optimizedGraphState_.imuBias());
     } else {
-      O_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
+      W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
     }
+    O_imuPropagatedState_ = gtsam::NavState(W_imuPropagatedState_.pose().rotation(), O_imuPropagatedState_.pose().translation(),
+                                            W_imuPropagatedState_.velocity());
+    T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
   }  // end of locking
 }
 
@@ -597,10 +601,15 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
   return true;
 }
 
+void GraphManager::writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,
+                                              std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
+  (*keyTimestampMapPtr)[key] = measurementTime;
+}
+
 void GraphManager::writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
                                                     std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
   for (const auto& value : values) {
-    (*keyTimestampMapPtr)[value.key] = measurementTime;
+    writeKeyToKeyTimeStampMap_(value.key, measurementTime, keyTimestampMapPtr);
   }
 }
 

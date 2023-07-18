@@ -102,6 +102,9 @@ class GraphManager {
   /// Generate new key
   const uint64_t newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
+  inline void writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,
+                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
+
   void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
 
@@ -118,6 +121,7 @@ class GraphManager {
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   graph_msf::GraphState optimizedGraphState_;
   /// Propagated state (at IMU frequency)
+  gtsam::NavState W_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
   gtsam::NavState O_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
   gtsam::Key propagatedStateKey_ = 0;                        // Current state key

@@ -112,7 +112,7 @@ class OptimizerIsam2 : public Optimizer {
     } catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
-      // throw std::runtime_error(runtimeError.what());
+      throw std::runtime_error(runtimeError.what());
     }
     return true;
   }
