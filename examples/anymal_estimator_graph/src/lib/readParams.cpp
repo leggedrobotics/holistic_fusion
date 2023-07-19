@@ -6,61 +6,51 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "anymal_dual_graph/AnymalEstimator.h"
+#include "anymal_estimator_graph/AnymalEstimator.h"
+
+// Project
+#include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 namespace anymal_se {
 
 void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
-  // Variables for parameter fetching
-  double dParam;
-  int iParam;
-  bool bParam;
-  std::string sParam;
-
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
   }
 
-  // Call super method
-  graph_msf::GraphMsfRos::readParams_(privateNode);
-
-  // Set frames
-  /// base_link
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setBaseLinkFrame(frame);
-  /// LiDAR frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setLidarFrame(frame);
-  /// Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode);
-  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->setGnssFrame(frame);
-
   // Sensor Params
-  lidarRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
+  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters
   /// LiDAR Odometry
-  const auto poseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/poseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
-  poseBetweenNoise_ << poseBetweenNoise[0], poseBetweenNoise[1], poseBetweenNoise[2], poseBetweenNoise[3], poseBetweenNoise[4],
-      poseBetweenNoise[5];
   const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/poseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
-  poseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Gnss
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
   gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
+  // GNSS
+  useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
+
   // Gnss parameters
-  if (graphConfigPtr_->usingGnssFlag) {
+  if (useGnssFlag_) {
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
     gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
   }
+
+  // Set frames
+  /// LiDAR frame
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
+      ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lioOdometryFrame", privateNode));
+  /// Gnss frame
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
+      ->setGnssFrame(graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode));
 }
 
 }  // namespace anymal_se

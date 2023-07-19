@@ -1,0 +1,8 @@
+#External Prior/Transform Input
+extrinsics:
+  worldFrame: world_graph_msf
+  mapFrame: map_graph_msf
+  odomFrame: odom_graph_msf
+  imuFrame: imu       # IMU_CABIN_link           #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
+  baseLinkFrame: base_link
+  initializeZeroYawAndPositionOfFrame: base_link

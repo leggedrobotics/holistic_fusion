@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -11,27 +11,62 @@ Please see the LICENSE file that has been included as part of this package.
 // CPP
 #include <iomanip>
 
+// Workspace
+#include "graph_msf/core/Datatypes.hpp"
+#include "graph_msf/interface/Terminal.h"
+
 namespace graph_msf {
 
+// Constructor ---------------------------------------------------
+// Constructor
+ImuBuffer::ImuBuffer(const std::shared_ptr<GraphConfig> graphConfigPtr) {
+  // Reset IMU Buffer
+  timeToImuBuffer_.clear();
+  // Parameters
+  useImuSignalLowPassFilter_ = graphConfigPtr->useImuSignalLowPassFilter;
+  imuRate_ = graphConfigPtr->imuRate;
+  imuBufferLength_ = graphConfigPtr->imuBufferLength;
+  verboseLevel_ = graphConfigPtr->verboseLevel;
+  // If low pass filter is used, initialize it
+  if (useImuSignalLowPassFilter_) {
+    imuSignalLowPassFilterPtr_ =
+        std::make_unique<ImuSignalLowPassFilter>(graphConfigPtr->imuLowPassFilterCutoffFreqHz, 1.0 / graphConfigPtr->imuRate);
+  }
+}
+
 // Public --------------------------------------------------------
-void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ, double gyrX, double gyrY, double gyrZ) {
+// Returns actually added IMU measurements
+Eigen::Matrix<double, 6, 1> ImuBuffer::addToImuBuffer(double ts, const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel) {
   // Check that imuBufferLength was set
   if (imuBufferLength_ < 0) {
     throw std::runtime_error("GMsfImuBuffer: imuBufferLength has to be set by the user.");
   }
 
+  // Copy of IMU measurements
+  Eigen::Matrix<double, 6, 1> filteredImuMeas;
+
+  // Potentially low pass filter IMU measurements
+  if (useImuSignalLowPassFilter_) {
+    filteredImuMeas = imuSignalLowPassFilterPtr_->filter(linearAcc, angularVel);
+  } else {
+    filteredImuMeas << linearAcc, angularVel;
+  }
+
   // Convert to gtsam type
-  gtsam::Vector6 imuMeas;
-  imuMeas << accX, accY, accZ, gyrX, gyrY, gyrZ;
+  graph_msf::ImuMeasurement imuMeas;
+  imuMeas.timestamp = ts;
+  imuMeas.acceleration = filteredImuMeas.head<3>();
+  imuMeas.angularVelocity = filteredImuMeas.tail<3>();
 
   // Add to buffer
   {
     // Writing to IMU buffer --> acquire mutex
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
     timeToImuBuffer_[ts] = imuMeas;
-  }
-  if (ts > tLatestInBuffer_) {
-    tLatestInBuffer_ = ts;
+    // Update latest timestamp in buffer
+    if (ts > tLatestInBuffer_) {
+      tLatestInBuffer_ = ts;
+    }
   }
 
   // If IMU buffer is too large, remove first element
@@ -45,30 +80,14 @@ void ImuBuffer::addToIMUBuffer(double ts, double accX, double accY, double accZ,
                 << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
     throw std::runtime_error(errorStream.str());
   }
+
+  return filteredImuMeas;
 }
 
-void ImuBuffer::addToKeyBuffer(double ts, gtsam::Key key) {
-  if (verboseLevel_ >= 5) {
-    std::cout << YELLOW_START << "GMsf-Imu-Buffer" << COLOR_END << " Adding key " << key << " to timeToKeyBuffer for time " << ts
-              << std::endl;
-  }
-  {
-    // Writing to IMU buffer --> acquire mutex
-    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    timeToKeyBuffer_[ts] = key;
-  }
-
-  // If Key buffer is too large, remove first element
-  if (timeToKeyBuffer_.size() > imuBufferLength_) {
-    timeToKeyBuffer_.erase(timeToKeyBuffer_.begin());
-  }
-
-  if (timeToKeyBuffer_.size() > imuBufferLength_) {
-    std::ostringstream errorStream;
-    errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Key Buffer has grown too large. It contains "
-                << timeToKeyBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
-    throw std::runtime_error(errorStream.str());
-  }
+double ImuBuffer::getLatestTimestampInBuffer() {
+  // Reading from IMU buffer --> acquire mutex
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+  return tLatestInBuffer_;
 }
 
 void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
@@ -80,101 +99,12 @@ void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
   imuMap[endItr->first] = endItr->second;
 }
 
-bool ImuBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
-                                          const double maxSearchDeviation, const double tK) {
-  std::_Rb_tree_iterator<std::pair<const double, gtsam::Key>> upperIterator;
-  {
-    // Read frp, IMU buffer --> acquire mutex
-    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    upperIterator = timeToKeyBuffer_.upper_bound(tK);
-  }
-
-  auto lowerIterator = upperIterator;
-  --lowerIterator;
-
-  // Keep key which is closer to tLidar
-  tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
-  double timeDeviation = tInGraph - tK;
-
-  if (verboseLevel_ >= 2) {
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
-              << " searched time step: " << tK << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
-              << " found time step: " << tInGraph << " at key " << key << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation << " ms"
-              << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
-              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
-  }
-
-  // Check for error and warn user
-  if (std::abs(timeDeviation) > maxSearchDeviation) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer " << RED_START << callingName << " Time deviation at key " << key << " is "
-              << 1000 * timeDeviation << " ms, being larger than admissible deviation of " << 1000 * maxSearchDeviation << " ms"
-              << COLOR_END << std::endl;
-    return false;
-  }
-
-  return true;
-}
-
-bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& ts_start, const double& ts_end, TimeToImuMap::iterator& s_itr,
-                                                TimeToImuMap::iterator& e_itr) {
-  // Check if timestamps are in correct order
-  if (ts_start >= ts_end) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START << " IMU Lookup Timestamps are not correct ts_start(" << std::fixed
-              << ts_start << ") >= ts_end(" << ts_end << ")\n";
-    return false;
-  }
-
-  // Get Iterator Belonging to ts_start
-  s_itr = timeToImuBuffer_.lower_bound(ts_start);
-  // Get Iterator Belonging to ts_end
-  e_itr = timeToImuBuffer_.lower_bound(ts_end);
-
-  // Check if it is first value in the buffer which means there is no value before to interpolate with
-  if (s_itr == timeToImuBuffer_.begin()) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
-              << " Lookup requires first message of IMU buffer, cannot Interpolate back, "
-                 "Lookup Start/End: "
-              << std::fixed << ts_start << "/" << ts_end << ", Buffer Start/End: " << timeToImuBuffer_.begin()->first << "/"
-              << timeToImuBuffer_.rbegin()->first << std::endl;
-    return false;
-  }
-
-  // Check if lookup start time is ahead of buffer start time
-  if (s_itr == timeToImuBuffer_.end()) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
-              << " IMU Lookup start time ahead latest IMU message in the buffer, lookup: " << ts_start
-              << ", latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
-    return false;
-  }
-
-  // Check if last value is valid
-  if (e_itr == timeToImuBuffer_.end()) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START << " Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
-              << ts_start << "/" << ts_end << " and latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
-    e_itr = timeToImuBuffer_.end();
-    --e_itr;
-  }
-
-  // Check if two IMU messages are different
-  if (s_itr == e_itr) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
-              << " Not Enough IMU values between timestamps , with Start/End: " << std::fixed << ts_start << "/" << ts_end
-              << ", with diff: " << ts_end - ts_start << std::endl;
-    return false;
-  }
-
-  // If everything is good
-  return true;
-}
-
 bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias) {
   // Make sure that imuBuffer is long enough
   if (imuBufferLength_ < (imuRate_ * imuPoseInitWaitSecs_)) {
-    throw std::runtime_error("ImuBufferLength is not large enough for initialization. Must be at least 1 second.");
+    throw std::runtime_error(
+        "ImuBufferLength is not large enough for "
+        "initialization. Must be at least 1 second.");
   }
 
   // Get timestamp of first message for lookup
@@ -184,8 +114,8 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
     // Accumulate Acceleration part of IMU Messages
     Eigen::Vector3d initAccMean(0.0, 0.0, 0.0), initGyrMean(0.0, 0.0, 0.0);
     for (auto& itr : timeToImuBuffer_) {
-      initAccMean += itr.second.head<3>();
-      initGyrMean += itr.second.tail<3>();
+      initAccMean += itr.second.acceleration;
+      initGyrMean += itr.second.angularVelocity;
     }
 
     // Average IMU measurements and set assumed gravity direction
@@ -193,7 +123,8 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
     gravityMagnitude = initAccMean.norm();
     Eigen::Vector3d gUnitVecInWorld = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
 
-    // Normalize gravity vectors to remove the affect of gravity magnitude from place-to-place
+    // Normalize gravity vectors to remove the affect of gravity magnitude from
+    // place-to-place
     initAccMean.normalize();
     initAttitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVecInWorld));
 
@@ -210,5 +141,92 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
   }
   return true;
+}
+
+bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& tsStart, const double& tsEnd, TimeToImuMap::iterator& startIterator,
+                                                TimeToImuMap::iterator& endIterator) {
+  // Check if timestamps are in correct order
+  if (tsStart >= tsEnd) {
+    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START << " IMU Lookup Timestamps are not correct ts_start(" << std::fixed
+              << tsStart << ") >= ts_end(" << tsEnd << ")\n";
+    return false;
+  }
+
+  // Get Iterator Belonging to ts_start
+  startIterator = timeToImuBuffer_.lower_bound(tsStart);
+  // Get Iterator Belonging to ts_end
+  endIterator = timeToImuBuffer_.lower_bound(tsEnd);
+
+  // Check if it is first value in the buffer which means there is no value
+  // before to interpolate with
+  if (startIterator == timeToImuBuffer_.begin()) {
+    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
+              << " Lookup requires first message of IMU buffer, cannot "
+                 "Interpolate back, "
+                 "Lookup Start/End: "
+              << std::fixed << tsStart << "/" << tsEnd << ", Buffer Start/End: " << timeToImuBuffer_.begin()->first << "/"
+              << timeToImuBuffer_.rbegin()->first << std::endl;
+    return false;
+  }
+
+  // Check if lookup start time is ahead of buffer start time
+  if (startIterator == timeToImuBuffer_.end()) {
+    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
+              << " IMU Lookup start time ahead latest IMU message in the "
+                 "buffer, lookup: "
+              << tsStart << ", latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
+    return false;
+  }
+
+  // Check if last value is valid
+  if (endIterator == timeToImuBuffer_.end()) {
+    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START << " Lookup is past IMU buffer, with lookup Start/End: " << std::fixed
+              << tsStart << "/" << tsEnd << " and latest IMU: " << timeToImuBuffer_.rbegin()->first << std::endl;
+    --endIterator;
+  }
+
+  // Check if two IMU messages are different
+  if (startIterator == endIterator) {
+    std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
+              << " Not Enough IMU values between timestamps , with Start/End: " << std::fixed << tsStart << "/" << tsEnd
+              << ", with diff: " << tsEnd - tsStart << std::endl;
+    return false;
+  }
+
+  // If everything is good
+  return true;
+}
+
+gtsam::NavState ImuBuffer::integrateNavStateFromTimestamp(const double& tsStart, const double& tsEnd, const gtsam::NavState& stateStart,
+                                                          const gtsam::imuBias::ConstantBias& imuBias,
+                                                          const Eigen::Vector3d& W_gravityVector) {
+  // Get iterators
+  TimeToImuMap::iterator startIterator, nextToStartIterator, endIterator;
+  // Get IMU iterators in interval
+  if (!getIMUBufferIteratorsInInterval(tsStart, tsEnd, startIterator, endIterator)) {
+    throw std::runtime_error("Could not get IMU iterators in interval");
+  }
+  nextToStartIterator = startIterator;
+  ++nextToStartIterator;
+
+  // Propagated state
+  gtsam::NavState propagatedState = stateStart;
+
+  // For Loop for IMU integration
+  Eigen::Vector3d i_measAcceleration, i_measAngularVelocity;
+  for (; startIterator != endIterator; ++startIterator, ++nextToStartIterator) {
+    // Get IMU measurement
+    i_measAcceleration = imuBias.correctAccelerometer(nextToStartIterator->second.acceleration);
+    i_measAngularVelocity = imuBias.correctGyroscope(nextToStartIterator->second.angularVelocity);
+
+    // Calculate dt
+    double dt = nextToStartIterator->first - startIterator->first;
+
+    // Update propagated state
+    Eigen::Vector3d i_gravityVector = propagatedState.R().transpose() * W_gravityVector;
+    propagatedState =
+        propagatedState.update(i_gravityVector + i_measAcceleration, i_measAngularVelocity, dt, boost::none, boost::none, boost::none);
+  }
+  return propagatedState;
 }
 }  // namespace graph_msf

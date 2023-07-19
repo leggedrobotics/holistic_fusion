@@ -48,7 +48,7 @@ mkdir catkin_ws
 mkdir src
 catkin init
 catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
-cd src && git clone https://github.com/leggedrobotics/graph_msf.git
+cd src && git clone https://github.com/leggedrobotics/graph_msf_dev.git
 ```
 
 ### Compiling

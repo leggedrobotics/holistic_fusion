@@ -1,26 +1,44 @@
 cmake_minimum_required(VERSION 3.16)
 project(anymal_estimator_graph)
 
+## Compile as C++17, supported in ROS Noetic and newer
+add_compile_options(-std=c++17)
+
+# Find Dependencies ---------------------------------------------------------------------------------------------------
+find_package(Eigen3 REQUIRED)
+message("Eigen Version:" ${EIGEN3_VERSION_STRING})
+message("Eigen Path:" ${Eigen3_DIR})
+
+# Color
+if(NOT WIN32)
+  string(ASCII 27 Esc)
+  set(ColourReset "${Esc}[m")
+  set(BoldMagenta "${Esc}[1;35m")
+  set(Magenta     "${Esc}[35m")
+endif()
+
+# March native check
+#include(CheckCXXCompilerFlag)
+#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
+#if(COMPILER_SUPPORTS_MARCH_NATIVE)
+#  add_compile_options("-march=native")
+#  message("${BoldMagenta}INFO: Using -march=native${ColourReset}")
+#endif()
+
+# Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf
-  graph_msf_msgs
   graph_msf_ros
-  geometry_msgs
+  graph_msf_ros_msgs
   nav_msgs
   sensor_msgs
   roscpp
   std_msgs
   tf
-  message_filters
 )
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
 )
-
-#find_package(Eigen3 REQUIRED)
-#message("Eigen Version:" ${EIGEN3_VERSION_STRING})
-#message("Eigen Path:" ${Eigen3_DIR})
 
 catkin_package(
   INCLUDE_DIRS include
@@ -37,6 +55,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
+        ${EIGEN3_INCLUDE_DIR}
 )
 
 # Library

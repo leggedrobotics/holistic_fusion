@@ -1,0 +1,523 @@
+control:
+  joint_state_controller:
+    publish_rate: 50
+    type: joint_state_controller/JointStateController
+  joy_teleop:
+    joy_node:
+      autorepeat_rate: 20
+      deadzone: 0.1
+      dev: /dev/input/js0
+    teleop_twist_joy:
+      axis_angular: 0
+      axis_linear: 1
+      enable_button: 4
+      enable_turbo_button: 5
+      scale_angular: 1.2
+      scale_angular_turbo: 1.2
+      scale_linear: 1.6
+      scale_linear_turbo: 1.0
+  lowlevel_controller:
+    LF_WHEEL_JOINT:
+      has_acceleration_limits: true
+      has_effort_limits: true
+      has_jerk_limits: true
+      has_position_limits: false
+      has_velocity_limits: true
+      max_acceleration: 5.0
+      max_effort: 1.0
+      max_jerk: 100.0
+      max_velocity: 2.0
+    LF_WHEEL_JOINT_dc_controller:
+      antiwindup: true
+      d: 0.0
+      i: 150.0
+      i_clamp: 300
+      i_clamp_max: 300.0
+      i_clamp_min: -300.0
+      p: 50.0
+      publish_state: true
+    LF_WHEEL_velocity_controller:
+      joint: LF_WHEEL_JOINT
+      pid:
+        d: 10.0
+        i: 0.01
+        p: 100.0
+      type: velocity_controllers/JointVelocityController
+    RF_WHEEL_JOINT:
+      has_acceleration_limits: true
+      has_effort_limits: true
+      has_jerk_limits: true
+      has_position_limits: false
+      has_velocity_limits: true
+      max_acceleration: 5.0
+      max_effort: 1.0
+      max_jerk: 100.0
+      max_velocity: 2.0
+    RF_WHEEL_JOINT_dc_controller:
+      antiwindup: true
+      d: 0.0
+      i: 150.0
+      i_clamp: 300
+      i_clamp_max: 300.0
+      i_clamp_min: -300.0
+      p: 50.0
+      publish_state: true
+    RF_WHEEL_velocity_controller:
+      joint: RF_WHEEL_JOINT
+      pid:
+        d: 10.0
+        i: 0.01
+        p: 100.0
+      type: velocity_controllers/JointVelocityController
+    WHEEL_JOINT_ff_param:
+      ff_general: 25
+      ff_pure_rotation: 100
+    robot_joint_publisher:
+      publish_rate: 50
+      type: joint_state_controller/JointStateController
+    smb:
+      ang_vel_scale: 1.8
+      hardware_interface:
+        joints:
+        - LF_WHEEL_JOINT
+        - RF_WHEEL_JOINT
+        loop_hz: 400
+      lin_vel_scale: 1.8
+  smb_diff_drive:
+    angular:
+      z:
+        has_acceleration_limits: true
+        has_velocity_limits: true
+        max_acceleration: 5.0
+        max_velocity: 2.0
+    base_frame_id: base_link
+    cmd_vel_timeout: 0.25
+    enable_odom_tf: false
+    estimate_velocity_from_position: false
+    left_wheel:
+    - LF_WHEEL_JOINT
+    left_wheel_radius_multiplier: 1.0
+    linear:
+      x:
+        has_acceleration_limits: true
+        has_velocity_limits: true
+        max_acceleration: 5.0
+        max_velocity: 2.0
+    pose_covariance_diagonal:
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.03
+    publish_rate: 50.0
+    right_wheel:
+    - RF_WHEEL_JOINT
+    right_wheel_radius_multiplier: 1.0
+    twist_covariance_diagonal:
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.001
+    - 0.03
+    type: diff_drive_controller/DiffDriveController
+    velocity_rolling_window_size: 2
+    wheel_radius_multiplier: 1.0
+    wheel_separation_multiplier: 1.0
+  smb_lowlevel_controller:
+    command_smb: true
+    control_namespace: /control
+    controller_namespace: lowlevel_controller
+    port: /dev/ttyUSB0
+    smb:
+      ang_vel_scale: 1.8
+      hardware_interface:
+        joints:
+        - LF_WHEEL_JOINT
+        - RF_WHEEL_JOINT
+        loop_hz: 400
+      lin_vel_scale: 1.8
+  smb_robot_state_publisher:
+    publish_frequency: 50
+    use_tf_static: true
+  twist_mux:
+    locks:
+    - name: e_stop
+      priority: 255
+      timeout: 0.0
+      topic: joy_teleop/e_stop
+    - name: e_stop_opc
+      priority: 200
+      timeout: 0.0
+      topic: opc/e_stop
+    topics:
+    - name: RC
+      priority: 15
+      timeout: 0.5
+      topic: smb_lowlevel_controller/rc_twist
+    - name: joy
+      priority: 10
+      timeout: 0.5
+      topic: joy_teleop/cmd_vel
+    - name: keyboard
+      priority: 9
+      timeout: 0.5
+      topic: keyboard_teleop/cmd_vel
+    - name: joy_opc
+      priority: 8
+      timeout: 0.5
+      topic: opc/cmd_vel
+    - name: mpc_command_twist
+      priority: 5
+      timeout: 0.2
+      topic: smb_mpc/command_twist
+    - name: teb_planner_twist
+      priority: 3
+      timeout: 1.0
+      topic: teb_planner_twist
+odometry:
+  tracking_camera_odometry_conversion:
+    in_odom_frame: tracking_camera_pose_frame
+    in_sensor_frame: tracking_camera_pose_frame
+    out_odom_frame: tracking_camera_odom
+    out_sensor_frame: base_link
+rosdistro: 'noetic
+
+  '
+roslaunch:
+  uris:
+    host_smb_263_nuc__35755: http://smb-263-nuc:35755/
+rosserial_python:
+  baud: 250000
+  port: /dev/versavis
+rosversion: '1.16.0
+
+  '
+run_id: d353b820-09d9-11ee-9f1a-13a7083ee06f
+serial_node:
+  baud: 115200
+  port: /dev/smb-power
+simulation: false
+smb_description: "<?xml version=\"1.0\" ?>\n<!-- ===================================================================================\
+  \ -->\n<!-- |    This document was autogenerated by xacro from /home/robotx/catkin_workspaces/smb_dev/src/core/smb_description/urdf/smb_standalone.urdf.xacro\
+  \ | -->\n<!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                \
+  \                 | -->\n<!-- ===================================================================================\
+  \ -->\n<robot name=\"smb\">\n  <!-- Materials -->\n  <material name=\"black\">\n\
+  \    <color rgba=\"0 0 0 1.0\"/>\n  </material>\n  <material name=\"dark_grey\"\
+  >\n    <color rgba=\"0 0 0 0.6078431372549019 1.0\"/>\n  </material>\n  <material\
+  \ name=\"blue\">\n    <color rgba=\"0 0 0.7843137254901961 1.0\"/>\n  </material>\n\
+  \  <material name=\"green\">\n    <color rgba=\"0 0.7843137254901961 0 1.0\"/>\n\
+  \  </material>\n  <material name=\"grey\">\n    <color rgba=\"0.19607843137254902\
+  \ 0.19607843137254902 0.19607843137254902 1.0\"/>\n  </material>\n  <material name=\"\
+  orange\">\n    <color rgba=\"1.0 0.4235294117647059 0.0392156862745098 1.0\"/>\n\
+  \  </material>\n  <material name=\"brown\">\n    <color rgba=\"0.8705882352941177\
+  \ 0.8117647058823529 0.7647058823529411 1.0\"/>\n  </material>\n  <material name=\"\
+  red\">\n    <color rgba=\"0.7843137254901961 0 0 1.0\"/>\n  </material>\n  <material\
+  \ name=\"white\">\n    <color rgba=\"1.0 1.0 1.0 1.0\"/>\n  </material>\n  <!--\
+  \ t265_origin_xyz is the offset to the parent link -->\n  <!-- t265_origin_rpy is\
+  \ the fixed axis roll, pitch and yaw angle such that the resulting frame has\n \
+  \      the x axis pointing forward (\"out of camera\"),\n       the y axis pointing\
+  \ left and the z axis pointing upward -->\n  <!-- another frame \"realsense_t265_odom_frame\
+  \ is created that is in line with the one documented here:\n       https://www.intel.com/content/dam/support/us/en/documents/emerging-technologies/intel-realsense-technology/IntelRealSenseTrackingT265Datasheet.pdf\
+  \ -->\n  <link name=\"base_link\">\n    <collision>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <geometry>\n        <box size=\"0.605 0.41 0.197\"/>\n\
+  \      </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <geometry>\n        <box size=\"0.605 0.41 0.197\"/>\n\
+  \      </geometry>\n      <material name=\"base_material\">\n        <color rgba=\"\
+  0.8 0.0 0.1 1.0\"/>\n      </material>\n    </visual>\n  </link>\n  <link name=\"\
+  top\">\n    <collision>\n      <origin rpy=\"0 0 0\" xyz=\"-0.07 0 0\"/>\n     \
+  \ <geometry>\n        <!-- <box size=\"${topLength} ${topWidth} ${topHeight}\"/>\
+  \ -->\n        <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_step.dae\"\
+  />\n      </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <geometry>\n        <!-- <box size=\"${topLength} ${topWidth}\
+  \ ${topHeight}\"/> -->\n        <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_step.dae\"\
+  />\n      </geometry>\n    </visual>\n  </link>\n  <gazebo reference=\"top\">\n\
+  \    <material>Gazebo/Grey</material>\n  </gazebo>\n  <gazebo reference=\"base_link\"\
+  >\n    <material>Gazebo/Red</material>\n  </gazebo>\n  <joint name=\"top_to_base_link\"\
+  \ type=\"fixed\">\n    <parent link=\"base_link\"/>\n    <child link=\"top\"/>\n\
+  \    <!-- <origin xyz=\"${topXOffset/2.0} 0.0 ${chassisHeight/2.0 + topHeight/2.0}\"\
+  \ rpy=\"0 0 0\"/> -->\n    <origin rpy=\"0 0 0\" xyz=\"0.0 0.0 0.0985\"/>\n  </joint>\n\
+  \  <!-- Fixed joint to add dummy inertia link -->\n  <joint name=\"base_to_base_inertia\"\
+  \ type=\"fixed\">\n    <parent link=\"base_link\"/>\n    <child link=\"base_inertia\"\
+  />\n    <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n  </joint>\n  <!-- Dummy inertia\
+  \ link, because KDL cannot have inertia on the base link -->\n  <link name=\"base_inertia\"\
+  >\n    <inertial>\n      <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <mass value=\"\
+  40\"/>\n      <inertia ixx=\"0.6896966666666665\" ixy=\"0\" ixz=\"0\" iyy=\"1.3494466666666665\"\
+  \ iyz=\"0\" izz=\"1.3494466666666665\"/>\n    </inertial>\n  </link>\n  <joint name=\"\
+  LF_WHEEL_JOINT\" type=\"continuous\">\n    <parent link=\"base_link\"/>\n    <child\
+  \ link=\"LF_WHEEL\"/>\n    <origin rpy=\"-1.57079632679 0 0\" xyz=\"0.2159 0.285\
+  \ -0.018500000000000003\"/>\n    <axis rpy=\"0 0 0\" xyz=\"0 0 1\"/>\n    <dynamics\
+  \ damping=\"1.0\" friction=\"0.0\"/>\n    <limit effort=\"100\" velocity=\"10\"\
+  />\n    <joint_properties damping=\"0.2\" friction=\"0.2\"/>\n  </joint>\n  <link\
+  \ name=\"LF_WHEEL\">\n    <collision>\n      <origin rpy=\"0 0 0\" xyz=\"0 0 0\"\
+  />\n      <geometry>\n        <cylinder length=\"0.01\" radius=\"0.19\"/>\n    \
+  \  </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"1.570796 0 \
+  \ 0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <mesh filename=\"package://smb_description/urdf/meshes/wheel.dae\"\
+  />\n      </geometry>\n    </visual>\n    <inertial>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <mass value=\"5\"/>\n      <inertia ixx=\"0.04929166666666668\"\
+  \ ixy=\"0\" ixz=\"0\" iyy=\"0.04929166666666668\" iyz=\"0\" izz=\"0.09025\"/>\n\
+  \    </inertial>\n  </link>\n  <gazebo reference=\"LF_WHEEL\">\n    <mu1 value=\"\
+  0.7\"/>\n    <mu2 value=\"0.7\"/>\n    <fdir1 value=\"1 0 0\"/>\n    <kp>10000000.0</kp>\n\
+  \    <kd>1.0</kd>\n    <minDepth>0.005</minDepth>\n    <maxVel>100.0</maxVel>\n\
+  \    <material>Gazebo/DarkGrey</material>\n  </gazebo>\n  <transmission name=\"\
+  LF_WHEEL_TRANS\">\n    <type>transmission_interface/SimpleTransmission</type>\n\
+  \    <joint name=\"LF_WHEEL_JOINT\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \    </joint>\n    <actuator name=\"LF_WHEEL_ACTUATOR\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \      <mechanicalReduction>1</mechanicalReduction>\n    </actuator>\n  </transmission>\n\
+  \  <joint name=\"RF_WHEEL_JOINT\" type=\"continuous\">\n    <parent link=\"base_link\"\
+  />\n    <child link=\"RF_WHEEL\"/>\n    <origin rpy=\"-1.57079632679 0 0\" xyz=\"\
+  0.2159 -0.285 -0.018500000000000003\"/>\n    <axis rpy=\"0 0 0\" xyz=\"0 0 1\"/>\n\
+  \    <dynamics damping=\"1.0\" friction=\"0.0\"/>\n    <limit effort=\"100\" velocity=\"\
+  10\"/>\n    <joint_properties damping=\"0.2\" friction=\"0.2\"/>\n  </joint>\n \
+  \ <link name=\"RF_WHEEL\">\n    <collision>\n      <origin rpy=\"0 0 0\" xyz=\"\
+  0 0 0\"/>\n      <geometry>\n        <cylinder length=\"0.01\" radius=\"0.19\"/>\n\
+  \      </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"1.570796\
+  \ 0  0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <mesh filename=\"package://smb_description/urdf/meshes/wheel.dae\"\
+  />\n      </geometry>\n    </visual>\n    <inertial>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <mass value=\"5\"/>\n      <inertia ixx=\"0.04929166666666668\"\
+  \ ixy=\"0\" ixz=\"0\" iyy=\"0.04929166666666668\" iyz=\"0\" izz=\"0.09025\"/>\n\
+  \    </inertial>\n  </link>\n  <gazebo reference=\"RF_WHEEL\">\n    <mu1 value=\"\
+  0.7\"/>\n    <mu2 value=\"0.7\"/>\n    <fdir1 value=\"1 0 0\"/>\n    <kp>10000000.0</kp>\n\
+  \    <kd>1.0</kd>\n    <minDepth>0.005</minDepth>\n    <maxVel>100.0</maxVel>\n\
+  \    <material>Gazebo/DarkGrey</material>\n  </gazebo>\n  <transmission name=\"\
+  RF_WHEEL_TRANS\">\n    <type>transmission_interface/SimpleTransmission</type>\n\
+  \    <joint name=\"RF_WHEEL_JOINT\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \    </joint>\n    <actuator name=\"RF_WHEEL_ACTUATOR\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \      <mechanicalReduction>1</mechanicalReduction>\n    </actuator>\n  </transmission>\n\
+  \  <joint name=\"LH_WHEEL_JOINT\" type=\"continuous\">\n    <parent link=\"base_link\"\
+  />\n    <child link=\"LH_WHEEL\"/>\n    <origin rpy=\"-1.57079632679 0 0\" xyz=\"\
+  -0.2159 0.285 -0.018500000000000003\"/>\n    <axis rpy=\"0 0 0\" xyz=\"0 0 1\"/>\n\
+  \    <dynamics damping=\"1.0\" friction=\"0.0\"/>\n    <limit effort=\"100\" velocity=\"\
+  10\"/>\n    <joint_properties damping=\"0.2\" friction=\"0.2\"/>\n  </joint>\n \
+  \ <link name=\"LH_WHEEL\">\n    <collision>\n      <origin rpy=\"0 0 0\" xyz=\"\
+  0 0 0\"/>\n      <geometry>\n        <cylinder length=\"0.01\" radius=\"0.19\"/>\n\
+  \      </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"1.570796\
+  \ 0  0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <mesh filename=\"package://smb_description/urdf/meshes/wheel.dae\"\
+  />\n      </geometry>\n    </visual>\n    <inertial>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <mass value=\"5\"/>\n      <inertia ixx=\"0.04929166666666668\"\
+  \ ixy=\"0\" ixz=\"0\" iyy=\"0.04929166666666668\" iyz=\"0\" izz=\"0.09025\"/>\n\
+  \    </inertial>\n  </link>\n  <gazebo reference=\"LH_WHEEL\">\n    <mu1 value=\"\
+  0.7\"/>\n    <mu2 value=\"0.7\"/>\n    <fdir1 value=\"1 0 0\"/>\n    <kp>10000000.0</kp>\n\
+  \    <kd>1.0</kd>\n    <minDepth>0.005</minDepth>\n    <maxVel>100.0</maxVel>\n\
+  \    <material>Gazebo/DarkGrey</material>\n  </gazebo>\n  <transmission name=\"\
+  LH_WHEEL_TRANS\">\n    <type>transmission_interface/SimpleTransmission</type>\n\
+  \    <joint name=\"LH_WHEEL_JOINT\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \    </joint>\n    <actuator name=\"LH_WHEEL_ACTUATOR\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \      <mechanicalReduction>1</mechanicalReduction>\n    </actuator>\n  </transmission>\n\
+  \  <joint name=\"RH_WHEEL_JOINT\" type=\"continuous\">\n    <parent link=\"base_link\"\
+  />\n    <child link=\"RH_WHEEL\"/>\n    <origin rpy=\"-1.57079632679 0 0\" xyz=\"\
+  -0.2159 -0.285 -0.018500000000000003\"/>\n    <axis rpy=\"0 0 0\" xyz=\"0 0 1\"\
+  />\n    <dynamics damping=\"1.0\" friction=\"0.0\"/>\n    <limit effort=\"100\"\
+  \ velocity=\"10\"/>\n    <joint_properties damping=\"0.2\" friction=\"0.2\"/>\n\
+  \  </joint>\n  <link name=\"RH_WHEEL\">\n    <collision>\n      <origin rpy=\"0\
+  \ 0 0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <cylinder length=\"0.01\" radius=\"\
+  0.19\"/>\n      </geometry>\n    </collision>\n    <visual>\n      <origin rpy=\"\
+  1.570796 0  0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <mesh filename=\"package://smb_description/urdf/meshes/wheel.dae\"\
+  />\n      </geometry>\n    </visual>\n    <inertial>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <mass value=\"5\"/>\n      <inertia ixx=\"0.04929166666666668\"\
+  \ ixy=\"0\" ixz=\"0\" iyy=\"0.04929166666666668\" iyz=\"0\" izz=\"0.09025\"/>\n\
+  \    </inertial>\n  </link>\n  <gazebo reference=\"RH_WHEEL\">\n    <mu1 value=\"\
+  0.7\"/>\n    <mu2 value=\"0.7\"/>\n    <fdir1 value=\"1 0 0\"/>\n    <kp>10000000.0</kp>\n\
+  \    <kd>1.0</kd>\n    <minDepth>0.005</minDepth>\n    <maxVel>100.0</maxVel>\n\
+  \    <material>Gazebo/DarkGrey</material>\n  </gazebo>\n  <transmission name=\"\
+  RH_WHEEL_TRANS\">\n    <type>transmission_interface/SimpleTransmission</type>\n\
+  \    <joint name=\"RH_WHEEL_JOINT\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \    </joint>\n    <actuator name=\"RH_WHEEL_ACTUATOR\">\n      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>\n\
+  \      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>\n\
+  \      <mechanicalReduction>1</mechanicalReduction>\n    </actuator>\n  </transmission>\n\
+  \  <!-- Imu is fixed to the base link -->\n  <joint name=\"imu_joint\" type=\"fixed\"\
+  >\n    <origin rpy=\"0 0 0\" xyz=\"0.2554 -0.02397 0.1795\"/>\n    <parent link=\"\
+  base_link\"/>\n    <child link=\"imu_link\"/>\n  </joint>\n  <!-- Imu link -->\n\
+  \  <link name=\"imu_link\">\n    <inertial>\n      <mass value=\"0.001\"/>\n   \
+  \   <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <inertia ixx=\"0.0001\" ixy=\"\
+  0\" ixz=\"0\" iyy=\"0.000001\" iyz=\"0\" izz=\"0.0001\"/>\n    </inertial>\n   \
+  \ <visual>\n      <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <geometry>\n    \
+  \    <!-- <box size=\"0.04 0.05 0.02\"/> -->\n        <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_imu.dae\"\
+  />\n      </geometry>\n    </visual>\n    <collision>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <geometry>\n        <!-- <box size=\".001 .001 .001\"/>\
+  \ -->\n        <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_imu.dae\"\
+  />\n      </geometry>\n    </collision>\n    <material name=\"orange\">\n      <color\
+  \ rgba=\"255 108 10 255\"/>\n    </material>\n  </link>\n  <link name=\"imu\">\n\
+  \    <inertial>\n      <mass value=\"0.001\"/>\n      <origin rpy=\"0 0 0\" xyz=\"\
+  0 0 0\"/>\n      <inertia ixx=\"0.0001\" ixy=\"0\" ixz=\"0\" iyy=\"0.000001\" iyz=\"\
+  0\" izz=\"0.0001\"/>\n    </inertial>\n  </link>\n  <joint name=\"imu_imu_link_joint\"\
+  \ type=\"fixed\">\n    <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n    <parent link=\"\
+  imu_link\"/>\n    <child link=\"imu\"/>\n  </joint>\n  <gazebo reference=\"imu_link\"\
+  >\n    <material>Gazebo/Orange</material>\n  </gazebo>\n  <gazebo reference=\"imu_joint\"\
+  >\n    <disableFixedJointLumping>true</disableFixedJointLumping>\n  </gazebo>\n\
+  \  <!-- <xacro:GPS base_link=\"${base_link_name}\" simulation=\"${simulation}\"\
+  /> -->\n  <link name=\"rgb_camera_link\">\n    <inertial>\n      <mass value=\"\
+  0.01\"/>\n      <!-- [kg] -->\n      <inertia ixx=\"1e-5\" ixy=\"0\" ixz=\"0\" iyy=\"\
+  1e-5\" iyz=\"0\" izz=\"1e-5\"/>\n    </inertial>\n    <visual>\n      <geometry>\n\
+  \        <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_blackfly_camera.dae\"\
+  />\n      </geometry>\n    </visual>\n    <collision>\n      <geometry>\n      \
+  \  <mesh filename=\"package://smb_description/urdf/new_payload/meshes/SMB_blackfly_camera.dae\"\
+  />\n      </geometry>\n    </collision>\n    <material name=\"red\">\n      <color\
+  \ rgba=\"255 0 10 255\"/>\n    </material>\n  </link>\n  <gazebo reference=\"rgb_camera_link\"\
+  >\n    <material>Gazebo/Red</material>\n  </gazebo>\n  <joint name=\"rgb_camera_camera_joint\"\
+  \ type=\"fixed\">\n    <!-- <origin xyz=\"${rgb_camera_origin_xyz}\" rpy=\"${rgb_camera_origin_rpy}\"\
+  /> -->\n    <origin rpy=\"0 0 0\" xyz=\"0.29082 -0.04542 0.194\"/>\n    <parent\
+  \ link=\"base_link\"/>\n    <child link=\"rgb_camera_link\"/>\n  </joint>\n  <gazebo\
+  \ reference=\"rgb_camera_camera_joint\">\n    <disableFixedJointLumping>true</disableFixedJointLumping>\n\
+  \  </gazebo>\n  <link name=\"rgb_camera_optical_link\"/>\n  <joint name=\"rgb_camera_camera_optical_joint\"\
+  \ type=\"fixed\">\n    <origin rpy=\"-1.57 0 -1.57\" xyz=\"0.0066 0 0\"/>\n    <parent\
+  \ link=\"rgb_camera_link\"/>\n    <child link=\"rgb_camera_optical_link\"/>\n  </joint>\n\
+  \  <link name=\"lidar_mount_link\">\n    <visual>\n      <geometry>\n        <mesh\
+  \ filename=\"package://smb_description/urdf/new_payload/meshes/LidarBoxV2.dae\"\
+  />\n      </geometry>\n    </visual>\n    <inertial>\n      <origin rpy=\"0 0 0\"\
+  \ xyz=\"0 0 0\"/>\n      <mass value=\"1e-4\"/>\n      <inertia ixx=\"3.3333333333333334e-13\"\
+  \ ixy=\"0\" ixz=\"0\" iyy=\"3.3333333333333334e-13\" iyz=\"0\" izz=\"5e-13\"/>\n\
+  \    </inertial>\n  </link>\n  <gazebo reference=\"lidar_mount_link\">\n    <material>Gazebo/Grey</material>\n\
+  \  </gazebo>\n  <joint name=\"lidar_mount_joint\" type=\"fixed\">\n    <origin rpy=\"\
+  0 0 0\" xyz=\"0.0245 0 0.3265\"/>\n    <parent link=\"base_link\"/>\n    <child\
+  \ link=\"lidar_mount_link\"/>\n  </joint>\n  <link name=\"rslidar\">\n    <inertial>\n\
+  \      <mass value=\"0.01\"/>\n      <origin xyz=\"0 0 0\"/>\n      <inertia ixx=\"\
+  1e-7\" ixy=\"0\" ixz=\"0\" iyy=\"1e-7\" iyz=\"0\" izz=\"1e-7\"/>\n    </inertial>\n\
+  \    <visual>\n      <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <geometry>\n \
+  \       <cylinder length=\"0.08\" radius=\"0.05\"/>\n      </geometry>\n      <material\
+  \ name=\"Cyan\">\n        <color rgba=\"0 1.0 1.0 1.0\"/>\n      </material>\n \
+  \   </visual>\n  </link>\n  <joint name=\"lidar_mount_link_to_rslidar\" type=\"\
+  fixed\">\n    <parent link=\"lidar_mount_link\"/>\n    <child link=\"rslidar\"/>\n\
+  \    <origin rpy=\"0 0 0\" xyz=\"0.0 0.0 0.139\"/>\n  </joint>\n  <link name=\"\
+  tracking_camera_link\">\n    <inertial>\n      <mass value=\"0.001\"/>\n      <origin\
+  \ rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <inertia ixx=\"0.0001\" ixy=\"0\" ixz=\"\
+  0\" iyy=\"0.000001\" iyz=\"0\" izz=\"0.0001\"/>\n    </inertial>\n    <collision>\n\
+  \      <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <box size=\"\
+  0.013 0.108 0.025\"/>\n      </geometry>\n    </collision>\n    <visual>\n     \
+  \ <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n      <geometry>\n        <box size=\"\
+  0.013 0.108 0.025\"/>\n      </geometry>\n      <material name=\"black\"/>\n   \
+  \ </visual>\n  </link>\n  <gazebo reference=\"tracking_camera_link\">\n    <material>Gazebo/Black</material>\n\
+  \  </gazebo>\n  <joint name=\"tracking_camera_joint\" type=\"fixed\">\n    <parent\
+  \ link=\"base_link\"/>\n    <child link=\"tracking_camera_link\"/>\n    <!-- Manually\
+  \ calibrated sensor orientation  -->\n    <origin rpy=\"0 0 0\" xyz=\"0.309 0.008\
+  \ 0.352\"/>\n  </joint>\n  <gazebo reference=\"tracking_camera_joint\">\n    <disableFixedJointLumping>true</disableFixedJointLumping>\n\
+  \  </gazebo>\n  <link name=\"tracking_camera_pose_frame\"/>\n  <joint name=\"tracking_camera_pose_frame_joint\"\
+  \ type=\"fixed\">\n    <parent link=\"tracking_camera_link\"/>\n    <child link=\"\
+  tracking_camera_pose_frame\"/>\n    <origin rpy=\"0 0 0\" xyz=\"0 0 0\"/>\n  </joint>\n\
+  \  <!--\n    <link name=\"tracking_camera_odom_frame\" />\n    <joint name=\"tracking_camera_odom_joint\"\
+  \ type=\"fixed\">\n      <parent link=\"tracking_camera_link\"/>\n      <child link=\"\
+  tracking_camera_odom_frame\"/>\n      <origin xyz=\"0 ${realsense_t265_housing_center_x_offset}\
+  \ 0 \" rpy=\"${0.5*PI} 0 ${-0.5*PI}\" />\n    </joint>\n    -->\n  <!--\n    <link\
+  \ name=\"tracking_camera_optical_frame\" />\n    <joint name=\"tracking_camera_optical_joint\"\
+  \ type=\"fixed\">\n      <parent link=\"tracking_camera_odom_frame\"/>\n      <child\
+  \ link=\"tracking_camera_optical_frame\"/>\n      <origin xyz=\"0 0 0 \" rpy=\"\
+  0 ${PI} 0\" />\n    </joint>\n    -->\n</robot>\n\n"
+tracking_camera:
+  realsense2_camera:
+    accel_fps: 0
+    accel_frame_id: tracking_camera_accel_frame
+    accel_optical_frame_id: tracking_camera_accel_optical_frame
+    align_depth: false
+    aligned_depth_to_color_frame_id: tracking_camera_aligned_depth_to_color_frame
+    aligned_depth_to_fisheye1_frame_id: tracking_camera_aligned_depth_to_fisheye1_frame
+    aligned_depth_to_fisheye2_frame_id: tracking_camera_aligned_depth_to_fisheye2_frame
+    aligned_depth_to_fisheye_frame_id: tracking_camera_aligned_depth_to_fisheye_frame
+    aligned_depth_to_infra1_frame_id: tracking_camera_aligned_depth_to_infra1_frame
+    aligned_depth_to_infra2_frame_id: tracking_camera_aligned_depth_to_infra2_frame
+    allow_no_texture_points: false
+    base_frame_id: tracking_camera_link
+    calib_odom_file: /home/robotx/catkin_workspaces/smb_dev/src/core/smb/config/tracking_camera_config.json
+    clip_distance: -1.0
+    color_fps: 30
+    color_frame_id: tracking_camera_color_frame
+    color_height: 480
+    color_optical_frame_id: tracking_camera_color_optical_frame
+    color_width: 640
+    confidence_fps: 30
+    confidence_height: 480
+    confidence_width: 640
+    depth_fps: 30
+    depth_frame_id: tracking_camera_depth_frame
+    depth_height: 480
+    depth_optical_frame_id: tracking_camera_depth_optical_frame
+    depth_width: 640
+    device_type: t265
+    enable_accel: true
+    enable_color: true
+    enable_confidence: true
+    enable_depth: true
+    enable_fisheye: false
+    enable_fisheye1: false
+    enable_fisheye2: false
+    enable_gyro: true
+    enable_infra: false
+    enable_infra1: false
+    enable_infra2: false
+    enable_pointcloud: false
+    enable_pose: true
+    enable_sync: false
+    filters: ''
+    fisheye1_frame_id: tracking_camera_fisheye1_frame
+    fisheye1_optical_frame_id: tracking_camera_fisheye1_optical_frame
+    fisheye2_frame_id: tracking_camera_fisheye2_frame
+    fisheye2_optical_frame_id: tracking_camera_fisheye2_optical_frame
+    fisheye_fps: 30
+    fisheye_frame_id: tracking_camera_fisheye_frame
+    fisheye_height: 0
+    fisheye_optical_frame_id: tracking_camera_fisheye_optical_frame
+    fisheye_width: 0
+    gyro_fps: 0
+    gyro_frame_id: tracking_camera_gyro_frame
+    gyro_optical_frame_id: tracking_camera_gyro_optical_frame
+    imu_optical_frame_id: tracking_camera_imu_optical_frame
+    infra1_frame_id: tracking_camera_infra1_frame
+    infra1_optical_frame_id: tracking_camera_infra1_optical_frame
+    infra2_frame_id: tracking_camera_infra2_frame
+    infra2_optical_frame_id: tracking_camera_infra2_optical_frame
+    infra_fps: 30
+    infra_height: 480
+    infra_rgb: false
+    infra_width: 640
+    initial_reset: false
+    json_file_path: ''
+    linear_accel_cov: 0.01
+    odom_frame_id: tracking_camera_odom_frame
+    ordered_pc: false
+    pointcloud_texture_index: 0
+    pointcloud_texture_stream: RS2_STREAM_COLOR
+    pose_frame_id: tracking_camera_pose_frame
+    pose_optical_frame_id: tracking_camera_pose_optical_frame
+    publish_odom_tf: false
+    publish_tf: false
+    reconnect_timeout: 6.0
+    rosbag_filename: ''
+    serial_no: ''
+    stereo_module:
+      exposure:
+        '1': 7500
+        '2': 1
+      gain:
+        '1': 16
+        '2': 16
+    tf_publish_rate: 0.0
+    topic_odom_in: /control/smb_diff_drive/odom
+    unite_imu_method: linear_interpolation
+    usb_port_id: ''
+    wait_for_device_timeout: -1.0
+  tracking_module:
+    enable_mapping: false
+    enable_pose_jumping: false
+    enable_relocalization: false
+versavis_imu_receiver:
+  imu_acceleration_covariance: 0.043864908
+  imu_accelerator_sensitivity: 0.000833
+  imu_gyro_covariance: 6e-9
+  imu_gyro_sensitivity: 0.04
+  imu_pub_topic: /imu
+  imu_sub_topic: /versavis/imu_micro

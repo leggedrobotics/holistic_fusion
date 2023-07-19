@@ -14,31 +14,25 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Enum that contains 2 possible measurement types
-enum class MeasurementType { Unary, Binary };
+enum class MeasurementTypeEnum { Unary, Binary };
 
+// Purely virtual interface class for measurements
 struct Measurement {
  public:
-  Measurement(const std::string& measurementName, const std::string& frameName, const int measurementRate, const double timeStamp)
-      : measurementName_(measurementName), frameName_(frameName), measurementRate_(measurementRate), timeK_(timeStamp) {}
+  Measurement(const std::string& measurementName, const int measurementRate)
+      : measurementName_(measurementName), measurementRate_(measurementRate) {}
 
-  // Public Methods
+  // GettersPublic Methods
   const std::string& measurementName() const { return measurementName_; }
-  const std::string& frameName() const { return frameName_; }
   int measurementRate() const { return measurementRate_; }
-  double timeK() const { return timeK_; }
 
   // Pure Virtual Class
-  virtual MeasurementType measurementType() = 0;
+  virtual const MeasurementTypeEnum& measurementTypeEnum() = 0;
 
  protected:
-  // Members
+  // Standard Members
   std::string measurementName_;
-  std::string frameName_;
   int measurementRate_;
-  double timeK_;
-
-  // Unknown at this level
-  MeasurementType measurementType_;
 };
 
 }  // namespace graph_msf

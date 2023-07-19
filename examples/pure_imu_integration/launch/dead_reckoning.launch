@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time"              default="false" />
+    <param name="use_sim_time"            value="$(arg use_sim_time)"/>
+
+    <!-- GMSF Input Topics -->
+    <arg name="imu_topic_name"            default="/ifos4" />
+
+    <!-- Config Files -->
+    <arg name="core_graph_config_param_file"     default="$(find pure_imu_integration)/config/core/core_graph_config.yaml"/>
+    <arg name="core_graph_param_file"            default="$(find pure_imu_integration)/config/core/core_graph_params.yaml"/>
+    <arg name="core_extrinsic_param_file"        default="$(find pure_imu_integration)/config/core/core_extrinsic_params.yaml"/>
+
+    <!-- Node -->
+    <node pkg="pure_imu_integration" type="pure_imu_integration_node" name="imu_integration_node" output="screen"> # launch-prefix="gdb -ex run -args">
+        <!-- Launch Parameters -->
+        <param name="launch/usingGnss" type="bool" value="false" />
+        <!-- Parameter files -->
+        <rosparam command="load" file="$(arg core_graph_config_param_file)" />
+        <rosparam command="load" file="$(arg core_graph_param_file)" />
+        <rosparam command="load" file="$(arg core_extrinsic_param_file)" />
+        <!-- Remapping of topics -->
+        <remap from="/imu_topic"            to="$(arg imu_topic_name)" />
+    </node>
+
+</launch>

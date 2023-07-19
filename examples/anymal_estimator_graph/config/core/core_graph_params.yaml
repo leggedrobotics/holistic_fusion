@@ -1,23 +1,28 @@
 # Sensor Params
 sensor_params:
   imuRate: 400                            #Rate of IMU input (Hz)
+  useImuSignalLowPassFilter: false                 #If true, a low pass filter is applied to the IMU measurements
+  imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
   imuBufferLength: 800
   imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
 # Initialization
 initialization_params:
-  estimateGravityFromImu: true            # If true, the gravity is estimated in the beginning using the IMU, if false, the value of 9.81 is used
+  estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU
+  gravityMagnitude: 9.80600                # If estimateGravityFromImu is false, this value is used as gravity
 
 # Factor Graph
 graph_params:
   useIsam: true                           # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
   smootherLag: 2.0                        #Lag of fixed lag smoother[seconds], not needed for ISAM2
+  maxOptimizationFrequency: 10.0          #Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingFallbackGraph: true
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true
+  optimizeFixedFramePosesWrtWorld: true  # If true, the poses of the fixed frames are optimized w.r.t. world
 
 # Outlier Rejection
 outlier_params:
@@ -47,6 +52,7 @@ relinearization_params:
   velocityReLinTh: 1.0e-02                #Linear Velocity linearization threshold
   accBiasReLinTh: 1.0e-05                 #Accelerometer bias linearization threshold
   gyrBiasReLinTh: 1.0e-05                 #Gyroscope bias linearization threshold
+  fixedFrameReLinTh: 1.0e-02              #Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
   relinearizeSkip: 1
   enableRelinearization: true
   evaluateNonlinearError: false

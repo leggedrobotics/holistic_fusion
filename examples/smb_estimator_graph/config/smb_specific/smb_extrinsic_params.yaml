@@ -1,0 +1,5 @@
+#External Prior/Transform Input
+extrinsics:
+  lidarOdometryFrame: rslidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+  wheelOdometryFrame: base_link      #Wheel odometry frame name - used to lookup Wheel-to-ExternalSensor Frame
+  vioOdometryFrame: base_link        #VIO odometry frame name - used to lookup VIO-to-ExternalSensor Frame
