@@ -32,7 +32,7 @@ void Gnss::setReference(const double& referenceLatitude, const double& reference
 }
 
 double Gnss::convertEllipsoidalEvelationToGeoidElevation(double latitude, double longitude, double ellipsoidalHeight) {
-  GeographicLib::Geoid geoid("egm2008-1"); // https://geographiclib.sourceforge.io/C++/doc/geoid.html
+  GeographicLib::Geoid geoid("egm2008-1");  // https://geographiclib.sourceforge.io/C++/doc/geoid.html
   double undulation = geoid(latitude, longitude);
   double geoidElevation = ellipsoidalHeight - undulation;
 
