@@ -14,9 +14,9 @@ initialization_params:
 # Factor Graph
 graph_params:
   useIsam: true                           # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
-  smootherLag: 4.0                        # Lag of fixed lag smoother[seconds], not needed for ISAM2
+  smootherLag: 4.0                        # Lag of fixed lag smoother[seconds]
   maxOptimizationFrequency: 5.0           # Maximum optimization frequency [Hz], can be used to control computational load
-  additionalOptimizationIterations: 0     #Additional iterations of graph optimizer after update with new factors
+  additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingFallbackGraph: true

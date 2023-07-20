@@ -140,13 +140,13 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
+        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
         dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->addUnaryPoseMeasurement(unary6DMeasurement);
   } else {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, staticTransformsPtr_->getMapFrame(),
+        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
         dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->initYawAndPosition(unary6DMeasurement);
   }
@@ -157,7 +157,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measLio_mapImuPathPtr_, staticTransformsPtr_->getMapFrame(), odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
                (lio_T_M_Lk * staticTransformsPtr_
                                  ->rv_T_frame1_frame2(dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
                                                       staticTransformsPtr_->getImuFrame())

@@ -20,7 +20,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Sensor Params
-  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lidarOdometryRate", privateNode);
+  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters

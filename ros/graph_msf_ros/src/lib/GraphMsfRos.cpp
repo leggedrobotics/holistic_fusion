@@ -292,7 +292,6 @@ long GraphMsfRos::secondsSinceStart_() {
 void GraphMsfRos::publishState_(
     const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
-  std::cout << "no" << std::endl;
   // Covariances
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
   extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos, optimizedStateWithCovarianceAndBiasPtr);
