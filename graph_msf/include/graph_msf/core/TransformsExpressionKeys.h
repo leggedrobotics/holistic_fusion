@@ -25,7 +25,7 @@ class TransformsExpressionKeys : public TransformsDictionary<gtsam::Key> {
 
   // Safe Modifiers
   // Returns
-  bool newFramePairSafelyAddedToDictionary(const std::string& frame1, const std::string& frame2) {
+  bool newFramePairSafelyAddedToDictionary(const std::string& frame1, const std::string& frame2, const double timeK) {
     // Check and modify content --> acquire lock
     std::lock_guard<std::mutex> lock(dictionaryModifierMutex_);
     // Logic
@@ -33,14 +33,14 @@ class TransformsExpressionKeys : public TransformsDictionary<gtsam::Key> {
       return false;
     } else {
       // Create
-      addNewExpressionTransformation(frame1, frame2);
+      addNewExpressionTransformation(frame1, frame2, timeK);
       return true;
     }
   }
 
   // Functionality ------------------------------------------------------------
-  void addNewExpressionTransformation(const std::string& frame1, const std::string& frame2) {
-    set_T_frame1_frame2(frame1, frame2, gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs()));
+  void addNewExpressionTransformation(const std::string& frame1, const std::string& frame2, const double timeK) {
+    set_T_frame1_frame2(frame1, frame2, gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs()), timeK);
   }
 
  private:

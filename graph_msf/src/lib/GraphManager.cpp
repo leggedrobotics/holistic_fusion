@@ -23,7 +23,10 @@ namespace graph_msf {
 // Public --------------------------------------------------------------------
 
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame)
-    : graphConfigPtr_(graphConfigPtr), worldFrame_(worldFrame), resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()) {
+    : graphConfigPtr_(graphConfigPtr),
+      worldFrame_(worldFrame),
+      resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
+      resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
   // Buffer
   factorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   graphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
@@ -94,8 +97,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
   writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMapPtr);
 
-  // Initialize both graphs -------------------------------------------------
-  /// Global Factors
+  // Initialize graph -------------------------------------------------
   factorGraphBufferPtr_->resize(0);
   factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
       gtsam::symbol_shorthand::X(propagatedStateKey_), initialPose,
@@ -257,8 +259,8 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   // Also optimize over fixedFrame Transformation
   // --------------------------------
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
-    if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(unary6DMeasurement.fixedFrameName(),
-                                                                           worldFrame_)) {  // Newly added to dictionary
+    if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(unary6DMeasurement.fixedFrameName(), worldFrame_,
+                                                                           unary6DMeasurement.timeK())) {  // Newly added to dictionary
       gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
 
       // Values for T_M_W
@@ -279,8 +281,16 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
       addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Pose3>*>(&poseUnaryExpressionFactor, unary6DMeasurement.timeK());
       writeValueKeysToKeyTimeStampMap_(valuesEstimate, unary6DMeasurement.timeK(), graphKeysTimestampsMapBufferPtr_);
       gtsam::Symbol keySymbol = gtsam::Symbol(T_M_W_key);
-      std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Initialized new map to world variable: " << keySymbol.string()
-                << std::endl;
+      std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Initialized new " << unary6DMeasurement.fixedFrameName()
+                << " to " << worldFrame_ << " variable: " << keySymbol.string() << COLOR_END << std::endl;
+      // TODO: Cover case that this transformation has been added before --> use covariance from before as prior
+      //      if (resultFixedFrameTransformationsCovariance_.isFramePairInDictionary(unary6DMeasurement.fixedFrameName(), worldFrame_)) {
+      //        std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END
+      //                  << " Initialization of this newly added transformation with covariance (from before): "
+      //                  << resultFixedFrameTransformationsCovariance_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_)
+      //                  << std::endl;
+      //
+      //      }
     } else {  // Already in the transformation dictionary
       // Expression key
       gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
@@ -409,8 +419,7 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag
     } catch (const std::out_of_range& outOfRangeExeception) {
       std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                << " This happens if the measurement delay is larger than the "
-                   "graph-smootherLag, i.e. the optimized graph instances are "
+                << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
                    "not connected. Increase the lag in this case."
                 << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << "CalculateNavStateAtKey called by " << callingFunctionName
@@ -477,13 +486,27 @@ void GraphManager::updateGraph() {
     for (const auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
       // Get Transform
       const gtsam::Key& key = framePairIterator.second;
-      gtsam::Pose3 T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
-      // Write to dictiorary
-      resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                           Eigen::Isometry3d(T_frame1_frame2.matrix()));
-      // Get covariance
-      // gtsam::Matrix66 transformCovariance =
-      // optimizerPtr_->marginalCovariance(key);
+      try {
+        gtsam::Pose3 T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
+        gtsam::Matrix66 T_frame1_frame2_covariance = optimizerPtr_->marginalCovariance(key);
+        // Write to dictionary
+        resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
+                                                             Eigen::Isometry3d(T_frame1_frame2.matrix()), currentPropagatedTime);
+        resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
+                                                                       T_frame1_frame2_covariance, currentPropagatedTime);
+      } catch (const std::out_of_range& exception) {
+        if ((currentPropagatedTime - gtsamExpressionTransformsKeys_.getLatestTransformTimestamp(
+                                         framePairIterator.first.first, framePairIterator.first.second)) > graphConfigPtr_->smootherLag) {
+          std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
+                    << " Out of Range exeception while querying the transformation and/or covariance for frame pair "
+                    << framePairIterator.first.first << "," << framePairIterator.first.second << ", at key : " << gtsam::Symbol(key) << "."
+                    << std::endl
+                    << " This can happen if the smoother window is too small. Hence, we keep this estimate unchanged." << COLOR_END
+                    << std::endl;
+          // Remove state from state dictionary
+          gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
+        }
+      }
     }
   }
 
@@ -497,6 +520,7 @@ void GraphManager::updateGraph() {
     optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState,
                                                resultBias.correctGyroscope(currentAngularVelocity), resultBias);
     optimizedGraphState_.updateFixedFrameTransforms(resultFixedFrameTransformations_);
+    optimizedGraphState_.updateFixedFrameTransformsCovariance(resultFixedFrameTransformationsCovariance_);
     optimizedGraphState_.updateCovariances(resultPoseCovariance, resultVelocityCovariance);
     // Predict from solution to obtain refined propagated state
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {

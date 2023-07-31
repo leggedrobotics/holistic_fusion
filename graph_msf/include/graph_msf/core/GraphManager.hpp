@@ -115,6 +115,7 @@ class GraphManager {
   std::string worldFrame_;
   TransformsExpressionKeys gtsamExpressionTransformsKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
+  TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;

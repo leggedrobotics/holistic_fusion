@@ -87,33 +87,55 @@ class OptimizerIsam2 : public Optimizer {
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+    gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
     try {
-      fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
+      fixedLagSmootherCopy.update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
     } catch (const std::out_of_range& outOfRangeExeception) {
       std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START
                 << " Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                << " This happens if the measurement delay is larger than the "
-                   "graph-smootherLag, i.e. the optimized graph instances are not "
-                   "connected. Increase the lag in this case."
+                << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
+                   "not connected. Increase the lag in this case."
                 << COLOR_END << std::endl;
       throw std::out_of_range(outOfRangeExeception.what());
     } catch (const gtsam::ValuesKeyDoesNotExist& valuesKeyDoesNotExistException) {
+      std::cout << "----------------------------------------------------------" << std::endl;
       std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START
                 << " Values Key Does Not Exist exeception while optimizing graph: " << valuesKeyDoesNotExistException.what() << COLOR_END
                 << std::endl;
-      std::cout << "----------------------------------------------------------" << std::endl;
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                << " This happens if a value (i.e. initial guess) for a "
-                   "certain variable is missing."
-                << COLOR_END << std::endl;
+                << " This happens if a factor is added to the graph, connecting an non-existent variable." << COLOR_END << std::endl;
+      // Filter out the factor that caused the error
+      gtsam::NonlinearFactorGraph newGraphFactorsFiltered;
+      gtsam::Key valuesKeyNotExistent = valuesKeyDoesNotExistException.key();
+      for (auto factor : newGraphFactors) {
+        bool factorContainsExistentKeys = true;
+        for (auto key : factor->keys()) {
+          if (key == valuesKeyNotExistent) {
+            std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Factor contains non-existent key: " << gtsam::Symbol(key)
+                      << COLOR_END << std::endl;
+            factorContainsExistentKeys = false;
+            break;
+          }
+        }
+        if (factorContainsExistentKeys) {
+          newGraphFactorsFiltered.add(factor);
+        }
+      }
+      // Filtering the keyTimestampMap
+      std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered = newGraphKeysTimeStampMap;
+      newGraphKeysTimeStampMapFiltered.erase(valuesKeyNotExistent);
+      // Try again
+      std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START
+                << " Filtered out the factor that caused the error. Trying to optimize again." << COLOR_END << std::endl;
       std::cout << "----------------------------------------------------------" << std::endl;
-      throw std::out_of_range(valuesKeyDoesNotExistException.what());
+      return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
     } catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
     }
+    *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
     return true;
   }
 

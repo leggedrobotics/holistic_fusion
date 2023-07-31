@@ -23,8 +23,10 @@ namespace graph_msf {
 // Class defining Robot State
 class GraphState {
  public:
-  GraphState() : fixedFrameTransforms_(Eigen::Isometry3d::Identity()){};  // Constructor
-  ~GraphState(){};                                                        // Destructor
+  GraphState()
+      : fixedFrameTransforms_(Eigen::Isometry3d::Identity()),
+        fixedFrameTransformsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()){};  // Constructor
+  ~GraphState(){};                                                               // Destructor
 
   // Accessors
   bool isOptimized() const { return isOptimizedStatus_; }
@@ -34,6 +36,7 @@ class GraphState {
   const gtsam::Vector3& angularVelocityCorrected() const { return correctedAngularVelocity_; }
   const gtsam::imuBias::ConstantBias& imuBias() const { return imuBias_; }
   const auto& fixedFrameTransforms() const { return fixedFrameTransforms_; }
+  const auto& fixedFrameTransformsCovariance() const { return fixedFrameTransformsCovariance_; }
   const gtsam::Matrix66& poseCovariance() const { return poseCovariance_; }
   const gtsam::Matrix33& velocityCovariance() const { return velocityCovariance_; }
 
@@ -81,6 +84,12 @@ class GraphState {
     fixedFrameTransforms_ = fixedFrameTransforms;
   }
 
+  void updateFixedFrameTransformsCovariance(
+      const graph_msf::TransformsDictionary<Eigen::Matrix<double, 6, 6>>& fixedFrameTransformsCovariance) {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    fixedFrameTransformsCovariance_ = fixedFrameTransformsCovariance;
+  }
+
   void updateCovariances(const gtsam::Matrix66& poseCovariance, const gtsam::Matrix33& velocityCovariance) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     poseCovariance_ = poseCovariance;
@@ -103,10 +112,11 @@ class GraphState {
   gtsam::Key key_ = 0;  // key
   double ts_ = 0.0;     // timestamp
   // Objects
-  gtsam::NavState navState_;                                                 // pose, velocity
-  Eigen::Vector3d correctedAngularVelocity_;                                 // angular velocity
-  gtsam::imuBias::ConstantBias imuBias_;                                     // imu bias
-  graph_msf::TransformsDictionary<Eigen::Isometry3d> fixedFrameTransforms_;  // fixed frame transforms
+  gtsam::NavState navState_;                                                                     // pose, velocity
+  Eigen::Vector3d correctedAngularVelocity_;                                                     // angular velocity
+  gtsam::imuBias::ConstantBias imuBias_;                                                         // imu bias
+  graph_msf::TransformsDictionary<Eigen::Isometry3d> fixedFrameTransforms_;                      // fixed frame transforms
+  graph_msf::TransformsDictionary<Eigen::Matrix<double, 6, 6>> fixedFrameTransformsCovariance_;  // fixed frame transforms covariance
   // Covariances
   gtsam::Matrix66 poseCovariance_;      // pose covariance
   gtsam::Matrix33 velocityCovariance_;  // velocity covariance
