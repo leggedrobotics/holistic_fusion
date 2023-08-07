@@ -237,7 +237,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const d
 
 void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement,
                                       const Eigen::Isometry3d& T_sensorFrame_imu) {
-  // Find closest key in existing graph
+  // Find the closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, unary6DMeasurement.measurementName(),
@@ -259,9 +259,12 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   // Also optimize over fixedFrame Transformation
   // --------------------------------
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
-    if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(unary6DMeasurement.fixedFrameName(), worldFrame_,
+    // Lock Change of dynamic keys
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
+    gtsam::Key T_M_W_key;
+    // Case 1: The dynamically allocated key is not yet in the graph
+    if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(T_M_W_key, unary6DMeasurement.fixedFrameName(), worldFrame_,
                                                                            unary6DMeasurement.timeK())) {  // Newly added to dictionary
-      gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
 
       // Values for T_M_W
       gtsam::Values valuesEstimate;
@@ -291,9 +294,7 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
       //                  << std::endl;
       //
       //      }
-    } else {  // Already in the transformation dictionary
-      // Expression key
-      gtsam::Key T_M_W_key = gtsamExpressionTransformsKeys_.rv_T_frame1_frame2(unary6DMeasurement.fixedFrameName(), worldFrame_);
+    } else {  // Case 2: They key is already in the graph
       // Expression Factor
       gtsam::Pose3_ T_M_W_(T_M_W_key);
       //    gtsam::Pose3_ T_M_W(gtsam::symbol_shorthand::T(0));
@@ -304,7 +305,8 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
       addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Pose3>*>(&poseUnaryExpressionFactor, unary6DMeasurement.timeK());
       writeKeyToKeyTimeStampMap_(T_M_W_key, unary6DMeasurement.timeK(), graphKeysTimestampsMapBufferPtr_);
     }
-  } else {  // Simple unary factor --------------------------------------
+  }       // end lock
+  else {  // Simple unary factor --------------------------------------
     // Regular Unary factor
     gtsam::PriorFactor<gtsam::Pose3> poseUnaryFactor(statePoseKey, T_fixedFrame_imu, errorFunction);
     // Write to graph
@@ -411,21 +413,19 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag
                                                      const char* callingFunctionName) {
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
-  if (true) {
-    try {
-      resultPose = optimizerPtr->calculateEstimatedPose(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
-      resultVelocity = optimizerPtr->calculateEstimatedVelocity(gtsam::symbol_shorthand::V(key));
-      computeSuccessfulFlag = true;
-    } catch (const std::out_of_range& outOfRangeExeception) {
-      std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
-                   "not connected. Increase the lag in this case."
-                << COLOR_END << std::endl;
-      std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << "CalculateNavStateAtKey called by " << callingFunctionName
-                << COLOR_END << std::endl;
-      computeSuccessfulFlag = false;
-    }
+  try {
+    resultPose = optimizerPtr->calculateEstimatedPose(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
+    resultVelocity = optimizerPtr->calculateEstimatedVelocity(gtsam::symbol_shorthand::V(key));
+    computeSuccessfulFlag = true;
+  } catch (const std::out_of_range& outOfRangeExeception) {
+    std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
+    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
+              << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
+                 "not connected. Increase the lag in this case."
+              << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " CalculateNavStateAtKey called by " << callingFunctionName
+              << COLOR_END << std::endl;
+    computeSuccessfulFlag = false;
   }
   return gtsam::NavState(resultPose, resultVelocity);
 }
@@ -466,14 +466,18 @@ void GraphManager::updateGraph() {
   }  // end of locking
 
   // Graph Update (time consuming) -------------------
-  addFactorsToSmootherAndOptimize(optimizerPtr_, newGraphFactors, newGraphValues, newGraphKeysTimestampsMap, graphConfigPtr_,
-                                  graphConfigPtr_->additionalOptimizationIterations);
+  bool successfulOptimizationFlag =
+      addFactorsToSmootherAndOptimize(optimizerPtr_, newGraphFactors, newGraphValues, newGraphKeysTimestampsMap, graphConfigPtr_,
+                                      graphConfigPtr_->additionalOptimizationIterations);
+  if (!successfulOptimizationFlag) {
+    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
+    return;
+  }
 
   // Compute entire result
   // NavState
-  bool computeSuccessfulFlag = true;
   gtsam::NavState resultNavState =
-      calculateNavStateAtKey(computeSuccessfulFlag, optimizerPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
+      calculateNavStateAtKey(successfulOptimizationFlag, optimizerPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
   // Bias
   gtsam::imuBias::ConstantBias resultBias = optimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // Compute Covariance
@@ -482,29 +486,46 @@ void GraphManager::updateGraph() {
 
   // FixedFrame Transformations
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+    // Mutex because we are changing the dynamically allocated graphKeys
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
     // Get map with all frame-pair to key correspondences
-    for (const auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
+    for (auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
       // Get Transform
-      const gtsam::Key& key = framePairIterator.second;
-      try {
+      const gtsam::Key& key = framePairIterator.second.key_;
+      bool optimizedAlreadyFlag = framePairIterator.second.atLeastOnceOptimized_;
+      try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
         gtsam::Matrix66 T_frame1_frame2_covariance = optimizerPtr_->marginalCovariance(key);
         // Write to dictionary
         resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                             Eigen::Isometry3d(T_frame1_frame2.matrix()), currentPropagatedTime);
+                                                             Eigen::Isometry3d(T_frame1_frame2.matrix()));
         resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                                       T_frame1_frame2_covariance, currentPropagatedTime);
+                                                                       T_frame1_frame2_covariance);
+        // Mark that this key has at least been optimized once
+        if (!optimizedAlreadyFlag) {
+          std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Fixed Frame Transformation between "
+                    << framePairIterator.first.first << " and " << framePairIterator.first.second << " optimized for the first time."
+                    << COLOR_END << std::endl;
+          framePairIterator.second.atLeastOnceOptimized_ = true;
+        }
       } catch (const std::out_of_range& exception) {
-        if ((currentPropagatedTime - gtsamExpressionTransformsKeys_.getLatestTransformTimestamp(
-                                         framePairIterator.first.first, framePairIterator.first.second)) > graphConfigPtr_->smootherLag) {
+        if (optimizedAlreadyFlag) {  // Was optimized before, so should also be available now in the graph --> as querying was
+                                     // unsuccessful, we remove it from the graph
           std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                    << " Out of Range exeception while querying the transformation and/or covariance for frame pair "
-                    << framePairIterator.first.first << "," << framePairIterator.first.second << ", at key : " << gtsam::Symbol(key) << "."
-                    << std::endl
-                    << " This can happen if the smoother window is too small. Hence, we keep this estimate unchanged." << COLOR_END
-                    << std::endl;
+                    << " Out of Range exeception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
+                    << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
+                    << " This happen if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
+                       "and remove it from the state dictionary. To fix this, increase the smoother window."
+                    << COLOR_END << std::endl;
           // Remove state from state dictionary
           gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
+          return;
+        } else {
+          std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START
+                    << " Tried to query the transformation and/or covariance for frame pair " << framePairIterator.first.first << " to "
+                    << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
+                    << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
+                    << COLOR_END << std::endl;
         }
       }
     }
@@ -534,7 +555,9 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> optimizerPtr,
+// Returns true if the factors/values were added without any problems
+// Otherwise returns false (e.g. if exception occurs while adding
+bool GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> optimizerPtr,
                                                    const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                                    const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
                                                    const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
@@ -544,10 +567,10 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Op
   startLoopTime = std::chrono::high_resolution_clock::now();
 
   // Perform update
-  optimizerPtr->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+  bool successFlag = optimizerPtr->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
   // Additional iterations
   for (size_t itr = 0; itr < additionalIterations; ++itr) {
-    optimizerPtr->update();
+    successFlag = successFlag && optimizerPtr->update();
   }
 
   if (graphConfigPtr->verboseLevel > 0) {
@@ -556,6 +579,8 @@ void GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Op
               << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds." << COLOR_END
               << std::endl;
   }
+
+  return successFlag;
 }  // namespace graph_msf
 
 gtsam::NavState GraphManager::calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key) {

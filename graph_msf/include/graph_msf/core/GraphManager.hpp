@@ -92,7 +92,7 @@ class GraphManager {
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
-  static void addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> smootherPtr,
+  static bool addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> smootherPtr,
                                               const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                               const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
                                               const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);

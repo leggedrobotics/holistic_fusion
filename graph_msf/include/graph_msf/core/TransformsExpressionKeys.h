@@ -16,36 +16,56 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-class TransformsExpressionKeys : public TransformsDictionary<gtsam::Key> {
+struct FactorGraphStateKey {
+  // Constructor
+  FactorGraphStateKey(const gtsam::Key& key, const double time, const bool atLeastOnceOptimized)
+      : key_(key), time_(time), atLeastOnceOptimized_(atLeastOnceOptimized) {}
+  FactorGraphStateKey() {}
+  // Members
+  gtsam::Key key_ = -1;
+  double time_ = 0.0;
+  bool atLeastOnceOptimized_ = false;
+};
+
+class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey> {
  public:
   // Constructor
-  TransformsExpressionKeys() : TransformsDictionary<gtsam::Key>(-1) {
+  TransformsExpressionKeys() : TransformsDictionary<FactorGraphStateKey>(FactorGraphStateKey()) {
     std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl;
   }
 
   // Safe Modifiers
   // Returns
-  bool newFramePairSafelyAddedToDictionary(const std::string& frame1, const std::string& frame2, const double timeK) {
+  bool newFramePairSafelyAddedToDictionary(gtsam::Key& returnKey, const std::string& frame1, const std::string& frame2,
+                                           const double timeK) {
     // Check and modify content --> acquire lock
-    std::lock_guard<std::mutex> lock(dictionaryModifierMutex_);
+    FactorGraphStateKey factorGraphStateKey;
+    std::lock_guard<std::mutex> lock(internalDictionaryModifierMutex_);
     // Logic
     if (isFramePairInDictionary(frame1, frame2)) {
+      factorGraphStateKey = rv_T_frame1_frame2(frame1, frame2);
+      returnKey = factorGraphStateKey.key_;
       return false;
     } else {
       // Create
-      addNewExpressionTransformation(frame1, frame2, timeK);
+      addNewFactorGraphStateKey(returnKey, frame1, frame2, timeK);
       return true;
     }
   }
 
   // Functionality ------------------------------------------------------------
-  void addNewExpressionTransformation(const std::string& frame1, const std::string& frame2, const double timeK) {
-    set_T_frame1_frame2(frame1, frame2, gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs()), timeK);
+  void addNewFactorGraphStateKey(gtsam::Key& returnKey, const std::string& frame1, const std::string& frame2, const double timeK) {
+    returnKey = gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs());
+    FactorGraphStateKey factorGraphStateKey(returnKey, timeK, false);
+    set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
   }
+
+  std::mutex& mutex() { return externalModifierMutex_; }
 
  private:
   // Mutex
-  std::mutex dictionaryModifierMutex_;
+  std::mutex internalDictionaryModifierMutex_;
+  std::mutex externalModifierMutex_;
 };
 
 }  // namespace graph_msf

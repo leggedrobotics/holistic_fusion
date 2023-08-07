@@ -40,7 +40,9 @@ class TransformsDictionary {
     if (keyIterator == T_frame1_frame2_map_.end()) {
       return false;
     } else {
+      std::cout << "Length of map: " << T_frame1_frame2_map_.size() << std::endl;
       T_frame1_frame2_map_.erase(keyIterator);
+      std::cout << "Length of map after removal: " << T_frame1_frame2_map_.size() << std::endl;
       return true;
     }
   }
@@ -80,19 +82,8 @@ class TransformsDictionary {
   }
 
   // Return reference to the map
+  std::map<std::pair<std::string, std::string>, TRANSFORM_TYPE>& getTransformsMap() { return T_frame1_frame2_map_; }
   const std::map<std::pair<std::string, std::string>, TRANSFORM_TYPE>& getTransformsMap() const { return T_frame1_frame2_map_; }
-
-  // Time
-  double getLatestTransformTimestamp(const std::string& frame1, const std::string& frame2) {
-    std::pair<std::string, std::string> framePair(frame1, frame2);
-    auto keyIterator = frame1_frame2_time_map_.find(framePair);
-    if (keyIterator == frame1_frame2_time_map_.end()) {
-      std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " No time found between " << frame1 << " and " << frame2 << "."
-                << std::endl;
-      throw std::runtime_error("No time found for " + frame1 + " and " + frame2 + ".");
-    }
-    return keyIterator->second;
-  }
 
   // Setters ------------------------------------------------------------
   // With inverse
@@ -109,27 +100,18 @@ class TransformsDictionary {
   }
 
   // Without inverse
-  void set_T_frame1_frame2(const std::string& frame1, const std::string& frame2, const TRANSFORM_TYPE T_frame1_frame2, const double timeK) {
+  void set_T_frame1_frame2(const std::string& frame1, const std::string& frame2, const TRANSFORM_TYPE T_frame1_frame2) {
     // Check whether transformation pair is already there
     if (!isFramePairInDictionary(frame1, frame2)) {
       ++numStoredTransforms_;
     }
     // Set transformation
     lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
-    // Set time
-    setLatestTransofrmTimestamp(frame1, frame2, timeK);
-  }
-
-  // Set time
-  void setLatestTransofrmTimestamp(const std::string& frame1, const std::string& frame2, const double timeK) {
-    std::pair<std::string, std::string> framePair(frame1, frame2);
-    frame1_frame2_time_map_[framePair] = timeK;
   }
 
  private:
   // General container class
   std::map<std::pair<std::string, std::string>, TRANSFORM_TYPE> T_frame1_frame2_map_;
-  std::map<std::pair<std::string, std::string>, double> frame1_frame2_time_map_;
 
   // Identity transformation
   TRANSFORM_TYPE identity_;
