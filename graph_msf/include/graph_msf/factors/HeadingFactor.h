@@ -43,9 +43,9 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& q, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
     // calculate error
-    double yawError = q.rotation().yaw() - yaw_;
+    double yawError = robotPose.rotation().yaw(H_Ptr) - yaw_;
 
     // Smaller half circle
     while (yawError < -M_PI) yawError += 2 * M_PI;
@@ -53,7 +53,7 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
     // Jacobian
     if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << 0.0, 0.0, -1.0, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+      (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
     }
 
     return gtsam::Vector1(yawError);
