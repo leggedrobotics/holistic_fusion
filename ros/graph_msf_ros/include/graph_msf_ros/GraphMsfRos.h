@@ -21,6 +21,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf_ros/ros/read_ros_params.h"
 
+// Marcors
+#define ROS_QUEUE_SIZE 10
+
 namespace graph_msf {
 
 class GraphMsfRos : public GraphMsf {

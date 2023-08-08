@@ -72,9 +72,6 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
 
   // Check for error and warn user
   if (std::abs(timeDeviation) > maxSearchDeviation) {
-    std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << callingName << " Time deviation at key " << key << " is "
-              << 1000 * timeDeviation << " ms, being larger than admissible deviation of " << 1000 * maxSearchDeviation << " ms"
-              << COLOR_END << std::endl;
     return false;
   }
 

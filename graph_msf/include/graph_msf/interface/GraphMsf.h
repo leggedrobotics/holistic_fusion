@@ -23,9 +23,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // Defined macros
-#define ROS_QUEUE_SIZE 100
-#define REQUIRED_GNSS_NUM_NOT_JUMPED 20          // 2*singleGnssJumping = 2*20 = 40
-#define GNSS_COVARIANCE_VIOLATION_THRESHOLD 0.2  // 10000
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
@@ -62,8 +59,8 @@ class GraphMsf {
   /// No return
   void addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
   void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
-  void addGnssPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
-  void addGnssHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
+  bool addPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
+  bool addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
   bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
@@ -78,7 +75,8 @@ class GraphMsf {
   //// Updating the factor graph
   void optimizeGraph_();
   //// GNSS Violation
-  bool isGnssCovarianceViolated_(const Eigen::Vector3d& gnssCovarianceXYZ);
+  template <int DIM>
+  bool isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& gnssCovarianceXYZ, const double covarianceViolationThreshold);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
@@ -116,17 +114,13 @@ class GraphMsf {
   bool validFirstMeasurementReceivedFlag_ = false;
   //// During operation
   bool optimizeGraphFlag_ = false;
-  bool gnssCovarianceViolatedFlag_ = false;
   bool normalOperationFlag_ = false;
 
   /// State Containers
   // Preintegrated NavState
   std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
-  /// Yaw
-  double lastGnssYaw_W_I_;
 
   // Counter
-  long gnssNotJumpingCounter_ = REQUIRED_GNSS_NUM_NOT_JUMPED;
   long imuCallbackCounter_ = 0;
 };
 

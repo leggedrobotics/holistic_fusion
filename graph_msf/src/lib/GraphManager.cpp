@@ -355,9 +355,17 @@ void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rat
   // Find closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssUnary", graphConfigPtr_->maxSearchDeviation,
+  std::string callingName = "GnssPositionUnaryFactor";
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
                                                       gnssTimeK)) {
-    // TODO
+    if (propagatedStateTime_ - gnssTimeK < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
+      // TODO: Add to buffer and return --> still add it until we are there
+    } else {  // Otherwise do not add it
+      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << callingName << " Time deviation at key " << closestKey << " is "
+                << 1000 * std::abs(closestGraphTime - gnssTimeK) << " ms, being larger than admissible deviation of "
+                << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
+      return;
+    }
   }
 
   // Create noise model
@@ -385,12 +393,20 @@ void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate
               << std::setprecision(14) << ", Gnss yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
   }
 
-  // Find closest key in existing graph
+  // Find the closest key in existing graph
   double closestGraphTime;
   gtsam::Key closestKey;
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, "GnssHeading", graphConfigPtr_->maxSearchDeviation,
+  std::string callingName = "GnssHeadingUnaryFactor";
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
                                                       gnssTimeK)) {
-    // TODO
+    if (propagatedStateTime_ - gnssTimeK < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
+      // TODO: Add to buffer and return --> still add it until we are there
+    } else {  // Otherwise do not add it
+      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << callingName << " Time deviation at key " << closestKey << " is "
+                << 1000 * std::abs(closestGraphTime - gnssTimeK) << " ms, being larger than admissible deviation of "
+                << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
+      return;
+    }
   }
 
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(gnssHeadingUnaryNoiseDensity));  // rad,rad,rad,m,m,m

@@ -17,8 +17,8 @@ struct UnaryMeasurementXD : public UnaryMeasurement {
  public:
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const double timeStamp,
                      const std::string& fixedFrameName, const std::string& sensorFrameName, const MEASUREMENT_TYPE& unaryMeasurement,
-                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
-      : UnaryMeasurement(measurementName, measurementRate, timeStamp, fixedFrameName, sensorFrameName),
+                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity, const double covarianceViolationThreshold = 0.0)
+      : UnaryMeasurement(measurementName, measurementRate, timeStamp, fixedFrameName, sensorFrameName, covarianceViolationThreshold),
         unaryMeasurement_(unaryMeasurement),
         unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
         unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}
