@@ -28,6 +28,7 @@ struct GraphConfig {
   double imuLowPassFilterCutoffFreqHz = 60;
   int imuBufferLength = 200;
   double imuTimeOffset = 0.0;
+  bool gnssExactSyncPolicy = true;
 
   // Gravity
   bool estimateGravityFromImuFlag = true;
