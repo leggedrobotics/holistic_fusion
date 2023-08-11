@@ -40,29 +40,38 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame);
   ~GraphManager(){};
 
-  // Change Graph
+  // Initialization Interface ---------------------------------------------------
   bool initImuIntegrators(const double g);
   bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
+
+  // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& changedPreIntegratedNavStatePtr,
                                std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK);
 
-  // TODO: Remove explicit functions
-  gtsam::Key addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                  const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity, const gtsam::Pose3& pose,
-                                  const std::string& measurementType);
+  // All other measurements -----------------------------------------------------
+  // Unary Meta Method
+  typedef gtsam::Key (*F)(std::uint64_t);
+  template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
+  void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
+                                const double measurementTime);
+  // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
-  void addVelocityUnaryFactor(const double lidarTimeK, const double rate, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
-                              const gtsam::Vector3& velocity, const std::string& measurementType);
-  void addGnssPositionUnaryFactor(double gnssTime, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
-                                  const gtsam::Vector3& position);
-  void addGnssHeadingUnaryFactor(double gnssTime, const double rate, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
-                                 const double measuredYaw);
+  void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
+                              const double lidarTimeK);
+  void addGnssPositionUnaryFactor(const gtsam::Vector3& position, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
+                                  const double gnssTime);
+  void addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
+                                 const double gnssTime);
 
-  // Update graph and get new state
+  // Between
+  gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                  const double lidarTimeKm1, const double lidarTimeK, const double rate);
+
+  // Update of graph  ----------------------------------------------------------
   void updateGraph();
 
-  // Compute state at specific key
+  // Comfort functions ---------------------------------------------------------
   gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
 
   // Accessors
@@ -77,8 +86,7 @@ class GraphManager {
  protected:
   // Calculate state at key for graph
   static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::Optimizer> graphPtr,
-                                                const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
-                                                const char* callingFunctionName);
+                                                const gtsam::Key& key, const char* callingFunctionName);
 
  private:
   // Methods

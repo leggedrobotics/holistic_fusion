@@ -19,8 +19,8 @@ enum class MeasurementTypeEnum { Unary, Binary };
 // Purely virtual interface class for measurements
 struct Measurement {
  public:
-  Measurement(const std::string& measurementName, const int measurementRate)
-      : measurementName_(measurementName), measurementRate_(measurementRate) {}
+  Measurement(const std::string& measurementName, const int measurementRate, const bool useRobustNorm = false)
+      : measurementName_(measurementName), measurementRate_(measurementRate), useRobustNorm_(useRobustNorm) {}
 
   // GettersPublic Methods
   const std::string& measurementName() const { return measurementName_; }
@@ -33,6 +33,8 @@ struct Measurement {
   // Standard Members
   std::string measurementName_;
   int measurementRate_;
+  // Robust norm
+  bool useRobustNorm_ = false;
 };
 
 }  // namespace graph_msf

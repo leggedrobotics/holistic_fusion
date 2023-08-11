@@ -15,8 +15,8 @@ namespace graph_msf {
 struct UnaryMeasurement : public Measurement {
  public:
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const double timeStamp, const std::string& fixedFrameName,
-                   const std::string& sensorFrameName, const double covarianceViolationThreshold = 0.0)
-      : Measurement(measurementName, measurementRate),
+                   const std::string& sensorFrameName, const double covarianceViolationThreshold = 0.0, const bool useRobustNorm = false)
+      : Measurement(measurementName, measurementRate, useRobustNorm),
         timeK_(timeStamp),
         fixedFrameName_(fixedFrameName),
         sensorFrameName_(sensorFrameName),

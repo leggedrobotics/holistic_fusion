@@ -15,8 +15,8 @@ namespace graph_msf {
 struct BinaryMeasurement : public Measurement {
  public:
   BinaryMeasurement(const std::string& measurementName, const int measurementRate, const double timeKm1, const double timeK,
-                    const std::string& sensorFrameName)
-      : Measurement(measurementName, measurementRate), timeKm1_(timeKm1), timeK_(timeK), sensorFrameName_(sensorFrameName) {}
+                    const std::string& sensorFrameName, const bool useRobustNorm = false)
+      : Measurement(measurementName, measurementRate, useRobustNorm), timeKm1_(timeKm1), timeK_(timeK), sensorFrameName_(sensorFrameName) {}
 
   // Getters
   double timeKm1() const { return timeKm1_; }

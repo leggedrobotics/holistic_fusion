@@ -17,8 +17,8 @@ struct BinaryMeasurementXD : public BinaryMeasurement {
  public:
   BinaryMeasurementXD(const std::string& measurementName, const int measurementRate, const double timeKm1, const double timeK,
                       const std::string& sensorFrameName, const MEASUREMENT_TYPE& deltaMeasurement,
-                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity)
-      : BinaryMeasurement(measurementName, measurementRate, timeKm1, timeK, sensorFrameName),
+                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity, const bool useRobustNorm = false)
+      : BinaryMeasurement(measurementName, measurementRate, timeKm1, timeK, sensorFrameName, useRobustNorm),
         deltaMeasurement_(deltaMeasurement),
         deltaMeasurementNoiseDensity_(deltaMeasurementNoiseDensity) {}
 

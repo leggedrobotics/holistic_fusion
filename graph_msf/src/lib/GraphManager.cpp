@@ -46,6 +46,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const st
   }
 }
 
+// Initialization Interface ---------------------------------------------------
 bool GraphManager::initImuIntegrators(const double g) {
   // Gravity direction definition
   imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
@@ -127,6 +128,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   return true;
 }
 
+// IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                            const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK) {
@@ -186,55 +188,47 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreInt
   }
 }
 
-gtsam::Key GraphManager::addPoseBetweenFactor(const double lidarTimeKm1, const double lidarTimeK, const double rate,
-                                              const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity, const gtsam::Pose3& deltaPose,
-                                              const std::string& measurementType) {
-  // Find corresponding keys in graph
-  // Find corresponding keys in graph
-  double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
-  gtsam::Key closestKeyKm1, closestKeyK;
-  double keyTimeStampDistance;
-
-  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
-                      measurementType)) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Current propagated key: " << propagatedStateKey_
-              << " , PoseBetween factor not added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
-    return closestKeyK;
+// Unary factors ----------------------------------------------------------------
+// Unary meta method
+typedef gtsam::Key (*F)(std::uint64_t);
+template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
+void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                            const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const double measurementTime) {
+  // Find the closest key in existing graph
+  double closestGraphTime;
+  gtsam::Key closestKey;
+  std::string callingName = "GnssPositionUnaryFactor";
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
+                                                      measurementTime)) {
+    if (propagatedStateTime_ - measurementTime < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
+      // TODO: Add to buffer and return --> still add it until we are there
+    } else {  // Otherwise do not add it
+      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key "
+                << closestKey << " is " << 1000 * std::abs(closestGraphTime - measurementTime)
+                << " ms, being larger than admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation
+                << " ms. Not adding to graph." << COLOR_END << std::endl;
+      return;
+    }
   }
-
-  // Scale delta pose according to timeStampDistance
-  double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
-  if (graphConfigPtr_->verboseLevel > 3) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Scale for " << measurementType << " delta pose: " << scale
-              << std::endl;
-  }
-  gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
 
   // Create noise model
-  assert(poseBetweenNoiseDensity.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  // Regular error function with noise
-  // auto errorFunction = noise;
-  // Robust error function
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.3), noise);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
+  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noise);
 
-  // Create pose between factor and add it
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
-                                                       scaledDeltaPose, errorFunction);
+  // Create unary factor and add it
+  FACTOR_TYPE unaryFactor(SYMBOL_SHORTHAND(closestKey), unaryMeasurement, tukeyErrorFunction);
 
   // Write to graph
-  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, lidarTimeKm1);
+  addFactorSafelyToGraph_<const FACTOR_TYPE*>(&unaryFactor, measurementTime);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 3) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ", "
-              << YELLOW_START << measurementType << " PoseBetween factor added between key " << closestKeyKm1 << " and key " << closestKeyK
-              << COLOR_END << std::endl;
+  if (graphConfigPtr_->verboseLevel > 1) {
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
+              << ", " << typeid(FACTOR_TYPE).name() << " factor added to key " << closestKey << COLOR_END << std::endl;
   }
-
-  return closestKeyK;
 }
 
+// Unary Specializations
 void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement,
                                       const Eigen::Isometry3d& T_sensorFrame_imu) {
   // Find the closest key in existing graph
@@ -320,113 +314,72 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   }
 }
 
-void GraphManager::addVelocityUnaryFactor(const double timeK, const double rate,
-                                          const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity, const gtsam::Vector3& velocity,
-                                          const std::string& measurementType) {
-  // Find closest key in existing graph
-  double closestGraphTime;
-  gtsam::Key closestKey;
-
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, measurementType, graphConfigPtr_->maxSearchDeviation,
-                                                      timeK)) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding " << measurementType << " constraint to graph."
-              << COLOR_END << std::endl;
-    return;
-  }
-
-  assert(velocityUnaryNoiseDensity.size() == 3);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(velocityUnaryNoiseDensity));  // rad,rad,rad,x,y,z
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.5), noise);
-
-  gtsam::PriorFactor<gtsam::Vector3> velocityUnaryFactor(gtsam::symbol_shorthand::V(closestKey), gtsam::Vector3::Zero(), errorFunction);
-
-  /// Add Zero Velocity Factor
-  addFactorSafelyToGraph_<const gtsam::PriorFactor<gtsam::Vector3>*>(&velocityUnaryFactor, timeK);
-
-  // Print summary
-  if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
-              << measurementType << " factor added to key " << closestKey << COLOR_END << std::endl;
-  }
+void GraphManager::addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
+                                          const double lidarTimeK) {
+  addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
+      velocity, velocityUnaryNoiseDensity, lidarTimeK);
 }
 
-void GraphManager::addGnssPositionUnaryFactor(double gnssTimeK, const double rate, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
-                                              const gtsam::Vector3& position) {
-  // Find closest key in existing graph
-  double closestGraphTime;
-  gtsam::Key closestKey;
-  std::string callingName = "GnssPositionUnaryFactor";
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
-                                                      gnssTimeK)) {
-    if (propagatedStateTime_ - gnssTimeK < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
-      // TODO: Add to buffer and return --> still add it until we are there
-    } else {  // Otherwise do not add it
-      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << callingName << " Time deviation at key " << closestKey << " is "
-                << 1000 * std::abs(closestGraphTime - gnssTimeK) << " ms, being larger than admissible deviation of "
-                << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return;
-    }
+void GraphManager::addGnssPositionUnaryFactor(const gtsam::Vector3& position, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
+                                              const double gnssTimeK) {
+  addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(position, gnssPositionUnaryNoiseDensity,
+                                                                                            gnssTimeK);
+}
+
+void GraphManager::addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
+                                             const double gnssTimeK) {
+  addUnaryFactorInImuFrame<double, 1, HeadingFactor, gtsam::symbol_shorthand::X>(measuredYaw, gnssHeadingUnaryNoiseDensity, gnssTimeK);
+}
+
+// Between factors --------------------------------------------------------------------------------------------------------
+gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                              const double lidarTimeKm1, const double lidarTimeK, const double rate) {
+  // Find corresponding keys in graph
+  // Find corresponding keys in graph
+  double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
+  gtsam::Key closestKeyKm1, closestKeyK;
+  double keyTimeStampDistance;
+
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
+                      "pose between")) {
+    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Current propagated key: " << propagatedStateKey_
+              << " , PoseBetween factor not added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
+    return closestKeyK;
   }
+
+  // Scale delta pose according to timeStampDistance
+  double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
+  if (graphConfigPtr_->verboseLevel > 3) {
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Scale for "
+              << "pose between"
+              << " delta pose: " << scale << std::endl;
+  }
+  gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
 
   // Create noise model
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(gnssPositionUnaryNoiseDensity)));  // m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noise);
+  assert(poseBetweenNoiseDensity.size() == 6);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.3), noise);
 
-  // Create unary factor and add it
-  gtsam::GPSFactor gnssPositionUnaryFactor(gtsam::symbol_shorthand::X(closestKey), position, tukeyErrorFunction);
-
-  // Write to graph
-  addFactorSafelyToGraph_<const gtsam::GPSFactor*>(&gnssPositionUnaryFactor, gnssTimeK);
-
-  // Print summary
-  if (graphConfigPtr_->verboseLevel > 1) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
-              << ", Gnss position factor added to key " << closestKey << COLOR_END << std::endl;
-  }
-}
-
-void GraphManager::addGnssHeadingUnaryFactor(double gnssTimeK, const double rate,
-                                             const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, const double measuredYaw) {
-  // Print information
-  if (graphConfigPtr_->verboseLevel > 2) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_
-              << std::setprecision(14) << ", Gnss yaw measurement at time stamp " << gnssTimeK << " is: " << measuredYaw << std::endl;
-  }
-
-  // Find the closest key in existing graph
-  double closestGraphTime;
-  gtsam::Key closestKey;
-  std::string callingName = "GnssHeadingUnaryFactor";
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
-                                                      gnssTimeK)) {
-    if (propagatedStateTime_ - gnssTimeK < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
-      // TODO: Add to buffer and return --> still add it until we are there
-    } else {  // Otherwise do not add it
-      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << callingName << " Time deviation at key " << closestKey << " is "
-                << 1000 * std::abs(closestGraphTime - gnssTimeK) << " ms, being larger than admissible deviation of "
-                << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return;
-    }
-  }
-
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(gnssHeadingUnaryNoiseDensity));  // rad,rad,rad,m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.5), noise);
-
-  HeadingFactor gnssHeadingUnaryFactor(gtsam::symbol_shorthand::X(closestKey), measuredYaw, tukeyErrorFunction);
+  // Create pose between factor and add it
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
+                                                       scaledDeltaPose, errorFunction);
 
   // Write to graph
-  addFactorSafelyToGraph_<const HeadingFactor*>(&gnssHeadingUnaryFactor, gnssTimeK);
+  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, lidarTimeKm1);
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
-              << " Gnss heading factor is added to key " << closestKey << COLOR_END << std::endl;
+  if (graphConfigPtr_->verboseLevel > 3) {
+    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ", "
+              << YELLOW_START << " PoseBetween factor added between key " << closestKeyKm1 << " and key " << closestKeyK << COLOR_END
+              << std::endl;
   }
+
+  return closestKeyK;
 }
 
 gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::Optimizer> optimizerPtr,
-                                                     const std::shared_ptr<GraphConfig>& graphConfigPtr, const gtsam::Key& key,
-                                                     const char* callingFunctionName) {
+                                                     const gtsam::Key& key, const char* callingFunctionName) {
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
   try {
@@ -492,8 +445,7 @@ void GraphManager::updateGraph() {
 
   // Compute entire result
   // NavState
-  gtsam::NavState resultNavState =
-      calculateNavStateAtKey(successfulOptimizationFlag, optimizerPtr_, graphConfigPtr_, currentPropagatedKey, __func__);
+  gtsam::NavState resultNavState = calculateNavStateAtKey(successfulOptimizationFlag, optimizerPtr_, currentPropagatedKey, __func__);
   // Bias
   gtsam::imuBias::ConstantBias resultBias = optimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // Compute Covariance
@@ -600,7 +552,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Op
 }  // namespace graph_msf
 
 gtsam::NavState GraphManager::calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key) {
-  return calculateNavStateAtKey(computeSuccessfulFlag, optimizerPtr_, graphConfigPtr_, key, __func__);
+  return calculateNavStateAtKey(computeSuccessfulFlag, optimizerPtr_, key, __func__);
 }
 
 // Private --------------------------------------------------------------------
