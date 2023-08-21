@@ -222,7 +222,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   std::shared_ptr<FACTOR_TYPE> unaryFactorPtr;
   // Case 1: Expression factor --> must be handled differently
   if constexpr (std::is_same<gtsam::ExpressionFactor<MEASUREMENT_TYPE>, FACTOR_TYPE>::value) {
-    std::cout << "hello from the " << typeid(FACTOR_TYPE).name() << std::endl;
+
   } else {  // Case 2: No expression factor
     unaryFactorPtr = std::make_shared<FACTOR_TYPE>(SYMBOL_SHORTHAND(closestKey), unaryMeasurement, tukeyErrorFunction);
     // Write to graph
