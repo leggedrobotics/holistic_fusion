@@ -238,9 +238,9 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
     staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  const gtsam::Key keyAtMeasurementK = graphMgrPtr_->addPoseBetweenFactor(
-      deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate(), deltaMeasurement.measurementNoiseDensity(),
-      gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementName());
+  const gtsam::Key keyAtMeasurementK =
+      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
+                                         deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate());
 
   // Optimize
   {
@@ -299,8 +299,7 @@ bool GraphMsf::addPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 
         W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
                                       preIntegratedNavStatePtr_->getT_W_Ik().rotation());
 
-    graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_frame.timeK(), W_t_W_frame.measurementRate(), W_t_W_frame.unaryMeasurementNoiseDensity(),
-                                             W_t_W_I);
+    graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_I, W_t_W_frame.unaryMeasurementNoiseDensity(), W_t_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -330,8 +329,7 @@ bool GraphMsf::addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(yaw_W_frame.timeK(), yaw_W_frame.measurementRate(), yaw_W_frame.unaryMeasurementNoiseDensity(),
-                                            yawR_W_I.yaw());
+    graphMgrPtr_->addGnssHeadingUnaryFactor(yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -347,10 +345,8 @@ bool GraphMsf::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, 
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
 
-  graphMgrPtr_->addPoseBetweenFactor(timeKm1, timeK, 10, 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), gtsam::Pose3::Identity(),
-                                     "zero motion between factor");
-  graphMgrPtr_->addVelocityUnaryFactor(timeKm1, 10, 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), gtsam::Vector3::Zero(),
-                                       "zero motion velocity factor");
+  graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10);
+  graphMgrPtr_->addVelocityUnaryFactor(gtsam::Vector3::Zero(), 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), timeKm1);
 
   return true;
 }
