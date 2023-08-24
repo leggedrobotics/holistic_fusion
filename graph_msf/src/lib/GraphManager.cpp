@@ -323,10 +323,9 @@ void GraphManager::addVelocityUnaryFactor(const gtsam::Vector3& velocity, const 
       velocity, velocityUnaryNoiseDensity, lidarTimeK);
 }
 
-void GraphManager::addGnssPositionUnaryFactor(const gtsam::Vector3& position, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
-                                              const double gnssTimeK) {
-  addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(position, gnssPositionUnaryNoiseDensity,
-                                                                                            gnssTimeK);
+void GraphManager::addGnssPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& gnssPositionMeasurement) {
+  addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
+      gnssPositionMeasurement.unaryMeasurement(), gnssPositionMeasurement.unaryMeasurementNoiseDensity(), gnssPositionMeasurement.timeK());
 }
 
 void GraphManager::addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,

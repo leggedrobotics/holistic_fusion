@@ -63,8 +63,7 @@ class GraphManager {
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                               const double lidarTimeK);
-  void addGnssPositionUnaryFactor(const gtsam::Vector3& position, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
-                                  const double gnssTime);
+  void addGnssPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& gnssPositionMeasurement);
   void addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
                                  const double gnssTime);
 
