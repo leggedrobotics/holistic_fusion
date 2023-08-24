@@ -55,6 +55,10 @@ class GraphManager {
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                 const double measurementTime);
+  template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
+  void addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                          const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
+                                          const double measurementTime, const gtsam::Values& newStateValues);
   // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
