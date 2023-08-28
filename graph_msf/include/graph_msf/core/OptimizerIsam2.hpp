@@ -50,6 +50,11 @@ class OptimizerIsam2 : public Optimizer {
            graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh)
               .finished();
     }
+    if (graphConfigPtr_->optimizeExtrinsicCalibration) {
+      relinTh['d'] = (gtsam::Vector(3) << graphConfigPtr_->displacementReLinTh, graphConfigPtr_->displacementReLinTh,
+                      graphConfigPtr_->displacementReLinTh)
+                         .finished();
+    }
     isamParams_.relinearizeThreshold = relinTh;
 
     // Factorization
@@ -147,12 +152,19 @@ class OptimizerIsam2 : public Optimizer {
   }
 
   // Calculate State at Key
+  template <class ESTIMATE_TYPE>
+  ESTIMATE_TYPE calculateEstimate(const gtsam::Key& key) {
+    return fixedLagSmootherPtr_->calculateEstimate<ESTIMATE_TYPE>(key);
+  }
   gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) override { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Pose3>(key); }
   gtsam::Vector3 calculateEstimatedVelocity(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector3>(key);
   }
   gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(key);
+  }
+  gtsam::Point3 calculateEstimatedDisplacement(const gtsam::Key& key) override {
+    return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
 
   // Marginal Covariance

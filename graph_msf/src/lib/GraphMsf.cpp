@@ -38,7 +38,8 @@ bool GraphMsf::setup() {
   imuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_);
 
   // Graph Manager
-  graphMgrPtr_ = std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getWorldFrame());
+  graphMgrPtr_ =
+      std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getWorldFrame());
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
@@ -295,11 +296,12 @@ bool GraphMsf::addPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    gtsam::Point3 W_t_W_I =
+    UnaryMeasurementXD<Eigen::Vector3d, 3> W_t_W_I = W_t_W_frame;
+    W_t_W_I.lv_unaryMeasurement() =
         W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
                                       preIntegratedNavStatePtr_->getT_W_Ik().rotation());
 
-    graphMgrPtr_->addGnssPositionUnaryFactor(W_t_W_I, W_t_W_frame.unaryMeasurementNoiseDensity(), W_t_W_frame.timeK());
+    graphMgrPtr_->addPositionUnaryFactor(W_t_W_I);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
@@ -329,7 +331,7 @@ bool GraphMsf::addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addGnssHeadingUnaryFactor(yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
+    graphMgrPtr_->addHeadingUnaryFactor(yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);

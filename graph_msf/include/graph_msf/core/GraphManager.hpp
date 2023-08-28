@@ -37,7 +37,7 @@ namespace graph_msf {
 // Actual Class
 class GraphManager {
  public:
-  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame);
+  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& imuFrame, const std::string& worldFrame);
   ~GraphManager(){};
 
   // Initialization Interface ---------------------------------------------------
@@ -55,14 +55,18 @@ class GraphManager {
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                 const double measurementTime);
+  template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
+  void addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                          const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
+                                          const double measurementTime, const gtsam::Values& newStateValues,
+                                          std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors);
   // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                               const double lidarTimeK);
-  void addGnssPositionUnaryFactor(const gtsam::Vector3& position, const Eigen::Vector3d& gnssPositionUnaryNoiseDensity,
-                                  const double gnssTime);
-  void addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
-                                 const double gnssTime);
+  void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement);
+  void addHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
+                             const double gnssTime);
 
   // Between
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -120,6 +124,7 @@ class GraphManager {
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
 
   // Optimization Transformations
+  std::string imuFrame_;
   std::string worldFrame_;
   TransformsExpressionKeys gtsamExpressionTransformsKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;

@@ -34,6 +34,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
   graphConfigPtr_->optimizeFixedFramePosesWrtWorld = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
+  graphConfigPtr_->optimizeExtrinsicCalibration = tryGetParam<bool>("graph_params/optimizeExtrinsicCalibration", privateNode);
 
   // Outlier Parameters
   graphConfigPtr_->poseMotionOutlierThresold = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);
@@ -63,6 +64,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->accBiasReLinTh = tryGetParam<double>("relinearization_params/accBiasReLinTh", privateNode);
   graphConfigPtr_->gyroBiasReLinTh = tryGetParam<double>("relinearization_params/gyrBiasReLinTh", privateNode);
   graphConfigPtr_->fixedFrameReLinTh = tryGetParam<double>("relinearization_params/fixedFrameReLinTh", privateNode);
+  graphConfigPtr_->displacementReLinTh = tryGetParam<double>("relinearization_params/displacementReLinTh", privateNode);
   /// Others
   graphConfigPtr_->relinearizeSkip = tryGetParam<int>("relinearization_params/relinearizeSkip", privateNode);
   graphConfigPtr_->enableRelinearizationFlag = tryGetParam<bool>("relinearization_params/enableRelinearization", privateNode);
