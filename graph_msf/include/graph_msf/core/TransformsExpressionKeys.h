@@ -53,9 +53,10 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       // Print to terminal
       REGULAR_COUT << GREEN_START << " Created new transform between frames " << frame1 << " and " << frame2 << " with key "
                    << gtsam::Symbol(T_key) << "." << COLOR_END << std::endl;
+      // New factors to constrain new variable or regularize it
+      priorFactors.emplace_back(T_key, T_initial, gtsam::noiseModel::Diagonal::Sigmas(1.0e-03 * gtsam::Vector::Ones(DIM)));
     }
-    // New factors to constrain new variable or regularize it
-    priorFactors.emplace_back(T_key, T_initial, gtsam::noiseModel::Diagonal::Sigmas(0.1 * gtsam::Vector::Ones(DIM)));
+
     // Return
     return gtsam::Expression<MEASUREMENT_TYPE>(T_key);
   }
