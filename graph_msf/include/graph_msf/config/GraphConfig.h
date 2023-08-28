@@ -45,6 +45,7 @@ struct GraphConfig {
   bool usingCholeskyFactorizationFlag = true;
   bool usingBiasForPreIntegrationFlag = true;
   bool optimizeFixedFramePosesWrtWorld = true;
+  bool optimizeExtrinsicCalibration = true;
 
   // Outlier Rejection
   double poseMotionOutlierThresold = 0.3;
@@ -73,6 +74,7 @@ struct GraphConfig {
   double accBiasReLinTh = 1e-3;
   double gyroBiasReLinTh = 1e-3;
   double fixedFrameReLinTh = 1e-3;
+  double displacementReLinTh = 1e-3;
   // Flags
   int relinearizeSkip = 0;
   bool enableRelinearizationFlag = true;

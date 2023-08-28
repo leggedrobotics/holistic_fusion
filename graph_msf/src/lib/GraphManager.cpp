@@ -25,8 +25,9 @@ namespace graph_msf {
 
 // Public --------------------------------------------------------------------
 
-GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& worldFrame)
+GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& imuFrame, const std::string& worldFrame)
     : graphConfigPtr_(graphConfigPtr),
+      imuFrame_(imuFrame),
       worldFrame_(worldFrame),
       resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
       resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
@@ -240,7 +241,8 @@ template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
 void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
                                                       const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                                       const EXPRESSION& unaryExpression, const double measurementTime,
-                                                      const gtsam::Values& newStateValues) {
+                                                      const gtsam::Values& newStateValues,
+                                                      std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors) {
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(unaryNoiseDensity));  // rad,rad,rad,x,y,z
   auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noiseModel);
@@ -257,7 +259,11 @@ void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& un
   // If one of the states was newly created, then add it to the values
   if (newStateValues.size() > 0) {
     graphValuesBufferPtr_->insert(newStateValues);
-    // writeValueKeysToKeyTimeStampMap_(newStateValues, measurementTime, graphKeysTimestampsMapBufferPtr_);
+  }
+
+  // If new factors are there (due to newly generated factor or for regularization), add it to the graph
+  if (priorFactors.size() > 0) {
+    factorGraphBufferPtr_->add(priorFactors);
   }
 
   // Print summary --------------------------------------
@@ -278,37 +284,53 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
   gtsam::Pose3 T_fixedFrame_imu(unary6DMeasurement.unaryMeasurement().matrix() * T_sensorFrame_imu.matrix());
 
   // Also optimize over fixedFrame Transformation --------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld || graphConfigPtr_->optimizeExtrinsicCalibration) {
     // Find the closest key in existing graph
     double closestGraphTime;
     gtsam::Key closestKey;
     if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, unary6DMeasurement.measurementName(),
                                                         graphConfigPtr_->maxSearchDeviation, unary6DMeasurement.timeK())) {
-      std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Not adding " << unary6DMeasurement.measurementName()
-                << " constraint to graph." << COLOR_END << std::endl;
-      return;
+      if (propagatedStateTime_ - unary6DMeasurement.timeK() <
+          0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
+        // TODO: Add to buffer and return --> still add it until we are there
+      } else {  // Otherwise do not add it
+        std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << " Time deviation of " << typeid(Eigen::Isometry3d).name()
+                  << " at key " << closestKey << " is " << 1000 * std::abs(closestGraphTime - unary6DMeasurement.timeK())
+                  << " ms, being larger than admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation
+                  << " ms. Not adding to graph." << COLOR_END << std::endl;
+        return;
+      }
     }
 
     // Main state expression
-    gtsam::Pose3_ X_(gtsam::symbol_shorthand::X(closestKey));
+    gtsam::Pose3_ T_M_W_X_T_I_Is_(
+        gtsam::symbol_shorthand::X(closestKey));  // Left side: world to map, right side: Imu of sensor measurement to imu
 
-    // Dynamic keys for expression factor(s)
-    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
-    gtsam::Key T_M_W_key;
-    gtsam::Values valuesEstimate;
-    // Case: The dynamically allocated key is not yet in the graph
-    if (gtsamExpressionTransformsKeys_.newFramePairSafelyAddedToDictionary(T_M_W_key, unary6DMeasurement.fixedFrameName(), worldFrame_,
-                                                                           unary6DMeasurement.timeK())) {  // Newly added to dictionary
-      // Initial values for T_M_W
-      gtsam::Pose3 T_W_I = W_imuPropagatedState_.pose();
-      gtsam::Pose3 T_M_W_approx = T_fixedFrame_imu * T_W_I.inverse();
-      valuesEstimate.insert(T_M_W_key, T_M_W_approx);
+    // Dynamic keys for expression values
+    gtsam::Values valuesEstimates;
+    std::vector<gtsam::PriorFactor<gtsam::Pose3>> priorFactors;
+
+    // Optimize over fixed frame poses --------------------------------------------
+    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+      const gtsam::Pose3& T_W_I = W_imuPropagatedState_.pose();  // alias for readability
+      gtsam::Pose3 T_M_W_initial = T_fixedFrame_imu * T_W_I.inverse();
+      T_M_W_X_T_I_Is_ =
+          gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
+              valuesEstimates, priorFactors, T_M_W_initial, unary6DMeasurement.fixedFrameName(), worldFrame_, unary6DMeasurement.timeK()) *
+          T_M_W_X_T_I_Is_;
     }
-    gtsam::Pose3_ T_M_W_(T_M_W_key);
+    // Optimize over extrinsics ---------------------------------------------------
+    else if (graphConfigPtr_->optimizeExtrinsicCalibration) {
+      const gtsam::Pose3& T_I_Is_initial = gtsam::Pose3::Identity();  // alias for readability
+      T_M_W_X_T_I_Is_ = T_M_W_X_T_I_Is_ * gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
+                                              valuesEstimates, priorFactors, T_I_Is_initial, imuFrame_,
+                                              imuFrame_ + "_" + unary6DMeasurement.sensorFrameName(), unary6DMeasurement.timeK());
+    }
 
     // Meta function
-    addUnaryExpressionFactorInImuFrame<gtsam::Pose3, 6, gtsam::Pose3_>(
-        T_fixedFrame_imu, unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_W_ * X_, unary6DMeasurement.timeK(), valuesEstimate);
+    addUnaryExpressionFactorInImuFrame<gtsam::Pose3, 6, gtsam::Pose3_>(T_fixedFrame_imu,
+                                                                       unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_W_X_T_I_Is_,
+                                                                       unary6DMeasurement.timeK(), valuesEstimates, priorFactors);
   }
   // Simple unary factor --------------------------------------
   else {
@@ -323,13 +345,56 @@ void GraphManager::addVelocityUnaryFactor(const gtsam::Vector3& velocity, const 
       velocity, velocityUnaryNoiseDensity, lidarTimeK);
 }
 
-void GraphManager::addGnssPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& gnssPositionMeasurement) {
-  addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
-      gnssPositionMeasurement.unaryMeasurement(), gnssPositionMeasurement.unaryMeasurementNoiseDensity(), gnssPositionMeasurement.timeK());
+void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement) {
+  if (graphConfigPtr_->optimizeExtrinsicCalibration) {
+    // Find the closest key in existing graph
+    double closestGraphTime;
+    gtsam::Key closestKey;
+    if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, unaryPositionMeasurement.measurementName(),
+                                                        graphConfigPtr_->maxSearchDeviation, unaryPositionMeasurement.timeK())) {
+      if (propagatedStateTime_ - unaryPositionMeasurement.timeK() <
+          0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
+        // TODO: Add to buffer and return --> still add it until we are there
+      } else {  // Otherwise do not add it
+        std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << " Time deviation of " << typeid(Eigen::Vector3d).name()
+                  << " at key " << closestKey << " is " << 1000 * std::abs(closestGraphTime - unaryPositionMeasurement.timeK())
+                  << " ms, being larger than admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation
+                  << " ms. Not adding to graph." << COLOR_END << std::endl;
+        return;
+      }
+    }
+
+    // Main state expression
+    gtsam::Point3_ W_t_W_I_ = gtsam::translation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
+    gtsam::Rot3_ R_W_I_ = gtsam::rotation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
+
+    // Dynamic keys for expression values
+    gtsam::Values valuesEstimates;
+    std::vector<gtsam::PriorFactor<gtsam::Point3>> priorFactors;
+
+    // Get delta transformation from IMU to assumed IMU
+    gtsam::Point3 I_t_I_Is_initial = gtsam::Point3::Zero();
+    gtsam::Point3_ I_t_I_Is = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Point3, 3>(
+        valuesEstimates, priorFactors, I_t_I_Is_initial, imuFrame_, imuFrame_ + "_" + unaryPositionMeasurement.sensorFrameName(),
+        unaryPositionMeasurement.timeK());
+    gtsam::Point3_ W_t_W_Is = W_t_W_I_ + gtsam::rotate(R_W_I_, I_t_I_Is);
+    //    valuesEstimates.empty();
+    //    priorFactors.clear();
+
+    // Meta function
+    addUnaryExpressionFactorInImuFrame<gtsam::Point3, 3, gtsam::Point3_>(
+        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(), W_t_W_Is,
+        unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
+
+  } else {
+    addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
+        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),
+        unaryPositionMeasurement.timeK());
+  }
 }
 
-void GraphManager::addGnssHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
-                                             const double gnssTimeK) {
+void GraphManager::addHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
+                                         const double gnssTimeK) {
   addUnaryFactorInImuFrame<double, 1, HeadingFactor, gtsam::symbol_shorthand::X>(measuredYaw, gnssHeadingUnaryNoiseDensity, gnssTimeK);
 }
 
@@ -464,8 +529,17 @@ void GraphManager::updateGraph() {
       const gtsam::Key& key = framePairIterator.second.key_;
       bool optimizedAlreadyFlag = framePairIterator.second.atLeastOnceOptimized_;
       try {  // Obtain estimate and covariance from the extrinsic transformations
-        gtsam::Pose3 T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
-        gtsam::Matrix66 T_frame1_frame2_covariance = optimizerPtr_->marginalCovariance(key);
+        gtsam::Pose3 T_frame1_frame2;
+        gtsam::Matrix66 T_frame1_frame2_covariance;
+        if (gtsam::Symbol(key).string()[0] == 't') {
+          T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
+          T_frame1_frame2_covariance = optimizerPtr_->marginalCovariance(key);
+        } else if (gtsam::Symbol(key).string()[0] == 'd') {
+          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(optimizerPtr_->calculateEstimatedDisplacement(key)));
+          T_frame1_frame2_covariance.block<3, 3>(3, 3) = optimizerPtr_->marginalCovariance(key);
+        } else {
+          throw std::runtime_error("Key is neither a pose nor a displacement key.");
+        }
         // Write to dictionary
         resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                              Eigen::Isometry3d(T_frame1_frame2.matrix()));

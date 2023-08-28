@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GTSAMEXPRESSIONTRANSFORMS_H
 #define GTSAMEXPRESSIONTRANSFORMS_H
 
+// Output
+#define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
+
 // GTSAM
 #include <gtsam/slam/expressions.h>
 
@@ -31,11 +34,33 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
  public:
   // Constructor
   TransformsExpressionKeys() : TransformsDictionary<FactorGraphStateKey>(FactorGraphStateKey()) {
-    std::cout << YELLOW_START << "StaticTransforms" << COLOR_END << " StaticTransforms instance created." << std::endl;
+    REGULAR_COUT << " Instance created." << std::endl;
   }
 
   // Safe Modifiers
   // Returns
+  template <class MEASUREMENT_TYPE, int DIM>
+  gtsam::Expression<MEASUREMENT_TYPE> getTransformationExpression(gtsam::Values& potentialNewGraphValues,
+                                                                  std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors,
+                                                                  const MEASUREMENT_TYPE& T_initial, const std::string& frame1,
+                                                                  const std::string& frame2, const double timeK) {
+    gtsam::Key T_key;
+    std::lock_guard<std::mutex> modifyGraphKeysLock(this->mutex());
+    // Case: The dynamically allocated key is not yet in the graph
+    if (this->newFramePairSafelyAddedToDictionary<DIM>(T_key, frame1, frame2, timeK)) {  // Newly added to dictionary
+      // Initial values for T_M_W
+      potentialNewGraphValues.insert(T_key, T_initial);
+      // Print to terminal
+      REGULAR_COUT << GREEN_START << " Created new transform between frames " << frame1 << " and " << frame2 << " with key "
+                   << gtsam::Symbol(T_key) << "." << COLOR_END << std::endl;
+    }
+    // New factors to constrain new variable or regularize it
+    priorFactors.emplace_back(T_key, T_initial, gtsam::noiseModel::Diagonal::Sigmas(0.1 * gtsam::Vector::Ones(DIM)));
+    // Return
+    return gtsam::Expression<MEASUREMENT_TYPE>(T_key);
+  }
+
+  template <int DIM>
   bool newFramePairSafelyAddedToDictionary(gtsam::Key& returnKey, const std::string& frame1, const std::string& frame2,
                                            const double timeK) {
     // Check and modify content --> acquire lock
@@ -48,14 +73,22 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       return false;
     } else {
       // Create
-      addNewFactorGraphStateKey(returnKey, frame1, frame2, timeK);
+      addNewFactorGraphStateKey<DIM>(returnKey, frame1, frame2, timeK);
       return true;
     }
   }
 
   // Functionality ------------------------------------------------------------
+  template <int DIM>
   void addNewFactorGraphStateKey(gtsam::Key& returnKey, const std::string& frame1, const std::string& frame2, const double timeK) {
-    returnKey = gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs());
+    // Assert
+    static_assert(DIM == 3 || DIM == 6, "DIM must be either 3 or 6.");
+    // Logic
+    if constexpr (DIM == 6) {
+      returnKey = gtsam::symbol_shorthand::T(getNumberStoredTransformationPairs());
+    } else if constexpr (DIM == 3) {
+      returnKey = gtsam::symbol_shorthand::D(getNumberStoredTransformationPairs());
+    }
     FactorGraphStateKey factorGraphStateKey(returnKey, timeK, false);
     set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
   }
