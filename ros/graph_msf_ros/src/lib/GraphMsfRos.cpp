@@ -267,18 +267,24 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // TFs in Optimized State
     for (const auto transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
       // Get transform
-      Eigen::Isometry3d T_M_W = transformIterator.second;
-      Eigen::Isometry3d T_M_Ik = T_M_W * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
-      std::string mapFrameName = transformIterator.first.first;
-      // Map->imu
-      addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
-                       ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
-                       optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
-                       poseCovarianceRos, twistCovarianceRos);
-      pubEstMapImu_.publish(estMapImuMsgPtr_);
-      // Publish TF
-      publishTransform_(transformIterator.first.second, transformIterator.first.first, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
-                        T_M_W.inverse());
+      Eigen::Isometry3d T_frame1_frame2 = transformIterator.second;
+      if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
+        Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+        std::string mapFrameName = transformIterator.first.first;
+        // Map->imu
+        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
+                         ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
+                         optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
+                         poseCovarianceRos, twistCovarianceRos);
+        pubEstMapImu_.publish(estMapImuMsgPtr_);
+        // Publish TF --> everything children of world
+        publishTransform_(transformIterator.first.second, transformIterator.first.first, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                          T_frame1_frame2.inverse());
+      } else {
+        // Publish TF --> everything children of world
+        publishTransform_(transformIterator.first.first, transformIterator.first.second, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                          T_frame1_frame2);
+      }
     }
   }
 }
