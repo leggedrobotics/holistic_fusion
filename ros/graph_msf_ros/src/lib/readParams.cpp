@@ -17,7 +17,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->maxSearchDeviation = 1.0 / graphConfigPtr_->imuRate;
   graphConfigPtr_->imuBufferLength = tryGetParam<int>("sensor_params/imuBufferLength", privateNode);
   graphConfigPtr_->imuTimeOffset = tryGetParam<double>("sensor_params/imuTimeOffset", privateNode);
-  graphConfigPtr_->gnssExactSyncPolicy = tryGetParam<bool>("sensor_params/gnssExactSyncPolicy", privateNode);
 
   // Initialization Params
   graphConfigPtr_->estimateGravityFromImuFlag = tryGetParam<bool>("initialization_params/estimateGravityFromImu", privateNode);
