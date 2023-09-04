@@ -50,6 +50,8 @@ class GraphManager {
                                const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK);
 
   // All other measurements -----------------------------------------------------
+  // Unary commodity methods
+  bool addUnaryFactorToReturnedKey(gtsam::Key& returnedKey, const graph_msf::UnaryMeasurement& unaryMeasurement);
   // Unary Meta Method
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
@@ -64,7 +66,8 @@ class GraphManager {
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                               const double lidarTimeK);
-  void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement);
+  void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
+                              const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
   void addHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
                              const double gnssTime);
 

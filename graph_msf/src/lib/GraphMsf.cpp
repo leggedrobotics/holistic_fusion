@@ -274,7 +274,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
   }
 }
 
-bool GraphMsf::addPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame) {
+bool GraphMsf::addPositionMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -291,22 +291,33 @@ bool GraphMsf::addPositionMeasurement(const UnaryMeasurementXD<Eigen::Vector3d, 
   }
 
   // Check for covariance violation
-  bool covarianceViolatedFlag =
-      isCovarianceViolated_<3>(W_t_W_frame.unaryMeasurementNoiseDensity(), W_t_W_frame.covarianceViolationThreshold());
+  bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
+                                                         fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    UnaryMeasurementXD<Eigen::Vector3d, 3> W_t_W_I = W_t_W_frame;
-    W_t_W_I.lv_unaryMeasurement() =
-        W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_frame.unaryMeasurement(), W_t_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame(),
-                                      preIntegratedNavStatePtr_->getT_W_Ik().rotation());
-
-    graphMgrPtr_->addPositionUnaryFactor(W_t_W_I);
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
+    // Transform to IMU frame in case lever should not be considered
+    if (!graphConfigPtr_->optimizeWithImuToSensorLeverArm) {
+      if (fixedFrame_t_fixedFrame_sensorFrame.fixedFrameName() != staticTransformsPtr_->getWorldFrame()) {
+        throw std::runtime_error("Optimization without considering lever is only supported for positions expressed in world frame.");
+      }
+      fixedFrame_t_fixedFrame_sensorFrame.lv_unaryMeasurement() = W_t_W_Frame1_to_W_t_W_Frame2_(
+          fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName(),
+          staticTransformsPtr_->getImuFrame(), preIntegratedNavStatePtr_->getT_W_Ik().rotation());
+      fixedFrame_t_fixedFrame_sensorFrame.lv_sensorFrameName() = staticTransformsPtr_->getImuFrame();
+      // Add factor
+      graphMgrPtr_->addPositionUnaryFactor(fixedFrame_t_fixedFrame_sensorFrame);
+    } else {  // Consider lever
+      // Add factor
+      graphMgrPtr_->addPositionUnaryFactor(
+          fixedFrame_t_fixedFrame_sensorFrame,
+          staticTransformsPtr_
+              ->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName())
+              .translation());
     }
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
     return true;
   } else {
     return false;

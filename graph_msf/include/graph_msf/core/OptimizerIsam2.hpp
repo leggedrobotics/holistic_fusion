@@ -50,7 +50,7 @@ class OptimizerIsam2 : public Optimizer {
            graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh)
               .finished();
     }
-    if (graphConfigPtr_->optimizeExtrinsicCalibration) {
+    if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
       relinTh['d'] = (gtsam::Vector(3) << graphConfigPtr_->displacementReLinTh, graphConfigPtr_->displacementReLinTh,
                       graphConfigPtr_->displacementReLinTh)
                          .finished();

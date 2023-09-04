@@ -45,7 +45,8 @@ struct GraphConfig {
   bool usingCholeskyFactorizationFlag = true;
   bool usingBiasForPreIntegrationFlag = true;
   bool optimizeFixedFramePosesWrtWorld = true;
-  bool optimizeExtrinsicCalibration = true;
+  bool optimizeWithImuToSensorLeverArm = true;
+  bool optimizeExtrinsicSensorToSensorCorrectedOffset = false;
 
   // Outlier Rejection
   double poseMotionOutlierThresold = 0.3;

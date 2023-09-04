@@ -25,6 +25,7 @@ struct UnaryMeasurement : public Measurement {
   // Getters
   const std::string& fixedFrameName() const { return fixedFrameName_; }
   const std::string& sensorFrameName() const { return sensorFrameName_; }
+  std::string& lv_sensorFrameName() { return sensorFrameName_; }
   double timeK() const { return timeK_; }
   double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }
 
