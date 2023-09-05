@@ -30,7 +30,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->additionalOptimizationIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlotsFlag = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResultsFlag = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
-  graphConfigPtr_->usingFallbackGraphFlag = tryGetParam<bool>("graph_params/usingFallbackGraph", privateNode);
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
   graphConfigPtr_->optimizeFixedFramePosesWrtWorld = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);

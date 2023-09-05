@@ -42,11 +42,10 @@ struct GraphConfig {
   int additionalOptimizationIterations = 0;
   bool findUnusedFactorSlotsFlag = false;
   bool enableDetailedResultsFlag = false;
-  bool usingFallbackGraphFlag = true;
   bool usingCholeskyFactorizationFlag = true;
   bool usingBiasForPreIntegrationFlag = true;
   bool optimizeFixedFramePosesWrtWorld = true;
-  double fixedFramePosesResetThreshold = 5;
+  double fixedFramePosesResetThreshold = 5.0;
   bool optimizeWithImuToSensorLeverArm = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset = false;
 
