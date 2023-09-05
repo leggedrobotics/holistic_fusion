@@ -25,6 +25,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Graph Params
   graphConfigPtr_->useIsamFlag = tryGetParam<bool>("graph_params/useIsam", privateNode);
   graphConfigPtr_->smootherLag = tryGetParam<double>("graph_params/smootherLag", privateNode);
+  graphConfigPtr_->gaussNewtonWildfireThreshold = tryGetParam<double>("graph_params/gaussNewtonWildfireThreshold", privateNode);
   graphConfigPtr_->maxOptimizationFrequency = tryGetParam<double>("graph_params/maxOptimizationFrequency", privateNode);
   graphConfigPtr_->additionalOptimizationIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlotsFlag = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
@@ -33,6 +34,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingCholeskyFactorizationFlag = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
   graphConfigPtr_->optimizeFixedFramePosesWrtWorld = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
+  graphConfigPtr_->fixedFramePosesResetThreshold = tryGetParam<double>("graph_params/fixedFramePosesResetThreshold", privateNode);
   graphConfigPtr_->optimizeWithImuToSensorLeverArm = tryGetParam<bool>("graph_params/optimizeWithImuToSensorLeverArm", privateNode);
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);

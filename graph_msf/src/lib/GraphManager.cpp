@@ -6,6 +6,8 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 #define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
+#define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
+#define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 100
 
 // C++
 #include <type_traits>
@@ -45,7 +47,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const st
   } else {
     // optimizerPtr_ = std::make_shared<OptimizerLM>(graphConfigPtr_,
     // worldFrame_); Not implmented
-    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " OptimizerLM is not implemented yet." << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " OptimizerLM is not implemented yet." << COLOR_END << std::endl;
     std::runtime_error("OptimizerLM is not implemented yet.");
   }
 }
@@ -94,7 +96,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
   // Initial estimate
   gtsam::Values valuesEstimate;
-  std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Initial Pose: " << initialPose << std::endl;
+  REGULAR_COUT << " Initial Pose: " << initialPose << std::endl;
   valuesEstimate.insert(gtsam::symbol_shorthand::X(propagatedStateKey_), initialPose);
   valuesEstimate.insert(gtsam::symbol_shorthand::V(propagatedStateKey_), gtsam::Vector3(0, 0, 0));
   valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
@@ -203,10 +205,9 @@ bool GraphManager::addUnaryFactorToReturnedKey(gtsam::Key& returnedKey, const gr
         0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
       // TODO: Add to buffer and return --> still add it until we are there
     } else {  // Otherwise do not add it
-      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << " Time deviation of " << typeid(unaryMeasurement).name()
-                << " at key " << returnedKey << " is " << 1000 * std::abs(closestGraphTime - unaryMeasurement.timeK())
-                << " ms, being larger than admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation
-                << " ms. Not adding to graph." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
+                   << 1000 * std::abs(closestGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
+                   << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
     }
   }
@@ -226,48 +227,46 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
     if (propagatedStateTime_ - measurementTime < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
       // TODO: Add to buffer and return --> still add it until we are there
     } else {  // Otherwise do not add it
-      std::cerr << YELLOW_START << "GMsf-GraphManager " << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key "
-                << closestKey << " is " << 1000 * std::abs(closestGraphTime - measurementTime)
-                << " ms, being larger than admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation
-                << " ms. Not adding to graph." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key " << closestKey << " is "
+                   << 1000 * std::abs(closestGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
+                   << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
       return;
     }
   }
 
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
-  auto tukeyErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noise);
+  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noise);
 
   // Create unary factor and ADD IT
   std::shared_ptr<FACTOR_TYPE> unaryFactorPtr;
   // Case 1: Expression factor --> must be handled differently
   if constexpr (std::is_same<gtsam::ExpressionFactor<MEASUREMENT_TYPE>, FACTOR_TYPE>::value) {
   } else {  // Case 2: No expression factor
-    unaryFactorPtr = std::make_shared<FACTOR_TYPE>(SYMBOL_SHORTHAND(closestKey), unaryMeasurement, tukeyErrorFunction);
+    unaryFactorPtr = std::make_shared<FACTOR_TYPE>(SYMBOL_SHORTHAND(closestKey), unaryMeasurement, robustErrorFunction);
     // Write to graph
     addFactorSafelyToGraph_<const FACTOR_TYPE*>(unaryFactorPtr.get(), measurementTime);
   }
 
   // Print summary
   if (graphConfigPtr_->verboseLevel > 1) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
-              << ", " << typeid(FACTOR_TYPE).name() << " factor added to key " << closestKey << COLOR_END << std::endl;
+    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", " << typeid(FACTOR_TYPE).name()
+                 << " factor added to key " << closestKey << COLOR_END << std::endl;
   }
 }
 
 // Expression factors
 template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
-void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
-                                                      const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                                      const EXPRESSION& unaryExpression, const double measurementTime,
-                                                      const gtsam::Values& newStateValues,
-                                                      std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors) {
+void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement,
+                                            const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
+                                            const double measurementTime, const gtsam::Values& newStateValues,
+                                            std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors) {
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(unaryNoiseDensity));  // rad,rad,rad,x,y,z
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(0.7), noiseModel);
+  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
 
   // Create Factor
-  gtsam::ExpressionFactor<MEASUREMENT_TYPE> unaryExpressionFactor(errorFunction, unaryMeasurement, unaryExpression);
+  gtsam::ExpressionFactor<MEASUREMENT_TYPE> unaryExpressionFactor(robustErrorFunction, unaryMeasurement, unaryExpression);
 
   // Operating on graph data
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -279,7 +278,6 @@ void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& un
   if (newStateValues.size() > 0) {
     graphValuesBufferPtr_->insert(newStateValues);
   }
-
   // If new factors are there (due to newly generated factor or for regularization), add it to the graph
   if (priorFactors.size() > 0) {
     factorGraphBufferPtr_->add(priorFactors);
@@ -287,8 +285,8 @@ void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& un
 
   // Print summary --------------------------------------
   if (graphConfigPtr_->verboseLevel > 0) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key " << propagatedStateKey_ << GREEN_START
-              << ", expression factor of type " << typeid(MEASUREMENT_TYPE).name() << " added to keys ";
+    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
+                 << typeid(MEASUREMENT_TYPE).name() << " added to keys ";
     for (const auto& key : unaryExpressionFactor.keys()) {
       std::cout << gtsam::Symbol(key) << ", ";
     }
@@ -300,7 +298,7 @@ void GraphManager::addUnaryExpressionFactorInImuFrame(const MEASUREMENT_TYPE& un
 void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement,
                                       const Eigen::Isometry3d& T_sensorFrame_imu) {
   // Measurement handling
-  gtsam::Pose3 T_fixedFrame_imu(unary6DMeasurement.unaryMeasurement().matrix() * T_sensorFrame_imu.matrix());
+  gtsam::Pose3 T_fixedFrame_I(unary6DMeasurement.unaryMeasurement().matrix() * T_sensorFrame_imu.matrix());
 
   // Also optimize over fixedFrame Transformation --------------------------------
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld || graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
@@ -320,8 +318,8 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
 
     // Optimize over fixed frame poses --------------------------------------------
     if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
-      const gtsam::Pose3& T_W_I = W_imuPropagatedState_.pose();  // alias for readability
-      gtsam::Pose3 T_M_W_initial = T_fixedFrame_imu * T_W_I.inverse();
+      const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
+      gtsam::Pose3 T_M_W_initial = T_fixedFrame_I * T_W_I_est.inverse();
       T_M_W_X_T_I_Is_ =
           gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
               valuesEstimates, priorFactors, T_M_W_initial, unary6DMeasurement.fixedFrameName(), worldFrame_, unary6DMeasurement.timeK()) *
@@ -336,14 +334,13 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
     }
 
     // Meta function
-    addUnaryExpressionFactorInImuFrame<gtsam::Pose3, 6, gtsam::Pose3_>(T_fixedFrame_imu,
-                                                                       unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_W_X_T_I_Is_,
-                                                                       unary6DMeasurement.timeK(), valuesEstimates, priorFactors);
+    addUnaryExpressionFactor<gtsam::Pose3, 6, gtsam::Pose3_>(T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseVariances(),
+                                                             T_M_W_X_T_I_Is_, unary6DMeasurement.timeK(), valuesEstimates, priorFactors);
   }
   // Simple unary factor --------------------------------------
   else {
     addUnaryFactorInImuFrame<gtsam::Pose3, 6, gtsam::PriorFactor<gtsam::Pose3>, gtsam::symbol_shorthand::X>(
-        T_fixedFrame_imu, unary6DMeasurement.unaryMeasurementNoiseDensity(), unary6DMeasurement.timeK());
+        T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseDensity(), unary6DMeasurement.timeK());
   }
 }
 
@@ -381,8 +378,8 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
     // ii) position not in IMU frame
     if (sensorFrameName != imuFrame_) {
       if (!I_t_I_sensorFrame) {
-        std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Position measurement in " << sensorFrameName
-                  << " but no transformation to frame " << imuFrame_ << " provided. Not adding unary factor." << COLOR_END << std::endl;
+        REGULAR_COUT << RED_START << " Position measurement in " << sensorFrameName << " but no transformation to frame " << imuFrame_
+                     << " provided. Not adding unary factor." << COLOR_END << std::endl;
         throw std::runtime_error("Position measurement in " + sensorFrameName + " but no transformation to frame " + imuFrame_ +
                                  " provided. Not adding unary factor.");
       }
@@ -400,7 +397,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
           fixedFrame_t_fixedFrame_sensorFrame + gtsam::rotate(R_fixedFrame_I, I_t_sensorFrame_correctSensorFrame);
     }
     // Meta function
-    addUnaryExpressionFactorInImuFrame<gtsam::Point3, 3, gtsam::Point3_>(
+    addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
         fixedFrame_t_fixedFrame_sensorFrame, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
   } else {
@@ -426,17 +423,15 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
 
   if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
                       "pose between")) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Current propagated key: " << propagatedStateKey_
-              << " , PoseBetween factor not added between keys " << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
+                 << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
     return closestKeyK;
   }
 
   // Scale delta pose according to timeStampDistance
   double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
   if (graphConfigPtr_->verboseLevel > 3) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Scale for "
-              << "pose between"
-              << " delta pose: " << scale << std::endl;
+    REGULAR_COUT << " Scaling factor in tangent space for pose between delta pose: " << scale << std::endl;
   }
   gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
 
@@ -454,9 +449,8 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
 
   // Print summary
   if (graphConfigPtr_->verboseLevel > 3) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Current propagated key: " << propagatedStateKey_ << ", "
-              << YELLOW_START << " PoseBetween factor added between key " << closestKeyKm1 << " and key " << closestKeyK << COLOR_END
-              << std::endl;
+    REGULAR_COUT << " Current propagated key: " << propagatedStateKey_ << ", " << YELLOW_START << " PoseBetween factor added between key "
+                 << closestKeyKm1 << " and key " << closestKeyK << COLOR_END << std::endl;
   }
 
   return closestKeyK;
@@ -471,13 +465,12 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag
     resultVelocity = optimizerPtr->calculateEstimatedVelocity(gtsam::symbol_shorthand::V(key));
     computeSuccessfulFlag = true;
   } catch (const std::out_of_range& outOfRangeExeception) {
-    std::cerr << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
-    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-              << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
-                 "not connected. Increase the lag in this case."
-              << COLOR_END << std::endl;
-    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " CalculateNavStateAtKey called by " << callingFunctionName
-              << COLOR_END << std::endl;
+    REGULAR_COUT << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
+    REGULAR_COUT << RED_START
+                 << " This happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
+                    "not connected. Increase the lag in this case."
+                 << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " CalculateNavStateAtKey called by " << callingFunctionName << COLOR_END << std::endl;
     computeSuccessfulFlag = false;
   }
   return gtsam::NavState(resultPose, resultVelocity);
@@ -523,7 +516,7 @@ void GraphManager::updateGraph() {
       addFactorsToSmootherAndOptimize(optimizerPtr_, newGraphFactors, newGraphValues, newGraphKeysTimestampsMap, graphConfigPtr_,
                                       graphConfigPtr_->additionalOptimizationIterations);
   if (!successfulOptimizationFlag) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
   }
 
@@ -541,10 +534,11 @@ void GraphManager::updateGraph() {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
     // Get map with all frame-pair to key correspondences
+    // Iterate through all dynamically allocated transforms --------------------------------
     for (auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
       // Get Transform
-      const gtsam::Key& key = framePairIterator.second.key_;
-      bool optimizedAlreadyFlag = framePairIterator.second.atLeastOnceOptimized_;
+      const gtsam::Key& key = framePairIterator.second.key();  // alias
+      // Try to optimize ---------------------------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance;
@@ -563,30 +557,50 @@ void GraphManager::updateGraph() {
         resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                                        T_frame1_frame2_covariance);
         // Mark that this key has at least been optimized once
-        if (!optimizedAlreadyFlag) {
-          std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Fixed Frame Transformation between "
-                    << framePairIterator.first.first << " and " << framePairIterator.first.second << " optimized for the first time."
-                    << COLOR_END << std::endl;
-          framePairIterator.second.atLeastOnceOptimized_ = true;
+        if (framePairIterator.second.getNumberStepsOptimized() == 0) {
+          REGULAR_COUT << GREEN_START << " Fixed Frame Transformation between " << framePairIterator.first.first << " and "
+                       << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
         }
-      } catch (const std::out_of_range& exception) {
-        if (optimizedAlreadyFlag) {  // Was optimized before, so should also be available now in the graph --> as querying was
-                                     // unsuccessful, we remove it from the graph
-          std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-                    << " Out of Range exeception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
-                    << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
-                    << " This happen if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
-                       "and remove it from the state dictionary. To fix this, increase the smoother window."
-                    << COLOR_END << std::endl;
+        // Increase Counter
+        framePairIterator.second.incrementNumberStepsOptimized();
+        // Check health status of transformation --> Might need to be deleted if diverged too much --> only necessary for global fixed
+        // frames
+        if (framePairIterator.first.second == worldFrame_ &&
+            framePairIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
+          const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  // alias
+          double errorTangentSpace =
+              gtsam::Pose3::Logmap((T_frame1_frame2_initial * resultNavState.pose()).between(T_frame1_frame2) * resultNavState.pose())
+                  .norm();
+          if (errorTangentSpace > graphConfigPtr_->fixedFramePosesResetThreshold) {
+            REGULAR_COUT << "Error in tangent space: " << errorTangentSpace << std::endl;
+            std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
+                      << framePairIterator.first.first << " and " << framePairIterator.first.second
+                      << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
+                      << std::endl;
+            // Remove state from state dictionary
+            gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
+            break;
+          }
+        }
+      }
+      // Optimization failed -----------------------------------------
+      catch (const std::out_of_range& exception) {
+        if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
+                                                                       // --> as querying was unsuccessful, we remove it from the graph
+          REGULAR_COUT
+              << RED_START << " Out of Range exeception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
+              << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
+              << " This happen if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
+                 "and remove it from the state dictionary. To fix this, increase the smoother window."
+              << COLOR_END << std::endl;
           // Remove state from state dictionary
           gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
           return;
         } else {
-          std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START
-                    << " Tried to query the transformation and/or covariance for frame pair " << framePairIterator.first.first << " to "
-                    << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
-                    << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
-                    << COLOR_END << std::endl;
+          REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
+                       << framePairIterator.first.first << " to " << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
+                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
+                       << COLOR_END << std::endl;
         }
       }
     }
@@ -636,9 +650,9 @@ bool GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Op
 
   if (graphConfigPtr->verboseLevel > 0) {
     endLoopTime = std::chrono::high_resolution_clock::now();
-    std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Whole optimization loop took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds." << COLOR_END
-              << std::endl;
+    REGULAR_COUT << GREEN_START << " Whole optimization loop took "
+                 << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
+                 << COLOR_END << std::endl;
   }
 
   return successFlag;
@@ -659,10 +673,9 @@ void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFa
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
       graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
-    std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START
-              << " Measurement Delay is larger than the smootherLag - "
-                 "WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
-              << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START
+                 << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
+                 << COLOR_END << std::endl;
   }
   // Add measurements
   return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr);
@@ -689,25 +702,22 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
     success = success && timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k",
                                                                         graphConfigPtr_->maxSearchDeviation, timeK);
     if (!success) {
-      std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Could not find closest keys for " << name << COLOR_END
-                << std::endl;
+      REGULAR_COUT << RED_START << " Could not find closest keys for " << name << COLOR_END << std::endl;
       return false;
     }
   }
 
   // Check
   if (closestGraphTimeKm1 > closestGraphTimeK) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << " Time at time step k-1 must be smaller than time at time step k."
-              << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Time at time step k-1 must be smaller than time at time step k." << COLOR_END << std::endl;
     return false;
   }
 
   keyTimeStampDistance = std::abs(closestGraphTimeK - closestGraphTimeKm1);
   if (keyTimeStampDistance > maxTimestampDistance) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager"
-              << " Distance of " << name << " timestamps is too big. Found timestamp difference is  "
-              << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum admissible distance of "
-              << maxTimestampDistance << ". Still adding constraints to graph." << COLOR_END << std::endl;
+    REGULAR_COUT << " Distance of " << name << " timestamps is too big. Found timestamp difference is  "
+                 << closestGraphTimeK - closestGraphTimeKm1 << " which is larger than the maximum admissible distance of "
+                 << maxTimestampDistance << ". Still adding constraints to graph." << COLOR_END << std::endl;
   }
   return true;
 }
@@ -726,12 +736,10 @@ void GraphManager::writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values,
 
 void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   if (imuMeas.size() < 2) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << COLOR_END << " Received less than 2 IMU messages --- No Preintegration done."
-              << std::endl;
+    REGULAR_COUT << " Received less than 2 IMU messages --- No Preintegration done." << std::endl;
     return;
   } else if (imuMeas.size() > 2) {
-    std::cerr << YELLOW_START << "GMsf-GraphManager" << RED_START << "Currently only supporting two IMU messages for pre-integration."
-              << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << "Currently only supporting two IMU messages for pre-integration." << COLOR_END << std::endl;
     throw std::runtime_error("Terminating.");
   }
 

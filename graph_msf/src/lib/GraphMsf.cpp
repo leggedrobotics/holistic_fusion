@@ -212,8 +212,6 @@ bool GraphMsf::addImuMeasurementAndGetState(
   // Add IMU factor and return propagated & optimized state
   graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, imuBufferPtr_, imuTimeK);
   returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
-  if (returnOptimizedStateWithCovarianceAndBiasPtr != nullptr) {
-  }
 
   return true;
 }

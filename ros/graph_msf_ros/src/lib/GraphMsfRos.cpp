@@ -271,6 +271,11 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
       if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
         Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
         std::string mapFrameName = transformIterator.first.first;
+        //        std::cout << "Transformation from " << mapFrameName << " to " << transformIterator.first.second << std::endl;
+        //        std::cout << "Uncertainty: " << std::endl
+        //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+        //                         mapFrameName, transformIterator.first.second)
+        //                  << std::endl;
         // Map->imu
         addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,

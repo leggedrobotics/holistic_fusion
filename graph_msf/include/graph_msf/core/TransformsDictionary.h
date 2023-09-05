@@ -65,7 +65,7 @@ class TransformsDictionary {
   }
 
   // Returns a right value to the requested transformation
-  const TRANSFORM_TYPE& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) {
+  const TRANSFORM_TYPE& rv_T_frame1_frame2(const std::string& frame1, const std::string& frame2) const {
     // Check whether it is identity
     if (frame1 == frame2) {
       return identity_;

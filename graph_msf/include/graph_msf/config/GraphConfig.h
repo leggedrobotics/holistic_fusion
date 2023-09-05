@@ -37,6 +37,7 @@ struct GraphConfig {
   // Factor Graph
   bool useIsamFlag = true;
   double smootherLag = 1.5;
+  double gaussNewtonWildfireThreshold = 0.001;
   double maxOptimizationFrequency = 100;
   int additionalOptimizationIterations = 0;
   bool findUnusedFactorSlotsFlag = false;
@@ -45,6 +46,7 @@ struct GraphConfig {
   bool usingCholeskyFactorizationFlag = true;
   bool usingBiasForPreIntegrationFlag = true;
   bool optimizeFixedFramePosesWrtWorld = true;
+  double fixedFramePosesResetThreshold = 5;
   bool optimizeWithImuToSensorLeverArm = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset = false;
 

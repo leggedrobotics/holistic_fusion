@@ -20,13 +20,13 @@ class OptimizerIsam2 : public Optimizer {
  public:
   explicit OptimizerIsam2(const std::shared_ptr<GraphConfig> graphConfigPtr) : Optimizer(graphConfigPtr) {
     // Standard ISAM2 Parameters
-    isamParams_.findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
-    isamParams_.enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
-    isamParams_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
-    isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
-    isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
-    isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
-    isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
+    isam2Params_.findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
+    isam2Params_.enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
+    isam2Params_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
+    isam2Params_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
+    isam2Params_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
+    isam2Params_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
+    isam2Params_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
 
     // Set graph re-linearization thresholds - must be lower-case letters,
     // check:gtsam::symbol_shorthand
@@ -55,32 +55,35 @@ class OptimizerIsam2 : public Optimizer {
                       graphConfigPtr_->displacementReLinTh)
                          .finished();
     }
-    isamParams_.relinearizeThreshold = relinTh;
+    isam2Params_.relinearizeThreshold = relinTh;
 
     // Factorization
     if (graphConfigPtr_->usingCholeskyFactorizationFlag) {
-      isamParams_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
+      isam2Params_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
     } else {
-      isamParams_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly
-                                                           // conditioned problems
+      isam2Params_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly
+                                                            // conditioned problems
     }
 
     // Performance parameters
     // Set graph relinearization skip
-    isamParams_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
+    isam2Params_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
     // Set relinearization
-    isamParams_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
+    isam2Params_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
     // Enable Nonlinear Error
-    isamParams_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
+    isam2Params_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
     // Cache linearized factors
-    isamParams_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
+    isam2Params_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
     // Enable particular relinearization check
-    isamParams_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
+    isam2Params_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
+
+    // Wildfire parameters
+    isam2Params_.optimizationParams = gtsam::ISAM2GaussNewtonParams(graphConfigPtr_->gaussNewtonWildfireThreshold);
 
     // Initialize Smoother -----------------------------------------------
     fixedLagSmootherPtr_ =
         std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
-                                                             isamParams_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
+                                                             isam2Params_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
     fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of global graph.");
   }
   ~OptimizerIsam2() = default;
@@ -167,6 +170,8 @@ class OptimizerIsam2 : public Optimizer {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
 
+  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
+
   // Marginal Covariance
   gtsam::Matrix marginalCovariance(const gtsam::Key& key) override { return fixedLagSmootherPtr_->marginalCovariance(key); }
 
@@ -174,7 +179,7 @@ class OptimizerIsam2 : public Optimizer {
   // Optimizer itself
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
   // Parameters
-  gtsam::ISAM2Params isamParams_;
+  gtsam::ISAM2Params isam2Params_;
 };
 
 }  // namespace graph_msf
