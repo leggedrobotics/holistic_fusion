@@ -236,7 +236,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
-  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noise);
+  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.0), noise);
 
   // Create unary factor and ADD IT
   std::shared_ptr<FACTOR_TYPE> unaryFactorPtr;
@@ -260,7 +260,8 @@ template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION, class PRIOR_F
 void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement,
                                             const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
                                             const double measurementTime, const gtsam::Values& newStateValues,
-                                            std::vector<gtsam::PriorFactor<PRIOR_FACTOR_TYPE>>& priorFactors) {
+                                            std::vector<gtsam::PriorFactor<PRIOR_FACTOR_TYPE>>& priorFactors,
+                                            std::vector<gtsam::BetweenFactor<PRIOR_FACTOR_TYPE>>& randomWalkFactors) {
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(unaryNoiseDensity));  // rad,rad,rad,x,y,z
   auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
@@ -278,9 +279,13 @@ void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasure
   if (newStateValues.size() > 0) {
     graphValuesBufferPtr_->insert(newStateValues);
   }
-  // If new factors are there (due to newly generated factor or for regularization), add it to the graph
+  // If new factors are there (due to newly generated factor in the very beginning or for regularization), add it to the graph
   if (priorFactors.size() > 0) {
     factorGraphBufferPtr_->add(priorFactors);
+  }
+  // Random walk factors to constrain evolution of transformations
+  if (randomWalkFactors.size() > 0) {
+    factorGraphBufferPtr_->add(randomWalkFactors);
   }
 
   // Print summary --------------------------------------
@@ -315,28 +320,29 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
     // Dynamic keys for expression values
     gtsam::Values valuesEstimates;
     std::vector<gtsam::PriorFactor<gtsam::Pose3>> priorFactors;
+    std::vector<gtsam::BetweenFactor<gtsam::Pose3>> randomWalkFactors;
 
     // Optimize over fixed frame poses --------------------------------------------
     if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
       const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
       gtsam::Pose3 T_M_W_initial = T_fixedFrame_I * T_W_I_est.inverse();
-      T_M_W_X_T_I_Is_ =
-          gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
-              valuesEstimates, priorFactors, T_M_W_initial, unary6DMeasurement.fixedFrameName(), worldFrame_, unary6DMeasurement.timeK()) *
-          T_M_W_X_T_I_Is_;
+      T_M_W_X_T_I_Is_ = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
+                            valuesEstimates, priorFactors, randomWalkFactors, T_M_W_initial, unary6DMeasurement.fixedFrameName(),
+                            worldFrame_, unary6DMeasurement.timeK()) *
+                        T_M_W_X_T_I_Is_;
     }
     // Optimize over extrinsics ---------------------------------------------------
     else if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
       const gtsam::Pose3& T_I_Is_initial = gtsam::Pose3::Identity();  // alias for readability
       T_M_W_X_T_I_Is_ = T_M_W_X_T_I_Is_ * gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
-                                              valuesEstimates, priorFactors, T_I_Is_initial, imuFrame_,
+                                              valuesEstimates, priorFactors, randomWalkFactors, T_I_Is_initial, imuFrame_,
                                               imuFrame_ + "_" + unary6DMeasurement.sensorFrameName(), unary6DMeasurement.timeK());
     }
 
     // Meta function
     addUnaryExpressionFactor<gtsam::Pose3, 6, gtsam::Pose3_, gtsam::Pose3>(
         T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_W_X_T_I_Is_, unary6DMeasurement.timeK(), valuesEstimates,
-        priorFactors);
+        priorFactors, randomWalkFactors);
   }
   // Simple unary factor --------------------------------------
   else {
@@ -363,6 +369,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
     // Dynamic keys for expression values
     gtsam::Values valuesEstimates;
     std::vector<gtsam::PriorFactor<gtsam::Pose3>> priorFactors;
+    std::vector<gtsam::BetweenFactor<gtsam::Pose3>> randomWalkFactors;
 
     // Main state expression
     const gtsam::Point3_ W_t_W_I_ = gtsam::translation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
@@ -395,7 +402,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
       }
 
       gtsam::Pose3_ T_fixedFrame_W_ = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
-          valuesEstimates, priorFactors, T_fixedFrame_W_initial, unaryPositionMeasurement.fixedFrameName(), worldFrame_,
+          valuesEstimates, priorFactors, randomWalkFactors, T_fixedFrame_W_initial, unaryPositionMeasurement.fixedFrameName(), worldFrame_,
           unaryPositionMeasurement.timeK());
       // Transform position to fixed frame
       fixedFrame_t_fixedFrame_sensorFrame_ = gtsam::transformFrom(T_fixedFrame_W_, W_t_W_I_);
@@ -428,7 +435,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
     // Meta function
     addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_, gtsam::Pose3>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
-        fixedFrame_t_fixedFrame_sensorFrame_, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
+        fixedFrame_t_fixedFrame_sensorFrame_, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors, randomWalkFactors);
   } else {
     addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),
@@ -467,7 +474,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   // Create noise model
   assert(poseBetweenNoiseDensity.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.3), noise);
+  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noise);
 
   // Create pose between factor and add it
   gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),

@@ -34,15 +34,22 @@ class TransformsDictionary {
     }
   }
 
-  bool removeTransform(const std::string& frame1, const std::string& frame2) {
+  bool removeTransform(const std::string& frame1, const std::string& frame2, const bool verbose = true) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
+    // Not in map
     if (keyIterator == T_frame1_frame2_map_.end()) {
       return false;
-    } else {
-      std::cout << "Length of map: " << T_frame1_frame2_map_.size() << std::endl;
+    } else {  // In map
+      if (verbose) {
+        std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Removing transform between " << frame1 << " and " << frame2
+                  << ". Length of map before removal: " << T_frame1_frame2_map_.size() << std::endl;
+      }
       T_frame1_frame2_map_.erase(keyIterator);
-      std::cout << "Length of map after removal: " << T_frame1_frame2_map_.size() << std::endl;
+      if (verbose) {
+        std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << "Length of map after removal: " << T_frame1_frame2_map_.size()
+                  << std::endl;
+      }
       return true;
     }
   }
