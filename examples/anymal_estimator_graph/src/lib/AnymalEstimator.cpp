@@ -206,7 +206,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
         dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(), W_t_W_Gnss,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
-    this->addGnssPositionMeasurement(meas_W_t_W_Gnss);
+    this->addPositionMeasurement(meas_W_t_W_Gnss);
   }
   W_t_W_Gnss_km1__ = W_t_W_Gnss;
 

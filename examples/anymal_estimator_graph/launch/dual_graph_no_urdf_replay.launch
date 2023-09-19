@@ -8,7 +8,7 @@
     
     <!-- Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
-    <arg name="pointcloud_topic_name"     default="/point_cloud_filter/lidar/point_cloud_filtered" /> <!-- "/lidar/point_cloud" -->
+    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" /> <!-- "/lidar/point_cloud" -->
 
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)" />
