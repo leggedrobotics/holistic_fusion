@@ -61,7 +61,7 @@ class GraphManager {
   void addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                 const EXPRESSION& unaryExpression, const double measurementTime, const gtsam::Values& newStateValues,
                                 std::vector<gtsam::PriorFactor<PRIOR_FACTOR_TYPE>>& priorFactors,
-                                std::vector<gtsam::BetweenFactor<PRIOR_FACTOR_TYPE>>& randomWalkFactors);
+                                std::vector<gtsam::BetweenFactor<PRIOR_FACTOR_TYPE>>& randomWalkFactors, const bool useRobustNorm);
   // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,

@@ -232,6 +232,9 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // Time of this optimized state
     lastOptimizedStateTimestamp_ = optimizedStateWithCovarianceAndBiasPtr->getTimeK();
 
+    // Print Pose Covariance
+    std::cout << "Pose Covariance: " << std::endl << optimizedStateWithCovarianceAndBiasPtr->getPoseCovariance() << std::endl;
+
     // Odometry messages
     // world->imu
     addToOdometryMsg(optWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
@@ -268,16 +271,15 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     for (const auto transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
       // Get transform
       Eigen::Isometry3d T_frame1_frame2 = transformIterator.second;
+      std::cout << "Transformation from " << transformIterator.first.first << " to " << transformIterator.first.second << std::endl;
+      std::cout << "Uncertainty: " << std::endl
+                << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                       transformIterator.first.first, transformIterator.first.second)
+                << std::endl;
       if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
         Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
-        std::string mapFrameName = transformIterator.first.first;
-        //        std::cout << "Transformation from " << mapFrameName << " to " << transformIterator.first.second << std::endl;
-        //        std::cout << "Uncertainty: " << std::endl
-        //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-        //                         mapFrameName, transformIterator.first.second)
-        //                  << std::endl;
         // Map->imu
-        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
+        addToOdometryMsg(estMapImuMsgPtr_, transformIterator.first.first, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
                          optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
                          poseCovarianceRos, twistCovarianceRos);

@@ -31,6 +31,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const st
     : graphConfigPtr_(graphConfigPtr),
       imuFrame_(imuFrame),
       worldFrame_(worldFrame),
+      gtsamExpressionTransformsKeys_(graphConfigPtr->smootherLag),
       resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
       resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
   // Buffer
@@ -261,13 +262,19 @@ void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasure
                                             const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
                                             const double measurementTime, const gtsam::Values& newStateValues,
                                             std::vector<gtsam::PriorFactor<PRIOR_FACTOR_TYPE>>& priorFactors,
-                                            std::vector<gtsam::BetweenFactor<PRIOR_FACTOR_TYPE>>& randomWalkFactors) {
+                                            std::vector<gtsam::BetweenFactor<PRIOR_FACTOR_TYPE>>& randomWalkFactors,
+                                            const bool useRobustNorm) {
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(unaryNoiseDensity));  // rad,rad,rad,x,y,z
-  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
+  boost::shared_ptr<gtsam::noiseModel::Base> errorFunction;
+  if (useRobustNorm) {
+    errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
+  } else {
+    errorFunction = noiseModel;
+  }
 
   // Create Factor
-  gtsam::ExpressionFactor<MEASUREMENT_TYPE> unaryExpressionFactor(robustErrorFunction, unaryMeasurement, unaryExpression);
+  gtsam::ExpressionFactor<MEASUREMENT_TYPE> unaryExpressionFactor(errorFunction, unaryMeasurement, unaryExpression);
 
   // Operating on graph data
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -314,35 +321,52 @@ void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d
     }
 
     // Main state expression
-    gtsam::Pose3_ T_M_W_X_T_I_Is_(
-        gtsam::symbol_shorthand::X(closestKey));  // Left side: world to map, right side: Imu of sensor measurement to imu
+    gtsam::Pose3_ T_W_I_(gtsam::symbol_shorthand::X(closestKey));
+    // Placeholder for fixed frame transformation
+    gtsam::Pose3_ T_M_I_ = T_W_I_;
 
     // Dynamic keys for expression values
     gtsam::Values valuesEstimates;
     std::vector<gtsam::PriorFactor<gtsam::Pose3>> priorFactors;
     std::vector<gtsam::BetweenFactor<gtsam::Pose3>> randomWalkFactors;
+    const std::string& fixedFrameName = unary6DMeasurement.fixedFrameName();  // Alias
 
     // Optimize over fixed frame poses --------------------------------------------
     if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+      // Random Walk
+      Eigen::Matrix<double, 6, 1> randomWalkNoiseDensity = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();  // All
+      // Compute initial
       const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
-      gtsam::Pose3 T_M_W_initial = T_fixedFrame_I * T_W_I_est.inverse();
-      T_M_W_X_T_I_Is_ = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
-                            valuesEstimates, priorFactors, randomWalkFactors, T_M_W_initial, unary6DMeasurement.fixedFrameName(),
-                            worldFrame_, unary6DMeasurement.timeK()) *
-                        T_M_W_X_T_I_Is_;
+      gtsam::Pose3 T_W_M_initial;
+      gtsam::Matrix66 initialNoiseCovariance;
+      if (resultFixedFrameTransformations_.isFramePairInDictionary(worldFrame_, fixedFrameName) &&
+          gtsamExpressionTransformsKeys_.isFramePairInDictionary(worldFrame_, fixedFrameName)) {
+        T_W_M_initial = gtsam::Pose3(resultFixedFrameTransformations_.rv_T_frame1_frame2(worldFrame_, fixedFrameName).matrix());
+        initialNoiseCovariance = resultFixedFrameTransformationsCovariance_.rv_T_frame1_frame2(worldFrame_, fixedFrameName);
+      } else {
+        T_W_M_initial = T_W_I_est * T_fixedFrame_I.inverse();
+        initialNoiseCovariance = gtsam::noiseModel::Diagonal::Sigmas(1.0e-01 * gtsam::Vector::Ones(6))->covariance();
+      }
+      gtsam::Pose3_ T_W_M_ = gtsamExpressionTransformsKeys_.getTransformationExpression<6, gtsam::Pose3>(
+          valuesEstimates, priorFactors, randomWalkFactors, T_W_M_initial, worldFrame_, unary6DMeasurement.fixedFrameName(),
+          unary6DMeasurement.timeK(), initialNoiseCovariance, randomWalkNoiseDensity);
+      T_M_I_ = gtsam::transformPoseTo(T_W_M_, T_W_I_);
     }
     // Optimize over extrinsics ---------------------------------------------------
     else if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
       const gtsam::Pose3& T_I_Is_initial = gtsam::Pose3::Identity();  // alias for readability
-      T_M_W_X_T_I_Is_ = T_M_W_X_T_I_Is_ * gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
-                                              valuesEstimates, priorFactors, randomWalkFactors, T_I_Is_initial, imuFrame_,
-                                              imuFrame_ + "_" + unary6DMeasurement.sensorFrameName(), unary6DMeasurement.timeK());
+      T_M_I_ = gtsam::Pose3_(T_M_I_, &gtsam::Pose3::transformPoseTo,
+                             gtsamExpressionTransformsKeys_.getTransformationExpression<6, gtsam::Pose3>(
+                                 valuesEstimates, priorFactors, randomWalkFactors, T_I_Is_initial, imuFrame_,
+                                 imuFrame_ + "_" + unary6DMeasurement.sensorFrameName(), unary6DMeasurement.timeK(),
+                                 gtsam::noiseModel::Diagonal::Sigmas(1.0e-01 * gtsam::Vector::Ones(6))->covariance(),
+                                 1e-9 * Eigen::Matrix<double, 6, 1>::Ones()));
     }
 
     // Meta function
     addUnaryExpressionFactor<gtsam::Pose3, 6, gtsam::Pose3_, gtsam::Pose3>(
-        T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_W_X_T_I_Is_, unary6DMeasurement.timeK(), valuesEstimates,
-        priorFactors, randomWalkFactors);
+        T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseVariances(), T_M_I_, unary6DMeasurement.timeK(), valuesEstimates,
+        priorFactors, randomWalkFactors, true);
   }
   // Simple unary factor --------------------------------------
   else {
@@ -383,29 +407,32 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
 
     // i) Optimize over fixed frame poses --> add transformation to fixed frame
     if (fixedFrameName != worldFrame_ && graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+      Eigen::Matrix<double, 6, 1> randomWalkNoiseDensity = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();  // rad/s, m/s
       gtsam::Pose3 T_fixedFrame_W_initial;
+      gtsam::Matrix66 initialNoiseCovariance;
       // Lookup previous relative transformation to have good initial guess for orientation, otherwise use identity
-      if (resultFixedFrameTransformations_.isFramePairInDictionary(fixedFrameName, worldFrame_)) {
+      if (resultFixedFrameTransformations_.isFramePairInDictionary(fixedFrameName, worldFrame_)) {  // Optimized before
         T_fixedFrame_W_initial = gtsam::Pose3(resultFixedFrameTransformations_.rv_T_frame1_frame2(fixedFrameName, worldFrame_).matrix());
-        const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
-        // Correct but numerically unstable as small angle can lead to large error
-        //        const gtsam::Point3 W_t_sensorFrame_W_est = -(T_W_I_est.translation() + T_W_I_est.rotation() * I_t_I_sensorFrame.value());
-        //        const gtsam::Point3 fixedFrame_t_sensorFrame_W_est = T_fixedFrame_W_initial.rotation() * W_t_sensorFrame_W_est;
-        //        const gtsam::Point3 fixedFrame_t_fixedFrame_W_est = fixedFrame_t_fixedFrame_sensorFrame_meas +
-        //        fixedFrame_t_sensorFrame_W_est; T_fixedFrame_W_initial.matrix().block<3, 1>(0, 3) = fixedFrame_t_fixedFrame_W_est;
-        const gtsam::Point3 W_t_W_sensorFrame_est = T_W_I_est.translation() + T_W_I_est.rotation() * I_t_I_sensorFrame.value();
-        const gtsam::Point3 fixedFrame_t_W_sensorFrame_est = T_fixedFrame_W_initial.rotation() * W_t_W_sensorFrame_est;
-        const gtsam::Point3 fixedFrame_t_fixedFrame_W_est = fixedFrame_t_fixedFrame_sensorFrame_meas - fixedFrame_t_W_sensorFrame_est;
-        T_fixedFrame_W_initial = gtsam::Pose3(T_fixedFrame_W_initial.rotation(), fixedFrame_t_fixedFrame_W_est);
-      } else {
+        initialNoiseCovariance = 10 * resultFixedFrameTransformationsCovariance_.rv_T_frame1_frame2(fixedFrameName, worldFrame_);
+        // If instance is created newly --> correct for position
+        if (!gtsamExpressionTransformsKeys_.isFramePairInDictionary(fixedFrameName, worldFrame_)) {
+          const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
+          const gtsam::Point3 W_t_W_sensorFrame_est = T_W_I_est.translation() + T_W_I_est.rotation() * I_t_I_sensorFrame.value();
+          const gtsam::Point3 fixedFrame_t_W_sensorFrame_est = T_fixedFrame_W_initial.rotation() * W_t_W_sensorFrame_est;
+          const gtsam::Point3 fixedFrame_t_fixedFrame_W_est = fixedFrame_t_fixedFrame_sensorFrame_meas - fixedFrame_t_W_sensorFrame_est;
+          // Correct
+          T_fixedFrame_W_initial = gtsam::Pose3(T_fixedFrame_W_initial.rotation(), fixedFrame_t_fixedFrame_W_est);
+        }
+      } else {  // Never optimized before
         T_fixedFrame_W_initial = gtsam::Pose3::Identity();
+        initialNoiseCovariance = gtsam::noiseModel::Diagonal::Sigmas(1.0e-02 * gtsam::Vector::Ones(6))->covariance().matrix();
+        std::cout << initialNoiseCovariance << std::endl;
       }
-
-      gtsam::Pose3_ T_fixedFrame_W_ = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::Pose3, 6>(
+      gtsam::Pose3_ T_fixedFrame_W_ = gtsamExpressionTransformsKeys_.getTransformationExpression<6, gtsam::Pose3>(
           valuesEstimates, priorFactors, randomWalkFactors, T_fixedFrame_W_initial, unaryPositionMeasurement.fixedFrameName(), worldFrame_,
-          unaryPositionMeasurement.timeK());
+          unaryPositionMeasurement.timeK(), initialNoiseCovariance, randomWalkNoiseDensity);
       // Transform position to fixed frame
-      fixedFrame_t_fixedFrame_sensorFrame_ = gtsam::transformFrom(T_fixedFrame_W_, W_t_W_I_);
+      fixedFrame_t_fixedFrame_sensorFrame_ = gtsam::transformFrom(T_fixedFrame_W_, W_t_W_I_);  // TODO
       R_fixedFrame_I_ = gtsam::rotation(T_fixedFrame_W_) * R_W_I_;
     }
 
@@ -435,7 +462,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
     // Meta function
     addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_, gtsam::Pose3>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
-        fixedFrame_t_fixedFrame_sensorFrame_, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors, randomWalkFactors);
+        fixedFrame_t_fixedFrame_sensorFrame_, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors, randomWalkFactors, false);
   } else {
     addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),
@@ -564,6 +591,22 @@ void GraphManager::updateGraph() {
   // Compute Covariance
   gtsam::Matrix66 resultPoseCovariance = optimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
   gtsam::Matrix33 resultVelocityCovariance = optimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  // Oldest key not marginalized out
+  gtsam::Key oldestKey = 0;
+  gtsam::Pose3 poseAtOldestKey;
+  if (currentPropagatedKey > (int(graphConfigPtr_->smootherLag * graphConfigPtr_->imuRate) + 1)) {
+    double oldestGraphTime = currentPropagatedTime - graphConfigPtr_->smootherLag;
+    double foundGraphTime;
+    if (timeToKeyBufferPtr_->getClosestKeyAndTimestamp(foundGraphTime, oldestKey, "oldest graph state", graphConfigPtr_->maxSearchDeviation,
+                                                       oldestGraphTime)) {
+      oldestKey += 4;
+      std::cout << "Current key: " << currentPropagatedKey << ", oldest key: " << oldestKey << std::endl;
+      poseAtOldestKey = optimizerPtr_->calculateEstimatedPose(gtsam::symbol_shorthand::X(oldestKey));
+      gtsam::Matrix66 poseAtOldestKeyCovariance = optimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(oldestKey));
+      std::cout << "Pose: " << poseAtOldestKey << std::endl;
+      std::cout << "Covariance: " << poseAtOldestKeyCovariance << std::endl;
+    }
+  }
 
   // FixedFrame Transformations
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
@@ -664,6 +707,12 @@ void GraphManager::updateGraph() {
   O_imuPropagatedState_ = gtsam::NavState(W_imuPropagatedState_.pose().rotation(), O_imuPropagatedState_.pose().translation(),
                                           W_imuPropagatedState_.velocity());
   T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+
+  // Increase confidence of pose at oldest key --> reduce jumping
+  if (oldestKey > 0) {
+    factorGraphBufferPtr_->add(gtsam::PriorFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(oldestKey), poseAtOldestKey,
+                                                                gtsam::noiseModel::Diagonal::Sigmas(1.0e-02 * gtsam::Vector::Ones(6))));
+  }
 }
 
 // Returns true if the factors/values were added without any problems

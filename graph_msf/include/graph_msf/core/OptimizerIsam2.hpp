@@ -169,7 +169,6 @@ class OptimizerIsam2 : public Optimizer {
   gtsam::Point3 calculateEstimatedDisplacement(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
-
   gtsam::Vector calculateStateAtKey(const gtsam::Key& key) { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
 
   // Marginal Covariance

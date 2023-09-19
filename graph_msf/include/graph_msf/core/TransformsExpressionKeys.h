@@ -8,6 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GTSAMEXPRESSIONTRANSFORMS_H
 #define GTSAMEXPRESSIONTRANSFORMS_H
 
+#define TIME_THRESHOLD_FOR_NEW_STATE 0.01
+
 // Output
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
@@ -58,18 +60,20 @@ class FactorGraphStateKey {
 class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey> {
  public:
   // Constructor
-  TransformsExpressionKeys() : TransformsDictionary<FactorGraphStateKey>(FactorGraphStateKey()) {
+  TransformsExpressionKeys(double smootherLag)
+      : TransformsDictionary<FactorGraphStateKey>(FactorGraphStateKey()), smootherLag_(smootherLag) {
     REGULAR_COUT << " Instance created." << std::endl;
   }
 
   // Safe Modifiers
   // Returns
-  template <class MEASUREMENT_TYPE, int DIM>
-  gtsam::Expression<MEASUREMENT_TYPE> getTransformationExpression(gtsam::Values& potentialNewGraphValues,
-                                                                  std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors,
-                                                                  std::vector<gtsam::BetweenFactor<MEASUREMENT_TYPE>>& randomWalkFactors,
-                                                                  const MEASUREMENT_TYPE& T_initial, const std::string& frame1,
-                                                                  const std::string& frame2, const double timeK) {
+  template <int DIM, class TRANSFORMATION_TYPE>
+  gtsam::Expression<TRANSFORMATION_TYPE> getTransformationExpression(
+      gtsam::Values& potentialNewGraphValues, std::vector<gtsam::PriorFactor<TRANSFORMATION_TYPE>>& priorFactors,
+      std::vector<gtsam::BetweenFactor<TRANSFORMATION_TYPE>>& randomWalkFactors, const TRANSFORMATION_TYPE& T_initial,
+      const std::string& frame1, const std::string& frame2, const double timeK,
+      const Eigen::Matrix<double, DIM, DIM>& initialNoiseCovariance, const Eigen::Matrix<double, DIM, 1>& randomWalkNoiseDensity,
+      int verbosity = 0) {
     // Make sure to handle both position and translation
     gtsam::Pose3 T_approximate;
     if constexpr (DIM == 3) {
@@ -81,35 +85,39 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     // Retrieve key and insert information to map
     gtsam::Key T_current_key, T_previous_key;
     std::lock_guard<std::mutex> modifyGraphKeysLock(this->mutex());
+
     // Case: The dynamically allocated key is not yet in the graph
-    if (this->newFramePairSafelyAddedToDictionary<DIM>(T_current_key, T_previous_key, frame1, frame2, timeK,
-                                                       T_approximate)) {  // Newly added to dictionary
+    if (this->newFramePairSafelyAddedToDictionary<DIM>(T_current_key, T_previous_key, frame1, frame2, timeK, T_approximate,
+                                                       randomWalkNoiseDensity(0) != 0.0)) {  // Newly added to dictionary
       // Initial values for T_M_W
       potentialNewGraphValues.insert(T_current_key, T_initial);
-      // Print to terminal
-      REGULAR_COUT << GREEN_START << " Created new transform between frames " << frame1 << " and " << frame2 << " with key "
-                   << gtsam::Symbol(T_current_key) << "." << COLOR_END << std::endl;
       // New factors to constrain new variable or regularize it
       if (T_current_key == T_previous_key) {  // First time creation
-        priorFactors.emplace_back(T_current_key, T_initial, gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(DIM)));
+                                              // Print to terminal
+        REGULAR_COUT << GREEN_START << " Created new transform between frames " << frame1 << " and " << frame2 << " with key "
+                     << gtsam::Symbol(T_current_key) << "." << COLOR_END << std::endl;
+        priorFactors.emplace_back(T_current_key, T_initial, initialNoiseCovariance);
       } else {  // Adding of new factor (random walk)
         randomWalkFactors.emplace_back(T_previous_key, T_current_key, gtsam::Pose3::Identity(),
-                                       gtsam::noiseModel::Diagonal::Sigmas(0.1 * gtsam::Vector::Ones(DIM)));
+                                       gtsam::noiseModel::Diagonal::Sigmas(sqrt(TIME_THRESHOLD_FOR_NEW_STATE) * randomWalkNoiseDensity));
         // Print to terminal
-        REGULAR_COUT << GREEN_START << " Added random walk factor between frames " << frame1 << " and " << frame2 << " with keys "
-                     << gtsam::Symbol(T_previous_key) << " and " << gtsam::Symbol(T_current_key) << "." << COLOR_END << std::endl;
+        if (verbosity > 2) {
+          REGULAR_COUT << GREEN_START << " Added random walk factor between frames " << frame1 << " and " << frame2 << " with keys "
+                       << gtsam::Symbol(T_previous_key) << " and " << gtsam::Symbol(T_current_key) << "." << COLOR_END << std::endl;
+        }
       }
     }
 
     // Return
-    return gtsam::Expression<MEASUREMENT_TYPE>(T_current_key);
+    return gtsam::Expression<TRANSFORMATION_TYPE>(T_current_key);
   }
 
   // Returns the key of the transformation between frame1 and frame2 at timeK
   // If no new transformation is added to the graph, the last return key is the current one
   template <int DIM>
   bool newFramePairSafelyAddedToDictionary(gtsam::Key& returnKey, gtsam::Key& previousKey, const std::string& frame1,
-                                           const std::string& frame2, const double timeK, const gtsam::Pose3& approximateTransformation) {
+                                           const std::string& frame2, const double timeK, const gtsam::Pose3& approximateTransformation,
+                                           const bool isRandomWalk) {
     // Check and modify content --> acquire lock
     FactorGraphStateKey factorGraphStateKey;
     std::lock_guard<std::mutex> lock(internalDictionaryModifierMutex_);
@@ -121,7 +129,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       returnKey = factorGraphStateKey.key();
       previousKey = returnKey;
       // Introducing new variable for random walk
-      if ((rv_T_frame1_frame2(frame1, frame2).getCurrentTime() - rv_T_frame1_frame2(frame1, frame2).getInitialTime()) > 2.0) {
+      if (isRandomWalk && (rv_T_frame1_frame2(frame1, frame2).getCurrentTime() - rv_T_frame1_frame2(frame1, frame2).getInitialTime()) >
+                              TIME_THRESHOLD_FOR_NEW_STATE) {
         removeTransform(frame1, frame2, false);
         addNewFactorGraphStateKey<DIM>(returnKey, frame1, frame2, timeK, approximateTransformation);
         return true;
@@ -158,6 +167,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   // Mutex
   std::mutex internalDictionaryModifierMutex_;
   std::mutex externalModifierMutex_;
+  // Members
+  double smootherLag_ = 1.5;
 };
 
 }  // namespace graph_msf
