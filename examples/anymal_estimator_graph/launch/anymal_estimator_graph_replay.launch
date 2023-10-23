@@ -8,7 +8,7 @@
     
     <!-- Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
-    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" /> <!-- "/lidar/point_cloud" -->
+    <arg name="pointcloud_topic_name"     default="/lidar/point_cloud" /> <!-- "/point_cloud_filter/lidar/point_cloud_filtered" -->
 
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)" />
@@ -17,7 +17,7 @@
     <arg name="compslam_config_file"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
 
     <!-- Launch Stack -->
-    <include file="$(find anymal_estimator_graph)/launch/dual_graph_no_urdf.launch">
+    <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
         <arg name="imu_topic_name" value="$(arg imu_topic_name)" />
     </include>
