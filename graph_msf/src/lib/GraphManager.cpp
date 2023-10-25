@@ -624,8 +624,14 @@ void GraphManager::updateGraph() {
     } else {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
     }
-    O_imuPropagatedState_ = gtsam::NavState(W_imuPropagatedState_.pose().rotation(), O_imuPropagatedState_.pose().translation(),
-                                            W_imuPropagatedState_.velocity());
+#// Correct rotation only for roll and pitch, keep integrated yaw
+    gtsam::Rot3 R_O_I_rp_corrected =
+        gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
+                         W_imuPropagatedState_.pose().rotation().roll());
+    // Rotate corrected velocity to odom frame
+    gtsam::Vector3 O_v_O_I = R_O_I_rp_corrected * W_imuPropagatedState_.bodyVelocity();
+    // Update the NavState
+    O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
     T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
   }  // end of locking
 }
