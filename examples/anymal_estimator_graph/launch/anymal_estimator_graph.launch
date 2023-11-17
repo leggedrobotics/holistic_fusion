@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?> 
 <launch>
     <!-- Parameters -->
-    <arg name="use_sim_time"              default="false" />
+    <arg name="use_sim_time"              default="true" />
     <param name="use_sim_time"            value="$(arg use_sim_time)"/>
 
     <!-- GMSF Input Topics -->
     <arg name="imu_topic_name"            default="/sensors/imu" />
-    <arg name="lidar_odometry_topic_name" default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />
+    <arg name="lidar_odometry_topic_name" default="/open3d_slam/scan2map_odometry" />
     <arg name="gnss_topic_name"           default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
     <!-- Servers -->
@@ -45,7 +45,7 @@
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)" />
     </node>
 
-    <!-- TF for Aligning Compslam Map -->
-    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_graph_msf compslam_lio/camera_init_CORRECTED 10" />
+    <!-- TF for Aligning Compslam Map 
+    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_o3d map_graph_msf_ 10" />-->
 
 </launch>

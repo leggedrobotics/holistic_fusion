@@ -1,6 +1,6 @@
 # Sensor Params
 sensor_params:
-  lioOdometryRate: 5
+  lioOdometryRate: 10
   gnssRate: 20
 
 # Noise Parameters

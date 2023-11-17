@@ -283,7 +283,12 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
         // Publish TF --> everything children of world
-        publishTransform_(transformIterator.first.second, transformIterator.first.first, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+
+        // open3d_slam maintains its own TF.
+        if (mapFrameName == "map_o3d") {
+          mapFrameName = "map_o3d_";
+        }
+        publishTransform_(transformIterator.first.second, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
                           T_frame1_frame2.inverse());
       } else {
         // Publish TF --> everything children of world
