@@ -370,12 +370,13 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
     // Aliases
     const std::string& sensorFrameName = unaryPositionMeasurement.sensorFrameName();
     const std::string& fixedFrameName = unaryPositionMeasurement.fixedFrameName();
-    // i) optimize over fixed frame poses
+    // i) optimize over fixed frame poses --> only changes frame it is expressed in (not sensor frame)
+    // TODO: finish up --> currently no effect
     if (fixedFrameName != worldFrame_ && graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
       fixedFrame_t_fixedFrame_sensorFrame = fixedFrame_t_fixedFrame_sensorFrame;
       R_fixedFrame_I = R_fixedFrame_I;
     }
-    // ii) position not in IMU frame
+    // ii) position not in IMU frame (only changes sensor frame)
     if (sensorFrameName != imuFrame_) {
       if (!I_t_I_sensorFrame) {
         REGULAR_COUT << RED_START << " Position measurement in " << sensorFrameName << " but no transformation to frame " << imuFrame_
