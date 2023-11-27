@@ -11,8 +11,9 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
-    <arg name="using_gps"                 default="true" />
-    <arg name="using_lio"                 default="true" />
+    <arg name="useLeftGnss"               default="true" />
+    <arg name="useRightGnss"               default="true" />
+    <arg name="useLioOdometry"                 default="true" />
 
     <!-- Description -->
     <arg name="description_name"          default="/heap_description" />
@@ -29,8 +30,9 @@
     <node pkg="excavator_holistic_graph" type="excavator_holistic_graph_node" name="holistic_graph_node" output="screen" > <!-- launch-prefix="gdb -args"-->
         <!-- Launch Parameters -->
         <param name="launch/descriptionName" type="string" value="$(arg description_name)" />
-        <param name="launch/useGnss" type="bool" value="$(arg using_gps)" />
-        <param name="launch/useLioOdometry" type="bool" value="$(arg using_lio)" />
+        <param name="launch/useLeftGnss" type="bool" value="$(arg useLeftGnss)" />
+        <param name="launch/useRightGnss" type="bool" value="$(arg useRightGnss)" />
+        <param name="launch/useLioOdometry" type="bool" value="$(arg useLioOdometry)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_file)" />
         <rosparam command="load" file="$(arg core_graph_parameter_file)" />

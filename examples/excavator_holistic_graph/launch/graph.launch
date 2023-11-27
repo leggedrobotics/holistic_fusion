@@ -11,8 +11,9 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
-    <arg name="using_gps"                 default="true" />
-    <arg name="using_lio"                 default="true" />
+    <arg name="useLeftGnss"               default="true" />
+    <arg name="useRightGnss"              default="true" />
+    <arg name="useLioOdometry"            default="true" />
 
     <!-- Description -->
     <arg name="description_name"          default="/heap_description" />

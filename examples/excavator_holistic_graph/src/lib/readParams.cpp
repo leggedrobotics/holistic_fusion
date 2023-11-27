@@ -50,10 +50,11 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Launch Parameters
   /// LiDAR Odometry
   useLioOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/useLioOdometry", privateNode);
-  useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/useGnss", privateNode);
+  useLeftGnssFlag_ = graph_msf::tryGetParam<bool>("launch/useLeftGnss", privateNode);
+  useRightGnssFlag_ = graph_msf::tryGetParam<bool>("launch/useRightGnss", privateNode);
 
   // GNSS Parameters
-  if (useGnssFlag_) {
+  if (useLeftGnssFlag_ || useRightGnssFlag_) {
     // Gnss parameters
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
     gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));

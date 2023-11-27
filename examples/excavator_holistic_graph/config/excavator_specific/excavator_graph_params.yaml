@@ -2,7 +2,6 @@
 sensor_params:
   lioOdometryRate: 5 # Output rate of compSLAM
   gnssRate: 20 # Rate of the GNSS
-  gnssExactSyncPolicy: true # Timestamps of left and right Piksi Multi Gnss Receiver are slightly different (~nanoseconds)
   useGnssYaw: false  # If true, the yaw is computed from both GNSS positions and added as a factor
 
 # Noise Parameters

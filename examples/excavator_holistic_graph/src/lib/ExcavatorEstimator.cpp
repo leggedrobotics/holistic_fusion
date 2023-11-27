@@ -86,7 +86,7 @@ void ExcavatorEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   }
 
   // GNSS
-  if (useGnssFlag_) {
+  if (useLeftGnssFlag_ || useRightGnssFlag_) {
     subGnssLeft_.subscribe(privateNode, "/gnss_topic_1", ROS_QUEUE_SIZE);
     subGnssRight_.subscribe(privateNode, "/gnss_topic_2", ROS_QUEUE_SIZE);
     gnssExactSyncPtr_.reset(
@@ -129,7 +129,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
         "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
         dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->addUnaryPoseMeasurement(unary6DMeasurement);
-  } else if (!useGnssFlag_ || secondsSinceStart_() > 15) {  // Initializing
+  } else if (!(useLeftGnssFlag_ || useRightGnssFlag_) || secondsSinceStart_() > 15) {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
         "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
@@ -224,48 +224,56 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       }
     }
     // Measurement type 2: GNSS Left Position ----------------------------------------------------
-    leftGnssCovarianceXYZ = Eigen::Vector3d(std::max(leftGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
-                                            std::max(leftGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
-                                            std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
-        "GnssLeftPosition", int(gnssRate_), leftGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
-        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), W_t_W_GnssL, leftGnssCovarianceXYZ,
-        GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
-    if (!this->addPositionMeasurement(meas_W_t_W_GnssL)) {
-      if (leftGnssPositionHealthyFlag__) {
-        REGULAR_COUT << RED_START << " Gnss left position measurement not added." << COLOR_END << std::endl;
-        leftGnssPositionHealthyFlag__ = false;
+    if (useLeftGnssFlag_) {
+      leftGnssCovarianceXYZ = Eigen::Vector3d(std::max(leftGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
+                                              std::max(leftGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
+                                              std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
+      graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
+          "GnssLeftPosition", int(gnssRate_), leftGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
+          dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), W_t_W_GnssL, leftGnssCovarianceXYZ,
+          GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
+      if (!this->addPositionMeasurement(meas_W_t_W_GnssL)) {
+        if (leftGnssPositionHealthyFlag__) {
+          REGULAR_COUT << RED_START << " Gnss left position measurement not added." << COLOR_END << std::endl;
+          leftGnssPositionHealthyFlag__ = false;
+        }
+      } else if (!leftGnssPositionHealthyFlag__) {
+        REGULAR_COUT << GREEN_START << " Gnss left position measurement returned." << COLOR_END << std::endl;
+        leftGnssPositionHealthyFlag__ = true;
       }
-    } else if (!leftGnssPositionHealthyFlag__) {
-      REGULAR_COUT << GREEN_START << " Gnss left position measurement returned." << COLOR_END << std::endl;
-      leftGnssPositionHealthyFlag__ = true;
     }
     // Measurement type 3: GNSS Right Position ----------------------------------------------------
-    rightGnssCovarianceXYZ = Eigen::Vector3d(std::max(rightGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
-                                             std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
-                                             std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
-        "GnssRightPosition", int(gnssRate_), rightGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
-        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), W_t_W_GnssR, rightGnssCovarianceXYZ,
-        GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
-    if (!this->addPositionMeasurement(meas_W_t_W_GnssR)) {
-      if (rightGnssPositionHealthyFlag__) {
-        REGULAR_COUT << RED_START << " Gnss right position measurement not added." << COLOR_END << std::endl;
-        rightGnssPositionHealthyFlag__ = false;
+    if (useRightGnssFlag_) {
+      rightGnssCovarianceXYZ = Eigen::Vector3d(std::max(rightGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
+                                               std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
+                                               std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
+      graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
+          "GnssRightPosition", int(gnssRate_), rightGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
+          dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), W_t_W_GnssR, rightGnssCovarianceXYZ,
+          GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
+      if (!this->addPositionMeasurement(meas_W_t_W_GnssR)) {
+        if (rightGnssPositionHealthyFlag__) {
+          REGULAR_COUT << RED_START << " Gnss right position measurement not added." << COLOR_END << std::endl;
+          rightGnssPositionHealthyFlag__ = false;
+        }
+      } else if (!rightGnssPositionHealthyFlag__) {
+        REGULAR_COUT << GREEN_START << " Gnss right position measurement returned." << COLOR_END << std::endl;
+        rightGnssPositionHealthyFlag__ = true;
       }
-    } else if (!rightGnssPositionHealthyFlag__) {
-      REGULAR_COUT << GREEN_START << " Gnss right position measurement returned." << COLOR_END << std::endl;
-      rightGnssPositionHealthyFlag__ = true;
     }
     // Visualizations ------------------------------------------------------------
     // Left GNSS
-    addToPathMsg(measGnss_worldGnssLPathPtr_, staticTransformsPtr_->getWorldFrame(), leftGnssMsgPtr->header.stamp, W_t_W_GnssL,
-                 graphConfigPtr_->imuBufferLength * 4);
-    pubMeasWorldGnssLPath_.publish(measGnss_worldGnssLPathPtr_);
+    if (useLeftGnssFlag_) {
+      addToPathMsg(measGnss_worldGnssLPathPtr_, staticTransformsPtr_->getWorldFrame(), leftGnssMsgPtr->header.stamp, W_t_W_GnssL,
+                   graphConfigPtr_->imuBufferLength * 4);
+      pubMeasWorldGnssLPath_.publish(measGnss_worldGnssLPathPtr_);
+    }
     // Right GNSS
-    addToPathMsg(measGnss_worldGnssRPathPtr_, staticTransformsPtr_->getWorldFrame(), rightGnssMsgPtr->header.stamp, W_t_W_GnssR,
-                 graphConfigPtr_->imuBufferLength * 4);
-    pubMeasWorldGnssRPath_.publish(measGnss_worldGnssRPathPtr_);
+    if (useRightGnssFlag_) {
+      addToPathMsg(measGnss_worldGnssRPathPtr_, staticTransformsPtr_->getWorldFrame(), rightGnssMsgPtr->header.stamp, W_t_W_GnssR,
+                   graphConfigPtr_->imuBufferLength * 4);
+      pubMeasWorldGnssRPath_.publish(measGnss_worldGnssRPathPtr_);
+    }
   }
 }
 

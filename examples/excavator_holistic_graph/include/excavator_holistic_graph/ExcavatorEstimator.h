@@ -103,9 +103,9 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
   /// Flags
   bool useLioOdometryFlag_ = true;
-  bool useGnssFlag_ = true;
+  bool useLeftGnssFlag_ = true;
+  bool useRightGnssFlag_ = true;
   bool useGnssYawFlag_ = true;
-  bool useBothGnssFlag_ = true;
 };
 }  // namespace excavator_se
 #endif  // end EXCAVATOR_ESTIMATOR_H
