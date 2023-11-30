@@ -31,6 +31,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   graph_msf
   kdl_parser
   nav_msgs
+  geometry_msgs
   tf
 )
 
