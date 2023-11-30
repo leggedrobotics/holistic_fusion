@@ -12,6 +12,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 
 // ROS
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
@@ -51,6 +53,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
+  void leggedOdometryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr);
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
@@ -81,6 +84,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Instances
   ros::Subscriber subLidarOdometry_;
   ros::Subscriber subGnss_;
+  ros::Subscriber leggedOdometry_;
   tf::TransformListener tfListener_;
 
   // Publishers
@@ -97,6 +101,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Initialization
   bool initialized_ = false;
+  bool useLeggedOdometryFlag_ = true;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H

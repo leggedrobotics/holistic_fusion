@@ -89,6 +89,13 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
                                                               ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnss_.getTopic() << std::endl;
   }
+
+  // Legged Odometry
+  if (useLeggedOdometryFlag_) {
+    leggedOdometry_ = privateNode_.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+        "/legged_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized Legged Odometry subscriber with topic: " << leggedOdometry_.getTopic() << std::endl;
+  }
 }
 
 void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
@@ -101,6 +108,48 @@ void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
 
 void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
   //
+}
+
+void AnymalEstimator::leggedOdometryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr) {
+  // Static members
+  static int leggedOdometryCallbackCounter__ = -1;
+  static Eigen::Isometry3d T_O_Leg_km1__ = Eigen::Isometry3d::Identity();
+  static double legOdometryTimeKm1__ = 0.0;
+
+  // Counter
+  ++leggedOdometryCallbackCounter__;
+
+  // Eigen Type
+  Eigen::Isometry3d T_O_Leg_k = Eigen::Isometry3d::Identity();
+
+  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
+
+  legPoseBetweenNoise_ << 0.2, 0.2, 0.2, 0.05, 0.05, 0.05;
+
+  graph_msf::geometryPoseToEigen(*leggedOdometryKPtr, T_O_Leg_k.matrix());
+  double legOdometryTimeK = leggedOdometryKPtr->header.stamp.toSec();
+
+  if (leggedOdometryCallbackCounter__ > 0) {
+    if (areYawAndPositionInited()) {
+      // Compute Delta
+      Eigen::Isometry3d T_Wkm1_Wk = T_O_Leg_km1__.inverse() * T_O_Leg_k;
+      // Create measurement
+      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement("Leg_odometry_6D", int(400), legOdometryTimeKm1__,
+                                                                              legOdometryTimeK, "base", T_Wkm1_Wk, legPoseBetweenNoise_);
+      // Add to graph
+      graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
+    } /* else if (!useLioOdometryFlag_ && areRollAndPitchInited()) {
+       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+           "Lidar_unary_6D", int(400), legOdometryTimeK, staticTransformsPtr_->getWorldFrame(), "base", Eigen::Isometry3d::Identity(),
+           Eigen::MatrixXd::Identity(6, 6));
+       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+       REGULAR_COUT << " Initialized yaw and position to identity in the leg odometry callback, as lio is set to false." << std::endl;
+     }*/
+  }
+
+  // Provide next iteration
+  T_O_Leg_km1__ = T_O_Leg_k;
+  legOdometryTimeKm1__ = legOdometryTimeK;
 }
 
 void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {

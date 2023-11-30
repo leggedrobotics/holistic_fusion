@@ -20,11 +20,13 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
   void setWheelOdometryFrame(const std::string& s) { wheelOdometryFrame_ = s; }
+  void setLegOdometryFrame(const std::string& s) { legOdometryFrame_ = s; }
   void setVioOdometryFrame(const std::string& s) { vioOdometryFrame_ = s; }
 
   // Getters
   const std::string& getLioOdometryFrame() { return lidarOdometryFrame_; }
   const std::string& getWheelOdometryFrame() { return wheelOdometryFrame_; }
+  const std::string& getLegOdometryFrame() { return legOdometryFrame_; }
   const std::string& getVioOdometryFrame() { return vioOdometryFrame_; }
 
  private:
@@ -33,6 +35,7 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   // Members
   std::string lidarOdometryFrame_;
   std::string wheelOdometryFrame_;
+  std::string legOdometryFrame_;
   std::string vioOdometryFrame_;
 };
 }  // namespace smb_se

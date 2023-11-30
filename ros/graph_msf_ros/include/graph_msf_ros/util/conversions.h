@@ -8,6 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GMSF_EIGEN_CONVERSIONS_H
 #define GMSF_EIGEN_CONVERSIONS_H
 
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
 #include <Eigen/Dense>
@@ -17,6 +19,8 @@ namespace graph_msf {
 Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam);
 
 void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T);
+
+void geometryPoseToEigen(const geometry_msgs::PoseWithCovarianceStamped& odomLidar, Eigen::Matrix4d& T);
 
 void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T);
 
