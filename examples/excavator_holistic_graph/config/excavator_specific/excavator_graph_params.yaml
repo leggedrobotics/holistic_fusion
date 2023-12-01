@@ -1,0 +1,13 @@
+# Sensor Params
+sensor_params:
+  lioOdometryRate: 5 # Output rate of compSLAM
+  gnssRate: 20 # Rate of the GNSS
+  useGnssYaw: false  # If true, the yaw is computed from both GNSS positions and added as a factor
+
+# Noise Parameters
+noise_params:
+  ## LiDAR
+  lioPoseUnaryNoise: [ 0.25, 0.25, 0.25, 0.05, 0.05, 0.05 ] # ORDER RPY(rad) - XYZ(meters)
+  ## GNSS
+  gnssPositionUnaryNoise: 0.04 # x, y, z of global position
+  gnssHeadingUnaryNoise: 0.2   # radians

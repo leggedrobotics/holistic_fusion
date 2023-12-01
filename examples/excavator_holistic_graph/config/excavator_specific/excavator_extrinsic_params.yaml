@@ -1,0 +1,7 @@
+#External Prior/Transform Input
+extrinsics:
+  cabinFrame: CABIN
+  lidarFrame: os_sensor                     #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+  gnssFrame1: GNSS_L
+  gnssFrame2: GNSS_R
+  initializeZeroYawAndPositionOfFrame: os_sensor

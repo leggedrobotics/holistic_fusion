@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <param name="use_sim_time"            value="true"/>
+
+    <!-- Input Topics -->
+    <arg name="imu_topic_name"            default="/microstrain_imu_node/microstrain_imu" />
+    <arg name="lidar_odometry_topic_name" default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />
+    <arg name="gnss_left_topic_name"      default="/m545_gnss_left" />
+    <arg name="gnss_right_topic_name"     default="/m545_gnss_right" />
+
+    <!-- Config -->
+    <arg name="extrinsics_from_urdf"      default="false" />
+    <arg name="useLeftGnss"               default="true" />
+    <arg name="useRightGnss"              default="true" />
+    <arg name="useLioOdometry"            default="true" />
+
+    <!-- Description -->
+    <arg name="description_name"          default="/heap_description" />
+
+    <!-- Graph -->
+    <include file="$(find excavator_holistic_graph)/launch/graph_no_urdf.launch" pass_all_args="true"/>
+
+    <!-- Robot Desription -->
+    <include file="$(find heap_urdf)/launch/load.launch" >
+        <!-- Excavator and environment -->
+        <arg name="simulation"           value="true"/>
+        <arg name="description_name"     value="$(arg description_name)"/>
+    </include>
+
+</launch>
