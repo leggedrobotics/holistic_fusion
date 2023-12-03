@@ -21,6 +21,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   // Sensor Params
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
+  leggedOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters
@@ -28,12 +29,22 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
+
+  /// LiDAR Odometry
+  const auto legPoseBetweenNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/legPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  legPoseBetweenNoise_ << legPoseBetweenNoise[0], legPoseBetweenNoise[1], legPoseBetweenNoise[2], legPoseBetweenNoise[3],
+      legPoseBetweenNoise[4], legPoseBetweenNoise[5];
+
   /// Gnss
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
   gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
   // GNSS
   useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
+
+  // Legged Odometry
+  useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
 
   // Gnss parameters
   if (useGnssFlag_) {
@@ -48,6 +59,11 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   /// LiDAR frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lioOdometryFrame", privateNode));
+
+  /// Legged Odometry frame
+  dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
+      ->setLeggedOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/leggedOdometryFrame", privateNode));
+
   /// Gnss frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
       ->setGnssFrame(graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame", privateNode));

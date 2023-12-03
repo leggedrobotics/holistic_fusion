@@ -68,13 +68,16 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Config -------------------------------------
   // Rates
   double lioOdometryRate_ = 5.0;
+  double leggedOdometryRate_ = 400.0;
   double gnssRate_ = 10.0;
 
   // Flags
   bool useGnssFlag_ = false;
+  bool useLeggedOdometryFlag_ = true;
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   double gnssHeadingUnaryNoise_ = 1.0;   // in [rad]
 
@@ -101,7 +104,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Initialization
   bool initialized_ = false;
-  bool useLeggedOdometryFlag_ = true;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H

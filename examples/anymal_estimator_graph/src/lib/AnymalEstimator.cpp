@@ -25,15 +25,18 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
-  // GNSS
-  if (useGnssFlag_) {
-    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
-  }
+
+  // GNSS Handler
+  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
   // Set up
   if (!AnymalEstimator::setup()) {
     REGULAR_COUT << COLOR_END << " Failed to set up." << std::endl;
     std::runtime_error("ANYmalEstimatorGraph failed to set up.");
+  }
+
+  if (!useGnssFlag_) {
+    delete gnssHandlerPtr_.get();
   }
 
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
@@ -122,29 +125,24 @@ void AnymalEstimator::leggedOdometryCallback_(const geometry_msgs::PoseWithCovar
   // Eigen Type
   Eigen::Isometry3d T_O_Leg_k = Eigen::Isometry3d::Identity();
 
-  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
-
-  legPoseBetweenNoise_ << 0.2, 0.2, 0.2, 0.05, 0.05, 0.05;
-
   graph_msf::geometryPoseToEigen(*leggedOdometryKPtr, T_O_Leg_k.matrix());
   double legOdometryTimeK = leggedOdometryKPtr->header.stamp.toSec();
 
-  if (leggedOdometryCallbackCounter__ > 0) {
-    if (areYawAndPositionInited()) {
+  // LegOdom should't care about yaw alignment since it is an odometry measurement.
+  // areYawAndPositionInited()
+
+  // TODO (Does waiting for alignment better?)
+  if (areRollAndPitchInited()) {
+    if (leggedOdometryCallbackCounter__ > 0) {
       // Compute Delta
-      Eigen::Isometry3d T_Wkm1_Wk = T_O_Leg_km1__.inverse() * T_O_Leg_k;
+      const Eigen::Isometry3d T_Wkm1_Wk = T_O_Leg_km1__.inverse() * T_O_Leg_k;
       // Create measurement
-      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement("Leg_odometry_6D", int(400), legOdometryTimeKm1__,
-                                                                              legOdometryTimeK, "base", T_Wkm1_Wk, legPoseBetweenNoise_);
+      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+          "Leg_odometry_6D", int(leggedOdometryRate_), legOdometryTimeKm1__, legOdometryTimeK,
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(), T_Wkm1_Wk, legPoseBetweenNoise_);
       // Add to graph
       graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
-    } /* else if (!useLioOdometryFlag_ && areRollAndPitchInited()) {
-       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-           "Lidar_unary_6D", int(400), legOdometryTimeK, staticTransformsPtr_->getWorldFrame(), "base", Eigen::Isometry3d::Identity(),
-           Eigen::MatrixXd::Identity(6, 6));
-       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
-       REGULAR_COUT << " Initialized yaw and position to identity in the leg odometry callback, as lio is set to false." << std::endl;
-     }*/
+    }
   }
 
   // Provide next iteration
@@ -180,7 +178,9 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
         "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
         dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
-    this->initYawAndPosition(unary6DMeasurement);
+    if (!useGnssFlag_) {
+      this->initYawAndPosition(unary6DMeasurement);
+    }
   }
 
   // Wrap up iteration
@@ -247,6 +247,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
       // Decrease counter if not successfully initialized
+      std::cout << YELLOW_START << "DECREASING" << COLOR_END << " ++!" << std::endl;
       --gnssCallbackCounter__;
     }
   } else {
