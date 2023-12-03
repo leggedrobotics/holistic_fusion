@@ -20,10 +20,12 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   // Setters
   void setLioOdometryFrame(const std::string& s) { lioOdometryFrame_ = s; }
   void setGnssFrame(const std::string& s) { gnssFrame_ = s; }
+  void setLeggedOdometryFrame(const std::string& s) { leggedOdometryFrame_ = s; }
 
   // Getters
   const std::string& getLioOdometryFrame() { return lioOdometryFrame_; }
   const std::string& getGnssFrame() { return gnssFrame_; }
+  const std::string& getLeggedOdometryFrame() { return leggedOdometryFrame_; }
 
  private:
   void findTransformations() override;
@@ -31,6 +33,7 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   // Members
   std::string lioOdometryFrame_;
   std::string gnssFrame_;
+  std::string leggedOdometryFrame_;
 };
 }  // namespace anymal_se
-#endif  // end AsopStaticTransforms_H
+#endif  // end AnymalStaticTransforms_H

@@ -1,12 +1,15 @@
 # Sensor Params
 sensor_params:
   lioOdometryRate: 10
+  leggedOdometryRate: 400
   gnssRate: 20
 
 # Noise Parameters
 noise_params:
- ## LiDAR
+  ## LiDAR
   lioPoseUnaryNoise: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  ## Legged Odometry
+  legPoseBetweenNoise: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## GNSS
   gnssPositionUnaryNoise: 0.1 # x, y, z of global position
   gnssHeadingUnaryNoise: 0.5 # yaw
