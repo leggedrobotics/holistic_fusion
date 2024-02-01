@@ -92,7 +92,20 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
   // Get Result
-  const gtsam::ISAM2Result& getResult() override { return fixedLagSmootherPtr_->getISAM2Result(); }
+  const gtsam::Values& getAllOptimizedStates() override
+  {
+    fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
+    return fixedLagSmootherOptimizedResult_;
+  }
+
+  // Get all keys of optimized states
+  gtsam::KeyVector getAllOptimizedKeys() override { return fixedLagSmootherOptimizedResult_.keys(); }
+
+  // Get nonlinear factor graph
+  const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const { return fixedLagSmootherPtr_->getFactors(); }
+
+  // Get keyTimestampMap
+  const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return fixedLagSmootherPtr_->timestamps();}
 
   // Calculate State at Key
   template <class ESTIMATE_TYPE>
@@ -118,6 +131,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
  private:
   // Optimizer itself
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
+  // Result
+  gtsam::Values fixedLagSmootherOptimizedResult_;
 };
 
 }  // namespace graph_msf

@@ -40,22 +40,32 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
   }
 
   // Optimize bundle adjustement smoother (if desired)
-  const gtsam::ISAM2Result& getResult() override {
+  const gtsam::Values& getAllOptimizedStates() override {
     // Print
     std::cout << YELLOW_START << "GraphMSF: OptimizerIsam2Batch" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END
               << std::endl;
 
     // Optimize
-    batchSmootherResult_ = batchSmootherPtr_->update(containerBatchSmootherFactors_, containerBatchSmootherValues_);
+    batchSmootherIsam2Result_ = batchSmootherPtr_->update(containerBatchSmootherFactors_, containerBatchSmootherValues_);
     // Reset containers
     containerBatchSmootherFactors_.resize(0);
     containerBatchSmootherValues_.clear();
+
+    // Get optimized result
+    batchSmootherOptimizedResult_ = batchSmootherPtr_->calculateEstimate();
+
     // Return result
-    return batchSmootherResult_;
+    return batchSmootherOptimizedResult_;
   }
 
+  // Get all keys of optimized states
+  gtsam::KeyVector getAllOptimizedKeys() override { return batchSmootherOptimizedResult_.keys(); }
+
+  // Get nonlinear factor graph
+  const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const override { return batchSmootherPtr_->getFactorsUnsafe(); }
+
   // Get keyTimestampMap
-  const std::map<gtsam::Key, double>& getFullKeyTimestampMap() { return batchSmootherKeyTimestampMap_; }
+  const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return batchSmootherKeyTimestampMap_; }
 
   // Calculate States
   gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) override { return batchSmootherPtr_->calculateEstimate<gtsam::Pose3>(key); }
@@ -84,7 +94,8 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
   gtsam::NonlinearFactorGraph containerBatchSmootherFactors_;
   gtsam::Values containerBatchSmootherValues_;
   // Result and keyTimestampMap
-  gtsam::ISAM2Result batchSmootherResult_;
+  gtsam::ISAM2Result batchSmootherIsam2Result_;
+  gtsam::Values batchSmootherOptimizedResult_;
   std::map<gtsam::Key, double> batchSmootherKeyTimestampMap_;
 };
 

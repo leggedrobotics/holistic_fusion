@@ -18,9 +18,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include <mutex>
 #include <vector>
 
-// GTSAM
-#include <gtsam/inference/Symbol.h>
-
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
@@ -86,6 +83,12 @@ class GraphManager {
 
   // Slow Graph Update (if desired)
   void optimizeSlowBatchSmoother();
+
+    // Save Variables to File
+    static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap, const std::string& savePath);
+
+    // Save Optimized Graph to G2O Format
+    static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues, const std::string& saveFileName);
 
   // Comfort functions ---------------------------------------------------------
   gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);

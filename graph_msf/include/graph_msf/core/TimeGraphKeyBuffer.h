@@ -17,8 +17,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-typedef std::map<double, gtsam::Key, std::less<double>, Eigen::aligned_allocator<std::pair<const double, gtsam::Vector6>>> TimeToKeyMap;
-typedef std::map<gtsam::Key, double, std::less<gtsam::Key>> KeyToTimeMap;
+typedef std::map<double, gtsam::Key> TimeToKeyMap;
+typedef std::map<gtsam::Key, double> KeyToTimeMap;
 
 class TimeGraphKeyBuffer {
  public:

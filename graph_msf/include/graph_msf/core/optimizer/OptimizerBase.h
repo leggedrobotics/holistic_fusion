@@ -24,10 +24,16 @@ class OptimizerBase {
   ~OptimizerBase() = default;
 
   // Virtual function to be implemented by derived classes
+ // Add factors
   virtual bool update() = 0;
   virtual bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                       const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) = 0;
-  virtual const gtsam::ISAM2Result& getResult() = 0;
+ // Run (Batch) Optimization and get result
+  virtual const gtsam::Values& getAllOptimizedStates() = 0;
+ virtual gtsam::KeyVector getAllOptimizedKeys() = 0;
+ virtual const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const = 0;
+ // Get keyTimestampMap
+ virtual const std::map<gtsam::Key, double>& getFullKeyTimestampMap() = 0;
 
   // Calculate State at Key
   virtual gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) = 0;

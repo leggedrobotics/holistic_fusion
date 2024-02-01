@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -71,7 +71,7 @@ bool AnymalEstimator::setup() {
 
 void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
   // Super
-  graph_msf::GraphMsfRos::initializePublishers_(privateNode);
+  GraphMsfRos::initializePublishers_(privateNode);
   // Paths
   pubMeasMapLioPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
   pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
@@ -93,7 +93,7 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
 
 void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
   // Super
-  graph_msf::GraphMsfRos::initializeMessages_(privateNode);
+  GraphMsfRos::initializeMessages_(privateNode);
   // Path
   measLio_mapImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -106,8 +106,6 @@ void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
 void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int lidarOdometryCallbackCounter__ = -1;
-  static Eigen::Isometry3d lio_T_M_LKm1__;
-  static double lidarOdometryTimeKm1__ = 0;
 
   // Counter
   ++lidarOdometryCallbackCounter__;
@@ -133,10 +131,6 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
         dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->initYawAndPosition(unary6DMeasurement);
   }
-
-  // Wrap up iteration
-  lio_T_M_LKm1__ = lio_T_M_Lk;
-  lidarOdometryTimeKm1__ = lidarOdometryTimeK;
 
   // Visualization ----------------------------
   // Add to path message

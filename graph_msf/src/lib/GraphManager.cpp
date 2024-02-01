@@ -12,6 +12,9 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <type_traits>
 
+// IO
+#include <gtsam/slam/dataset.h>
+
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/navigation/GPSFactor.h>
@@ -21,6 +24,10 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/core/GraphManager.hpp"
+
+#include <string>
+#include <string>
+
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
 #include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
 
@@ -645,11 +652,44 @@ void GraphManager::optimizeSlowBatchSmoother() {
   // Time duration of optimization
   std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
   // Optimization
-  batchOptimizerPtr_->getResult();
+  const gtsam::Values& isam2OptimizedStates = batchOptimizerPtr_->getAllOptimizedStates();
+  // Key to timestamp map
+  const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
   // Calculate Duration
   std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
   double optimizationDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
   std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
+
+  // Save Optimized Result
+  saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "~/");
+}
+
+  // Save optimized values to file
+  void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap, const std::string& savePath) {
+  // Keep track of created files
+  std::vector<std::string> createdFiles;
+
+
+  // Save optimized states
+  // SE(3) states
+  for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>())
+  {
+    const gtsam::Key& key = keyPosePair.first;
+    const gtsam::Pose3& pose = keyPosePair.second;
+    const gtsam::Symbol symbol(key);
+    //std::cout << symbol.chr() << symbol.index() << std::endl;
+    std::string fileName = savePath + "optimizedPose3_" + std::string(1, symbol.chr()) + std::to_string(symbol.index()) + ".csv";
+    std::cout << "Saving optimized Pose3 to file: " << fileName << std::endl;
+    std::cout << "Corresponding timestamp: " << std::setprecision(14) << keyTimestampMap.at(key) << std::endl;
+  }
+
+  // R(3) states (e.g. Velocity)
+}
+
+// Save optimized Graph to Common Open source G2o format
+  void GraphManager::saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues, const std::string& saveFileName) {
+  // Safe optimized states
+  gtsam::writeG2o(optimizedGraph.getNonlinearFactorGraph(), optimizedValues, saveFileName);
 }
 
 // Calculate State at Key
