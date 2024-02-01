@@ -5,88 +5,27 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef OptimizerIsam2_HPP
-#define OptimizerIsam2_HPP
+#ifndef OPTIMIZER_ISAM2_FIXED_LAG_HPP
+#define OPTIMIZER_ISAM2_FIXED_LAG_HPP
 
 // GTSAM
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
-#include <graph_msf/core/Optimizer.h>
+#include <graph_msf/core/optimizer/OptimizerIsam2.hpp>
 
 namespace graph_msf {
 
-class OptimizerIsam2 : public Optimizer {
+class OptimizerIsam2FixedLag : public OptimizerIsam2 {
  public:
-  explicit OptimizerIsam2(const std::shared_ptr<GraphConfig> graphConfigPtr) : Optimizer(graphConfigPtr) {
-    // Standard ISAM2 Parameters
-    isam2Params_.findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag;
-    isam2Params_.enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag;
-    isam2Params_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
-    isam2Params_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
-    isam2Params_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
-    isam2Params_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
-    isam2Params_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
-
-    // Set graph re-linearization thresholds - must be lower-case letters,
-    // check:gtsam::symbol_shorthand
-    gtsam::FastMap<char, gtsam::Vector> relinTh;
-    /// Pose
-    relinTh['x'] =
-        (gtsam::Vector(6) << graphConfigPtr_->rotationReLinTh, graphConfigPtr_->rotationReLinTh, graphConfigPtr_->rotationReLinTh,
-         graphConfigPtr_->positionReLinTh, graphConfigPtr_->positionReLinTh, graphConfigPtr_->positionReLinTh)
-            .finished();
-    /// Velocity
-    relinTh['v'] =
-        (gtsam::Vector(3) << graphConfigPtr_->velocityReLinTh, graphConfigPtr_->velocityReLinTh, graphConfigPtr_->velocityReLinTh)
-            .finished();
-    /// Biases
-    relinTh['b'] = (gtsam::Vector(6) << graphConfigPtr_->accBiasReLinTh, graphConfigPtr_->accBiasReLinTh, graphConfigPtr_->accBiasReLinTh,
-                    graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh, graphConfigPtr_->gyroBiasReLinTh)
-                       .finished();
-    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
-      relinTh['t'] =
-          (gtsam::Vector(6) << graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh,
-           graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh, graphConfigPtr_->fixedFrameReLinTh)
-              .finished();
-    }
-    if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
-      relinTh['d'] = (gtsam::Vector(3) << graphConfigPtr_->displacementReLinTh, graphConfigPtr_->displacementReLinTh,
-                      graphConfigPtr_->displacementReLinTh)
-                         .finished();
-    }
-    isam2Params_.relinearizeThreshold = relinTh;
-
-    // Factorization
-    if (graphConfigPtr_->usingCholeskyFactorizationFlag) {
-      isam2Params_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
-    } else {
-      isam2Params_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly
-                                                            // conditioned problems
-    }
-
-    // Performance parameters
-    // Set graph relinearization skip
-    isam2Params_.relinearizeSkip = graphConfigPtr_->relinearizeSkip;
-    // Set relinearization
-    isam2Params_.enableRelinearization = graphConfigPtr_->enableRelinearizationFlag;
-    // Enable Nonlinear Error
-    isam2Params_.evaluateNonlinearError = graphConfigPtr_->evaluateNonlinearErrorFlag;
-    // Cache linearized factors
-    isam2Params_.cacheLinearizedFactors = graphConfigPtr_->cacheLinearizedFactorsFlag;
-    // Enable particular relinearization check
-    isam2Params_.enablePartialRelinearizationCheck = graphConfigPtr_->enablePartialRelinearizationCheckFlag;
-
-    // Wildfire parameters
-    isam2Params_.optimizationParams = gtsam::ISAM2GaussNewtonParams(graphConfigPtr_->gaussNewtonWildfireThreshold);
-
-    // Initialize Smoother -----------------------------------------------
+  explicit OptimizerIsam2FixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
+    // Initialize Real-time Smoother -----------------------------------------------
     fixedLagSmootherPtr_ =
-        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->smootherLag,
+        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag,
                                                              isam2Params_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
-    fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of global graph.");
+    fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of real-time graph.");
   }
-  ~OptimizerIsam2() = default;
+  ~OptimizerIsam2FixedLag() = default;
 
   bool update() override {
     fixedLagSmootherPtr_->update();
@@ -95,9 +34,9 @@ class OptimizerIsam2 : public Optimizer {
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
-    gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+    // Try to update
     try {
-      fixedLagSmootherCopy.update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
+      fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
     } catch (const std::out_of_range& outOfRangeExeception) {  // Not specifically catching
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START
                 << " Out of Range exception while optimizing graph: " << outOfRangeExeception.what() << COLOR_END << std::endl;
@@ -148,11 +87,12 @@ class OptimizerIsam2 : public Optimizer {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
-      return false;
     }
-    *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
     return true;
   }
+
+  // Get Result
+  const gtsam::ISAM2Result& getResult() override { return fixedLagSmootherPtr_->getISAM2Result(); }
 
   // Calculate State at Key
   template <class ESTIMATE_TYPE>
@@ -178,10 +118,8 @@ class OptimizerIsam2 : public Optimizer {
  private:
   // Optimizer itself
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
-  // Parameters
-  gtsam::ISAM2Params isam2Params_;
 };
 
 }  // namespace graph_msf
 
-#endif  // OptimizerIsam2_HPP
+#endif  // OPTIMIZER_ISAM2_FIXED_LAG_HPP

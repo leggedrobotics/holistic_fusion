@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
 // GTSAM
+#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/expressions.h>
 
 // Workspace

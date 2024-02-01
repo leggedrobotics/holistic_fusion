@@ -21,7 +21,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/core/GraphManager.hpp"
-#include "graph_msf/core/OptimizerIsam2.hpp"
+#include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
+#include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
 
 namespace graph_msf {
 
@@ -43,9 +44,12 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const st
 
   // Optimizer
   if (graphConfigPtr_->useIsamFlag) {
-    optimizerPtr_ = std::make_shared<OptimizerIsam2>(graphConfigPtr_);
+    rtOptimizerPtr_ = std::make_shared<OptimizerIsam2FixedLag>(graphConfigPtr_);
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+      batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
+    }
   } else {
-    // optimizerPtr_ = std::make_shared<OptimizerLM>(graphConfigPtr_,
+    // rtOptimizerPtr_ = std::make_shared<OptimizerLM>(graphConfigPtr_,
     // worldFrame_); Not implmented
     REGULAR_COUT << RED_START << " OptimizerLM is not implemented yet." << COLOR_END << std::endl;
     std::runtime_error("OptimizerLM is not implemented yet.");
@@ -119,7 +123,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
   /// Add prior factor to graph and optimize for the first time ----------------
   if (graphConfigPtr_->useIsamFlag) {
-    addFactorsToSmootherAndOptimize(optimizerPtr_, *factorGraphBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
+    addFactorsToSmootherAndOptimize(*factorGraphBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
   } else {
     throw std::runtime_error("Optimizer has to be ISAM at this stage.");
   }
@@ -418,7 +422,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
                                               const double lidarTimeKm1, const double lidarTimeK, const double rate) {
   // Find corresponding keys in graph
   // Find corresponding keys in graph
-  double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
+  const double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation;
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance;
 
@@ -430,7 +434,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   }
 
   // Scale delta pose according to timeStampDistance
-  double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
+  const double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
   if (graphConfigPtr_->verboseLevel > 3) {
     REGULAR_COUT << " Scaling factor in tangent space for pose between delta pose: " << scale << std::endl;
   }
@@ -457,8 +461,9 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   return closestKeyK;
 }
 
-gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::Optimizer> optimizerPtr,
-                                                     const gtsam::Key& key, const char* callingFunctionName) {
+gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag,
+                                                     const std::shared_ptr<graph_msf::OptimizerBase> optimizerPtr, const gtsam::Key& key,
+                                                     const char* callingFunctionName) {
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
   try {
@@ -513,9 +518,8 @@ void GraphManager::updateGraph() {
   }  // end of locking
 
   // Graph Update (time consuming) -------------------
-  bool successfulOptimizationFlag =
-      addFactorsToSmootherAndOptimize(optimizerPtr_, newGraphFactors, newGraphValues, newGraphKeysTimestampsMap, graphConfigPtr_,
-                                      graphConfigPtr_->additionalOptimizationIterations);
+  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap,
+                                                                    graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations);
   if (!successfulOptimizationFlag) {
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
@@ -523,12 +527,12 @@ void GraphManager::updateGraph() {
 
   // Compute entire result
   // NavState
-  gtsam::NavState resultNavState = calculateNavStateAtKey(successfulOptimizationFlag, optimizerPtr_, currentPropagatedKey, __func__);
+  gtsam::NavState resultNavState = calculateNavStateAtKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
   // Bias
-  gtsam::imuBias::ConstantBias resultBias = optimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
+  gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // Compute Covariance
-  gtsam::Matrix66 resultPoseCovariance = optimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
-  gtsam::Matrix33 resultVelocityCovariance = optimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  gtsam::Matrix66 resultPoseCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
+  gtsam::Matrix33 resultVelocityCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
   // FixedFrame Transformations
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
@@ -544,11 +548,11 @@ void GraphManager::updateGraph() {
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance;
         if (gtsam::Symbol(key).string()[0] == 't') {
-          T_frame1_frame2 = optimizerPtr_->calculateEstimatedPose(key);
-          T_frame1_frame2_covariance = optimizerPtr_->marginalCovariance(key);
+          T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
+          T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
         } else if (gtsam::Symbol(key).string()[0] == 'd') {
-          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(optimizerPtr_->calculateEstimatedDisplacement(key)));
-          T_frame1_frame2_covariance.block<3, 3>(3, 3) = optimizerPtr_->marginalCovariance(key);
+          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(rtOptimizerPtr_->calculateEstimatedDisplacement(key)));
+          T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
         } else {
           throw std::runtime_error("Key is neither a pose nor a displacement key.");
         }
@@ -637,36 +641,20 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-// Returns true if the factors/values were added without any problems
-// Otherwise returns false (e.g. if exception occurs while adding
-bool GraphManager::addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> optimizerPtr,
-                                                   const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                                   const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                                   const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
-  // Timing
-  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime;
-  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
-  startLoopTime = std::chrono::high_resolution_clock::now();
+void GraphManager::optimizeSlowBatchSmoother() {
+  // Time duration of optimization
+  std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
+  // Optimization
+  batchOptimizerPtr_->getResult();
+  // Calculate Duration
+  std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
+  double optimizationDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
+  std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
+}
 
-  // Perform update
-  bool successFlag = optimizerPtr->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
-  // Additional iterations
-  for (size_t itr = 0; itr < additionalIterations; ++itr) {
-    successFlag = successFlag && optimizerPtr->update();
-  }
-
-  if (graphConfigPtr->verboseLevel > 0) {
-    endLoopTime = std::chrono::high_resolution_clock::now();
-    REGULAR_COUT << GREEN_START << " Whole optimization loop took "
-                 << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
-                 << COLOR_END << std::endl;
-  }
-
-  return successFlag;
-}  // namespace graph_msf
-
+// Calculate State at Key
 gtsam::NavState GraphManager::calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key) {
-  return calculateNavStateAtKey(computeSuccessfulFlag, optimizerPtr_, key, __func__);
+  return calculateNavStateAtKey(computeSuccessfulFlag, rtOptimizerPtr_, key, __func__);
 }
 
 // Private --------------------------------------------------------------------
@@ -679,7 +667,7 @@ template <class CHILDPTR>
 void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
-      graphConfigPtr_->smootherLag - WORST_CASE_OPTIMIZATION_TIME) {
+      graphConfigPtr_->realTimeSmootherLag - WORST_CASE_OPTIMIZATION_TIME) {
     REGULAR_COUT << RED_START
                  << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
                  << COLOR_END << std::endl;
@@ -694,6 +682,72 @@ void GraphManager::addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseM
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   // Add measurements
   addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr, measurementTimestamp);
+}
+
+// Update of the two IMU pre-integrators
+void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
+  if (imuMeas.size() < 2) {
+    REGULAR_COUT << " Received less than 2 IMU messages --- No Preintegration done." << std::endl;
+    return;
+  } else if (imuMeas.size() > 2) {
+    REGULAR_COUT << RED_START << "Currently only supporting two IMU messages for pre-integration." << COLOR_END << std::endl;
+    throw std::runtime_error("Terminating.");
+  }
+
+  // Reset IMU Step Preintegration
+  if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+  } else {
+    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
+  }
+
+  // Start integrating with imu_meas.begin()+1 meas to calculate dt,
+  // imu_meas.begin() meas was integrated before
+  auto currItr = imuMeas.begin();
+  auto prevItr = currItr++;
+
+  // Calculate dt and integrate IMU measurements for both preintegrators
+  for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
+    double dt = currItr->first - prevItr->first;
+    imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,       // acc
+                                                   currItr->second.angularVelocity,    // gyro
+                                                   dt);                                // delta t
+    imuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
+                                                     currItr->second.angularVelocity,  // gyro
+                                                     dt);
+  }
+}
+
+// Returns true if the factors/values were added without any problems
+// Otherwise returns false (e.g. if exception occurs while adding
+bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
+                                                   const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
+                                                   const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
+  // Timing
+  std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
+  std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
+
+  // Perform update
+  bool successFlag = rtOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+  // Additional iterations
+  for (size_t itr = 0; itr < additionalIterations; ++itr) {
+    successFlag = successFlag && rtOptimizerPtr_->update();
+  }
+
+  // Add Factors and States to Batch Optimization (if desired) without running optimization
+  if (graphConfigPtr->useAdditionalSlowBatchSmoother) {
+    batchOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+  }
+
+  // Logging
+  if (graphConfigPtr->verboseLevel > 0) {
+    endLoopTime = std::chrono::high_resolution_clock::now();
+    REGULAR_COUT << GREEN_START << " Whole optimization loop took "
+                 << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."
+                 << COLOR_END << std::endl;
+  }
+
+  return successFlag;
 }
 
 bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance,
@@ -738,39 +792,6 @@ void GraphManager::writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values,
                                                     std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
   for (const auto& value : values) {
     writeKeyToKeyTimeStampMap_(value.key, measurementTime, keyTimestampMapPtr);
-  }
-}
-
-void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
-  if (imuMeas.size() < 2) {
-    REGULAR_COUT << " Received less than 2 IMU messages --- No Preintegration done." << std::endl;
-    return;
-  } else if (imuMeas.size() > 2) {
-    REGULAR_COUT << RED_START << "Currently only supporting two IMU messages for pre-integration." << COLOR_END << std::endl;
-    throw std::runtime_error("Terminating.");
-  }
-
-  // Reset IMU Step Preintegration
-  if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
-    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
-  } else {
-    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
-  }
-
-  // Start integrating with imu_meas.begin()+1 meas to calculate dt,
-  // imu_meas.begin() meas was integrated before
-  auto currItr = imuMeas.begin();
-  auto prevItr = currItr++;
-
-  // Calculate dt and integrate IMU measurements for both preintegrators
-  for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
-    double dt = currItr->first - prevItr->first;
-    imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,       // acc
-                                                   currItr->second.angularVelocity,    // gyro
-                                                   dt);                                // delta t
-    imuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
-                                                     currItr->second.angularVelocity,  // gyro
-                                                     dt);
   }
 }
 

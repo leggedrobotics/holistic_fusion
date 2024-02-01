@@ -24,9 +24,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
-#include "graph_msf/core/Optimizer.h"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/TransformsExpressionKeys.h"
+#include "graph_msf/core/optimizer/OptimizerBase.h"
 #include "graph_msf/factors/HeadingFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
@@ -38,7 +38,13 @@ namespace graph_msf {
 class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& imuFrame, const std::string& worldFrame);
-  ~GraphManager(){};
+  ~GraphManager() {
+    std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+      std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END << std::endl;
+      optimizeSlowBatchSmoother();
+    }
+  };
 
   // Initialization Interface ---------------------------------------------------
   bool initImuIntegrators(const double g);
@@ -75,7 +81,11 @@ class GraphManager {
                                   const double lidarTimeKm1, const double lidarTimeK, const double rate);
 
   // Update of graph  ----------------------------------------------------------
+  // Real-time Graph Update
   void updateGraph();
+
+  // Slow Graph Update (if desired)
+  void optimizeSlowBatchSmoother();
 
   // Comfort functions ---------------------------------------------------------
   gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
@@ -91,7 +101,7 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::Optimizer> graphPtr,
+  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
                                                 const gtsam::Key& key, const char* callingFunctionName);
 
  private:
@@ -106,10 +116,9 @@ class GraphManager {
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
-  static bool addFactorsToSmootherAndOptimize(std::shared_ptr<graph_msf::Optimizer> smootherPtr,
-                                              const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                              const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                              const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
+                                       const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
+                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, const double maxTimestampDistance,
                       const double timeKm1, const double timeK, const std::string& name);
@@ -144,8 +153,9 @@ class GraphManager {
   double propagatedStateTime_ = 0.0;                         // Current state time
   gtsam::Vector3 currentAngularVelocity_ = gtsam::Vector3(0, 0, 0);
 
-  // Optimizer
-  std::shared_ptr<graph_msf::Optimizer> optimizerPtr_;
+  // Optimizer(s)
+  std::shared_ptr<OptimizerBase> rtOptimizerPtr_;
+  std::shared_ptr<OptimizerBase> batchOptimizerPtr_;
   /// Data buffer
   std::shared_ptr<gtsam::NonlinearFactorGraph> factorGraphBufferPtr_;
   // Values map

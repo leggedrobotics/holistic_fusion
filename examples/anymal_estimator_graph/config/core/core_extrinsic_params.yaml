@@ -2,6 +2,6 @@
 extrinsics:
   worldFrame: world_graph_msf_
   odomFrame: odom_graph_msf_
-  imuFrame: imu_link       # IMU_CABIN_link           #Frame of IMU used in integrator - Used for lookup transform to lidarFrame
+  imuFrame: imu_link
   baseLinkFrame: base
   initializeZeroYawAndPositionOfFrame: imu_link

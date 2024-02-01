@@ -24,7 +24,9 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
 
   // Graph Params
   graphConfigPtr_->useIsamFlag = tryGetParam<bool>("graph_params/useIsam", privateNode);
-  graphConfigPtr_->smootherLag = tryGetParam<double>("graph_params/smootherLag", privateNode);
+  graphConfigPtr_->realTimeSmootherLag = tryGetParam<double>("graph_params/realTimeSmootherLag", privateNode);
+  graphConfigPtr_->useAdditionalSlowBatchSmoother = tryGetParam<bool>("graph_params/useAdditionalSlowBatchSmoother", privateNode);
+  // Optimizer Config
   graphConfigPtr_->gaussNewtonWildfireThreshold = tryGetParam<double>("graph_params/gaussNewtonWildfireThreshold", privateNode);
   graphConfigPtr_->maxOptimizationFrequency = tryGetParam<double>("graph_params/maxOptimizationFrequency", privateNode);
   graphConfigPtr_->additionalOptimizationIterations = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);

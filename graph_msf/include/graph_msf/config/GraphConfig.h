@@ -36,7 +36,9 @@ struct GraphConfig {
 
   // Factor Graph
   bool useIsamFlag = true;
-  double smootherLag = 1.5;
+  double realTimeSmootherLag = 1.5;
+  bool useAdditionalSlowBatchSmoother = false;
+  // Optimizer Config
   double gaussNewtonWildfireThreshold = 0.001;
   double maxOptimizationFrequency = 100;
   int additionalOptimizationIterations = 0;

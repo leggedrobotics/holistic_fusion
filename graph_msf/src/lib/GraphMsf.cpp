@@ -237,9 +237,9 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
     staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  const gtsam::Key keyAtMeasurementK =
-      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
-                                         deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate());
+  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
+                                                       deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
+                                                       deltaMeasurement.measurementRate()));
 
   // Optimize
   {
@@ -356,7 +356,8 @@ bool GraphMsf::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, 
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
 
-  graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10);
+  static_cast<void>(
+      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10));
   graphMgrPtr_->addVelocityUnaryFactor(gtsam::Vector3::Zero(), 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), timeKm1);
 
   return true;
