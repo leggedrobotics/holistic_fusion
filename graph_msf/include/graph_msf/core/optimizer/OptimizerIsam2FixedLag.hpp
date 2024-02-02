@@ -92,8 +92,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
   // Get Result
-  const gtsam::Values& getAllOptimizedStates() override
-  {
+  const gtsam::Values& getAllOptimizedStates() override {
     fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
     return fixedLagSmootherOptimizedResult_;
   }
@@ -105,7 +104,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const { return fixedLagSmootherPtr_->getFactors(); }
 
   // Get keyTimestampMap
-  const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return fixedLagSmootherPtr_->timestamps();}
+  const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return fixedLagSmootherPtr_->timestamps(); }
 
   // Calculate State at Key
   template <class ESTIMATE_TYPE>

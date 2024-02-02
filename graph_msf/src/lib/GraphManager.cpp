@@ -26,7 +26,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/GraphManager.hpp"
 
 #include <string>
-#include <string>
+#include <utility>
 
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
 #include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
@@ -35,10 +35,10 @@ namespace graph_msf {
 
 // Public --------------------------------------------------------------------
 
-GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& imuFrame, const std::string& worldFrame)
-    : graphConfigPtr_(graphConfigPtr),
-      imuFrame_(imuFrame),
-      worldFrame_(worldFrame),
+GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
+    : graphConfigPtr_(std::move(graphConfigPtr)),
+      imuFrame_(std::move(imuFrame)),
+      worldFrame_(std::move(worldFrame)),
       resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
       resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
   // Buffer
@@ -59,7 +59,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const st
     // rtOptimizerPtr_ = std::make_shared<OptimizerLM>(graphConfigPtr_,
     // worldFrame_); Not implmented
     REGULAR_COUT << RED_START << " OptimizerLM is not implemented yet." << COLOR_END << std::endl;
-    std::runtime_error("OptimizerLM is not implemented yet.");
+    throw std::runtime_error("OptimizerLM is not implemented yet.");
   }
 }
 
@@ -286,11 +286,11 @@ void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasure
     writeKeyToKeyTimeStampMap_(key, measurementTime, graphKeysTimestampsMapBufferPtr_);
   }
   // If one of the states was newly created, then add it to the values
-  if (newStateValues.size() > 0) {
+  if (!newStateValues.empty()) {
     graphValuesBufferPtr_->insert(newStateValues);
   }
   // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-  if (priorFactors.size() > 0) {
+  if (!priorFactors.empty()) {
     factorGraphBufferPtr_->add(priorFactors);
   }
 
@@ -661,33 +661,52 @@ void GraphManager::optimizeSlowBatchSmoother() {
   std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
 
   // Save Optimized Result
-  saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "~/");
+  saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "/home/nubertj/");
 }
 
-  // Save optimized values to file
-  void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap, const std::string& savePath) {
-  // Keep track of created files
-  std::vector<std::string> createdFiles;
-
+// Save optimized values to file
+void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
+                                             const std::string& savePath) {
+  // Map to hold file streams, keyed by category
+  std::map<char, std::ofstream> fileStreams;
 
   // Save optimized states
   // SE(3) states
-  for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>())
-  {
+  for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
+    // Read out information
     const gtsam::Key& key = keyPosePair.first;
     const gtsam::Pose3& pose = keyPosePair.second;
     const gtsam::Symbol symbol(key);
-    //std::cout << symbol.chr() << symbol.index() << std::endl;
-    std::string fileName = savePath + "optimizedPose3_" + std::string(1, symbol.chr()) + std::to_string(symbol.index()) + ".csv";
-    std::cout << "Saving optimized Pose3 to file: " << fileName << std::endl;
-    std::cout << "Corresponding timestamp: " << std::setprecision(14) << keyTimestampMap.at(key) << std::endl;
+    const char stateCategory = symbol.chr();
+    const double timeStamp = keyTimestampMap.at(key);
+    int stateIndex = symbol.index();
+
+    // Check if we already have a file stream for this category
+    if (fileStreams.find(stateCategory) == fileStreams.end()) {
+      // If not, create a new file stream for this category
+      std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + ".csv";
+      fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);  // Open for writing and appending
+                                                                                           // Write header
+      fileStreams[stateCategory] << "time, x, y, z, roll, pitch, yaw\n";
+    }
+
+    // Write the values to the appropriate file
+    fileStreams[stateCategory] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
+                               << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
+  }
+
+  // Close all file streams
+  for (auto& pair : fileStreams) {
+    pair.second.close();
   }
 
   // R(3) states (e.g. Velocity)
+  // TODO: later the remaining states
 }
 
 // Save optimized Graph to Common Open source G2o format
-  void GraphManager::saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues, const std::string& saveFileName) {
+void GraphManager::saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,
+                                           const std::string& saveFileName) {
   // Safe optimized states
   gtsam::writeG2o(optimizedGraph.getNonlinearFactorGraph(), optimizedValues, saveFileName);
 }

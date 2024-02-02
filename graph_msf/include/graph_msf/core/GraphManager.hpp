@@ -34,7 +34,7 @@ namespace graph_msf {
 // Actual Class
 class GraphManager {
  public:
-  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, const std::string& imuFrame, const std::string& worldFrame);
+  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
     if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
@@ -84,11 +84,13 @@ class GraphManager {
   // Slow Graph Update (if desired)
   void optimizeSlowBatchSmoother();
 
-    // Save Variables to File
-    static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap, const std::string& savePath);
+  // Save Variables to File
+  static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
+                                        const std::string& savePath);
 
-    // Save Optimized Graph to G2O Format
-    static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues, const std::string& saveFileName);
+  // Save Optimized Graph to G2O Format
+  static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,
+                                      const std::string& saveFileName);
 
   // Comfort functions ---------------------------------------------------------
   gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
