@@ -13,9 +13,10 @@ initialization_params:
 
 # Factor Graph
 graph_params:
-  useIsam: true                           # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
+  realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  slowBatchSmootherUseIsam: true          # if false, then levenberg-marquardt is used for the slow batch smoother, NO EFFECT YET
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load

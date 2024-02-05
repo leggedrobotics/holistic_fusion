@@ -10,7 +10,9 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 100
 
 // C++
+#include <string>
 #include <type_traits>
+#include <utility>
 
 // IO
 #include <gtsam/slam/dataset.h>
@@ -24,12 +26,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/core/GraphManager.hpp"
-
-#include <string>
-#include <utility>
-
+// ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
 #include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
+// LM
+#include "graph_msf/core/optimizer/OptimizerLMFixedLag.hpp"
 
 namespace graph_msf {
 
@@ -49,17 +50,20 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
   // Keys
   timeToKeyBufferPtr_ = std::make_shared<TimeGraphKeyBuffer>(graphConfigPtr_->imuBufferLength, graphConfigPtr_->verboseLevel);
 
-  // Optimizer
-  if (graphConfigPtr_->useIsamFlag) {
+  // Optimizers
+  // A. Real-time Optimizer
+  if (graphConfigPtr_->realTimeSmootherUseIsamFlag) {
     rtOptimizerPtr_ = std::make_shared<OptimizerIsam2FixedLag>(graphConfigPtr_);
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
-      batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
-    }
   } else {
-    // rtOptimizerPtr_ = std::make_shared<OptimizerLM>(graphConfigPtr_,
-    // worldFrame_); Not implmented
-    REGULAR_COUT << RED_START << " OptimizerLM is not implemented yet." << COLOR_END << std::endl;
-    throw std::runtime_error("OptimizerLM is not implemented yet.");
+    rtOptimizerPtr_ = std::make_shared<OptimizerLMFixedLag>(graphConfigPtr_);
+  }
+  // B. Batch Optimizer
+  if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    if (graphConfigPtr_->slowBatchSmootherUseIsamFlag) {
+      batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
+    } else {
+      throw std::runtime_error("GraphManager: Slow batch smoother must be ISAM2.");
+    }
   }
 }
 
@@ -129,11 +133,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
                                                                                           priorBiasNoise);  // BIAS
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  if (graphConfigPtr_->useIsamFlag) {
-    addFactorsToSmootherAndOptimize(*factorGraphBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
-  } else {
-    throw std::runtime_error("Optimizer has to be ISAM at this stage.");
-  }
+  addFactorsToSmootherAndOptimize(*factorGraphBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
 
   factorGraphBufferPtr_->resize(0);
 

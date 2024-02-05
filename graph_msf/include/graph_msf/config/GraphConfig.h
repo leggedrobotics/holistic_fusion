@@ -35,9 +35,10 @@ struct GraphConfig {
   Eigen::Vector3d W_gravityVector = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude;
 
   // Factor Graph
-  bool useIsamFlag = true;
+  bool realTimeSmootherUseIsamFlag = true;
   double realTimeSmootherLag = 1.5;
   bool useAdditionalSlowBatchSmoother = false;
+  bool slowBatchSmootherUseIsamFlag = true;
   // Optimizer Config
   double gaussNewtonWildfireThreshold = 0.001;
   double maxOptimizationFrequency = 100;
