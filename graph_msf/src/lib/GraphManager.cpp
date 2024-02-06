@@ -30,6 +30,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
 #include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
 // LM
+#include "graph_msf/core/optimizer/OptimizerLMBatch.hpp"
 #include "graph_msf/core/optimizer/OptimizerLMFixedLag.hpp"
 
 namespace graph_msf {
@@ -62,7 +63,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
     if (graphConfigPtr_->slowBatchSmootherUseIsamFlag) {
       batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
     } else {
-      throw std::runtime_error("GraphManager: Slow batch smoother must be ISAM2.");
+      batchOptimizerPtr_ = std::make_shared<OptimizerLMBatch>(graphConfigPtr_);
     }
   }
 }
@@ -670,6 +671,13 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Map to hold file streams, keyed by category
   std::map<char, std::ofstream> fileStreams;
 
+  // Get current time as string for file name
+  std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  // String of time
+  std::string timeString = std::ctime(&now);
+  // Replace spaces with underscores
+  std::replace(timeString.begin(), timeString.end(), ' ', '_');
+
   // Save optimized states
   // SE(3) states
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
@@ -684,9 +692,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Check if we already have a file stream for this category
     if (fileStreams.find(stateCategory) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + ".csv";
-      fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);  // Open for writing and appending
-                                                                                           // Write header
+      std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + "_" + timeString + ".csv";
+      // Open for writing and appending
+      fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);
+      // Write header
       fileStreams[stateCategory] << "time, x, y, z, roll, pitch, yaw\n";
     }
 
