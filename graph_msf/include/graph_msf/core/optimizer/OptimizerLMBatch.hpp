@@ -21,8 +21,8 @@ class OptimizerLMBatch : public OptimizerLM {
   explicit OptimizerLMBatch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
     if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
-      std::cout << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START << " Initializing slow batch smoother that is optimized with LM." << COLOR_END
-                << std::endl;
+      std::cout << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START
+                << " Initializing slow batch smoother that is optimized with LM." << COLOR_END << std::endl;
       lmParams_.print("GraphMSF: OptimizerLMBatch, LM Parameters:");
     }
   }
@@ -49,18 +49,18 @@ class OptimizerLMBatch : public OptimizerLM {
               << std::endl;
 
     // Initialize Slow Bundle Adjustement Smoother
-    batchSmootherPtr_ = std::make_shared<gtsam::LevenbergMarquardtOptimizer>(containerBatchSmootherFactors_, containerBatchSmootherValues_,
-                                                                           lmParams_);
+    batchSmootherPtr_ =
+        std::make_shared<gtsam::LevenbergMarquardtOptimizer>(containerBatchSmootherFactors_, containerBatchSmootherValues_, lmParams_);
 
     // Do not reset containers --> Will build up graph again from scratch for next optimization
     // containerBatchSmootherFactors_.resize(0);
     // containerBatchSmootherValues_.clear();
     // Log State of graph in order to compute marginal covariance if desired
-        graphLastOptimizedResult_ = containerBatchSmootherFactors_;
+    graphLastOptimizedResult_ = containerBatchSmootherFactors_;
     marginalsComputedForLastOptimizedResultFlag_ = false;
 
     // Optimize
-        batchSmootherOptimizedResult_ = batchSmootherPtr_->optimize();
+    batchSmootherOptimizedResult_ = batchSmootherPtr_->optimize();
     optimizedAtLeastOnceFlag_ = true;
 
     // Return result
@@ -114,11 +114,11 @@ class OptimizerLMBatch : public OptimizerLM {
 
   // Marginal Covariance
   gtsam::Matrix marginalCovariance(const gtsam::Key& key) override {
-  if (!optimizedAtLeastOnceFlag_) {
+    if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }
 
-// Have to compute all marginals (if not done already for this result
+    // Have to compute all marginals (if not done already for this result
     if (!marginalsComputedForLastOptimizedResultFlag_) {
       marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, batchSmootherOptimizedResult_);
     }

@@ -64,8 +64,8 @@ class OptimizerLMFixedLag : public OptimizerLM {
         bool factorContainsExistentKeys = true;
         for (auto key : factor->keys()) {
           if (key == valuesKeyNotExistent) {
-            std::cout << YELLOW_START << "GMsf-LM-FixedLagSmoother" << RED_START << " Factor contains non-existent key: " << gtsam::Symbol(key)
-                      << COLOR_END << std::endl;
+            std::cout << YELLOW_START << "GMsf-LM-FixedLagSmoother" << RED_START
+                      << " Factor contains non-existent key: " << gtsam::Symbol(key) << COLOR_END << std::endl;
             factorContainsExistentKeys = false;
             break;
           }
@@ -126,7 +126,8 @@ class OptimizerLMFixedLag : public OptimizerLM {
   // Marginal Covariance
   gtsam::Matrix marginalCovariance(const gtsam::Key& key) override {
     // Not implemented
-    std::cout << "FixedLagSmoother: Marginal Covariance not implemented yet. Returning Identity of correct size for key type: " << gtsam::symbolChr(key) << std::endl;
+    std::cout << "FixedLagSmoother: Marginal Covariance not implemented yet. Returning Identity of correct size for key type: "
+              << gtsam::symbolChr(key) << std::endl;
     const unsigned char measurementType = gtsam::symbolChr(key);
     // Switch case
     switch (measurementType) {

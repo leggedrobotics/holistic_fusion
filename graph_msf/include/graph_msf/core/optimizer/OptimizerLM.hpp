@@ -21,8 +21,7 @@ class OptimizerLM : public OptimizerBase {
   explicit OptimizerLM(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerBase(graphConfigPtr) {
     // Standard LM Parameters
     lmParams_.setVerbosity("ERROR");
-        gtsam::LevenbergMarquardtParams::SetCeresDefaults(&lmParams_);
-
+    gtsam::LevenbergMarquardtParams::SetCeresDefaults(&lmParams_);
   }
   ~OptimizerLM() = default;
 
