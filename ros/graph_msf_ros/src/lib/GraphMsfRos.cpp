@@ -178,10 +178,10 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
   }
 }
 
-void GraphMsfRos::publishTransform_(const std::string& frameName, const std::string& childFrameName, const double timeStamp,
+void GraphMsfRos::publishTransform_(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
                                     const Eigen::Isometry3d& T_frame_childFrame) {
-  tf::Transform transform_frame_childFrame = graph_msf::isometry3ToTf(T_frame_childFrame);
-  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_frame_childFrame, ros::Time(timeStamp), frameName, childFrameName));
+  tf::Transform transform_frame_childFrame = isometry3ToTf(T_frame_childFrame);
+  tfBroadcaster_.sendTransform(tf::StampedTransform(transform_frame_childFrame, ros::Time(timeStamp), parentFrameName, childFrameName));
 }
 
 void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr,
@@ -267,11 +267,12 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // TFs in Optimized State
     for (const auto transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
       // Get transform
-      Eigen::Isometry3d T_frame1_frame2 = transformIterator.second;
+      const Eigen::Isometry3d& T_frame1_frame2 = transformIterator.second;
       if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
-        Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
-        std::string mapFrameName = transformIterator.first.first;
-        //        std::cout << "Transformation from " << mapFrameName << " to " << transformIterator.first.second << std::endl;
+        const Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+        const std::string& mapFrameName = transformIterator.first.first;
+        const std::string& worldFrameName = transformIterator.first.second;
+        // std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
         //        std::cout << "Uncertainty: " << std::endl
         //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
         //                         mapFrameName, transformIterator.first.second)
@@ -283,17 +284,12 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
         // Publish TF --> everything children of world
-
-        // open3d_slam maintains its own TF.
-        if (mapFrameName == "map_o3d") {
-          mapFrameName = "map_o3d_";
-        }
-        publishTransform_(transformIterator.first.second, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
-                          T_frame1_frame2.inverse());
+        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2.inverse());
       } else {
+        const std::string& worldFrameName = transformIterator.first.first;
+        const std::string& mapFrameName = transformIterator.first.second;
         // Publish TF --> everything children of world
-        publishTransform_(transformIterator.first.first, transformIterator.first.second, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
-                          T_frame1_frame2);
+        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2);
       }
     }
   }
