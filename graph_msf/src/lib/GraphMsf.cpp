@@ -85,15 +85,12 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
     // TODO: here assume that world is fixed frame, which is not necessarily the case
     gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
     REGULAR_COUT << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
-    /*double yaw_W_I0_ =
+    double yaw_W_I0_ =
         (yawR_W_frame1 *
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
-            .yaw();*/
-
-    // TODO(TT) Ensure this doesn't conflict while GNSS is enabled.
-    // Currrently set yaw to the to the IMU frame instead of LiDAR (frame1).
+            .yaw();
     // Set Yaw
-    preIntegratedNavStatePtr_->updateYawInWorld(yawR_W_frame1.yaw(), graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
+    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
@@ -105,8 +102,8 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
 
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
-    REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) "
-                 << 180.0 * yawR_W_frame1.yaw() / M_PI << "." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
+                 << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
                  << "." << COLOR_END << std::endl;
     return true;
@@ -240,9 +237,9 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
     staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  const gtsam::Key keyAtMeasurementK =
-      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
-                                         deltaMeasurement.timeKm1(), deltaMeasurement.timeK(), deltaMeasurement.measurementRate());
+  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
+                                                       deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
+                                                       deltaMeasurement.measurementRate()));
 
   // Optimize
   {
@@ -359,7 +356,8 @@ bool GraphMsf::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, 
   // Find corresponding keys in graph
   gtsam::Key closestKeyKm1, closestKeyK;
 
-  graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10);
+  static_cast<void>(
+      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10));
   graphMgrPtr_->addVelocityUnaryFactor(gtsam::Vector3::Zero(), 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), timeKm1);
 
   return true;
