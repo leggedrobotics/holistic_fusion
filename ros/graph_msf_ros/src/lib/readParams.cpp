@@ -80,7 +80,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
 
   // Common Parameters
   graphConfigPtr_->verboseLevel = tryGetParam<int>("common_params/verbosity", privateNode);
-  graphConfigPtr_->reLocalizeWorldToMapAtStartFlag = tryGetParam<bool>("common_params/reLocalizeWorldToMapAtStart", privateNode);
+  graphConfigPtr_->odomNotJumpAtStart = tryGetParam<bool>("common_params/odomNotJumpAtStart", privateNode);
 
   // Set frames
   /// World

@@ -27,16 +27,14 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
 
   // GNSS Handler
-  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  if (useGnssFlag_) {
+    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  }
 
   // Set up
   if (!AnymalEstimator::setup()) {
     REGULAR_COUT << COLOR_END << " Failed to set up." << std::endl;
     std::runtime_error("ANYmalEstimatorGraph failed to set up.");
-  }
-
-  if (!useGnssFlag_) {
-    delete gnssHandlerPtr_.get();
   }
 
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;

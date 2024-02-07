@@ -17,7 +17,7 @@ struct GraphConfig {
 
   // General Config
   int verboseLevel = 0;
-  bool reLocalizeWorldToMapAtStartFlag = false;
+  bool odomNotJumpAtStart = false;
 
   // Sensor Config
   bool relocalizationAtStartFlag = true;

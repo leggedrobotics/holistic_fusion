@@ -90,7 +90,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
             .yaw();
     // Set Yaw
-    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
+    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->odomNotJumpAtStart);
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
@@ -98,7 +98,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
     Eigen::Vector3d W_t_W_I0 =
         W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
     // Set Position
-    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->reLocalizeWorldToMapAtStartFlag);
+    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStart);
 
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
