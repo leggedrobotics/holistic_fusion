@@ -15,8 +15,8 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
-    <arg name="using_gnss"                default="true" />
-    <arg name="using_legged_odometry"     default="true" />
+    <arg name="using_gnss"                default="false" />
+    <arg name="using_legged_odometry"     default="false" />
 
     <!-- Config Files -->
     <arg name="core_graph_config_param_file"     default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
