@@ -37,10 +37,10 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
-      std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END << std::endl;
-      optimizeSlowBatchSmoother();
-    }
+    // if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    //   std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END << std::endl;
+    //   optimizeSlowBatchSmoother();
+    // }
   };
 
   // Initialization Interface ---------------------------------------------------
