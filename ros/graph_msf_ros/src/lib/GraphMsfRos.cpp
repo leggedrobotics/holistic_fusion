@@ -284,7 +284,9 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
         // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2.inverse());
+        if (mapFrameName != "map_o3d") {
+          publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2.inverse());
+        }
       } else {
         const std::string& worldFrameName = transformIterator.first.first;
         const std::string& mapFrameName = transformIterator.first.second;
