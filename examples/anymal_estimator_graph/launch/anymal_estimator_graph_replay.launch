@@ -40,6 +40,15 @@
         <arg name="config_filename"                 value="$(arg compslam_config_file)" />
     </include>
 
+    <!-- Elevation mapping node -->
+    <arg name="default_elevation_mapping_parameter_file"  default="$(dirname)/../config/elevation_mapping/default.yaml" />
+    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/vlp16.yaml"/>
+
+    <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log">
+        <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
+        <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
+    </node>
+
     <!-- RVIZ for Visualization -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_estimator_graph)/rviz/gnss_lidar.rviz" />
 

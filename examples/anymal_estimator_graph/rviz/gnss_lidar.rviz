@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
       Splitter Ratio: 0.5235294103622437
-    Tree Height: 1595
+    Tree Height: 801
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -25,7 +25,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: CompslamRegisteredCloud
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -58,191 +58,9 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        LF_FOOT:
-          Value: true
-        LF_HAA_drive:
-          Value: true
-        LF_HFE_drive:
-          Value: true
-        LF_HFE_output:
-          Value: true
-        LF_HIP:
-          Value: true
-        LF_KFE_drive:
-          Value: true
-        LF_SHANK:
-          Value: true
-        LF_THIGH:
-          Value: true
-        LF_hip_fixed:
-          Value: true
-        LF_shank_fixed:
-          Value: true
-        LF_thigh_fixed:
-          Value: true
-        LH_FOOT:
-          Value: true
-        LH_HAA_drive:
-          Value: true
-        LH_HFE_drive:
-          Value: true
-        LH_HFE_output:
-          Value: true
-        LH_HIP:
-          Value: true
-        LH_KFE_drive:
-          Value: true
-        LH_SHANK:
-          Value: true
-        LH_THIGH:
-          Value: true
-        LH_hip_fixed:
-          Value: true
-        LH_shank_fixed:
-          Value: true
-        LH_thigh_fixed:
-          Value: true
-        RF_FOOT:
-          Value: true
-        RF_HAA_drive:
-          Value: true
-        RF_HFE_drive:
-          Value: true
-        RF_HFE_output:
-          Value: true
-        RF_HIP:
-          Value: true
-        RF_KFE_drive:
-          Value: true
-        RF_SHANK:
-          Value: true
-        RF_THIGH:
-          Value: true
-        RF_hip_fixed:
-          Value: true
-        RF_shank_fixed:
-          Value: true
-        RF_thigh_fixed:
-          Value: true
-        RH_FOOT:
-          Value: true
-        RH_HAA_drive:
-          Value: true
-        RH_HFE_drive:
-          Value: true
-        RH_HFE_output:
-          Value: true
-        RH_HIP:
-          Value: true
-        RH_KFE_drive:
-          Value: true
-        RH_SHANK:
-          Value: true
-        RH_THIGH:
-          Value: true
-        RH_hip_fixed:
-          Value: true
-        RH_shank_fixed:
-          Value: true
-        RH_thigh_fixed:
-          Value: true
-        base:
-          Value: true
-        base_inertia:
-          Value: true
-        battery:
-          Value: true
-        body_top:
-          Value: true
-        bottom_shell:
-          Value: true
-        camera_init:
-          Value: true
-        camera_init_CORRECTED:
-          Value: true
-        compslam_lio/aft_mapped:
-          Value: true
-        compslam_lio/aft_mapped_to_init_CORRECTED:
-          Value: true
-        compslam_lio/camera:
-          Value: true
-        compslam_lio/camera_CORRECTED:
-          Value: true
         compslam_lio/camera_init:
           Value: true
         compslam_lio/camera_init_CORRECTED:
-          Value: true
-        compslam_lio/camera_init_GRAVITY_ALIGNED:
-          Value: true
-        compslam_lio/laser_odom:
-          Value: true
-        compslam_lio/laser_odom_CORRECTED:
-          Value: true
-        depth_camera_front_lower_camera:
-          Value: true
-        depth_camera_front_lower_camera_parent:
-          Value: true
-        depth_camera_front_upper_camera:
-          Value: true
-        depth_camera_front_upper_camera_parent:
-          Value: true
-        depth_camera_left_camera:
-          Value: true
-        depth_camera_left_camera_parent:
-          Value: true
-        depth_camera_rear_lower_camera:
-          Value: true
-        depth_camera_rear_lower_camera_parent:
-          Value: true
-        depth_camera_rear_upper_camera:
-          Value: true
-        depth_camera_rear_upper_camera_parent:
-          Value: true
-        depth_camera_right_camera:
-          Value: true
-        depth_camera_right_camera_parent:
-          Value: true
-        docking_socket:
-          Value: true
-        face_front:
-          Value: true
-        face_rear:
-          Value: true
-        face_shell_front:
-          Value: true
-        face_shell_rear:
-          Value: true
-        feetcenter:
-          Value: true
-        footprint:
-          Value: true
-        hatch_shell:
-          Value: true
-        hbc_receiver:
-          Value: true
-        imu_link:
-          Value: true
-        lidar:
-          Value: true
-        lidar_parent:
-          Value: true
-        map:
-          Value: true
-        odom:
-          Value: true
-        odom_graph_msf_:
-          Value: true
-        top_shell:
-          Value: true
-        wide_angle_camera_front_camera:
-          Value: true
-        wide_angle_camera_front_camera_parent:
-          Value: true
-        wide_angle_camera_rear_camera:
-          Value: true
-        wide_angle_camera_rear_camera_parent:
-          Value: true
-        world_graph_msf_:
           Value: true
       Marker Alpha: 1
       Marker Scale: 0.10000000149011612
@@ -251,133 +69,9 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        odom:
-          base:
-            LF_HAA_drive:
-              LF_HIP:
-                LF_hip_fixed:
-                  LF_HFE_output:
-                    LF_THIGH:
-                      LF_HFE_drive:
-                        LF_thigh_fixed:
-                          LF_KFE_drive:
-                            LF_SHANK:
-                              LF_shank_fixed:
-                                LF_FOOT:
-                                  {}
-            LH_HAA_drive:
-              LH_HIP:
-                LH_hip_fixed:
-                  LH_HFE_output:
-                    LH_THIGH:
-                      LH_HFE_drive:
-                        LH_thigh_fixed:
-                          LH_KFE_drive:
-                            LH_SHANK:
-                              LH_shank_fixed:
-                                LH_FOOT:
-                                  {}
-            RF_HAA_drive:
-              RF_HIP:
-                RF_hip_fixed:
-                  RF_HFE_output:
-                    RF_THIGH:
-                      RF_HFE_drive:
-                        RF_thigh_fixed:
-                          RF_KFE_drive:
-                            RF_SHANK:
-                              RF_shank_fixed:
-                                RF_FOOT:
-                                  {}
-            RH_HAA_drive:
-              RH_HIP:
-                RH_hip_fixed:
-                  RH_HFE_output:
-                    RH_THIGH:
-                      RH_HFE_drive:
-                        RH_thigh_fixed:
-                          RH_KFE_drive:
-                            RH_SHANK:
-                              RH_shank_fixed:
-                                RH_FOOT:
-                                  {}
-            base_inertia:
-              {}
-            battery:
-              {}
-            body_top:
-              {}
-            bottom_shell:
-              {}
-            depth_camera_left_camera:
-              depth_camera_left_camera_parent:
-                {}
-            depth_camera_right_camera:
-              depth_camera_right_camera_parent:
-                {}
-            docking_socket:
-              {}
-            face_front:
-              depth_camera_front_lower_camera:
-                depth_camera_front_lower_camera_parent:
-                  {}
-              depth_camera_front_upper_camera:
-                depth_camera_front_upper_camera_parent:
-                  {}
-              face_shell_front:
-                {}
-              wide_angle_camera_front_camera:
-                wide_angle_camera_front_camera_parent:
-                  {}
-            face_rear:
-              depth_camera_rear_lower_camera:
-                depth_camera_rear_lower_camera_parent:
-                  {}
-              depth_camera_rear_upper_camera:
-                depth_camera_rear_upper_camera_parent:
-                  {}
-              face_shell_rear:
-                {}
-              wide_angle_camera_rear_camera:
-                wide_angle_camera_rear_camera_parent:
-                  {}
-            hatch_shell:
-              {}
-            hbc_receiver:
-              {}
-            imu_link:
-              {}
-            lidar_parent:
-              lidar:
-                {}
-            odom_graph_msf_:
-              world_graph_msf_:
-                compslam_lio/camera_init_CORRECTED:
-                  compslam_lio/aft_mapped_to_init_CORRECTED:
-                    {}
-                  compslam_lio/camera_CORRECTED:
-                    {}
-                  compslam_lio/camera_init:
-                    compslam_lio/aft_mapped:
-                      {}
-                    compslam_lio/camera:
-                      {}
-                    compslam_lio/laser_odom:
-                      {}
-                  compslam_lio/camera_init_GRAVITY_ALIGNED:
-                    {}
-                  compslam_lio/laser_odom_CORRECTED:
-                    {}
-            top_shell:
-              {}
-          feetcenter:
+        compslam_lio/camera_init_CORRECTED:
+          compslam_lio/camera_init:
             {}
-          footprint:
-            {}
-          map:
-            camera_init_CORRECTED:
-              camera_init:
-                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -1014,7 +708,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom_graph_msf_
+    Fixed Frame: odom_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
@@ -1061,10 +755,10 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1999
+  Height: 1090
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f700000733fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730200000c80000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000007330000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000733fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e000007330000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000077d00fffffffb0000000800540069006d00650100000000000004500000000000000000000009500000073300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001f7000003e8fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000073c000005a000000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000003e8000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000733fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e00000733000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000041800fffffffb0000000800540069006d0065010000000000000450000000000000000000000583000003e800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -1073,6 +767,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 2899
-  X: 3511
-  Y: 54
+  Width: 1920
+  X: 321
+  Y: 1467

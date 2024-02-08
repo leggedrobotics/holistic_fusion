@@ -1,0 +1,12 @@
+input_sources:
+  elevation_mapping_sensor:
+    type: pointcloud
+    topic: /point_cloud_filter/lidar/point_cloud_filtered
+    queue_size: 1
+    publish_on_update: true
+    sensor_processor:
+      type: laser
+robot_base_frame_id: BASE
+map_frame_id: odom_graph_msf
+track_point_frame_id: BASE
+sensor_frame_id: lidar
