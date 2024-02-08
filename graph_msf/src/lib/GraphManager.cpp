@@ -98,7 +98,7 @@ bool GraphManager::initImuIntegrators(const double g) {
   return true;
 }
 
-bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& initialPose) {
+bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise =
@@ -106,48 +106,62 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
   auto priorVelocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1e-3);                                        // m/s
   auto priorBiasNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
 
+  // Pre-allocate
+  gtsam::NonlinearFactorGraph newGraphFactors;
+  gtsam::Values newGraphValues;
+  std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
+
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key
   // might not be set)
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  {
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
-  // Initial estimate
-  gtsam::Values valuesEstimate;
-  REGULAR_COUT << " Initial Pose: " << initialPose << std::endl;
-  valuesEstimate.insert(gtsam::symbol_shorthand::X(propagatedStateKey_), initialPose);
-  valuesEstimate.insert(gtsam::symbol_shorthand::V(propagatedStateKey_), gtsam::Vector3(0, 0, 0));
-  valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
-  /// Timestamp mapping for incremental fixed lag smoother
-  std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
-  writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMapPtr);
+    // Initial estimate
+    gtsam::Values valuesEstimate;
+    REGULAR_COUT << " Initial Pose of imu in world frame: " << T_W_I0 << std::endl;
+    valuesEstimate.insert(gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0);
+    REGULAR_COUT << " Initial velocity assumed to be: " << gtsam::Vector3(0, 0, 0) << std::endl;
+    valuesEstimate.insert(gtsam::symbol_shorthand::V(propagatedStateKey_), gtsam::Vector3(0, 0, 0));
+    REGULAR_COUT << " Initial bias set to: " << *imuBiasPriorPtr_ << std::endl;
+    valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
+    /// Timestamp mapping for incremental fixed lag smoother
+    graphValuesBufferPtr_->insert(valuesEstimate);
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMapPtr);
 
-  // Initialize graph -------------------------------------------------
-  factorGraphBufferPtr_->resize(0);
-  factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
-      gtsam::symbol_shorthand::X(propagatedStateKey_), initialPose,
-      priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
-                        // is same type as type of PriorFactor
-  factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
-                                                                            gtsam::Vector3(0, 0, 0),
-                                                                            priorVelocityNoise);  // VELOCITY
-  factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(propagatedStateKey_),
-                                                                                          *imuBiasPriorPtr_,
-                                                                                          priorBiasNoise);  // BIAS
+    // Initialize graph -------------------------------------------------
+    factorGraphBufferPtr_->resize(0);
+    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+        gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0,
+        priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
+    // is same type as type of PriorFactor
+    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
+                                                                              gtsam::Vector3(0, 0, 0),
+                                                                              priorVelocityNoise);  // VELOCITY
+    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(propagatedStateKey_),
+                                                                                            *imuBiasPriorPtr_,
+                                                                                            priorBiasNoise);  // BIAS
+
+    // Copy over
+    newGraphFactors = *factorGraphBufferPtr_;
+    newGraphValues = *graphValuesBufferPtr_;
+    factorGraphBufferPtr_->resize(0);
+    graphValuesBufferPtr_->clear();
+  }
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  addFactorsToSmootherAndOptimize(*factorGraphBufferPtr_, valuesEstimate, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
-
-  factorGraphBufferPtr_->resize(0);
+  addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
 
   // Update Current State ---------------------------------------------------
-  optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStep, gtsam::NavState(initialPose, gtsam::Vector3(0, 0, 0)),
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStep, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
                                              gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
-  O_imuPropagatedState_ = gtsam::NavState(initialPose, gtsam::Vector3(0, 0, 0));
-  W_imuPropagatedState_ = gtsam::NavState(initialPose, gtsam::Vector3(0, 0, 0));
+  O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
+  W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
   return true;
 }
 
 // IMU at the core --------------------------------------------------------------
-void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreIntegratedNavState,
+void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                            const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK) {
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
@@ -196,9 +210,9 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& changedPreInt
   // Generate return objects -------------------------------------------------
   gtsam::NavState& T_O_Ik_nav = O_imuPropagatedState_;  // Alias
   // Assign poses and velocities
-  changedPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
-                                      optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
-                                      false);
+  returnPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
+                                     optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
+                                     false);
   if (optimizedGraphState_.isOptimized()) {
     newOptimizedNavStatePtr = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedGraphState_);
   } else {
@@ -795,7 +809,10 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
-  // Perform update
+  // Lock for optimization (as shared rtOptimizer os optimized)
+  const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
+
+  // Perform update of the real-time smoother, including optimization
   bool successFlag = rtOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
   // Additional iterations
   for (size_t itr = 0; itr < additionalIterations; ++itr) {

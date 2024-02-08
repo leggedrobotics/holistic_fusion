@@ -82,10 +82,12 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
 
   } else if (!areYawAndPositionInited()) {  // Case 2: Imu is aligned, but roll and pitch not yet --> do it
                                             // Transform yaw to imu frame
+    REGULAR_COUT << " Preintegrated state before init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
+
     // TODO: here assume that world is fixed frame, which is not necessarily the case
-    gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
+    const gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
     REGULAR_COUT << GREEN_START << " Setting yaw in " << frame1 << " frame." << COLOR_END << std::endl;
-    double yaw_W_I0_ =
+    const double yaw_W_I0_ =
         (yawR_W_frame1 *
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
             .yaw();
@@ -100,12 +102,26 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
     // Set Position
     preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStart);
 
+    REGULAR_COUT << " Preintegrated state after init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
+
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
+    // World Frame
+    REGULAR_COUT << GREEN_START << "Initialization:" << COLOR_END << " --------------------\n"
+                 << "World Frame: " << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
                  << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
                  << "." << COLOR_END << std::endl;
+    // Odom Frame
+    const double yaw_O_I0 = gtsam::Rot3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().rotation().matrix()).yaw();
+    REGULAR_COUT << GREEN_START << "Initialization" << COLOR_END << " --------------------\n"
+                 << "Odom Frame: " << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Initial global yaw of from odom frame to imu frame has been set to (deg) " << 180.0 * yaw_O_I0 / M_PI
+                 << "." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Initial global position of imu frame in odom frame has been set to (m) "
+                 << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().translation().transpose() << "." << COLOR_END << std::endl;
+    // Return
     return true;
   } else {  // Case 3: Initial yaw and position already set --> do nothing
     REGULAR_COUT << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END << std::endl;
@@ -171,13 +187,18 @@ bool GraphMsf::addImuMeasurementAndGetState(
               .matrix();
       Eigen::Isometry3d T_O_Ik_attitude = Eigen::Isometry3d::Identity();
       T_O_Ik_attitude.matrix().block<3, 3>(0, 0) = R_W_I0_attitude;
-      T_O_Ik_attitude.matrix().block<3, 1>(0, 3) =
+      Eigen::Vector3d O_t_O_Ik =
           Eigen::Vector3d(0, 0, 0) -
           R_W_I0_attitude *
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
                   .translation();
+      T_O_Ik_attitude.matrix().block<3, 1>(0, 3) = O_t_O_Ik;
+      REGULAR_COUT << " Setting zero position of " << staticTransformsPtr_->getInitializationFrame()
+                   << ", hence iniital position of IMU is: " << O_t_O_Ik.transpose() << std::endl;
       Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
       preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
+      REGULAR_COUT << " IMU aligned. Initial pre-integrated state in odom frame: "
+                   << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << COLOR_END << std::endl;
       alignedImuFlag_ = true;
       return false;
     }
@@ -192,7 +213,9 @@ bool GraphMsf::addImuMeasurementAndGetState(
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
   } else if (!validFirstMeasurementReceivedFlag_) {  // Case 3: No valid measurement received yet, e.g. because GNSS Covariance is too high
-    REGULAR_COUT << RED_START << " ...waiting for first valid measurement before initializing graph." << COLOR_END << std::endl;
+    if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate) == 0) {
+      REGULAR_COUT << RED_START << " IMU callback waiting for first valid measurement before initializing graph." << COLOR_END << std::endl;
+    }
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
@@ -396,7 +419,8 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
 void GraphMsf::initGraph_(const double timeStamp_k) {
   // Calculate initial attitude;
-  gtsam::Pose3 T_W_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_W_Ik().matrix());
+  const gtsam::Pose3& T_W_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_W_Ik().matrix());
+  const gtsam::Pose3& T_O_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix());
   // Print
   REGULAR_COUT << GREEN_START
                << " Total initial IMU attitude is Yaw/Pitch/Roll(deg): " << T_W_I0.rotation().ypr().transpose() * (180.0 / M_PI)
@@ -405,13 +429,15 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   // Gravity
   graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude);
   /// Initialize graph node
-  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0);
+  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0, T_O_I0);
 
   // Read initial pose from graph
-  T_W_I0 = graphMgrPtr_->getOptimizedGraphState().navState().pose();
+  gtsam::Pose3 T_W_I0_opt = graphMgrPtr_->getOptimizedGraphState().navState().pose();
   REGULAR_COUT << GREEN_START
-               << " INITIAL POSE of IMU in world frame after first optimization, x,y,z (m): " << T_W_I0.translation().transpose()
-               << ", RPY (deg): " << T_W_I0.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
+               << " INITIAL POSE of IMU in world frame after first optimization, x,y,z (m): " << T_W_I0_opt.translation().transpose()
+               << ", RPY (deg): " << T_W_I0_opt.rotation().rpy().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " INITIAL position of IMU in odom frame after first optimization, x,y,z (m): "
+               << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().translation().transpose() << std::endl;
   REGULAR_COUT << " Factor graph key of very first node: " << graphMgrPtr_->getPropagatedStateKey() << std::endl;
 
   // Set flag

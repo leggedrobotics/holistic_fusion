@@ -4,4 +4,4 @@ extrinsics:
   odomFrame: odom_graph_msf_
   imuFrame: imu_link
   baseLinkFrame: base
-  initializeZeroYawAndPositionOfFrame: lidar
+  initializeZeroYawAndPositionOfFrame: imu_link

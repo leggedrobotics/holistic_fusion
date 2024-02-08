@@ -38,17 +38,17 @@ class GraphManager {
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
     // if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
-    //   std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END << std::endl;
-    //   optimizeSlowBatchSmoother();
+    //   std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END <<
+    //   std::endl; optimizeSlowBatchSmoother();
     // }
   };
 
   // Initialization Interface ---------------------------------------------------
-  bool initImuIntegrators(const double g);
-  bool initPoseVelocityBiasGraph(const double ts, const gtsam::Pose3& init_pose);
+  bool initImuIntegrators(double g);
+  bool initPoseVelocityBiasGraph(double ts, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
 
   // IMU at the core -----------------------------------------------------------
-  void addImuFactorAndGetState(SafeIntegratedNavState& changedPreIntegratedNavStatePtr,
+  void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK);
 
@@ -59,7 +59,7 @@ class GraphManager {
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                const double measurementTime);
+                                double measurementTime);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
   void addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                 const EXPRESSION& unaryExpression, const double measurementTime, const gtsam::Values& newStateValues,
@@ -67,15 +67,14 @@ class GraphManager {
   // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
-                              const double lidarTimeK);
+                              double lidarTimeK);
   void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
                               const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
-  void addHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
-                             const double gnssTime);
+  void addHeadingUnaryFactor(double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, double gnssTime);
 
   // Between
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
-                                  const double lidarTimeKm1, const double lidarTimeK, const double rate);
+                                  double lidarTimeKm1, double lidarTimeK, double rate);
 
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update
@@ -106,7 +105,7 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, const std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
+  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
                                                 const gtsam::Key& key, const char* callingFunctionName);
 
  private:
@@ -114,26 +113,26 @@ class GraphManager {
   template <class CHILDPTR>
   void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
+  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   template <class CHILDPTR>
-  void addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp);
+  void addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
   bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                                        const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, int additionalIterations);
   /// Find graph keys for timestamps
-  bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, const double maxTimestampDistance,
-                      const double timeKm1, const double timeK, const std::string& name);
+  bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
+                      double timeKm1, double timeK, const std::string& name);
   /// Generate new key
   const uint64_t newPropagatedStateKey_() { return ++propagatedStateKey_; }
   /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
-  inline void writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,
+  inline void writeKeyToKeyTimeStampMap_(const gtsam::Key& key, double measurementTime,
                                          std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
 
-  void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
+  void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, double measurementTime,
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
 
   // Buffers
@@ -183,6 +182,7 @@ class GraphManager {
   // Member variables
   /// Mutex
   std::mutex operateOnGraphDataMutex_;
+  std::mutex optimizationRunningMutex_;
 };
 }  // namespace graph_msf
 
