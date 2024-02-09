@@ -145,16 +145,19 @@ bool GraphMsf::addImuMeasurementAndGetState(
   // Setup -------------------------
   // Increase counter
   ++imuCallbackCounter_;
+
   // First Iteration
   if (preIntegratedNavStatePtr_ == nullptr) {
     preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>();
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
   }
+
   // Filter out imu messages with same time stamp
   if (std::abs(imuTimeK - preIntegratedNavStatePtr_->getTimeK()) < 1e-8 && imuCallbackCounter_ > 1) {
     REGULAR_COUT << RED_START << " Imu time " << std::setprecision(14) << imuTimeK << " was repeated." << COLOR_END << std::endl;
     return false;
   }
+
   // Add measurement to buffer
   returnAddedImuMeasurements = imuBufferPtr_->addToImuBuffer(imuTimeK, linearAcc, angularVel);
 
@@ -232,8 +235,11 @@ bool GraphMsf::addImuMeasurementAndGetState(
     normalOperationFlag_ = true;
   }
   // Case 6: Normal operation, meaning predicting the next state via integration -------------
+  // Only create state every n-th measurements
+  bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement == 0;
   // Add IMU factor and return propagated & optimized state
-  graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, imuBufferPtr_, imuTimeK);
+  graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, imuBufferPtr_, imuTimeK,
+                                        createNewStateFlag);
   returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
 
   return true;

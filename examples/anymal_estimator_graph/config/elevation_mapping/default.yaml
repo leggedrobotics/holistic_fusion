@@ -1,4 +1,4 @@
-robot_pose_with_covariance_topic: /graph_sf/est_odometry_odom_imu
+robot_pose_with_covariance_topic: ""
 track_point_x: 0
 track_point_y: 0
 track_point_z: 0

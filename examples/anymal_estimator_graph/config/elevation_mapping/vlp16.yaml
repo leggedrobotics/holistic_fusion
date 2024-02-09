@@ -6,7 +6,7 @@ input_sources:
     publish_on_update: true
     sensor_processor:
       type: laser
-robot_base_frame_id: BASE
+robot_base_frame_id: base
 map_frame_id: odom_graph_msf
-track_point_frame_id: BASE
+track_point_frame_id: base
 sensor_frame_id: lidar

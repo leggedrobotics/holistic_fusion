@@ -50,7 +50,7 @@ class GraphManager {
   // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                               const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK);
+                               const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
 
   // All other measurements -----------------------------------------------------
   // Unary commodity methods
@@ -62,7 +62,7 @@ class GraphManager {
                                 double measurementTime);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
   void addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                const EXPRESSION& unaryExpression, const double measurementTime, const gtsam::Values& newStateValues,
+                                const EXPRESSION& unaryExpression, double measurementTime, const gtsam::Values& newStateValues,
                                 std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors);
   // Unary Specializations
   void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);

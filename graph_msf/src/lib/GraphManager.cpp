@@ -163,60 +163,82 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 // IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer> imuBufferPtr, const double imuTimeK) {
+                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK,
+                                           const bool createNewStateFlag) {
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
-  // Get new key
-  gtsam::Key oldKey = propagatedStateKey_;
-  gtsam::Key newKey = newPropagatedStateKey_();
-
-  // Add to key buffer
-  timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
-
-  // Get last two measurements from buffer to determine dt
+  // Part 1 (ALWAYS): Propagate state and imu measurement to pre-integrator -----------------------
+  // 1.1 Get last two measurements from buffer to determine dt
   TimeToImuMap imuMeas;
   imuBufferPtr->getLastTwoMeasurements(imuMeas);
   propagatedStateTime_ = imuTimeK;
   currentAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
 
-  // Update IMU preintegrator
+  // 1.2 Update IMU preintegrator
   updateImuIntegrators_(imuMeas);
-  // Predict propagated state
+
+  // 1.3 Predict propagated state via forward integration
   if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
     O_imuPropagatedState_ =
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, O_imuPropagatedState_,
+                                                     optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector);
+    W_imuPropagatedState_ =
+        imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
                                                      optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector);
   } else {
     O_imuPropagatedState_ =
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, O_imuPropagatedState_,
                                                      gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector);
+    W_imuPropagatedState_ =
+        imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
+                                                     gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector);
   }
 
-  // Add IMU Factor to graph
-  gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
-                                     gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
-                                     gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-  addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK);
+  // 1.4 Fill in optimized state container
+  if (optimizedGraphState_.isOptimized()) {
+    newOptimizedNavStatePtr = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedGraphState_);
+  } else {
+    newOptimizedNavStatePtr = nullptr;
+  }
 
-  // Add IMU values
-  gtsam::Values valuesEstimate;
-  valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
-  valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
-  valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
-  graphValuesBufferPtr_->insert(valuesEstimate);
-  writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
-
-  // Generate return objects -------------------------------------------------
+  // 1.5 Return pre-integrated state
   gtsam::NavState& T_O_Ik_nav = O_imuPropagatedState_;  // Alias
   // Assign poses and velocities
   returnPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
                                      optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
                                      false);
-  if (optimizedGraphState_.isOptimized()) {
-    newOptimizedNavStatePtr = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedGraphState_);
-  } else {
-    newOptimizedNavStatePtr = nullptr;
+
+  // Part 2 (OPTIONAL): Create new state and add IMU factor to graph ------------------------------
+  if (createNewStateFlag) {
+    // Get new key
+    const gtsam::Key oldKey = propagatedStateKey_;
+    const gtsam::Key newKey = newPropagatedStateKey_();
+
+    // Add to key buffer
+    timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
+
+    // Add IMU Factor to graph
+    gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
+                                       gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
+                                       gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
+    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK);
+
+    // Add IMU values
+    gtsam::Values valuesEstimate;
+    valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
+    valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
+    valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
+    graphValuesBufferPtr_->insert(valuesEstimate);
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
+
+    // After adding this factor we can again empty the step integrator
+    // Reset IMU Step Preintegration
+    if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
+      imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
+    } else {
+      imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
+    }
   }
 }
 
@@ -774,13 +796,6 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   } else if (imuMeas.size() > 2) {
     REGULAR_COUT << RED_START << "Currently only supporting two IMU messages for pre-integration." << COLOR_END << std::endl;
     throw std::runtime_error("Terminating.");
-  }
-
-  // Reset IMU Step Preintegration
-  if (graphConfigPtr_->usingBiasForPreIntegrationFlag) {
-    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
-  } else {
-    imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
   }
 
   // Start integrating with imu_meas.begin()+1 meas to calculate dt,
