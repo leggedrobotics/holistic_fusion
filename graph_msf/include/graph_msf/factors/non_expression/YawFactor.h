@@ -8,8 +8,12 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_HEADING_FACTOR_H
 #define GRAPH_MSF_HEADING_FACTOR_H
 
+// CPP
+#include <boost/none.hpp>
+#include <boost/shared_ptr.hpp>
 #include <string>
 
+// GTSAM
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -17,15 +21,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/none.hpp>
-#include <boost/shared_ptr.hpp>
-
 namespace graph_msf {
 
 /**
  * Factor to estimate rotation given gnss robot heading
  */
-class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
   /**
    * Constructor of factor that estimates nav to body rotation bRn
@@ -33,11 +34,10 @@ class HeadingFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param measured magnetometer reading, a 3-vector
    * @param model of the additive Gaussian noise that is assumed
    */
-  HeadingFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model)
-      : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), yaw_(yaw) {}
+  YawFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), yaw_(yaw) {}
 
   // Destructor
-  virtual ~HeadingFactor() {}
+  virtual ~YawFactor() {}
 
   /**
    * Evaluate error function

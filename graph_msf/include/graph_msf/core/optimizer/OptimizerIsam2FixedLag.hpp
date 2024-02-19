@@ -122,7 +122,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
 
-  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
+  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) override { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
 
   // Marginal Covariance
   gtsam::Matrix marginalCovariance(const gtsam::Key& key) override { return fixedLagSmootherPtr_->marginalCovariance(key); }

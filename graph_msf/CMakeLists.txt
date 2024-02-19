@@ -73,7 +73,8 @@ add_library(${PROJECT_NAME}
         src/lib/TimeGraphKeyBuffer.cpp
         src/lib/TrajectoryAlignment.cpp
         src/lib/TrajectoryAlignmentHandler.cpp
-        src/lib/NavState.cpp)
+        src/lib/NavState.cpp
+        include/graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
