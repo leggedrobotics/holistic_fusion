@@ -89,7 +89,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
   }
 
   // Noise as GTSAM Datatype
-  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override { return poseUnaryMeasurementPtr_->unaryMeasurementNoiseVariances(); }
+  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override { return poseUnaryMeasurementPtr_->unaryMeasurementNoiseDensity(); }
 
   // Return Measurement as GTSAM Datatype
   [[nodiscard]] const gtsam::Pose3 getMeasurement() const override {
