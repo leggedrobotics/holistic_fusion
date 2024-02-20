@@ -17,6 +17,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+// Function for composing rigid body transformations with GTSAM expression factors
+inline gtsam::Pose3_ composeRigidTransformations(const gtsam::Pose3_& p, const gtsam::Pose3_& q) {
+  return gtsam::Pose3_(p, &gtsam::Pose3::transformPoseFrom, q);
+}
+
 /**
  * UnaryExpression is a base class for unary expressions.
  * Unary expressions are used to represent unary factors in the factor graph.
@@ -24,35 +29,67 @@ namespace graph_msf {
  * It optionally supports extrinsic calibration of the sensor
  **/
 
+template <class GTSAM_MEASUREMENT_TYPE>
 class GmsfUnaryExpression {
  public:
   // Constructor
-  GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& unaryMeasurementPtr, const gtsam::Key& closestGeneralKey)
-      : unaryMeasurementPtr_(unaryMeasurementPtr), closestGeneralKey_(closestGeneralKey) {}
+  GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& unaryMeasurementPtr, const std::string& worldFrameName,
+                      const Eigen::Isometry3d& T_I_sensorFrame)
+      : baseUnaryMeasurementPtr_(unaryMeasurementPtr), worldFrameName_(worldFrameName), T_I_sensorFrame_(T_I_sensorFrame) {}
 
   // Destructor
   virtual ~GmsfUnaryExpression() = default;
 
-  // Interface with three cases (non-exclustive):
-  // i) holistically optimize over fixed frames
-  virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+  // Interface with four cases (non-exclustive, but has to be correct order!):
+  // i) Generate Expression for Basic IMU State in World Frame at Key
+  virtual void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) = 0;
 
-  // ii) extrinsic calibration
-  virtual void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+  // ii) holistically optimize over fixed frames
+  virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+                                                   const gtsam::NavState& W_currentPropagatedState) = 0;
 
   // iii) transform measurement to core imu frame
-  virtual void transformMeasurementToCoreImuFrame(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+  virtual void transformStateToSensorFrame() = 0;
+
+  // iv) extrinsic calibration
+  virtual void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+
+  // Noise as GTSAM Datatype
+  virtual const gtsam::Vector getNoiseDensity() const = 0;
+
+  // Return Measurement as GTSAM Datatype
+  virtual const GTSAM_MEASUREMENT_TYPE getMeasurement() const = 0;
+
+  // Return Expression
+  virtual const gtsam::Expression<GTSAM_MEASUREMENT_TYPE> getExpression() const = 0;
+
+  // Time
+  [[nodiscard]] double getTimestamp() const { return baseUnaryMeasurementPtr_->timeK(); }
+
+  // New Values
+  [[nodiscard]] const gtsam::Values& getNewStateValues() const { return newStateValues_; }
+
+  // New Prior Factors
+  const std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>>& getNewPriorFactors() const { return newPriorFactors_; }
 
   // Accessors
-  const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return unaryMeasurementPtr_; }
-  const gtsam::Key& getClosestGeneralKey() const { return closestGeneralKey_; }
+  const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return baseUnaryMeasurementPtr_; }
+
+  const Eigen::Isometry3d& getT_I_sensorFrame() const { return T_I_sensorFrame_; }
 
  protected:
   // Main Measurement Pointer
-  const std::shared_ptr<UnaryMeasurement> unaryMeasurementPtr_;
+  const std::shared_ptr<UnaryMeasurement> baseUnaryMeasurementPtr_;
 
-  // Closest Key of main state (only dependant on timestamp) --> has to be mapped to correct state type key
-  const gtsam::Key closestGeneralKey_;
+  // Frame Name References
+  const std::string& worldFrameName_;
+
+  // IMU to Sensor Frame
+  Eigen::Isometry3d T_I_sensorFrame_;
+
+  // Containers
+  gtsam::Values newStateValues_;
+  std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>> newPriorFactors_;
 };
 
 }  // namespace graph_msf

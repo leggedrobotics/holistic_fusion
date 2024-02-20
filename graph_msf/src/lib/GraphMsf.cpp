@@ -287,11 +287,13 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
   // Only take actions if graph has been initialized
   if (!initedGraphFlag_) {
     return;
-  }
+  } else {
+    // Create GMSF expression
+    GmsfUnaryExpressionPose3 gmsfUnaryExpressionPose3(
+        std::make_shared<UnaryMeasurementXD<Eigen::Isometry3d, 6>>(unary6DMeasurement), staticTransformsPtr_->getWorldFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), unary6DMeasurement.sensorFrameName()));
 
-  if (initedGraphFlag_) {
-    graphMgrPtr_->addPoseUnaryFactor(unary6DMeasurement, staticTransformsPtr_->rv_T_frame1_frame2(unary6DMeasurement.sensorFrameName(),
-                                                                                                  staticTransformsPtr_->getImuFrame()));
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Pose3>(std::make_shared<GmsfUnaryExpressionPose3>(gmsfUnaryExpressionPose3));
   }
   // Optimize ---------------------------------------------------------------
   {

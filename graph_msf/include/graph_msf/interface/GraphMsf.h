@@ -11,7 +11,6 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <mutex>
 #include <stdexcept>
-#include <string_view>
 #include <thread>
 
 // Package
@@ -39,7 +38,7 @@ class GraphMsf {
   // Constructor
   GraphMsf();
   // Destructor
-  ~GraphMsf() = default;
+  virtual ~GraphMsf() = default;
   // Setup
   virtual bool setup();
 

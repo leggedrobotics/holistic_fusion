@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "anymal_estimator_graph/AnymalEstimator.h"
 
+// GraphMSF ROS
+#include "graph_msf_ros/ros/read_ros_params.h"
+
 // Project
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
 

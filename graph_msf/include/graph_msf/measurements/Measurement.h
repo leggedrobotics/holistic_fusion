@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -16,15 +16,31 @@ namespace graph_msf {
 // Enum that contains 2 possible measurement types
 enum class MeasurementTypeEnum { Unary, Binary };
 
-// Purely virtual interface class for measurements
-struct Measurement {
- public:
-  Measurement(const std::string& measurementName, const int measurementRate, const bool useRobustNorm = false)
-      : measurementName_(measurementName), measurementRate_(measurementRate), useRobustNorm_(useRobustNorm) {}
+// Enum that defines whether robust norm should be used
+enum class RobustNormEnum { None, Huber, Cauchy, Tukey };
 
-  // GettersPublic Methods
-  const std::string& measurementName() const { return measurementName_; }
-  int measurementRate() const { return measurementRate_; }
+// Purely virtual interface class for measurements
+class Measurement {
+ public:
+  // Constructor
+  Measurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
+              const RobustNormEnum& robustNormEnum, const double robustNormConstant, const MeasurementTypeEnum& measurementTypeEnum)
+      : measurementName_(measurementName),
+        measurementRate_(measurementRate),
+        sensorFrameName_(sensorFrameName),
+        robustNormEnum_(robustNormEnum),
+        robustNormConstant_(robustNormConstant),  // Neglected if robustNormEnum_ == None
+        measurementTypeEnum_(measurementTypeEnum) {}
+
+  // Destructor
+  virtual ~Measurement() = default;
+
+  // Getters
+  [[nodiscard]] const std::string& measurementName() const { return measurementName_; }
+  [[nodiscard]] int measurementRate() const { return measurementRate_; }
+  [[nodiscard]] const std::string& sensorFrameName() const { return sensorFrameName_; }
+  [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNormEnum_; }
+  [[nodiscard]] const double& robustNormConstant() const { return robustNormConstant_; }
 
   // Pure Virtual Class
   virtual const MeasurementTypeEnum& measurementTypeEnum() = 0;
@@ -33,8 +49,14 @@ struct Measurement {
   // Standard Members
   std::string measurementName_;
   int measurementRate_;
-  // Robust norm
-  bool useRobustNorm_ = false;
+  std::string sensorFrameName_;
+
+  // Enum
+  MeasurementTypeEnum measurementTypeEnum_;
+  RobustNormEnum robustNormEnum_;
+
+  // Robust norm constant
+  const double robustNormConstant_;
 };
 
 }  // namespace graph_msf

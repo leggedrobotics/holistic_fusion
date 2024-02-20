@@ -18,13 +18,17 @@ Please see the LICENSE file that has been included as part of this package.
 #include <mutex>
 #include <vector>
 
+// GTSAM
+#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/slam/expressions.h>
+
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/TransformsExpressionKeys.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
 #include "graph_msf/factors/non_expression/YawFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
@@ -54,19 +58,21 @@ class GraphManager {
                                const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
 
   // All other measurements -----------------------------------------------------
-  // Unary commodity methods
-  bool getUnaryFactorKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement);
-  // Unary Meta Method
+
+  // Unary commodity methods --> Key Lookup
+  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement);
+
+  // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
                                 double measurementTime);
-  template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
-  void addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                const EXPRESSION& unaryExpression, double measurementTime, const gtsam::Values& newStateValues,
-                                std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors);
+
+  // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
+  template <class GTSAM_MEASUREMENT_TYPE>
+  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
+
   // Unary Specializations
-  void addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement, const Eigen::Isometry3d& T_sensorFrame_imu);
   void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                               double lidarTimeK);
   void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
@@ -185,6 +191,10 @@ class GraphManager {
   std::mutex operateOnGraphDataMutex_;
   std::mutex optimizationRunningMutex_;
 };
+
 }  // namespace graph_msf
+
+// Template Implementations
+#include "graph_msf/core/GraphManager.inl"
 
 #endif  // GRAPH_MANAGER_HPP_

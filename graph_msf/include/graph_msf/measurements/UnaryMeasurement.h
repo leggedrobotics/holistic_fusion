@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -12,33 +12,34 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-struct UnaryMeasurement : public Measurement {
+class UnaryMeasurement : public Measurement {
  public:
-  UnaryMeasurement(const std::string& measurementName, const int measurementRate, const double timeStamp, const std::string& fixedFrameName,
-                   const std::string& sensorFrameName, const double covarianceViolationThreshold = 0.0, const bool useRobustNorm = false)
-      : Measurement(measurementName, measurementRate, useRobustNorm),
+  // Constructor
+  UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
+                   const RobustNormEnum robustNormEnum, const double robustNormConstant, const double timeStamp,
+                   const std::string& fixedFrameName, const double covarianceViolationThreshold = 0.0)
+      : Measurement(measurementName, measurementRate, sensorFrameName, robustNormEnum, robustNormConstant, MeasurementTypeEnum::Unary),
         timeK_(timeStamp),
         fixedFrameName_(fixedFrameName),
-        sensorFrameName_(sensorFrameName),
         covarianceViolationThreshold_(covarianceViolationThreshold) {}
 
-  // Getters
-  const std::string& fixedFrameName() const { return fixedFrameName_; }
-  const std::string& sensorFrameName() const { return sensorFrameName_; }
-  std::string& lv_sensorFrameName() { return sensorFrameName_; }
-  double timeK() const { return timeK_; }
-  double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }
+  // Destructor
+  ~UnaryMeasurement() override = default;
 
-  virtual const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
+  // Getters
+  [[nodiscard]] const std::string& fixedFrameName() const { return fixedFrameName_; }
+  [[nodiscard]] const std::string& sensorFrameName() const { return sensorFrameName_; }
+  std::string& lv_sensorFrameName() { return sensorFrameName_; }
+  [[nodiscard]] double timeK() const { return timeK_; }
+  [[nodiscard]] double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }
+
+  const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
 
  protected:
   // Standard members
   std::string fixedFrameName_;
-  std::string sensorFrameName_;
   double timeK_;
   double covarianceViolationThreshold_;
-  // Enum
-  MeasurementTypeEnum measurementTypeEnum_ = MeasurementTypeEnum::Unary;
 };
 
 }  // namespace graph_msf

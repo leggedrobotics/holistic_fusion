@@ -1,11 +1,10 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#define WORST_CASE_OPTIMIZATION_TIME 0.1  // in seconds
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 100
 
@@ -242,8 +241,9 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 }
 
 // Unary factors ----------------------------------------------------------------
-// Unary Commodity Functions
-bool GraphManager::getUnaryFactorKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement) {
+
+// Key Lookup
+bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
   double closestGraphTime;
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, returnedKey, unaryMeasurement.measurementName(),
@@ -259,7 +259,8 @@ bool GraphManager::getUnaryFactorKey(gtsam::Key& returnedKey, const UnaryMeasure
   }
   return true;
 }
-// Unary meta method
+
+// Unary meta method --> classic GTSAM Factors
 typedef gtsam::Key (*F)(std::uint64_t);
 template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
 void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
@@ -301,104 +302,6 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   }
 }
 
-// Expression factors
-template <class MEASUREMENT_TYPE, int NOISE_DIM, class EXPRESSION>
-void GraphManager::addUnaryExpressionFactor(const MEASUREMENT_TYPE& unaryMeasurement,
-                                            const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const EXPRESSION& unaryExpression,
-                                            const double measurementTime, const gtsam::Values& newStateValues,
-                                            std::vector<gtsam::PriorFactor<MEASUREMENT_TYPE>>& priorFactors) {
-  // Noise & Error Function
-  auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(unaryNoiseDensity));  // rad,rad,rad,x,y,z
-  auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
-
-  // Create Factor
-  gtsam::ExpressionFactor<MEASUREMENT_TYPE> unaryExpressionFactor(robustErrorFunction, unaryMeasurement, unaryExpression);
-
-  // Operating on graph data
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-  addFactorToGraph_<const gtsam::ExpressionFactor<MEASUREMENT_TYPE>*>(&unaryExpressionFactor, measurementTime);
-  for (const auto& key : unaryExpressionFactor.keys()) {
-    writeKeyToKeyTimeStampMap_(key, measurementTime, graphKeysTimestampsMapBufferPtr_);
-  }
-  // If one of the states was newly created, then add it to the values
-  if (!newStateValues.empty()) {
-    graphValuesBufferPtr_->insert(newStateValues);
-  }
-  // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-  if (!priorFactors.empty()) {
-    factorGraphBufferPtr_->add(priorFactors);
-  }
-
-  // Print summary --------------------------------------
-  if (graphConfigPtr_->verboseLevel > 0) {
-    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
-                 << typeid(MEASUREMENT_TYPE).name() << " added to keys ";
-    for (const auto& key : unaryExpressionFactor.keys()) {
-      std::cout << gtsam::Symbol(key) << ", ";
-    }
-    std::cout << COLOR_END << std::endl;
-  }
-}
-
-// Unary Specializations
-void GraphManager::addPoseUnaryFactor(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement,
-                                      const Eigen::Isometry3d& T_sensorFrame_imu) {
-  // Measurement handling
-  gtsam::Pose3 T_fixedFrame_I(unary6DMeasurement.unaryMeasurement().matrix() * T_sensorFrame_imu.matrix());
-
-  // Also optimize over fixedFrame Transformation --------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld || graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
-    // Find the closest key in existing graph
-    gtsam::Key closestKey;
-    if (!getUnaryFactorKey(closestKey, unary6DMeasurement)) {
-      return;
-    }
-
-    // Main state expression
-    gtsam::Pose3_ T_M_W_X_T_I_Is_(
-        gtsam::symbol_shorthand::X(closestKey));  // Left side: world to map, right side: Imu of sensor measurement to imu
-
-    // Dynamic keys for expression values
-    gtsam::Values valuesEstimates;
-    std::vector<gtsam::PriorFactor<gtsam::Pose3>> priorFactors;
-
-    // Optimize over fixed frame poses --------------------------------------------
-    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
-      const gtsam::Pose3& T_W_I_est = W_imuPropagatedState_.pose();  // alias for readability
-      gtsam::Pose3 T_M_W_initial = T_fixedFrame_I * T_W_I_est.inverse();
-      bool newGraphKeyAdded = false;
-      gtsam::Key newGraphKey = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::symbol_shorthand::T>(
-          newGraphKeyAdded, unary6DMeasurement.fixedFrameName(), worldFrame_, unary6DMeasurement.timeK());
-      T_M_W_X_T_I_Is_ = gtsam::Pose3_(newGraphKey) * T_M_W_X_T_I_Is_;
-      if (newGraphKeyAdded) {
-        valuesEstimates.insert(newGraphKey, T_M_W_initial);
-        priorFactors.emplace_back(newGraphKey, T_M_W_initial, gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
-      }
-    }
-    // Optimize over extrinsics ---------------------------------------------------
-    else if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
-      const gtsam::Pose3& T_I_Is_initial = gtsam::Pose3::Identity();  // alias for readability
-      bool newGraphKeyAdded = false;
-      gtsam::Key newGraphKey = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::symbol_shorthand::T>(
-          newGraphKeyAdded, imuFrame_, imuFrame_ + "_" + unary6DMeasurement.sensorFrameName(), unary6DMeasurement.timeK());
-      T_M_W_X_T_I_Is_ = T_M_W_X_T_I_Is_ * gtsam::Pose3_(newGraphKey);
-      if (newGraphKeyAdded) {
-        valuesEstimates.insert(newGraphKey, T_I_Is_initial);
-        priorFactors.emplace_back(newGraphKey, T_I_Is_initial, gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
-      }
-    }
-
-    // Meta function
-    addUnaryExpressionFactor<gtsam::Pose3, 6, gtsam::Pose3_>(T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseVariances(),
-                                                             T_M_W_X_T_I_Is_, unary6DMeasurement.timeK(), valuesEstimates, priorFactors);
-  }
-  // Simple unary factor --------------------------------------
-  else {
-    addUnaryFactorInImuFrame<gtsam::Pose3, 6, gtsam::PriorFactor<gtsam::Pose3>, gtsam::symbol_shorthand::X>(
-        T_fixedFrame_I, unary6DMeasurement.unaryMeasurementNoiseDensity(), unary6DMeasurement.timeK());
-  }
-}
-
 void GraphManager::addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
                                           const double lidarTimeK) {
   addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
@@ -411,7 +314,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
   if (unaryPositionMeasurement.sensorFrameName() != imuFrame_ || graphConfigPtr_->optimizeFixedFramePosesWrtWorld ||
       graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
     gtsam::Key closestKey;
-    if (!this->getUnaryFactorKey(closestKey, unaryPositionMeasurement)) {
+    if (!this->getUnaryFactorGeneralKey(closestKey, unaryPositionMeasurement)) {
       return;
     }
     // Dynamic keys for expression values
@@ -458,10 +361,10 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
                                   gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(3)));
       }
     }
-    // Meta function
-    addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_>(
-        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
-        fixedFrame_t_fixedFrame_sensorFrame, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
+    //    // Meta function
+    //    addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_>(
+    //        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
+    //        fixedFrame_t_fixedFrame_sensorFrame, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
   } else {
     addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),
@@ -775,24 +678,6 @@ gtsam::NavState GraphManager::calculateStateAtKey(bool& computeSuccessfulFlag, c
 
 // Private --------------------------------------------------------------------
 template <class CHILDPTR>
-void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
-  factorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
-}
-
-template <class CHILDPTR>
-void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
-  // Check Timestamp of Measurement on Delay
-  if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
-      graphConfigPtr_->realTimeSmootherLag - WORST_CASE_OPTIMIZATION_TIME) {
-    REGULAR_COUT << RED_START
-                 << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
-                 << COLOR_END << std::endl;
-  }
-  // Add measurements
-  return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr);
-}
-
-template <class CHILDPTR>
 void GraphManager::addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Operating on graph data --> acquire mutex
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -893,11 +778,6 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
                  << maxTimestampDistance << ". Still adding constraints to graph." << COLOR_END << std::endl;
   }
   return true;
-}
-
-void GraphManager::writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,
-                                              std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
-  (*keyTimestampMapPtr)[key] = measurementTime;
 }
 
 void GraphManager::writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
