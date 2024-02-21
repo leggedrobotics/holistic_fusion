@@ -42,10 +42,12 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
-    // if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
-    //   std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END <<
-    //   std::endl; optimizeSlowBatchSmoother();
-    // }
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+      std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END
+                << " Additional slow batch smoother was built up. Next time the optimization of it can be called before shutting down (if "
+                   "not done already)."
+                << std::endl;
+    }
   };
 
   // Initialization Interface ---------------------------------------------------
@@ -88,7 +90,7 @@ class GraphManager {
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  void optimizeSlowBatchSmoother();
+  bool optimizeSlowBatchSmoother();
 
   // Save Variables to File
   static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,

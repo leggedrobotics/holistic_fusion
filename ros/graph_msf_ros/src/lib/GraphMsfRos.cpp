@@ -104,7 +104,9 @@ void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
 }
 
 void GraphMsfRos::initializeServices_(ros::NodeHandle& privateNode) {
-  // Nothing for now
+  // Trigger offline smoother optimization
+  srvSmootherOptimize_ =
+      privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback_, this);
 }
 
 void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
@@ -130,6 +132,18 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
     // Publish Filtered Imu Measurements
     this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
   }
+}
+
+bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+  // Trigger offline smoother optimization and create response
+  if (GraphMsf::optimizeSlowBatchSmoother()) {
+    res.success = true;
+    res.message = "Optimization successful.";
+  } else {
+    res.success = false;
+    res.message = "Optimization failed.";
+  }
+  return true;
 }
 
 void GraphMsfRos::addToPathMsg(const nav_msgs::PathPtr& pathPtr, const std::string& fixedFrameName, const ros::Time& stamp,

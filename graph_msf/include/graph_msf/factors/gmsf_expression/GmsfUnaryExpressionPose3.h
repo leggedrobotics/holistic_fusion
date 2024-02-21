@@ -83,7 +83,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
       newStateValues_.insert(newGraphKey, T_sensorFrame_sensorFrameCorrected_initial);
       // Prior maybe not needed, but for safety (to keep well conditioned)
       newPriorFactors_.emplace_back(newGraphKey, T_sensorFrame_sensorFrameCorrected_initial,
-                                    gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
+                                    gtsam::noiseModel::Diagonal::Sigmas(1.0e-03 * gtsam::Vector::Ones(6)));
     }
     std::cout << "GmsfUnaryExpressionPose3: Extrinsic Calibration Correction added." << std::endl;
   }

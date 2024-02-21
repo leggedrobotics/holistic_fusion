@@ -49,6 +49,9 @@ class GraphMsf {
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 
+  // Trigger offline smoother optimization
+  bool optimizeSlowBatchSmoother();
+
   // Adder functions
   /// Return
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,

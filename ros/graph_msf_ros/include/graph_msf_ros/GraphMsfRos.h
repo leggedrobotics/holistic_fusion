@@ -16,7 +16,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <std_srvs/Trigger.h>
 #include <tf/transform_broadcaster.h>
+
 // Workspace
 #include "graph_msf/interface/GraphMsf.h"
 
@@ -58,6 +60,9 @@ class GraphMsfRos : public GraphMsf {
 
   // Callbacks
   virtual void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
+
+  // Services
+  bool srvOfflineSmootherOptimizeCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
   // Publishing -----------------------------------
   void publishOptimizedStateAndBias_(
@@ -130,6 +135,10 @@ class GraphMsfRos : public GraphMsf {
   // Imu Bias
   geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;
   geometry_msgs::Vector3StampedPtr gyroBiasMsgPtr_;
+
+  // Services
+  // Trigger offline smoother optimization
+  ros::ServiceServer srvSmootherOptimize_;
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;

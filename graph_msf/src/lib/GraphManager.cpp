@@ -600,20 +600,28 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-void GraphManager::optimizeSlowBatchSmoother() {
-  // Time duration of optimization
-  std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
-  // Optimization
-  const gtsam::Values& isam2OptimizedStates = batchOptimizerPtr_->getAllOptimizedStates();
-  // Key to timestamp map
-  const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
-  // Calculate Duration
-  std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
-  double optimizationDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
-  std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
+bool GraphManager::optimizeSlowBatchSmoother() {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    // Time duration of optimization
+    std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
+    // Optimization
+    const gtsam::Values& isam2OptimizedStates = batchOptimizerPtr_->getAllOptimizedStates();
+    // Key to timestamp map
+    const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
+    // Calculate Duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
+    double optimizationDuration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
+    std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
 
-  // Save Optimized Result
-  saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "/home/nubertj/");
+    // Save Optimized Result
+    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "/home/nubertj/");
+
+    // Return
+    return true;
+  } else {
+    return false;
+  }
 }
 
 // Save optimized values to file

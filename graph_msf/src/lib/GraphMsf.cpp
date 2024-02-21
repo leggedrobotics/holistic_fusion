@@ -57,6 +57,10 @@ bool GraphMsf::areRollAndPitchInited() {
   return alignedImuFlag_;
 }
 
+bool GraphMsf::optimizeSlowBatchSmoother() {
+  return graphMgrPtr_->optimizeSlowBatchSmoother();
+}
+
 template <int DIM>
 bool GraphMsf::isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& covariance, const double covarianceViolationThreshold) {
   if (covarianceViolationThreshold > 0.0) {
