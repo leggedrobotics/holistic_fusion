@@ -22,6 +22,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
 
   // Initialize Gnss converter
   if (usingGnssReferenceFlag) {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Calculating reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
     gnssSensor_.setReference(accumulatedLeftCoordinates(0), accumulatedLeftCoordinates(1), accumulatedLeftCoordinates(2), 0.0);
@@ -51,6 +52,8 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
     gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
+              << std::endl;
   }
 
   // Get Positions

@@ -7,6 +7,7 @@ sensor_params:
 # Noise Parameters
 noise_params:
   ## LiDAR
+  ## To JN: Given the full availability of RTK GPS, the relatice uncertainty of the LiDAR odometry should be higher?
   lioPoseUnaryNoise: [ 0.02, 0.02, 0.02, 0.0001, 0.0001, 0.0001 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Legged Odometry
   legPoseBetweenNoise: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

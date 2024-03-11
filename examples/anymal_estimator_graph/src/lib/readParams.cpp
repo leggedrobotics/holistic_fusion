@@ -16,7 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode, std::shared_ptr<graph_msf::GnssHandler>& gnssHandlerPtr_) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
@@ -46,16 +46,26 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // GNSS
   useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
 
+  if (useGnssFlag_) {
+    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  }
+
   // Legged Odometry
   useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
 
   // Gnss parameters
   if (useGnssFlag_) {
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
-    gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
+
+    if (gnssHandlerPtr_->usingGnssReferenceFlag) {
+      REGULAR_COUT << GREEN_START << " Using GNSS reference from parameters." << COLOR_END << std::endl;
+      gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
+    } else {
+      REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
+    }
   }
 
   // Set frames

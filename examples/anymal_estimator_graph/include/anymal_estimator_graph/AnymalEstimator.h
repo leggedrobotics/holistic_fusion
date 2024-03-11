@@ -25,6 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
+#include "anymal_estimator_graph/constants.h"
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/GraphMsfRos.h"
@@ -48,7 +49,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
   virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
   virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
-  virtual void readParams_(const ros::NodeHandle& privateNode) override;
+  virtual void readParams_(const ros::NodeHandle& privateNode, std::shared_ptr<graph_msf::GnssHandler>& gnssHandle);
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);

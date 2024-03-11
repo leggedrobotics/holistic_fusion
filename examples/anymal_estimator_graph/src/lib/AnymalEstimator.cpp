@@ -12,7 +12,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 // Workspace
-#include "anymal_estimator_graph/constants.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/util/conversions.h"
@@ -25,11 +24,6 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
-
-  // GNSS Handler
-  if (useGnssFlag_) {
-    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
-  }
 
   // Set up
   if (!AnymalEstimator::setup()) {
@@ -49,7 +43,9 @@ bool AnymalEstimator::setup() {
   }
 
   // Read parameters ----------------------------
-  AnymalEstimator::readParams_(privateNode_);
+  AnymalEstimator::readParams_(privateNode_, gnssHandlerPtr_);
+
+  // Wait for static transforms ----------------------------
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
@@ -219,7 +215,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
     gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
 
     // TODO: Clean up
-    double initYawEnuLidar;
+    double initYawEnuLidar = 2.61799;  // 150 degrees // Hardcoded for now for the test dataset.
     gnssHandlerPtr_->setInitYaw(initYawEnuLidar);
     initialized_ = true;
 
