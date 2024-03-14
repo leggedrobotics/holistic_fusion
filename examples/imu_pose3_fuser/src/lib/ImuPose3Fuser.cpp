@@ -88,11 +88,12 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   // Static members
   static int odometryCallbackCounter__ = -1;
 
+
   // Counter
   ++odometryCallbackCounter__;
 
-  Eigen::Isometry3d T_M_Ik;
-  graph_msf::odomMsgToEigen(*odomPtr, T_M_Ik.matrix());
+  Eigen::Isometry3d T_W_Ik;
+  graph_msf::odomMsgToEigen(*odomPtr, T_W_Ik.matrix());
 
   // Transform to IMU frame
   double odometryTimeK = odomPtr->header.stamp.toSec();
@@ -100,22 +101,33 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
             "pose3_unary_6D", int(pose3OdometryRate_), staticTransformsPtr_->getImuFrame(),
-            graph_msf::RobustNormEnum::Huber, 1.345, odometryTimeK, staticTransformsPtr_->getWorldFrame(), 1.0, T_M_Ik, pose3UnaryNoise_);
+            graph_msf::RobustNormEnum::None, 1.345, odometryTimeK, staticTransformsPtr_->getWorldFrame(), 1.0, T_W_Ik, pose3UnaryNoise_);
 
+  // Only add measurement once every second in beginning
+  bool addMeasurementFlag = false;
+  if (odometryCallbackCounter__ < 4000) {
+      if ((odometryCallbackCounter__ % 200) == 0) {
+          addMeasurementFlag = true;
+      }
+  } else { // And more rarely later
+      if ((odometryCallbackCounter__ % 2000) == 0) {
+          addMeasurementFlag = true;
+      }
+  }
 
     // Add measurement or initialize
   if (odometryCallbackCounter__ <= 2) {
     return;
-  } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
+  } else if (!areYawAndPositionInited()) {  // Initializing
+      REGULAR_COUT << GREEN_START << " Odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+      this->initYawAndPosition(unary6DMeasurement);
+  } else if (addMeasurementFlag) {  // Already initialized --> unary factor
     this->addUnaryPoseMeasurement(unary6DMeasurement);
-  } else {  // Initializing
-    REGULAR_COUT << GREEN_START << " Odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-    this->initYawAndPosition(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measPose3_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomPtr->header.stamp, T_M_Ik.matrix().block<3, 1>(0, 3),
+  addToPathMsg(measPose3_worldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomPtr->header.stamp, T_W_Ik.matrix().block<3, 1>(0, 3),
                graphConfigPtr_->imuBufferLength * 4);
 
   // Publish Path

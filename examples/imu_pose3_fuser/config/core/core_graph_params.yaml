@@ -1,6 +1,6 @@
 # Sensor Params
 sensor_params:
-  imuRate: 200                            #Rate of IMU input (Hz)
+  imuRate: 100                            #Rate of IMU input (Hz)
   createStateEveryNthImuMeasurement: 1   # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
@@ -15,7 +15,7 @@ initialization_params:
 # Factor Graph
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
-  realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+  realTimeSmootherLag: 20.0                # Lag of real-time fixed lag smoother[seconds]
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
@@ -26,9 +26,9 @@ graph_params:
   enableDetailedResults: false
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
-  optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
+  optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
   fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
-  optimizeWithImuToSensorLeverArm: true   # If true, the IMU to sensor lever arm is considered in the optimization (important for position-only measurements)
+  optimizeWithImuToSensorLeverArm: false   # If true, the IMU to sensor lever arm is considered in the optimization (important for position-only measurements)
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
 
 # Outlier Rejection
