@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
 
 // Workspace
+#include "anymal_estimator_graph/constants.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/util/conversions.h"
@@ -43,7 +44,7 @@ bool AnymalEstimator::setup() {
   }
 
   // Read parameters ----------------------------
-  AnymalEstimator::readParams_(privateNode_, gnssHandlerPtr_);
+  AnymalEstimator::readParams_(privateNode_);
 
   // Wait for static transforms ----------------------------
   staticTransformsPtr_->findTransformations();

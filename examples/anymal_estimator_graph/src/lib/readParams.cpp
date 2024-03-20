@@ -13,10 +13,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Project
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
+#include "anymal_estimator_graph/constants.h"
 
 namespace anymal_se {
 
-void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode, std::shared_ptr<graph_msf::GnssHandler>& gnssHandlerPtr_) {
+void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
@@ -46,15 +47,15 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode, std::share
   // GNSS
   useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
 
-  if (useGnssFlag_) {
-    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
-  }
-
   // Legged Odometry
   useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
 
   // Gnss parameters
   if (useGnssFlag_) {
+    // GNSS Handler
+    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+
+    // GNSS Reference
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
 
     if (gnssHandlerPtr_->usingGnssReferenceFlag) {
