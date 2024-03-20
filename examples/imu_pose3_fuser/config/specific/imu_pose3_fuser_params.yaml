@@ -1,0 +1,9 @@
+# Sensor Params
+sensor_params:
+  ## Rates
+  pose3OdometryRate: 10
+
+# Noise Parameters
+noise_params:
+  ## LiDAR
+  pose3UnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters) First tests:  [ 1000.0, 1000.0, 1000.0, 2.0, 2.0, 2.0 ]

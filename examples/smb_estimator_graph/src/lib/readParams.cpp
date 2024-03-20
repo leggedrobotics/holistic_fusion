@@ -1,5 +1,5 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -7,6 +7,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Implementation
 #include "smb_estimator_graph/SmbEstimator.h"
+
+// GraphMSF ROS
+#include "graph_msf_ros/ros/read_ros_params.h"
 
 // Project
 #include "smb_estimator_graph/SmbStaticTransforms.h"

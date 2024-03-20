@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" default="true"/>
+
+    <!-- Launch Stack -->
+    <include file="$(find imu_pose3_fuser)/launch/imu_pose3_fuser.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+    </include>
+
+    <!-- RVIZ for Visualization -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find imu_pose3_fuser)/rviz/estimation.rviz" />
+
+</launch>

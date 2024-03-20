@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time"              default="false" />
+    <param name="use_sim_time"            value="$(arg use_sim_time)"/>
+
+    <!-- GMSF Input Topics -->
+    <arg name="imu_topic_name"            default="/imu/data" />
+    <arg name="pose3_odometry_topic_name" default="/pose/data"/>
+
+    <!-- Config Files -->
+    <arg name="core_graph_config_param_file"  default="$(find imu_pose3_fuser)/config/core/core_graph_config.yaml"/>
+    <arg name="core_graph_param_file"         default="$(find imu_pose3_fuser)/config/core/core_graph_params.yaml"/>
+    <arg name="core_extrinsic_param_file"     default="$(find imu_pose3_fuser)/config/core/core_extrinsic_params.yaml"/>
+    <arg name="imu_pose3_fuser_param_file"    default="$(find imu_pose3_fuser)/config/specific/imu_pose3_fuser_params.yaml"/>
+
+    <!-- Node -->
+    <node pkg="imu_pose3_fuser" type="imu_pose3_fuser_node" name="imu_pose3_fuser_node" output="screen"> <!-- launch-prefix="gdb -ex run -args" -->
+        <!-- Parameter files -->
+        <rosparam command="load" file="$(arg core_graph_config_param_file)" />
+        <rosparam command="load" file="$(arg core_graph_param_file)" />
+        <rosparam command="load" file="$(arg core_extrinsic_param_file)" />
+        <rosparam command="load" file="$(arg imu_pose3_fuser_param_file)" />
+        <!-- Remapping of topics -->
+        <remap from="/imu_topic"            to="$(arg imu_topic_name)" />
+        <remap from="/pose3_odometry_topic" to="$(arg pose3_odometry_topic_name)" />
+    </node>
+
+</launch>

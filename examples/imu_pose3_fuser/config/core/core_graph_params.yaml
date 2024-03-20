@@ -1,0 +1,68 @@
+# Sensor Params
+sensor_params:
+  imuRate: 100                            #Rate of IMU input (Hz)
+  createStateEveryNthImuMeasurement: 1   # Create a new state every n-th IMU measurement
+  useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
+  imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
+  imuBufferLength: 800
+  imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
+
+# Initialization
+initialization_params:
+  estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU
+  gravityMagnitude: 9.80600                # If estimateGravityFromImu is false, this value is used as gravity
+
+# Factor Graph
+graph_params:
+  realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
+  realTimeSmootherLag: 20.0                # Lag of real-time fixed lag smoother[seconds]
+  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
+  # Optimizer Config
+  gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
+  maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
+  additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
+  findUnusedFactorSlots: true
+  enableDetailedResults: false
+  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
+  usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
+  fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
+  optimizeWithImuToSensorLeverArm: false   # If true, the IMU to sensor lever arm is considered in the optimization (important for position-only measurements)
+  optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
+
+# Outlier Rejection
+outlier_params:
+  poseMotionOutlierThreshold: 0.3         # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
+
+# Noise Parameters
+noise_params:
+  ## IMU
+  ### Position
+  accNoiseDensity: 7.84e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
+  integrationNoiseDensity: 1.0e-03        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty
+  use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
+  ### Rotation
+  gyrNoiseDensity: 3.4906585e-05          # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
+  omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
+  ### Bias
+  accBiasRandomWalkNoiseDensity: 1.0e-03  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]
+  gyrBiasRandomWalkNoiseDensity: 9.33e-04 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz]
+  biasAccOmegaInit: 1.0e-02               # StdDev of bias at start
+  accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
+  gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
+
+# Relinearization
+relinearization_params:
+  positionReLinTh: 1.0e-03                # Position linearization threshold
+  rotationReLinTh: 1.0e-03                # Rotation linearization threshold
+  velocityReLinTh: 1.0e-03                # Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-03                 # Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-03                 # Gyroscope bias linearization threshold
+  fixedFrameReLinTh: 1.0e-03              # Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
+  displacementReLinTh: 1.0e-03            # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
+  relinearizeSkip: 1                      # Re-linearization is skipped every n-th step, default: 10
+  enableRelinearization: true             # Whether to use relinearization, default: true
+  evaluateNonlinearError: true            # Whether to evaluate the nonlinear errorr before and after the update, default: false
+  cacheLinearizedFactors: true            # Whether to cache the linearized factors, default: true
+  enablePartialRelinearizationCheck: false # Whether potentially only parts of the tree needs to be relinearized, default: false
