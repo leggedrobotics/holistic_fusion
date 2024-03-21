@@ -18,7 +18,7 @@
     <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
     <!--Input Topics for Compslam -->
-    <arg name="pointcloud_topic_name" default="/lidar/point_cloud" />
+    <arg name="pointcloud_topic_name" default="/lidar/point_cloud"/> <!-- "/point_cloud_filter/lidar/point_cloud_filtered" /-->
 
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)"/>
