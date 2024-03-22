@@ -75,8 +75,6 @@ class GraphManager {
   void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
 
   // Unary Specializations
-  void addVelocityUnaryFactor(const gtsam::Vector3& velocity, const Eigen::Matrix<double, 3, 1>& velocityUnaryNoiseDensity,
-                              double lidarTimeK);
   void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
                               const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
   void addHeadingUnaryFactor(double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, double gnssTime);

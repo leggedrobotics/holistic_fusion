@@ -155,6 +155,12 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   // Transform to IMU frame
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
 
+  // Create faulty timestmaps for testing
+  if (lidarOdometryCallbackCounter__ > 0 && lidarOdometryCallbackCounter__ % 30 == 0) {
+    lidarOdometryTimeK -= 5.0;
+    REGULAR_COUT << "Faulty timestamp: " << lidarOdometryTimeK << std::endl;
+  }
+
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
