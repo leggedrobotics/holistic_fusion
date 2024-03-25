@@ -20,7 +20,7 @@ class OptimizerLMFixedLag : public OptimizerLM {
  public:
   explicit OptimizerLMFixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
     // Initialize Real-time Smoother -----------------------------------------------
-    fixedLagSmootherPtr_ = std::make_shared<gtsam::BatchFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag, lmParams_);
+    fixedLagSmootherPtr_ = std::make_shared<gtsam::BatchFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_, lmParams_);
     // Print
     fixedLagSmootherPtr_->print("LM FixedLagSmoother initialized with lag: ");
   }

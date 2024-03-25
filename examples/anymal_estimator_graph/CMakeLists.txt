@@ -3,6 +3,10 @@ project(anymal_estimator_graph)
 
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# We pass the path of the `FindXYZ.cmake` files to `CMAKE_MODULE_PATH`
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 
 # Find Dependencies ---------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
@@ -40,6 +44,8 @@ find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
+find_package(Glog REQUIRED)
+
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
@@ -56,6 +62,8 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
+        ${GLOG_INCLUDE_DIRS}
+        ${gflags_INCLUDE_DIRS}
 )
 
 # Library
@@ -65,11 +73,18 @@ add_library(${PROJECT_NAME}
         src/lib/AnymalStaticTransforms.cpp
         )
 target_link_libraries(${PROJECT_NAME}
-        ${catkin_LIBRARIES})
+        ${catkin_LIBRARIES}
+        ${gflags_LIBRARIES}
+        ${GLOG_LIBRARIES}
+        )
 
 # Executable
 add_executable(${PROJECT_NAME}_node src/anymal_estimator_node.cpp)
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}_node 
+  ${PROJECT_NAME}
+  ${gflags_LIBRARIES}
+  ${GLOG_LIBRARIES}
+  )
 
 add_dependencies(${PROJECT_NAME}
         ${catkin_EXPORTED_TARGETS})

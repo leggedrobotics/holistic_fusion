@@ -8,13 +8,18 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss" default="false"/>
+    <arg name="using_gnss" default="true"/>
+    <arg name="using_lio" default="false"/>
     <arg name="using_legged_odometry" default="false"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name" default="/sensors/imu"/>
-    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/>
-    <arg name="lidar_odometry_topic_name" default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED"/>
+    <arg name="imu_topic_name"             default="/sensors/imu" />
+    <arg name="legged_odometry_topic_name" default="/state_estimator/pose_in_odom" />
+    <arg name="lidar_odometry_topic_name"  default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />
+    <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
+
+    <!--Input Topics for Compslam -->
+    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- "/point_cloud_filter/lidar/point_cloud_filtered" /-->
 
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)"/>
@@ -27,6 +32,7 @@
         <!-- Config  -->
         <arg name="extrinsics_from_urdf" value="$(arg extrinsics_from_urdf)"/>
         <arg name="using_gnss" value="$(arg using_gnss)"/>
+        <arg name="using_lio" value="$(arg using_lio)"/>
         <arg name="using_legged_odometry" value="$(arg using_legged_odometry)"/>
         <!-- Input Topics -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>

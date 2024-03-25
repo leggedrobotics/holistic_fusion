@@ -63,7 +63,7 @@ class GraphMsf {
   void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
   bool addPositionMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
   bool addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
-  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
+  bool addZeroMotionFactor(double timeKm1, double timeK);
 
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 

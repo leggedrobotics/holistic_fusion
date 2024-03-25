@@ -26,11 +26,6 @@ AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr
   // Static transforms
   staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
 
-  // GNSS Handler
-  if (useGnssFlag_) {
-    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
-  }
-
   // Set up
   if (!AnymalEstimator::setup()) {
     REGULAR_COUT << COLOR_END << " Failed to set up." << std::endl;
@@ -50,6 +45,8 @@ bool AnymalEstimator::setup() {
 
   // Read parameters ----------------------------
   AnymalEstimator::readParams_(privateNode_);
+
+  // Wait for static transforms ----------------------------
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
@@ -78,9 +75,11 @@ void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
 
 void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // LiDAR Odometry
-  subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
-      "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
-  REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLidarOdometry_.getTopic() << std::endl;
+  if (useLioFlag_) {
+    subLidarOdometry_ = privateNode_.subscribe<nav_msgs::Odometry>(
+        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarOdometryCallback_, this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLidarOdometry_.getTopic() << std::endl;
+  }
 
   // GNSS
   if (useGnssFlag_) {
@@ -158,6 +157,12 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   // Transform to IMU frame
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
 
+  // Create faulty timestmaps for testing
+  //  if (lidarOdometryCallbackCounter__ > 0 && lidarOdometryCallbackCounter__ % 30 == 0) {
+  //    lidarOdometryTimeK -= 5.0;
+  //    REGULAR_COUT << "Faulty timestamp: " << lidarOdometryTimeK << std::endl;
+  //  }
+
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
@@ -165,13 +170,13 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
-  } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
-  } else {  // Initializing
-    REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+  } else if (!areYawAndPositionInited()) {  // Initializing
     if (!useGnssFlag_) {
+      REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
+  } else {  // Already initialized --> unary factor
+    this->addUnaryPoseMeasurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -183,7 +188,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
                                              staticTransformsPtr_->getImuFrame())
                         .matrix())
           .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength * 4);
+      graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
@@ -192,64 +197,58 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
   // Static method variables
   static Eigen::Vector3d accumulatedCoordinates__(0.0, 0.0, 0.0);
-  static Eigen::Vector3d W_t_W_Gnss_km1__;
   static int gnssCallbackCounter__ = 0;
-  Eigen::Vector3d W_t_W_Gnss;
 
-  // Start
+  // Counter
   ++gnssCallbackCounter__;
+
+  // Convert to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
   Eigen::Vector3d estCovarianceXYZ(gnssMsgPtr->position_covariance[0], gnssMsgPtr->position_covariance[4],
                                    gnssMsgPtr->position_covariance[8]);
 
-  if (not initialized_) {
-    if (gnssCallbackCounter__ < NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
-      // Wait until measurements got accumulated
-      accumulatedCoordinates__ += gnssCoord;
-      if (!(gnssCallbackCounter__ % 10)) {
-        std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH Gnss MESSAGES ARRIVED!" << std::endl;
-      }
-      return;
-    } else if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {
-      gnssHandlerPtr_->initHandler(accumulatedCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_START);
-      ++gnssCallbackCounter__;
+  // Initialize GNSS Handler
+  if (gnssCallbackCounter__ <= NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
+    // Wait until measurements got accumulated
+    accumulatedCoordinates__ += gnssCoord;
+    if (!(gnssCallbackCounter__ % 10)) {
+      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH Gnss MESSAGES ARRIVED!" << std::endl;
     }
-    // Convert to cartesian coordinates
-    gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-
-    // TODO: Clean up
-    double initYawEnuLidar;
-    gnssHandlerPtr_->setInitYaw(initYawEnuLidar);
-    initialized_ = true;
-
-    gnssHandlerPtr_->initHandler(gnssHandlerPtr_->getInitYaw());
+    return;
+  } else if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 1) {  // Initialize GNSS Handler
+    gnssHandlerPtr_->initHandler(accumulatedCoordinates__ / NUM_GNSS_CALLBACKS_UNTIL_START);
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
+    return;
   }
 
   // Convert to cartesian coordinates
+  Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
 
-  // Initialization
-  if (gnssCallbackCounter__ == NUM_GNSS_CALLBACKS_UNTIL_START + 2) {
-    if (not this->initYawAndPosition(gnssHandlerPtr_->getInitYaw(), W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
-                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
+  double initYaw_W_Base = -90.0 / 180.0 * M_PI;
+
+  // Adding the GNSS measurement
+  if (!areYawAndPositionInited()) {  // 1: Initialization
+    if (not this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
+                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
-      // Decrease counter if not successfully initialized
-      std::cout << YELLOW_START << "DECREASING" << COLOR_END << " ++!" << std::endl;
-      --gnssCallbackCounter__;
+      // Make clear that this was not successful
+      REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << std::endl;
+    } else {
+      REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
     }
-  } else {
+  } else {  // 2: Unary factor
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
-        graph_msf::RobustNormEnum::Tukey, 1.345, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
+        graph_msf::RobustNormEnum::Huber, 1.345, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addPositionMeasurement(meas_W_t_W_Gnss);
   }
-  W_t_W_Gnss_km1__ = W_t_W_Gnss;
 
   /// Add GNSS to Path
   addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,
-               graphConfigPtr_->imuBufferLength * 4);
+               graphConfigPtr_->imuBufferLength_ * 4);
   /// Publish path
   pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
 }

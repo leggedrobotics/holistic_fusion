@@ -48,7 +48,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
   virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
   virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
-  virtual void readParams_(const ros::NodeHandle& privateNode) override;
+  virtual void readParams_(const ros::NodeHandle& privateNode);
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
@@ -73,13 +73,13 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Flags
   bool useGnssFlag_ = false;
+  bool useLioFlag_ = true;
   bool useLeggedOdometryFlag_ = true;
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
-  double gnssHeadingUnaryNoise_ = 1.0;   // in [rad]
 
   // ROS Objects ----------------------------
 
@@ -101,9 +101,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
-
-  // Initialization
-  bool initialized_ = false;
 };
 }  // namespace anymal_se
 #endif  // end M545ESTIMATORGRAPH_H

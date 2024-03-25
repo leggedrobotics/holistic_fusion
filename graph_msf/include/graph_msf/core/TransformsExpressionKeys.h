@@ -70,7 +70,10 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     // Logic
     if (isFramePairInDictionary(frame1, frame2)) {
       factorGraphStateKey = rv_T_frame1_frame2(frame1, frame2);
-      lv_T_frame1_frame2(frame1, frame2).setTimeStamp(timeK);
+      // Update Timestamp if newer
+      if (timeK > factorGraphStateKey.getTime()) {
+        lv_T_frame1_frame2(frame1, frame2).setTimeStamp(timeK);
+      }
       returnKey = factorGraphStateKey.key();
       return false;
     } else {

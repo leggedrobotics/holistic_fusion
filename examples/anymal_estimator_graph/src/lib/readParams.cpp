@@ -13,6 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Project
 #include "anymal_estimator_graph/AnymalStaticTransforms.h"
+#include "anymal_estimator_graph/constants.h"
 
 namespace anymal_se {
 
@@ -27,7 +28,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   leggedOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
-  // Noise Parameters
+  // Noise Parameters ---------------------------------------------------
   /// LiDAR Odometry
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
@@ -41,24 +42,35 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   /// Gnss
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
-  gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
+  // Flags ---------------------------------------------------
   // GNSS
   useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
-
+  // LIO
+  useLioFlag_ = graph_msf::tryGetParam<bool>("launch/usingLio", privateNode);
   // Legged Odometry
   useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
 
-  // Gnss parameters
+  // Gnss parameters ---------------------------------------------------
   if (useGnssFlag_) {
+    // GNSS Handler
+    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+
+    // GNSS Reference
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
-    gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
+
+    if (gnssHandlerPtr_->usingGnssReferenceFlag) {
+      REGULAR_COUT << GREEN_START << " Using GNSS reference from parameters." << COLOR_END << std::endl;
+      gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
+      gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
+    } else {
+      REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
+    }
   }
 
-  // Set frames
+  // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lioOdometryFrame", privateNode));

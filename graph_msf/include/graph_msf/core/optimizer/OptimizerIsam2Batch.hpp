@@ -17,7 +17,7 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
  public:
   explicit OptimizerIsam2Batch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
       // Initialize Slow Bundle Adjustement Smoother
       batchSmootherPtr_ = std::make_shared<gtsam::ISAM2>(isam2Params_);
       batchSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of Slow Batch Optimization Graph.");
