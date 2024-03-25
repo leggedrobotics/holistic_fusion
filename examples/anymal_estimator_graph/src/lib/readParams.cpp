@@ -28,7 +28,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   leggedOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
-  // Noise Parameters
+  // Noise Parameters ---------------------------------------------------
   /// LiDAR Odometry
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
@@ -42,15 +42,16 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   /// Gnss
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
-  gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
 
+  // Flags ---------------------------------------------------
   // GNSS
   useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
-
+  // LIO
+  useLioFlag_ = graph_msf::tryGetParam<bool>("launch/usingLio", privateNode);
   // Legged Odometry
   useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
 
-  // Gnss parameters
+  // Gnss parameters ---------------------------------------------------
   if (useGnssFlag_) {
     // GNSS Handler
     gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
@@ -69,7 +70,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     }
   }
 
-  // Set frames
+  // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lioOdometryFrame", privateNode));

@@ -272,30 +272,37 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const Unary
 
 void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
                                           const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame) {
+  // Aliases
+  const std::string& sensorFrameName = unaryPositionMeasurement.sensorFrameName();
+  const std::string& fixedFrameName = unaryPositionMeasurement.fixedFrameName();
+
   // Case 1: Need expression factor: i) optimize over fixed frame poses, ii) position not in IMU frame,  iii) optimize over extrinsics
   if (unaryPositionMeasurement.sensorFrameName() != imuFrame_ || graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ ||
       graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
+    // Find closest key
     gtsam::Key closestKey;
     if (!this->getUnaryFactorGeneralKey(closestKey, unaryPositionMeasurement)) {
       return;
     }
+
     // Dynamic keys for expression values
     gtsam::Values valuesEstimates;
     std::vector<gtsam::PriorFactor<gtsam::Point3>> priorFactors;
+
     // Main state expression
     gtsam::Point3_ W_t_W_I = gtsam::translation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
     gtsam::Point3_ fixedFrame_t_fixedFrame_sensorFrame = W_t_W_I;
     gtsam::Rot3_ R_W_I_ = gtsam::rotation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
     gtsam::Rot3_ R_fixedFrame_I = R_W_I_;
-    // Aliases
-    const std::string& sensorFrameName = unaryPositionMeasurement.sensorFrameName();
-    const std::string& fixedFrameName = unaryPositionMeasurement.fixedFrameName();
+
     // i) optimize over fixed frame poses --> only changes frame it is expressed in (not sensor frame)
     // TODO: finish up --> currently no effect
     if (fixedFrameName != worldFrame_ && graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
       fixedFrame_t_fixedFrame_sensorFrame = fixedFrame_t_fixedFrame_sensorFrame;
       R_fixedFrame_I = R_fixedFrame_I;
+      throw std::runtime_error("Not implemented yet.");
     }
+
     // ii) position not in IMU frame (only changes sensor frame)
     if (sensorFrameName != imuFrame_) {
       if (!I_t_I_sensorFrame) {
@@ -306,6 +313,7 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
       }
       fixedFrame_t_fixedFrame_sensorFrame = fixedFrame_t_fixedFrame_sensorFrame + gtsam::rotate(R_fixedFrame_I, I_t_I_sensorFrame.value());
     }
+
     // iii) optimize over extrinsics
     if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ && sensorFrameName != imuFrame_) {
       std::cout << "case 3" << std::endl;
@@ -323,10 +331,43 @@ void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector
                                   gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(3)));
       }
     }
-    //    // Meta function
-    //    addUnaryExpressionFactor<gtsam::Point3, 3, gtsam::Point3_>(
-    //        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseVariances(),
-    //        fixedFrame_t_fixedFrame_sensorFrame, unaryPositionMeasurement.timeK(), valuesEstimates, priorFactors);
+
+    // Noise & Error Function
+    auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(unaryPositionMeasurement.unaryMeasurementNoiseDensity());  // rad,rad,rad,x,y,z
+    // Robust Error Function?
+    const RobustNormEnum robustNormEnum(unaryPositionMeasurement.robustNormEnum());
+    const double robustNormConstant = unaryPositionMeasurement.robustNormConstant();
+    boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+    // Pick Robust Error Function
+    switch (robustNormEnum) {
+      case RobustNormEnum::Huber:
+        robustErrorFunction =
+            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(robustNormConstant), noiseModel);
+        break;
+      case RobustNormEnum::Cauchy:
+        robustErrorFunction =
+            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Cauchy::Create(robustNormConstant), noiseModel);
+        break;
+      case RobustNormEnum::Tukey:
+        robustErrorFunction =
+            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noiseModel);
+        break;
+    }
+
+    // Create Factor
+    std::shared_ptr<gtsam::ExpressionFactor<gtsam::Point3>> unaryExpressionFactorPtr;
+    if (robustNormEnum == RobustNormEnum::None) {
+      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<gtsam::Point3>>(
+          noiseModel, unaryPositionMeasurement.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame);
+    } else {
+      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<gtsam::Point3>>(
+          robustErrorFunction, unaryPositionMeasurement.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame);
+    }
+
+    // Operating on graph data
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    // Add to graph
+    addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Point3>*>(unaryExpressionFactorPtr.get(), unaryPositionMeasurement.timeK());
   } else {
     addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
         unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),

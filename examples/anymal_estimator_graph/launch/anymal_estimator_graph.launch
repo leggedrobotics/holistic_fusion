@@ -16,6 +16,7 @@
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
     <arg name="using_gnss"                default="false" />
+    <arg name="using_lio"                 default="true" />
     <arg name="using_legged_odometry"     default="false" />
 
     <!-- Config Files -->
@@ -31,6 +32,7 @@
     <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" > <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
         <param name="launch/usingGnss" type="bool" value="$(arg using_gnss)" />
+        <param name="launch/usingLio" type="bool" value="$(arg using_lio)" />
         <param name="launch/usingLeggedOdometry" type="bool" value="$(arg using_legged_odometry)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />

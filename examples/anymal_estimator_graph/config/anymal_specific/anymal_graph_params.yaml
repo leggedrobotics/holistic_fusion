@@ -12,5 +12,4 @@ noise_params:
   ## Legged Odometry
   legPoseBetweenNoise: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## GNSS
-  gnssPositionUnaryNoise: 0.1 # x, y, z of global position
-  gnssHeadingUnaryNoise: 0.5 # yaw
+  gnssPositionUnaryNoise: 0.01 # x, y, z of global position

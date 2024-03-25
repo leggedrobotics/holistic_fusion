@@ -90,7 +90,7 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
 
     // TODO: here assume that world is fixed frame, which is not necessarily the case
     const gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
-    REGULAR_COUT << GREEN_START << " Setting yaw of " << frame1 << " frame in " << fixedFrame << "frame." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Setting yaw of " << frame1 << " frame in " << fixedFrame << " frame." << COLOR_END << std::endl;
     const double yaw_W_I0_ =
         (yawR_W_frame1 *
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
@@ -315,23 +315,20 @@ bool GraphMsf::addPositionMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fi
   }
 
   // Only take actions if graph has been initialized
-  if (!initedGraphFlag_) {
+  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
     return false;
-  }
+  } else {  // Case 2: Graph Initialized
+    // Check for covariance violation
+    bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
+                                                           fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
+    if (covarianceViolatedFlag) {
+      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      return false;
+    }
 
-  // Check whether IMU has been added already
-  if (graphMgrPtr_->getPropagatedStateKey() == 0) {
-    return false;
-  }
-
-  // Check for covariance violation
-  bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
-                                                         fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
-
-  // Add factor
-  if (!covarianceViolatedFlag) {
+    // Add factor
     // Transform to IMU frame in case lever should not be considered
-    if (!graphConfigPtr_->optimizeWithImuToSensorLeverArm_) {
+    if (!graphConfigPtr_->optimizeWithImuToSensorLeverArm_) {  // Do not consider lever
       if (fixedFrame_t_fixedFrame_sensorFrame.fixedFrameName() != staticTransformsPtr_->getWorldFrame()) {
         throw std::runtime_error("Optimization without considering lever is only supported for positions expressed in world frame.");
       }
@@ -342,19 +339,21 @@ bool GraphMsf::addPositionMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fi
       // Add factor
       graphMgrPtr_->addPositionUnaryFactor(fixedFrame_t_fixedFrame_sensorFrame);
     } else {  // Consider lever
-      // Add factor
       graphMgrPtr_->addPositionUnaryFactor(
           fixedFrame_t_fixedFrame_sensorFrame,
           staticTransformsPtr_
               ->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName())
               .translation());
     }
-    // Mutex for optimizeGraph Flag
-    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-    optimizeGraphFlag_ = true;
+
+    // Optimize ---------------------------------------------------------------
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+    // Return
     return true;
-  } else {
-    return false;
   }
 }
 
@@ -388,10 +387,7 @@ bool GraphMsf::addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_
   }
 }
 
-bool GraphMsf::addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose) {
-  // Find corresponding keys in graph
-  gtsam::Key closestKeyKm1, closestKeyK;
-
+bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK) {
   static_cast<void>(
       graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10));
   graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(

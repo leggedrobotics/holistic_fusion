@@ -8,7 +8,8 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss" default="false"/>
+    <arg name="using_gnss" default="true"/>
+    <arg name="using_lio" default="false"/>
     <arg name="using_legged_odometry" default="false"/>
 
     <!-- Input Topics -->
@@ -31,6 +32,7 @@
         <!-- Config  -->
         <arg name="extrinsics_from_urdf" value="$(arg extrinsics_from_urdf)"/>
         <arg name="using_gnss" value="$(arg using_gnss)"/>
+        <arg name="using_lio" value="$(arg using_lio)"/>
         <arg name="using_legged_odometry" value="$(arg using_legged_odometry)"/>
         <!-- Input Topics -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
