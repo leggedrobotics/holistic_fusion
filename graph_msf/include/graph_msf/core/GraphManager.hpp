@@ -42,7 +42,7 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
       std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END
                 << " Additional slow batch smoother was built up. Next time the optimization of it can be called before shutting down (if "
                    "not done already)."
@@ -103,8 +103,8 @@ class GraphManager {
 
   // Accessors
   /// Getters
-  Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior; }
-  Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior; }
+  Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior_; }
+  Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior_; }
 
   //  auto iterations() const { return additonalIterations_; }
   const GraphState& getOptimizedGraphState() { return optimizedGraphState_; }

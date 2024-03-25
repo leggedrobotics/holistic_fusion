@@ -21,7 +21,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   explicit OptimizerIsam2FixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
     // Initialize Real-time Smoother -----------------------------------------------
     fixedLagSmootherPtr_ =
-        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag,
+        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_,
                                                              isam2Params_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
     fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of real-time graph.");
   }
@@ -35,7 +35,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
-    //gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+    // gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
 
     // Try to update
     try {
@@ -77,7 +77,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         bool factorContainsExistentKeys = true;
         for (auto key : factor->keys()) {
           if (newGraphKeysTimeStampMap.find(key) != newGraphKeysTimeStampMap.end()) {
-            if (newGraphKeysTimeStampMap.at(key) < latestTimeStamp - graphConfigPtr_->realTimeSmootherLag) {
+            if (newGraphKeysTimeStampMap.at(key) < latestTimeStamp - graphConfigPtr_->realTimeSmootherLag_) {
               std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                         << " Factor contains key older than smoother lag: " << gtsam::Symbol(key) << COLOR_END << std::endl;
               factorContainsExistentKeys = false;

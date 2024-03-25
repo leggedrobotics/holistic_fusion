@@ -156,10 +156,10 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
 
   // Create faulty timestmaps for testing
-  if (lidarOdometryCallbackCounter__ > 0 && lidarOdometryCallbackCounter__ % 30 == 0) {
-    lidarOdometryTimeK -= 5.0;
-    REGULAR_COUT << "Faulty timestamp: " << lidarOdometryTimeK << std::endl;
-  }
+  //  if (lidarOdometryCallbackCounter__ > 0 && lidarOdometryCallbackCounter__ % 30 == 0) {
+  //    lidarOdometryTimeK -= 5.0;
+  //    REGULAR_COUT << "Faulty timestamp: " << lidarOdometryTimeK << std::endl;
+  //  }
 
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
@@ -168,13 +168,13 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
-  } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
-  } else {  // Initializing
+  } else if (!areYawAndPositionInited()) {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     if (!useGnssFlag_) {
       this->initYawAndPosition(unary6DMeasurement);
     }
+  } else {  // Already initialized --> unary factor
+    this->addUnaryPoseMeasurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -186,7 +186,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
                                              staticTransformsPtr_->getImuFrame())
                         .matrix())
           .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength * 4);
+      graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
@@ -252,7 +252,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
 
   /// Add GNSS to Path
   addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,
-               graphConfigPtr_->imuBufferLength * 4);
+               graphConfigPtr_->imuBufferLength_ * 4);
   /// Publish path
   pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
 }

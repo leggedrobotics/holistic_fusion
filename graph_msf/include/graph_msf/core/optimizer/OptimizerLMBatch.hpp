@@ -20,7 +20,7 @@ class OptimizerLMBatch : public OptimizerLM {
  public:
   explicit OptimizerLMBatch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
       std::cout << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START
                 << " Initializing slow batch smoother that is optimized with LM." << COLOR_END << std::endl;
       lmParams_.print("GraphMSF: OptimizerLMBatch, LM Parameters:");

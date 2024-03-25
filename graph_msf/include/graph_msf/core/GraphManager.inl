@@ -19,14 +19,14 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   double closestGraphTime;
   gtsam::Key closestKey;
   std::string callingName = "GnssPositionUnaryFactor";
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation,
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName, graphConfigPtr_->maxSearchDeviation_,
                                                       measurementTime)) {
     if (propagatedStateTime_ - measurementTime < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
       // TODO: Add to buffer and return --> still add it until we are there
     } else {  // Otherwise do not add it
       REGULAR_COUT << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key " << closestKey << " is "
                    << 1000 * std::abs(closestGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation << " ms. Not adding to graph." << COLOR_END << std::endl;
+                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return;
     }
   }
@@ -46,7 +46,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   }
 
   // Print summary
-  if (graphConfigPtr_->verboseLevel > 1) {
+  if (graphConfigPtr_->verboseLevel_ > 1) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", " << typeid(FACTOR_TYPE).name()
                  << " factor added to key " << closestKey << COLOR_END << std::endl;
   }
@@ -64,7 +64,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld) {
+  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
     gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
   }
 
@@ -74,7 +74,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   }
 
   // D. Extrinsic Calibration: Add correction to sensor pose -----------------------------------------
-  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset) {
+  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
     gmsfUnaryExpressionPtr->addExtrinsicCalibrationCorrection(gtsamExpressionTransformsKeys_);
   }
 
@@ -134,7 +134,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   }
 
   // Print summary --------------------------------------
-  if (graphConfigPtr_->verboseLevel > 0) {
+  if (graphConfigPtr_->verboseLevel_ > 0) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
                  << typeid(GTSAM_MEASUREMENT_TYPE).name() << " added to keys ";
     for (const auto& key : unaryExpressionFactorPtr->keys()) {
@@ -154,7 +154,7 @@ template <class CHILDPTR>
 void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
-      graphConfigPtr_->realTimeSmootherLag - WORST_CASE_OPTIMIZATION_TIME) {
+      graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME) {
     REGULAR_COUT << RED_START
                  << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
                  << COLOR_END << std::endl;
