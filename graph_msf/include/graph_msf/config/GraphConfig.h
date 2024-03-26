@@ -50,9 +50,6 @@ struct GraphConfig {
   bool optimizeWithImuToSensorLeverArm_ = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
 
-  // Outlier Rejection
-  double poseMotionOutlierThresold_ = 0.3;
-
   // Noise Params (Noise Amplitude Spectral Density)
   // Position
   double accNoiseDensity_ = 1e-03;  // [m/s^2/√Hz)]

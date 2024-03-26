@@ -4,11 +4,19 @@ sensor_params:
   leggedOdometryRate: 400
   gnssRate: 20
 
+# Initialization
+initialization_params:
+  initialBaseYawDeg: 90 # Initial base yaw in degrees
+
+# Outlier jumping threshold
+outlier_params:
+  outlierJumpingThreshold: 0.5
+
 # Noise Parameters
 noise_params:
   ## LiDAR
   ## To JN: Given the full availability of RTK GPS, the relatice uncertainty of the LiDAR odometry should be higher?
-  lioPoseUnaryNoise: [ 0.02, 0.02, 0.02, 0.0001, 0.0001, 0.0001 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioPoseUnaryNoise: [ 0.2, 0.2, 0.2, 0.04, 0.04, 0.04 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Legged Odometry
   legPoseBetweenNoise: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## GNSS

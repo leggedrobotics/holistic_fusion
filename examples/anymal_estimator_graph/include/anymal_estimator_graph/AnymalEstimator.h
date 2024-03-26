@@ -81,6 +81,12 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
 
+  // Initialization Params
+  double initialBaseYawDeg_;
+
+  // Outlier Params
+  double outlierJumpingThreshold_;
+
   // ROS Objects ----------------------------
 
   // Subscribers

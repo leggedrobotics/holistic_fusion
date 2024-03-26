@@ -9,7 +9,7 @@
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
     <arg name="using_gnss" default="true"/>
-    <arg name="using_lio" default="false"/>
+    <arg name="using_lio" default="true"/>
     <arg name="using_legged_odometry" default="false"/>
 
     <!-- Input Topics -->

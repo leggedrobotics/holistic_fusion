@@ -51,9 +51,6 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
 
-  // Outlier Parameters
-  graphConfigPtr_->poseMotionOutlierThresold_ = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);
-
   // Noise Parameters
   /// IMU
   //// Position

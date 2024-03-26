@@ -70,6 +70,12 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     }
   }
 
+  // Initialization Params ---------------------------------------------------
+  initialBaseYawDeg_ = graph_msf::tryGetParam<bool>("initialization_params/initialBaseYawDeg", privateNode);
+
+  // Outlier rejection ---------------------------------------------------
+  outlierJumpingThreshold_ = graph_msf::tryGetParam<double>("outlier_params/outlierJumpingThreshold", privateNode);
+
   // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())

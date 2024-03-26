@@ -10,13 +10,10 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <Eigen/Eigen>
+
 // Workspace
 #include "graph_msf/gnss/Gnss.h"
-
-// Defined macros
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define COLOR_END "\033[0m"
+#include "graph_msf/interface/Terminal.h"
 
 namespace graph_msf {
 

@@ -31,10 +31,6 @@ graph_params:
   optimizeWithImuToSensorLeverArm: true   # If true, the IMU to sensor lever arm is considered in the optimization (important for position-only measurements)
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
 
-# Outlier Rejection
-outlier_params:
-  poseMotionOutlierThreshold: 0.3         # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
-
 # Noise Parameters
 noise_params:
   ## IMU

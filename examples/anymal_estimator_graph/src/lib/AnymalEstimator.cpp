@@ -135,7 +135,7 @@ void AnymalEstimator::leggedOdometryCallback_(const geometry_msgs::PoseWithCovar
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(), graph_msf::RobustNormEnum::Tukey,
           1.345, legOdometryTimeKm1__, legOdometryTimeK, T_Wkm1_Wk, legPoseBetweenNoise_);
       // Add to graph
-      graph_msf::GraphMsf::addOdometryMeasurement(delta6DMeasurement);
+      graph_msf::GraphMsf::addBinaryPose3Measurement(delta6DMeasurement);
     }
   }
 
@@ -166,7 +166,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-      graph_msf::RobustNormEnum::Huber, 1.345, lidarOdometryTimeK, odomLidarPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+      graph_msf::RobustNormEnum::None, 1.345, lidarOdometryTimeK, odomLidarPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
@@ -176,7 +176,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
+    this->addUnaryPose3Measurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -198,6 +198,7 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   // Static method variables
   static Eigen::Vector3d accumulatedCoordinates__(0.0, 0.0, 0.0);
   static int gnssCallbackCounter__ = 0;
+  static Eigen::Vector3d last_W_t_W_Gnss__;
 
   // Counter
   ++gnssCallbackCounter__;
@@ -225,7 +226,19 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
 
-  double initYaw_W_Base = -90.0 / 180.0 * M_PI;
+  // Quit if jumping to much
+  if (gnssCallbackCounter__ > NUM_GNSS_CALLBACKS_UNTIL_START + 2) {
+    if ((W_t_W_Gnss - last_W_t_W_Gnss__).norm() > outlierJumpingThreshold_) {
+      REGULAR_COUT << RED_START << " GNSS measurement jumped too much." << std::endl;
+      return;
+    }
+  }
+
+  // Last GNSS measurement
+  last_W_t_W_Gnss__ = W_t_W_Gnss;
+
+  // Initialization
+  double initYaw_W_Base = initialBaseYawDeg_ / 180.0 * M_PI;
 
   // Adding the GNSS measurement
   if (!areYawAndPositionInited()) {  // 1: Initialization
@@ -240,10 +253,10 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   } else {  // 2: Unary factor
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
-        graph_msf::RobustNormEnum::Huber, 1.345, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
+        graph_msf::RobustNormEnum::None, 1.345, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
         Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
-    this->addPositionMeasurement(meas_W_t_W_Gnss);
+    this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
 
   /// Add GNSS to Path
