@@ -13,6 +13,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf/interface/constants.h"
 
+// Unary Factors
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPosition3.h"
+#include "graph_msf/factors/non_expression/unaryYawFactor.h"
+
+// Binary Factors
+// TODO: add binary factors
+
 namespace graph_msf {
 
 // Public -----------------------------------------------------------
@@ -130,7 +138,6 @@ bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>
                             unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
 }
 
-
 // Callbacks --------------------------------
 /// Main: IMU -----------------------
 bool GraphMsf::addImuMeasurementAndGetState(
@@ -243,7 +250,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
 
 // Unary Measurements -----------------------
 /// Pose3
-void GraphMsf::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
+void GraphMsf::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -253,60 +260,21 @@ void GraphMsf::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry
   if (!initedGraphFlag_) {  // Graph not yet initialized
     return;
   } else {  // Graph initialized
-    // Create GMSF expression
-    GmsfUnaryExpressionPose3 gmsfUnaryExpressionPose3(
-        std::make_shared<UnaryMeasurementXD<Eigen::Isometry3d, 6>>(unary6DMeasurement), staticTransformsPtr_->getWorldFrame(),
-        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), unary6DMeasurement.sensorFrameName()));
-
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Pose3>(std::make_shared<GmsfUnaryExpressionPose3>(gmsfUnaryExpressionPose3));
-  }
-
-  // Optimize ---------------------------------------------------------------
-  {
-    // Mutex for optimizeGraph Flag
-    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-    optimizeGraphFlag_ = true;
-  }
-}
-
-/// Position
-bool GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
-  // Valid measurement received
-  if (!validFirstMeasurementReceivedFlag_) {
-    validFirstMeasurementReceivedFlag_ = true;
-  }
-
-  // Only take actions if graph has been initialized
-  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
-    return false;
-  } else {  // Case 2: Graph Initialized
     // Check for covariance violation
-    bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
-                                                           fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
+    bool covarianceViolatedFlag = isCovarianceViolated_<6>(T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
+                                                           T_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
       REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
-      return false;
+      return;
     }
 
-    // Add factor
-    // Transform to IMU frame in case lever should not be considered
-    if (!graphConfigPtr_->optimizeWithImuToSensorLeverArm_) {  // Do not consider lever
-      if (fixedFrame_t_fixedFrame_sensorFrame.fixedFrameName() != staticTransformsPtr_->getWorldFrame()) {
-        throw std::runtime_error("Optimization without considering lever is only supported for positions expressed in world frame.");
-      }
-      fixedFrame_t_fixedFrame_sensorFrame.lv_unaryMeasurement() = W_t_W_Frame1_to_W_t_W_Frame2_(
-          fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName(),
-          staticTransformsPtr_->getImuFrame(), preIntegratedNavStatePtr_->getT_W_Ik().rotation());
-      fixedFrame_t_fixedFrame_sensorFrame.lv_sensorFrameName() = staticTransformsPtr_->getImuFrame();
-      // Add factor
-      graphMgrPtr_->addPositionUnaryFactor(fixedFrame_t_fixedFrame_sensorFrame);
-    } else {  // Consider lever
-      graphMgrPtr_->addPositionUnaryFactor(
-          fixedFrame_t_fixedFrame_sensorFrame,
-          staticTransformsPtr_
-              ->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName())
-              .translation());
-    }
+    // Create GMSF expression
+    GmsfUnaryExpressionPose3 gmsfUnaryExpressionPose3(
+        std::make_shared<UnaryMeasurementXD<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getWorldFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_fixedFrame_sensorFrame.sensorFrameName()));
+
+    // Add factor to graph
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Pose3>(std::make_shared<GmsfUnaryExpressionPose3>(gmsfUnaryExpressionPose3));
 
     // Optimize ---------------------------------------------------------------
     {
@@ -314,9 +282,56 @@ bool GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
-    // Return
-    return true;
   }
+}
+
+/// Position
+void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
+    return;
+  } else {  // Case 2: Graph Initialized
+    // Check for covariance violation
+    bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
+                                                           fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
+    if (covarianceViolatedFlag) {
+      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      return;
+    }
+
+    // Create GMSF expression
+    GmsfUnaryExpressionPosition3 gmsfUnaryExpressionPosition3(
+        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),
+        staticTransformsPtr_->getWorldFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
+                                                 fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()));
+
+    // Add factor to graph
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Vector3>(
+        std::make_shared<GmsfUnaryExpressionPosition3>(gmsfUnaryExpressionPosition3));
+
+    // Optimize ---------------------------------------------------------------
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
+}
+
+// Roll
+bool GraphMsf::addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_W_frame) {
+  throw std::runtime_error("Roll measurements are not yet supported.");
+}
+
+// Pitch
+bool GraphMsf::addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_W_frame) {
+  throw std::runtime_error("Pitch measurements are not yet supported.");
 }
 
 // Yaw
@@ -338,7 +353,8 @@ bool GraphMsf::addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addHeadingUnaryFactor(yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
+    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
+        yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);

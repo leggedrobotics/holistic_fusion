@@ -68,9 +68,9 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
 }
 
 // Initialization Interface ---------------------------------------------------
-bool GraphManager::initImuIntegrators(const double g) {
+bool GraphManager::initImuIntegrators(const double gravityValue) {
   // Gravity direction definition
-  imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(g);  // ROS convention
+  imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(gravityValue);  // ROS convention
 
   // Set noise and bias parameters
   /// Position
@@ -97,7 +97,7 @@ bool GraphManager::initImuIntegrators(const double g) {
   return true;
 }
 
-bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
+bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -133,7 +133,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
     valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
     /// Timestamp mapping for incremental fixed lag smoother
     graphValuesBufferPtr_->insert(valuesEstimate);
-    writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStep, priorKeyTimestampMapPtr);
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStamp, priorKeyTimestampMapPtr);
 
     // Initialize graph -------------------------------------------------
     factorGraphBufferPtr_->resize(0);
@@ -160,7 +160,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStep, const gtsam:
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-  optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStep, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
+  optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
                                              gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
   W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
@@ -251,7 +251,6 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 }
 
 // Unary factors ----------------------------------------------------------------
-
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
@@ -268,116 +267,6 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const Unary
     }
   }
   return true;
-}
-
-void GraphManager::addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
-                                          const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame) {
-  // Aliases
-  const std::string& sensorFrameName = unaryPositionMeasurement.sensorFrameName();
-  const std::string& fixedFrameName = unaryPositionMeasurement.fixedFrameName();
-
-  // Case 1: Need expression factor: i) optimize over fixed frame poses, ii) position not in IMU frame,  iii) optimize over extrinsics
-  if (unaryPositionMeasurement.sensorFrameName() != imuFrame_ || graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ ||
-      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
-    // Find closest key
-    gtsam::Key closestKey;
-    if (!this->getUnaryFactorGeneralKey(closestKey, unaryPositionMeasurement)) {
-      return;
-    }
-
-    // Dynamic keys for expression values
-    gtsam::Values valuesEstimates;
-    std::vector<gtsam::PriorFactor<gtsam::Point3>> priorFactors;
-
-    // Main state expression
-    gtsam::Point3_ W_t_W_I = gtsam::translation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
-    gtsam::Point3_ fixedFrame_t_fixedFrame_sensorFrame = W_t_W_I;
-    gtsam::Rot3_ R_W_I_ = gtsam::rotation(gtsam::Pose3_(gtsam::symbol_shorthand::X(closestKey)));
-    gtsam::Rot3_ R_fixedFrame_I = R_W_I_;
-
-    // i) optimize over fixed frame poses --> only changes frame it is expressed in (not sensor frame)
-    // TODO: finish up --> currently no effect
-    if (fixedFrameName != worldFrame_ && graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
-      fixedFrame_t_fixedFrame_sensorFrame = fixedFrame_t_fixedFrame_sensorFrame;
-      R_fixedFrame_I = R_fixedFrame_I;
-      throw std::runtime_error("Not implemented yet.");
-    }
-
-    // ii) position not in IMU frame (only changes sensor frame)
-    if (sensorFrameName != imuFrame_) {
-      if (!I_t_I_sensorFrame) {
-        REGULAR_COUT << RED_START << " Position measurement in " << sensorFrameName << " but no transformation to frame " << imuFrame_
-                     << " provided. Not adding unary factor." << COLOR_END << std::endl;
-        throw std::runtime_error("Position measurement in " + sensorFrameName + " but no transformation to frame " + imuFrame_ +
-                                 " provided. Not adding unary factor.");
-      }
-      fixedFrame_t_fixedFrame_sensorFrame = fixedFrame_t_fixedFrame_sensorFrame + gtsam::rotate(R_fixedFrame_I, I_t_I_sensorFrame.value());
-    }
-
-    // iii) optimize over extrinsics
-    if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ && sensorFrameName != imuFrame_) {
-      std::cout << "case 3" << std::endl;
-      // Get delta transformation from sensorFrame to correctSensorFrame
-      gtsam::Point3 I_t_I_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
-      bool newGraphKeyAddedFlag = false;
-      gtsam::Key newGraphKey = gtsamExpressionTransformsKeys_.getTransformationExpression<gtsam::symbol_shorthand::D>(
-          newGraphKeyAddedFlag, sensorFrameName, sensorFrameName + "_corrected", unaryPositionMeasurement.timeK());
-      gtsam::Point3_ I_t_sensorFrame_correctSensorFrame = gtsam::Point3_(newGraphKey);
-      fixedFrame_t_fixedFrame_sensorFrame =
-          fixedFrame_t_fixedFrame_sensorFrame + gtsam::rotate(R_fixedFrame_I, I_t_sensorFrame_correctSensorFrame);
-      if (newGraphKeyAddedFlag) {
-        valuesEstimates.insert(newGraphKey, I_t_I_sensorFrame_correctSensorFrame_initial);
-        priorFactors.emplace_back(newGraphKey, I_t_I_sensorFrame_correctSensorFrame_initial,
-                                  gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(3)));
-      }
-    }
-
-    // Noise & Error Function
-    auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(unaryPositionMeasurement.unaryMeasurementNoiseDensity());  // rad,rad,rad,x,y,z
-    // Robust Error Function?
-    const RobustNormEnum robustNormEnum(unaryPositionMeasurement.robustNormEnum());
-    const double robustNormConstant = unaryPositionMeasurement.robustNormConstant();
-    boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
-    // Pick Robust Error Function
-    switch (robustNormEnum) {
-      case RobustNormEnum::Huber:
-        robustErrorFunction =
-            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(robustNormConstant), noiseModel);
-        break;
-      case RobustNormEnum::Cauchy:
-        robustErrorFunction =
-            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Cauchy::Create(robustNormConstant), noiseModel);
-        break;
-      case RobustNormEnum::Tukey:
-        robustErrorFunction =
-            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noiseModel);
-        break;
-    }
-
-    // Create Factor
-    std::shared_ptr<gtsam::ExpressionFactor<gtsam::Point3>> unaryExpressionFactorPtr;
-    if (robustNormEnum == RobustNormEnum::None) {
-      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<gtsam::Point3>>(
-          noiseModel, unaryPositionMeasurement.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame);
-    } else {
-      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<gtsam::Point3>>(
-          robustErrorFunction, unaryPositionMeasurement.unaryMeasurement(), fixedFrame_t_fixedFrame_sensorFrame);
-    }
-
-    // Operating on graph data
-    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    // Add to graph
-    addFactorToGraph_<const gtsam::ExpressionFactor<gtsam::Point3>*>(unaryExpressionFactorPtr.get(), unaryPositionMeasurement.timeK());
-  } else {
-    addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::GPSFactor, gtsam::symbol_shorthand::X>(
-        unaryPositionMeasurement.unaryMeasurement(), unaryPositionMeasurement.unaryMeasurementNoiseDensity(),
-        unaryPositionMeasurement.timeK());
-  }
-}
-
-void GraphManager::addHeadingUnaryFactor(const double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity,
-                                         const double gnssTimeK) {
-  addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(measuredYaw, gnssHeadingUnaryNoiseDensity, gnssTimeK);
 }
 
 // Between factors --------------------------------------------------------------------------------------------------------

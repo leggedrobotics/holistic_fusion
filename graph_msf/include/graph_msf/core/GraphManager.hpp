@@ -23,11 +23,15 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/TransformsExpressionKeys.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
-#include "graph_msf/factors/non_expression/YawFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+
+// General Unary Factor Interface
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+
+// General Binary Factor Interface
+// TODO: add binary factor interface
 
 namespace graph_msf {
 
@@ -46,8 +50,8 @@ class GraphManager {
   };
 
   // Initialization Interface ---------------------------------------------------
-  bool initImuIntegrators(double g);
-  bool initPoseVelocityBiasGraph(double ts, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
+  bool initImuIntegrators(double gravityValue);
+  bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
 
   // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
@@ -68,11 +72,6 @@ class GraphManager {
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GTSAM_MEASUREMENT_TYPE>
   void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
-
-  // Unary Specializations
-  void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
-                              const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
-  void addHeadingUnaryFactor(double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, double gnssTime);
 
   // Between
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,

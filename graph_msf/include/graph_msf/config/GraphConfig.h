@@ -47,7 +47,6 @@ struct GraphConfig {
   bool usingBiasForPreIntegrationFlag_ = true;
   bool optimizeFixedFramePosesWrtWorld_ = true;
   double fixedFramePosesResetThreshold_ = 5.0;
-  bool optimizeWithImuToSensorLeverArm_ = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
 
   // Noise Params (Noise Amplitude Spectral Density)

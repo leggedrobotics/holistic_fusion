@@ -57,7 +57,7 @@ class GraphMsf {
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// Unary Measurements
   void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
-  bool addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
+  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
   bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_W_frame);
   bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_W_frame);
   bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
