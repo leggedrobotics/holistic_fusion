@@ -8,7 +8,7 @@ Panels:
         - /Axes1
         - /WorldImuOptimized1
       Splitter Ratio: 0.5235294103622437
-    Tree Height: 1948
+    Tree Height: 1114
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -24,9 +24,10 @@ Panels:
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
+    Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -41,7 +42,6 @@ Visualization Manager:
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
-      Show Trail: false
       Value: true
     - Alpha: 0.5
       Cell Size: 1
@@ -63,8 +63,6 @@ Visualization Manager:
       Value: true
     - Class: rviz/TF
       Enabled: true
-      Filter (blacklist): ""
-      Filter (whitelist): ""
       Frame Timeout: 15
       Frames:
         All Enabled: true
@@ -162,25 +160,9 @@ Visualization Manager:
           Value: true
         camera_init_CORRECTED:
           Value: true
-        compslam_lio/aft_mapped:
-          Value: true
-        compslam_lio/aft_mapped_to_init_CORRECTED:
-          Value: true
-        compslam_lio/camera:
-          Value: true
-        compslam_lio/camera_CORRECTED:
-          Value: true
-        compslam_lio/camera_init:
-          Value: true
         compslam_lio/camera_init_CORRECTED:
           Value: true
         compslam_lio/camera_init_CORRECTED_:
-          Value: true
-        compslam_lio/camera_init_GRAVITY_ALIGNED:
-          Value: true
-        compslam_lio/laser_odom:
-          Value: true
-        compslam_lio/laser_odom_CORRECTED:
           Value: true
         depth_camera_front_camera:
           Value: true
@@ -323,54 +305,6 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        LF_HIP:
-          LF_hip_fixed:
-            LF_HFE:
-              {}
-        LF_SHANK:
-          LF_shank_fixed:
-            LF_FOOT:
-              {}
-        LF_THIGH:
-          LF_thigh_fixed:
-            LF_KFE:
-              {}
-        LH_HIP:
-          LH_hip_fixed:
-            LH_HFE:
-              {}
-        LH_SHANK:
-          LH_shank_fixed:
-            LH_FOOT:
-              {}
-        LH_THIGH:
-          LH_thigh_fixed:
-            LH_KFE:
-              {}
-        RF_HIP:
-          RF_hip_fixed:
-            RF_HFE:
-              {}
-        RF_SHANK:
-          RF_shank_fixed:
-            RF_FOOT:
-              {}
-        RF_THIGH:
-          RF_thigh_fixed:
-            RF_KFE:
-              {}
-        RH_HIP:
-          RH_hip_fixed:
-            RH_HFE:
-              {}
-        RH_SHANK:
-          RH_shank_fixed:
-            RH_FOOT:
-              {}
-        RH_THIGH:
-          RH_thigh_fixed:
-            RH_KFE:
-              {}
         base:
           LF_HAA:
             {}
@@ -462,50 +396,6 @@ Visualization Manager:
             {}
           top_shell:
             {}
-        compslam_lio/camera_init_CORRECTED_:
-          compslam_lio/camera_init_CORRECTED:
-            compslam_lio/aft_mapped_to_init_CORRECTED:
-              {}
-            compslam_lio/camera_CORRECTED:
-              {}
-            compslam_lio/camera_init:
-              compslam_lio/aft_mapped:
-                {}
-              compslam_lio/camera:
-                {}
-              compslam_lio/laser_odom:
-                {}
-            compslam_lio/camera_init_GRAVITY_ALIGNED:
-              {}
-            compslam_lio/laser_odom_CORRECTED:
-              {}
-        map:
-          camera_init_CORRECTED:
-            camera_init:
-              {}
-        odom:
-          docking_station:
-            docking_station__apriltag36_11_00000_link:
-              docking_station__apriltag36_11_00000_link__visual__apriltag36_11_00000_visual:
-                {}
-            docking_station__apriltag36_11_00001_link:
-              docking_station__apriltag36_11_00001_link__visual__apriltag36_11_00001_visual:
-                {}
-            docking_station__apriltag36_11_00002_link:
-              docking_station__apriltag36_11_00002_link__visual__apriltag36_11_00002_visual:
-                {}
-            docking_station__apriltag36_11_00003_link:
-              docking_station__apriltag36_11_00003_link__visual__apriltag36_11_00003_visual:
-                {}
-            docking_station__docking_port_link:
-              docking_station__docking_port_link__visual__docking_port_visual:
-                {}
-          ground_plane:
-            ground_plane__link:
-              ground_plane__link__collision__collision:
-                {}
-              ground_plane__link__visual__visual:
-                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -544,11 +434,14 @@ Visualization Manager:
       Color: 200; 200; 200
       Color Layer: elevation
       Color Transformer: GridMapLayer
+      ColorMap: default
       Enabled: true
+      Grid Cell Decimation: 1
+      Grid Line Thickness: 0.10000000149011612
       Height Layer: elevation
       Height Transformer: GridMapLayer
       History Length: 1
-      Invert Rainbow: false
+      Invert ColorMap: false
       Max Color: 255; 255; 255
       Max Intensity: 10
       Min Color: 0; 0; 0
@@ -557,7 +450,7 @@ Visualization Manager:
       Show Grid Lines: true
       Topic: /elevation_mapping/elevation_map
       Unreliable: false
-      Use Rainbow: true
+      Use ColorMap: true
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -1162,11 +1055,39 @@ Visualization Manager:
       Topic: /graph_msf/measGnss_path_world_gnss
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.029999999329447746
+      Style: Flat Squares
+      Topic: /point_cloud_filter/lidar/point_cloud_filtered
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom_graph_msf
+    Fixed Frame: world_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
@@ -1190,7 +1111,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10
+      Distance: 19.579238891601562
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1198,25 +1119,25 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 1.6487507820129395
+        Y: 1.3280479907989502
+        Z: -1.7505460977554321
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7853981852531433
+      Pitch: 1.5447964668273926
       Target Frame: <Fixed Frame>
-      Yaw: 0.7853981852531433
+      Yaw: 0.5985782146453857
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 2352
+  Height: 1403
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f700000894fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000073c000004f000000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000008940000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000894fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e000008940000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000077d00fffffffb0000000800540069006d0065010000000000000450000000000000000000000a7d0000089400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001f700000521fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000073c000004f000000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000521000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000894fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e00000894000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f000004f300fffffffb0000000800540069006d00650100000000000004500000000000000000000008030000052100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -1225,6 +1146,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 3200
-  X: 0
-  Y: 213
+  Width: 2560
+  X: 2560
+  Y: 0

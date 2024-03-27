@@ -73,6 +73,22 @@ bool GraphMsf::isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& covari
   return false;
 }
 
+bool GraphMsf::initYawAndPosition(const double yawValue, const std::string& fixedFrame, const std::string& baseFrame) {
+  const std::lock_guard<std::mutex> initYawLock(initYawAndPositionMutex_);
+
+  // TODO: here assume that world is fixed frame, which is not necessarily the case
+  const gtsam::Rot3 yawR_W_base = gtsam::Rot3::Yaw(yawValue);
+  REGULAR_COUT << GREEN_START << " Setting yaw of " << baseFrame << " frame in " << fixedFrame << " frame." << COLOR_END << std::endl;
+  const double yaw_W_I0_ =
+      (yawR_W_base *
+       gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(baseFrame, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
+          .yaw();
+  // Set Yaw
+  preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->odomNotJumpAtStart_);
+
+  return true;
+}
+
 bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
                                   const std::string& fixedFrame, const std::string& frame1, const std::string& frame2) {
   // Locking
@@ -270,9 +286,9 @@ void GraphMsf::addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3
     staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
-                                                       deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
-                                                       deltaMeasurement.measurementRate()));
+  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(
+      gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(), deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
+      deltaMeasurement.measurementRate(), deltaMeasurement.robustNormEnum(), deltaMeasurement.robustNormConstant()));
 
   // Optimize
   {

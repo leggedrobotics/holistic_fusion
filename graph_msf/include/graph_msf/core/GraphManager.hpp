@@ -32,6 +32,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/factors/non_expression/YawFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
+#include "graph_msf/measurements/Measurement.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 namespace graph_msf {
@@ -79,9 +80,14 @@ class GraphManager {
                               const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
   void addHeadingUnaryFactor(double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, double gnssTime);
 
-  // Between
+  // Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
                                   double lidarTimeKm1, double lidarTimeK, double rate);
+
+  // Robust Norm Aware Between Factor
+  gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                  double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,
+                                  const double robustNormConstant);
 
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update

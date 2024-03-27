@@ -46,6 +46,7 @@ class GraphMsf {
   bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
                           const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
+  bool initYawAndPosition(const double yawValue, const std::string& fixedFrame, const std::string& frame1);
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
 

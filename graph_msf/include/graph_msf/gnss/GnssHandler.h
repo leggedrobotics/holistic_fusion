@@ -42,6 +42,11 @@ class GnssHandler {
   void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
 
+  // State Machine based bookkeeping.
+  double globalAttitudeYawFromFile_{0.0};
+  bool useYawInitialGuessFromFile_{false};
+  bool yawInitialGuessFromAlignment_{false};
+
  private:
   // Member methods
   Eigen::Vector3d computeHeading_(const Eigen::Vector3d& gnssPos1, const Eigen::Vector3d& gnssPos2);
