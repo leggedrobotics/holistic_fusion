@@ -37,7 +37,7 @@ namespace anymal_se {
 
 class AnymalEstimator : public graph_msf::GraphMsfRos {
  public:
-  AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
+  AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
   ~AnymalEstimator() = default;
   // Setup
@@ -82,10 +82,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
 
   // Initialization Params
-  double initialBaseYawDeg_;
-
-  // Outlier Params
-  double outlierJumpingThreshold_;
+  double initialBaseYawDeg_ = 0.0;
 
   // ROS Objects ----------------------------
 

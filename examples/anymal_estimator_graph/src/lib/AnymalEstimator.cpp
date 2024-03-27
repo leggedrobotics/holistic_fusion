@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-AnymalEstimator::AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+AnymalEstimator::AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
   REGULAR_COUT << GREEN_START << " Initializing..." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -171,7 +171,7 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (!areYawAndPositionInited()) {  // Initializing
-    if (!useGnssFlag_) {
+    if (!useGnssFlag_ || lidarOdometryCallbackCounter__ > NUM_GNSS_CALLBACKS_UNTIL_START) {
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
@@ -205,8 +205,8 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
 
   // Convert to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
-  Eigen::Vector3d estCovarianceXYZ(gnssMsgPtr->position_covariance[0], gnssMsgPtr->position_covariance[4],
-                                   gnssMsgPtr->position_covariance[8]);
+  Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
+                               sqrt(gnssMsgPtr->position_covariance[8]));
 
   // Initialize GNSS Handler
   if (gnssCallbackCounter__ <= NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
@@ -226,17 +226,6 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
 
-  // Quit if jumping to much
-  if (gnssCallbackCounter__ > NUM_GNSS_CALLBACKS_UNTIL_START + 2) {
-    if ((W_t_W_Gnss - last_W_t_W_Gnss__).norm() > outlierJumpingThreshold_) {
-      REGULAR_COUT << RED_START << " GNSS measurement jumped too much." << std::endl;
-      return;
-    }
-  }
-
-  // Last GNSS measurement
-  last_W_t_W_Gnss__ = W_t_W_Gnss;
-
   // Initialization
   double initYaw_W_Base = initialBaseYawDeg_ / 180.0 * M_PI;
 
@@ -254,10 +243,13 @@ void AnymalEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnss
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
         graph_msf::RobustNormEnum::None, 1.345, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
-        Eigen::Vector3d(gnssPositionUnaryNoise_, gnssPositionUnaryNoise_, gnssPositionUnaryNoise_));
+        estStdDevXYZ);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
+
+  // Last GNSS measurement
+  last_W_t_W_Gnss__ = W_t_W_Gnss;
 
   /// Add GNSS to Path
   addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,

@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -71,10 +71,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Initialization Params ---------------------------------------------------
-  initialBaseYawDeg_ = graph_msf::tryGetParam<bool>("initialization_params/initialBaseYawDeg", privateNode);
-
-  // Outlier rejection ---------------------------------------------------
-  outlierJumpingThreshold_ = graph_msf::tryGetParam<double>("outlier_params/outlierJumpingThreshold", privateNode);
+  initialBaseYawDeg_ = graph_msf::tryGetParam<double>("initialization_params/initialBaseYawDeg", privateNode);
 
   // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame
