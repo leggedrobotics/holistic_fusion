@@ -68,8 +68,6 @@ class GraphMsf {
   /// Mixed Measurements
   bool addZeroMotionFactor(double timeKm1, double timeK);
 
-
-
  protected:
   // Methods -------------
   /// Worker functions
