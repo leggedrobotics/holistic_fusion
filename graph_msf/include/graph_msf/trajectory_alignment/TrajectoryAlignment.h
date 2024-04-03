@@ -11,6 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <Eigen/Eigen>
 #include <memory>
+#include <mutex>
 // Package
 #include "graph_msf/geometry/Trajectory.h"
 
@@ -51,11 +52,14 @@ class TrajectoryAlignment {
   Trajectory lidarTrajectory_;
 
   // Reference Parameters
-  double gnssRate_;
-  double lidarRate_;
-  double minDistanceHeadingInit_;
-  double noMovementDistance_;
-  double noMovementTime_;
+  double gnssRate_{20.0};
+  double lidarRate_{10.0};
+  double minDistanceHeadingInit_{3.0};
+  double noMovementDistance_{1.0};
+  double noMovementTime_{3.0};
+
+  // Mutex for adding new measurements
+  std::mutex alignmentMutex;
 };
 
 }  // namespace graph_msf

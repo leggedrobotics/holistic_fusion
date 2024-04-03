@@ -29,7 +29,7 @@
     <arg name="anymal_traj_alignment_param_file" default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_traj_align_params.yaml"/>
 
     <!-- Node -->
-    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" > <!--launch-prefix="gdb -ex run -args"-->
+    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" launch-prefix="gdb -ex run -args" > <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
         <param name="launch/usingGnss" type="bool" value="$(arg using_gnss)" />
         <param name="launch/usingLio" type="bool" value="$(arg using_lio)" />

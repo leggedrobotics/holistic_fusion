@@ -27,6 +27,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
@@ -52,6 +53,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  void lidarBetweenOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
   void leggedOdometryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr);
 
@@ -61,11 +63,18 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
+  // TrajectoryAlignment Handler
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
   // Config -------------------------------------
+
+  // User Params
+  bool enforceLIOasBetweenMeasurement_{false};
+
   // Rates
   double lioOdometryRate_ = 5.0;
   double leggedOdometryRate_ = 400.0;
@@ -78,11 +87,19 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
 
-  // Initialization Params
-  double initialBaseYawDeg_ = 0.0;
+  // Legged callback measurement counter and placeholders.
+  int leggedOdometryCallbackCounter__{-1};
+  Eigen::Isometry3d T_O_Leg_km1__ = Eigen::Isometry3d::Identity();
+  double legOdometryTimeKm1__{0.0};
+
+  // LIO as between callback measurement
+  int lidarOdometryCallbackCounter__{-1};
+  Eigen::Isometry3d lio_T_M_Lkm1__ = Eigen::Isometry3d::Identity();
+  double lidarOdometryTimeKm1__{0.0};
 
   // ROS Objects ----------------------------
 
@@ -106,4 +123,4 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::ServiceServer serverTransformGnssToEnu_;
 };
 }  // namespace anymal_se
-#endif  // end M545ESTIMATORGRAPH_H
+#endif  // end AnymalESTIMATOR_H
