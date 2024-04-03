@@ -102,9 +102,6 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     }
   }
 
-  // Initialization Params ---------------------------------------------------
-  // initialBaseYawDeg_ = graph_msf::tryGetParam<double>("initialization_params/initialBaseYawDeg", privateNode);
-
   // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame
   dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())

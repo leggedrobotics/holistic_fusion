@@ -27,7 +27,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: AnymalPointCloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -278,11 +278,19 @@ Visualization Manager:
           Value: true
         map:
           Value: true
+        map_o3d:
+          Value: true
+        map_o3d_:
+          Value: true
         odom:
           Value: true
         odom_graph_msf:
           Value: true
+        odom_o3d:
+          Value: true
         perception_head_cage:
+          Value: true
+        raw_rs_o3d:
           Value: true
         remote:
           Value: true
@@ -388,10 +396,15 @@ Visualization Manager:
             {}
           odom_graph_msf:
             world_graph_msf:
-              {}
+              map_o3d_:
+                {}
           perception_head_cage:
             lidar:
-              {}
+              map_o3d:
+                raw_rs_o3d:
+                  {}
+              odom_o3d:
+                {}
           remote:
             {}
           top_shell:
@@ -1071,7 +1084,7 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: PointCloud2
+      Name: AnymalPointCloud
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
@@ -1111,7 +1124,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 19.579238891601562
+      Distance: 16.69104766845703
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1119,17 +1132,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.6487507820129395
-        Y: 1.3280479907989502
-        Z: -1.7505460977554321
+        X: 3.748520612716675
+        Y: -1.5783281326293945
+        Z: -4.726038455963135
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5447964668273926
+      Pitch: 0.924796462059021
       Target Frame: <Fixed Frame>
-      Yaw: 0.5985782146453857
+      Yaw: 3.2717559337615967
     Saved: ~
 Window Geometry:
   Displays:

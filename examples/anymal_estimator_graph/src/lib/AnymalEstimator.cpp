@@ -235,14 +235,10 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
     trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarOdometryTimeK);
   }
 
-  REGULAR_COUT << GREEN_START << " TETETETETE" << COLOR_END << std::endl;
-
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
       graph_msf::RobustNormEnum::Cauchy, 1.0, lidarOdometryTimeK, odomLidarPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
-
-  REGULAR_COUT << GREEN_START << " TETETETETE 2" << COLOR_END << std::endl;
 
   // Expression factors not implemented yet.
   /*graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
@@ -251,16 +247,13 @@ void AnymalEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr&
       Eigen::Vector3d(lioPoseUnaryNoise_, lioPoseUnaryNoise_, lioPoseUnaryNoise_));*/
 
   if (lidarOdometryCallbackCounter__ <= 2) {
-    REGULAR_COUT << GREEN_START << " TETETETETE 3" << COLOR_END << std::endl;
     return;
   } else if (!areYawAndPositionInited()) {  // Initializing
-    if (!useGnssFlag_ || (lidarOdometryCallbackCounter__ > NUM_GNSS_CALLBACKS_UNTIL_START)) {
+    if (!useGnssFlag_ || lidarOdometryCallbackCounter__ > NUM_GNSS_CALLBACKS_UNTIL_START) {
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-      REGULAR_COUT << GREEN_START << " TETETETETE 4" << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> unary factor
-    REGULAR_COUT << GREEN_START << " TETETETETE 5" << COLOR_END << std::endl;
     this->addUnaryPoseMeasurement(unary6DMeasurement);
     // Expression factors not implemented yet.
     // this->addPositionMeasurement(unary6DMeasurement);
