@@ -1,6 +1,6 @@
 gnss:
   initYaw: 90.0
-  useYawInitialGuessFromFile: true
+  useYawInitialGuessFromFile: true # If this and the next are false, 0 initial yaw is used.
   yawInitialGuessFromAlignment: false # Overrides the initial guess from file option.
   useGnssReference: false
   referenceLatitude: 47.4084860363  # Wangen a.A.: 47.234593265310046, Hoengg: 47.4084860363, Oberglatt: 47.4801402

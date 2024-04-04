@@ -1,7 +1,3 @@
-# User Params
-user_params:
-  enforceLIOasBetweenMeasurement: true
-
 # Sensor Params
 sensor_params:
   lioOdometryRate: 10
@@ -10,11 +6,12 @@ sensor_params:
 
 # Noise Parameters
 noise_params:
-  ## LiDAR
-  ## To JN: Given the full availability of RTK GPS, the relatice uncertainty of the LiDAR odometry should be higher?
-  lioPoseUnaryNoise: [ 0.1, 0.1, 0.1, 0.2, 0.2, 0.2] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  lioPoseBetweenNoise: [ 0.05, 0.05, 0.1, 0.05, 0.05, 0.01] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  ## Legged Odometry
-  legPoseBetweenNoise: [ 0.15, 0.15, 0.2, 0.01, 0.01, 0.05] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## GNSS
   gnssPositionUnaryNoise: 0.01 # x, y, z of global position
+  ## LiDAR Odometry
+  ## Unary Noise
+  lioPoseUnaryNoise: [ 0.1, 0.1, 0.1, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  ## Binary Noise
+  lioPoseBetweenNoise: [ 0.05, 0.05, 0.1, 0.05, 0.05, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  ## Legged Odometry
+  legPoseBetweenNoise: [ 0.15, 0.15, 0.2, 0.01, 0.01, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

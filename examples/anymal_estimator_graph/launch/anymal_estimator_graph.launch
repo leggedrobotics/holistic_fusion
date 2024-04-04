@@ -15,9 +15,10 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"      default="false" />
-    <arg name="using_gnss"                default="false" />
-    <arg name="using_lio"                 default="true" />
-    <arg name="using_legged_odometry"     default="false" />
+    <arg name="using_gnss_unary"          default="false" />
+    <arg name="using_lio_unary"           default="true" />
+    <arg name="using_lio_between"         default="false" />
+    <arg name="using_legged_between"      default="false" />
 
     <!-- Config Files -->
     <arg name="core_graph_config_param_file"     default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
@@ -31,9 +32,10 @@
     <!-- Node -->
     <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" > <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
-        <param name="launch/usingGnss" type="bool" value="$(arg using_gnss)" />
-        <param name="launch/usingLio" type="bool" value="$(arg using_lio)" />
-        <param name="launch/usingLeggedOdometry" type="bool" value="$(arg using_legged_odometry)" />
+        <param name="launch/usingGnssUnary" type="bool" value="$(arg using_gnss_unary)" />
+        <param name="launch/usingLioUnary" type="bool" value="$(arg using_lio_unary)" />
+        <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)" />
+        <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />
         <rosparam command="load" file="$(arg core_graph_param_file)" />

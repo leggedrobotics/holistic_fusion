@@ -40,7 +40,7 @@ class GnssHandler {
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
 
   // State Machine based bookkeeping.
-  double globalAttitudeYawFromFile_{0.0};
+  double globalYawDegFromFile_{0.0};
   bool useYawInitialGuessFromFile_{false};
   bool yawInitialGuessFromAlignment_{false};
 

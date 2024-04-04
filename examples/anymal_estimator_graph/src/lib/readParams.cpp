@@ -23,9 +23,6 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
   }
 
-  // User Params
-  enforceLIOasBetweenMeasurement_ = graph_msf::tryGetParam<bool>("user_params/enforceLIOasBetweenMeasurement", privateNode);
-
   // Sensor Params
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   leggedOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryRate", privateNode);
@@ -53,15 +50,17 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
 
   // Flags ---------------------------------------------------
-  // GNSS
-  useGnssFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnss", privateNode);
-  // LIO
-  useLioFlag_ = graph_msf::tryGetParam<bool>("launch/usingLio", privateNode);
-  // Legged Odometry
-  useLeggedOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedOdometry", privateNode);
+  // GNSS Unary
+  useGnssUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnssUnary", privateNode);
+  // LIO Unary
+  useLioUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLioUnary", privateNode);
+  // LIO Between
+  useLioBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLioBetween", privateNode);
+  // Legged Between Odometry
+  useLeggedBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedBetween", privateNode);
 
   // Gnss parameters ---------------------------------------------------
-  if (useGnssFlag_) {
+  if (useGnssUnaryFlag_) {
     // GNSS Handler
     gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
@@ -85,7 +84,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
       trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
 
     } else if (!(gnssHandlerPtr_->yawInitialGuessFromAlignment_) && (gnssHandlerPtr_->useYawInitialGuessFromFile_)) {
-      gnssHandlerPtr_->globalAttitudeYawFromFile_ = graph_msf::tryGetParam<double>("gnss/initYaw", privateNode);
+      gnssHandlerPtr_->globalYawDegFromFile_ = graph_msf::tryGetParam<double>("gnss/initYaw", privateNode);
     }
 
     // GNSS Reference
