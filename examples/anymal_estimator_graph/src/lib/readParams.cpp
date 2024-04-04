@@ -23,6 +23,9 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
   }
 
+  // User Params
+  enforceLIOasBetweenMeasurement_ = graph_msf::tryGetParam<bool>("user_params/enforceLIOasBetweenMeasurement", privateNode);
+
   // Sensor Params
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   leggedOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryRate", privateNode);
@@ -34,7 +37,13 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
 
-  /// LiDAR Odometry
+  /// LiDAR Odometry as Between
+  const auto lioPoseBetweenNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
+  lioPoseBetweenNoise_ << lioPoseBetweenNoise[0], lioPoseBetweenNoise[1], lioPoseBetweenNoise[2], lioPoseBetweenNoise[3],
+      lioPoseBetweenNoise[4], lioPoseBetweenNoise[5];
+
+  /// Legged Odometry
   const auto legPoseBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/legPoseBetweenNoise", privateNode);  // roll,pitch,yaw,x,y,z
   legPoseBetweenNoise_ << legPoseBetweenNoise[0], legPoseBetweenNoise[1], legPoseBetweenNoise[2], legPoseBetweenNoise[3],
@@ -56,6 +65,29 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     // GNSS Handler
     gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
+    // Read Yaw initial guess options
+    gnssHandlerPtr_->useYawInitialGuessFromFile_ = graph_msf::tryGetParam<bool>("gnss/useYawInitialGuessFromFile", privateNode);
+    gnssHandlerPtr_->yawInitialGuessFromAlignment_ = graph_msf::tryGetParam<bool>("gnss/yawInitialGuessFromAlignment", privateNode);
+
+    // Alignment options.
+    if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+      // Make sure no dual true.
+      gnssHandlerPtr_->useYawInitialGuessFromFile_ = false;
+      trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+
+      trajectoryAlignmentHandler_->setLidarRate(graph_msf::tryGetParam<double>("trajectoryAlignment/lidarRate", privateNode));
+      trajectoryAlignmentHandler_->setGnssRate(graph_msf::tryGetParam<double>("trajectoryAlignment/gnssRate", privateNode));
+
+      trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
+          graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));
+      trajectoryAlignmentHandler_->setNoMovementDistance(
+          graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
+      trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
+
+    } else if (!(gnssHandlerPtr_->yawInitialGuessFromAlignment_) && (gnssHandlerPtr_->useYawInitialGuessFromFile_)) {
+      gnssHandlerPtr_->globalAttitudeYawFromFile_ = graph_msf::tryGetParam<double>("gnss/initYaw", privateNode);
+    }
+
     // GNSS Reference
     gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
 
@@ -69,9 +101,6 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
       REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
     }
   }
-
-  // Initialization Params ---------------------------------------------------
-  initialBaseYawDeg_ = graph_msf::tryGetParam<double>("initialization_params/initialBaseYawDeg", privateNode);
 
   // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame

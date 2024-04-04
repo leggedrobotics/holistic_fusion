@@ -248,9 +248,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
   return true;
 }
 
-// Unary Measurements -----------------------
-/// Pose3
-void GraphMsf::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
+void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -367,7 +365,7 @@ bool GraphMsf::addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W
 }
 
 // Binary Measurements
-void GraphMsf::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
+void GraphMsf::addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -388,9 +386,9 @@ void GraphMsf::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isomet
     staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
-  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(),
-                                                       deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
-                                                       deltaMeasurement.measurementRate()));
+  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(
+      gtsam::Pose3(T_fkm1_fk.matrix()), deltaMeasurement.measurementNoiseDensity(), deltaMeasurement.timeKm1(), deltaMeasurement.timeK(),
+      deltaMeasurement.measurementRate(), deltaMeasurement.robustNormEnum(), deltaMeasurement.robustNormConstant()));
 
   // Optimize
   {

@@ -269,6 +269,63 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const Unary
   return true;
 }
 
+// Robust Aware Between factors ------------------------------------------------------------------------------------------------------
+gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                              const double lidarTimeKm1, const double lidarTimeK, const double rate,
+                                              const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
+  // Find corresponding keys in graph
+  // Find corresponding keys in graph
+  const double maxLidarTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
+  gtsam::Key closestKeyKm1, closestKeyK;
+  double keyTimeStampDistance{0.0};
+
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
+                      "pose between")) {
+    REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
+                 << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
+    return closestKeyK;
+  }
+
+  // Scale delta pose according to timeStampDistance
+  const double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
+  if (graphConfigPtr_->verboseLevel_ > 3) {
+    REGULAR_COUT << " Scaling factor in tangent space for pose between delta pose: " << scale << std::endl;
+  }
+  gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
+
+  // Create noise model
+  assert(poseBetweenNoiseDensity.size() == 6);
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
+  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  // Pick Robust Error Function
+  switch (robustNormEnum) {
+    case RobustNormEnum::Huber:
+      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(robustNormConstant), noise);
+      break;
+    case RobustNormEnum::Cauchy:
+      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Cauchy::Create(robustNormConstant), noise);
+      break;
+    case RobustNormEnum::Tukey:
+      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noise);
+      break;
+  }
+
+  // Create pose between factor and add it
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
+                                                       scaledDeltaPose, robustErrorFunction);
+
+  // Write to graph
+  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, lidarTimeKm1);
+
+  // Print summary
+  if (graphConfigPtr_->verboseLevel_ > 3) {
+    REGULAR_COUT << " Current propagated key: " << propagatedStateKey_ << ", " << YELLOW_START << " PoseBetween factor added between key "
+                 << closestKeyKm1 << " and key " << closestKeyK << COLOR_END << std::endl;
+  }
+
+  return closestKeyK;
+}
+
 // Between factors --------------------------------------------------------------------------------------------------------
 gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
                                               const double lidarTimeKm1, const double lidarTimeK, const double rate) {
@@ -652,10 +709,10 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
     // Looking up from IMU buffer --> acquire mutex (otherwise values for key
     // might not be set)
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    bool success = timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeKm1, closestKeyKm1, name + " km1",
-                                                                  graphConfigPtr_->maxSearchDeviation_, timeKm1);
-    success = success && timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k",
-                                                                        graphConfigPtr_->maxSearchDeviation_, timeK);
+    bool success =
+        timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeKm1, closestKeyKm1, name + " km1", maxTimestampDistance, timeKm1);
+    success =
+        success && timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTimeK, closestKeyK, name + " k", maxTimestampDistance, timeK);
     if (!success) {
       REGULAR_COUT << RED_START << " Could not find closest keys for " << name << COLOR_END << std::endl;
       return false;

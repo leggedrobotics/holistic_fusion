@@ -10,18 +10,17 @@ Please see the LICENSE file that has been included as part of this package.
 
 #include <iomanip>
 #include <iostream>
-//#include <string_view>
-//
-//// Constexpr Macros
-// constexpr std::string_view GREEN_START = "\033[92m";
-// constexpr std::string_view YELLOW_START = "\033[33m";
-// constexpr std::string_view RED_START = "\033[31m";
-// constexpr std::string_view COLOR_END = "\033[0m";
+#include <string_view>
 
-// Same as Macros
 #define GREEN_START "\033[92m"
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
 #define COLOR_END "\033[0m"
+
+/*// Constexpr Macros
+constexpr std::string_view GREEN_START = "\033[92m";
+constexpr std::string_view YELLOW_START = "\033[33m";
+constexpr std::string_view RED_START = "\033[31m";
+constexpr std::string_view COLOR_END = "\033[0m";*/
 
 #endif  // GMSF_TERMINAL_H

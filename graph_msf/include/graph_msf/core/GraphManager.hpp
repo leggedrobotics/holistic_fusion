@@ -25,6 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/optimizer/OptimizerBase.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
+#include "graph_msf/measurements/Measurement.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // General Unary Factor Interface
@@ -76,6 +77,11 @@ class GraphManager {
   // Between
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
                                   double lidarTimeKm1, double lidarTimeK, double rate);
+
+  // Robust Norm Aware Between Factor
+  gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                  double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,
+                                  const double robustNormConstant);
 
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update
