@@ -66,7 +66,7 @@ class GraphMsf {
   void addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
 
   /// Mixed Measurements
-  bool addZeroMotionFactor(double timeKm1, double timeK);
+  bool addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity);
 
  protected:
   // Methods -------------

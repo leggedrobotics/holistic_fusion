@@ -271,7 +271,7 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const Unary
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------
 gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
-                                              const double lidarTimeKm1, const double lidarTimeK, const double rate,
+                                              const double timeKm1, const double timeK, const double rate,
                                               const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
   // Find corresponding keys in graph
   // Find corresponding keys in graph
@@ -279,15 +279,14 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance{0.0};
 
-  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
-                      "pose between")) {
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, timeKm1, timeK, "pose between")) {
     REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
                  << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
     return closestKeyK;
   }
 
   // Scale delta pose according to timeStampDistance
-  const double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
+  const double scale = keyTimeStampDistance / (timeK - timeKm1);
   if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " Scaling factor in tangent space for pose between delta pose: " << scale << std::endl;
   }
@@ -311,55 +310,17 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   }
 
   // Create pose between factor and add it
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
-                                                       scaledDeltaPose, robustErrorFunction);
+  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor;
+  if (robustNormEnum == RobustNormEnum::None) {
+    poseBetweenFactor = gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
+                                                           gtsam::symbol_shorthand::X(closestKeyK), scaledDeltaPose, noise);
+  } else {
+    poseBetweenFactor = gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestKeyKm1),
+                                                           gtsam::symbol_shorthand::X(closestKeyK), scaledDeltaPose, robustErrorFunction);
+  }
 
   // Write to graph
-  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, lidarTimeKm1);
-
-  // Print summary
-  if (graphConfigPtr_->verboseLevel_ > 3) {
-    REGULAR_COUT << " Current propagated key: " << propagatedStateKey_ << ", " << YELLOW_START << " PoseBetween factor added between key "
-                 << closestKeyKm1 << " and key " << closestKeyK << COLOR_END << std::endl;
-  }
-
-  return closestKeyK;
-}
-
-// Between factors --------------------------------------------------------------------------------------------------------
-gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
-                                              const double lidarTimeKm1, const double lidarTimeK, const double rate) {
-  // Find corresponding keys in graph
-  // Find corresponding keys in graph
-  const double maxLidarTimestampDistance = 1.0 / rate + 2.0 * graphConfigPtr_->maxSearchDeviation_;
-  gtsam::Key closestKeyKm1, closestKeyK;
-  double keyTimeStampDistance;
-
-  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, lidarTimeKm1, lidarTimeK,
-                      "pose between")) {
-    REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
-                 << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
-    return closestKeyK;
-  }
-
-  // Scale delta pose according to timeStampDistance
-  const double scale = keyTimeStampDistance / (lidarTimeK - lidarTimeKm1);
-  if (graphConfigPtr_->verboseLevel_ > 3) {
-    REGULAR_COUT << " Scaling factor in tangent space for pose between delta pose: " << scale << std::endl;
-  }
-  gtsam::Pose3 scaledDeltaPose = gtsam::Pose3::Expmap(scale * gtsam::Pose3::Logmap(deltaPose));
-
-  // Create noise model
-  assert(poseBetweenNoiseDensity.size() == 6);
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  auto errorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.3), noise);
-
-  // Create pose between factor and add it
-  gtsam::BetweenFactor<gtsam::Pose3> poseBetweenFactor(gtsam::symbol_shorthand::X(closestKeyKm1), gtsam::symbol_shorthand::X(closestKeyK),
-                                                       scaledDeltaPose, errorFunction);
-
-  // Write to graph
-  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, lidarTimeKm1);
+  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, timeKm1);
 
   // Print summary
   if (graphConfigPtr_->verboseLevel_ > 3) {
@@ -599,9 +560,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const gtsam::Symbol symbol(key);
     const char stateCategory = symbol.chr();
     const double timeStamp = keyTimestampMap.at(key);
-    int stateIndex = symbol.index();
 
-    // Check if we already have a file stream for this category
+    // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(stateCategory) == fileStreams.end()) {
       // If not, create a new file stream for this category
       std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + "_" + timeString + ".csv";

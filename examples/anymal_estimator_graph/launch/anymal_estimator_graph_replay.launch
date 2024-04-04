@@ -11,7 +11,7 @@
     <arg name="using_gnss_unary"     default="true"/>
     <arg name="using_lio_unary"      default="true"/>
     <arg name="using_lio_between"    default="false"/>
-    <arg name="using_legged_between" default="false"/>
+    <arg name="using_legged_between" default="true"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />

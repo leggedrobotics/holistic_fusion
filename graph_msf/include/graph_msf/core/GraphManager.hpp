@@ -74,10 +74,6 @@ class GraphManager {
   template <class GTSAM_MEASUREMENT_TYPE>
   void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
 
-  // Between
-  gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
-                                  double lidarTimeKm1, double lidarTimeK, double rate);
-
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
                                   double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,

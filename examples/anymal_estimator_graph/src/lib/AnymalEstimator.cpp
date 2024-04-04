@@ -93,8 +93,8 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
 
   // GNSS
   if (useGnssUnaryFlag_) {
-    subGnssUnary_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_, this,
-                                                              ros::TransportHints().tcpNoDelay());
+    subGnssUnary_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_,
+                                                                   this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnssUnary_.getTopic() << std::endl;
   }
 
@@ -117,111 +117,77 @@ void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
   // TODO: add soft reset of the graph for on-the-go re-init.
 }
 
-void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr) {
+// Priority: 1
+void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
   // Counter
-  ++leggedOdometryCallbackCounter__;
+  ++gnssCallbackCounter_;
 
-  // areYawAndPositionInited() ?
-  if (!areRollAndPitchInited()) {
+  // Convert to Eigen
+  Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
+  Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
+                               sqrt(gnssMsgPtr->position_covariance[8]));
+
+  // Initialize GNSS Handler
+  if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
+    // Wait until measurements got accumulated
+    accumulatedGnssCoordinates_ += gnssCoord;
+    if (!(gnssCallbackCounter_ % 10)) {
+      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+    }
+    return;
+  } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
+    gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
     return;
   }
 
-  // TODO parametrize this?
-  int sampleRate = int(leggedOdometryRate_) / 20;
-  if ((leggedOdometryCallbackCounter__ % 20) == 0) {
-    // Eigen Type
-    Eigen::Isometry3d T_O_Leg_k = Eigen::Isometry3d::Identity();
+  // Convert to cartesian coordinates
+  Eigen::Vector3d W_t_W_Gnss;
+  gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
 
-    graph_msf::geometryPoseToEigen(*leggedOdometryKPtr, T_O_Leg_k.matrix());
-    double legOdometryTimeK = leggedOdometryKPtr->header.stamp.toSec();
-
-    if (leggedOdometryCallbackCounter__ == 0) {
-      T_O_Leg_km1__ = T_O_Leg_k;
-      legOdometryTimeKm1__ = legOdometryTimeK;
+  // Inital world yaw initialization options.
+  if (!areYawAndPositionInited()) {  // 1: Initialization
+    // 0: Default
+    double initYaw_W_Base{0.0};  // Default is 0 yaw
+    // 1: From file
+    if (gnssHandlerPtr_->useYawInitialGuessFromFile_) {
+      initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
+    } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // 2: From alignment
+      // Adding the GNSS measurement
+      trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
+      // In radians.
+      if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
+        return;
+      }
+      std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value : " << COLOR_END << initYaw_W_Base << std::endl;
     }
 
-    // Compute Delta
-    const Eigen::Isometry3d T_Wkm1_Wk = T_O_Leg_km1__.inverse() * T_O_Leg_k;
-    // Create measurement
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Leg_odometry_6D", int(sampleRate), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
-        graph_msf::RobustNormEnum::Cauchy, 1.0, legOdometryTimeKm1__, legOdometryTimeK, T_Wkm1_Wk, legPoseBetweenNoise_);
-    // Add to graph
-    graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
-
-    // Provide next iteration
-    T_O_Leg_km1__ = T_O_Leg_k;
-    legOdometryTimeKm1__ = legOdometryTimeK;
-    leggedOdometryCallbackCounter__ = 0;
-  }
-}
-
-void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
-  if (!areRollAndPitchInited()) {
-    return;
-  }
-
-  // Counter
-  ++lidarBetweenCallbackCounter_;
-
-  // Convert
-  Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
-  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-  // Get the time
-  double lidarBetweenTimeK = odomLidarPtr->header.stamp.toSec();
-
-  if (lidarBetweenCallbackCounter_ == 0) {
-    lio_T_M_Lkm1_ = lio_T_M_Lk;
-    lidarBetweenTimeKm1_ = lidarBetweenTimeK;
-  }
-
-  // Add to trajectory aligner if needed.
-  if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
-    trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarBetweenTimeK);
-  }
-
-  if (lidarBetweenCallbackCounter_ <= 2) {
-    return;
-  } else if (!areYawAndPositionInited()) {  // Initializing
-    if (!useGnssUnaryFlag_ && !useLioUnaryFlag_) {
-      // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-          graph_msf::RobustNormEnum::Cauchy, 1.0, lidarBetweenTimeK, odomLidarPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
-
-      REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+    // Initialization
+    if (not this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
+                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
+                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
+      // Make clear that this was not successful
+      REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << std::endl;
+    } else {
+      REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
     }
-  } else {  // Already initialized --> Between factor
-
-    // Compute Delta
-    const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
-    // Create measurement
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Lidar_between_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-        graph_msf::RobustNormEnum::Cauchy, 1.0, lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
-    // Add to graph
-    graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
+  } else {  // 2: Unary factor
+    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
+        "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
+        graph_msf::RobustNormEnum::None, 1.0, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
+        estStdDevXYZ);
+    // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
+    this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
-  // Provide for next iteration
-  lio_T_M_Lkm1_ = lio_T_M_Lk;
-  lidarBetweenTimeKm1_ = lidarBetweenTimeK;
 
-  // Visualization ----------------------------
-  // Add to path message
-  addToPathMsg(
-      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
-      (lio_T_M_Lk * staticTransformsPtr_
-                        ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-                                             staticTransformsPtr_->getImuFrame())
-                        .matrix())
-          .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength_ * 4);
-
-  // Publish Path
-  pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
+  /// Add GNSS to Path
+  addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,
+               graphConfigPtr_->imuBufferLength_ * 4);
+  /// Publish path
+  pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
 }
 
+// Priority: 2
 void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Counter
   ++lidarUnaryCallbackCounter_;
@@ -232,7 +198,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Transform to IMU frame
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
-  if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+  if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
     trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarUnaryTimeK);
   }
 
@@ -267,75 +233,124 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
 }
 
-void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
+// Priority: 3
+void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  if (!areRollAndPitchInited()) {
+    return;
+  }
 
   // Counter
-  ++gnssCallbackCounter_;
+  ++lidarBetweenCallbackCounter_;
 
-  // Convert to Eigen
-  Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
-  Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
-                               sqrt(gnssMsgPtr->position_covariance[8]));
+  // Convert
+  Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
+  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
+  // Get the time
+  double lidarBetweenTimeK = odomLidarPtr->header.stamp.toSec();
 
-  // Initialize GNSS Handler
-  if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
-    // Wait until measurements got accumulated
-    accumulatedGnssCoordinates_ += gnssCoord;
-    if (!(gnssCallbackCounter_ % 10)) {
-      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
-    }
+  // At start
+  if (lidarBetweenCallbackCounter_ == 0) {
+    lio_T_M_Lkm1_ = lio_T_M_Lk;
+    lidarBetweenTimeKm1_ = lidarBetweenTimeK;
+  }
+
+  // Add to trajectory aligner if needed.
+  if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+    trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarBetweenTimeK);
+  }
+
+  if (lidarBetweenCallbackCounter_ <= 2) {
     return;
-  } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
-    gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
-    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
+  } else if (!areYawAndPositionInited()) {  // Initializing
+    if (!useGnssUnaryFlag_ && !useLioUnaryFlag_) {
+      // Measurement
+      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+          "Lidar_unary_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
+          graph_msf::RobustNormEnum::None, 1.0, lidarBetweenTimeK, odomLidarPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+      // Add to graph
+      REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+      this->initYawAndPosition(unary6DMeasurement);
+    }
+  } else {  // Already initialized --> Between factor
+
+    // Compute Delta
+    const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
+    // Create measurement
+    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+        "Lidar_between_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
+        graph_msf::RobustNormEnum::None, 1.0, lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
+    // Add to graph
+    graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
+  }
+  // Provide for next iteration
+  lio_T_M_Lkm1_ = lio_T_M_Lk;
+  lidarBetweenTimeKm1_ = lidarBetweenTimeK;
+
+  // Visualization ----------------------------
+  // Add to path message
+  addToPathMsg(
+      measLio_mapImuPathPtr_, staticTransformsPtr_->getWorldFrame(), odomLidarPtr->header.stamp,
+      (lio_T_M_Lk * staticTransformsPtr_
+                        ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
+                                             staticTransformsPtr_->getImuFrame())
+                        .matrix())
+          .block<3, 1>(0, 3),
+      graphConfigPtr_->imuBufferLength_ * 4);
+
+  // Publish Path
+  pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
+}
+
+// Priority: 4
+void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr) {
+  if (!areRollAndPitchInited()) {
     return;
   }
 
-  // Convert to cartesian coordinates
-  Eigen::Vector3d W_t_W_Gnss;
-  gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  // Counter
+  ++leggedOdometryCallbackCounter_;
 
-  // Inital world yaw initialization options.
-  if (!areYawAndPositionInited()) {  // 1: Initialization
-    // 0: Default
-    double initYaw_W_Base{0.0}; // Default is 0 yaw
-    // 1: From file
-    if (gnssHandlerPtr_->useYawInitialGuessFromFile_) {
-      initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
-    } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) { // 2: From alignment
-      // Adding the GNSS measurement
-      trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
-      // In radians.
-      if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
-        return;
-      }
-      std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value : " << COLOR_END << initYaw_W_Base << std::endl;
-    }
+  // Eigen Type
+  Eigen::Isometry3d T_O_Bl_k = Eigen::Isometry3d::Identity();
+  graph_msf::geometryPoseToEigen(*leggedOdometryKPtr, T_O_Bl_k.matrix());
+  double legOdometryTimeK = leggedOdometryKPtr->header.stamp.toSec();
 
-    // Initialization
-    if (not this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
-                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
-                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
-      // Make clear that this was not successful
-      REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << std::endl;
-    } else {
-      REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
-    }
-  } else {  // 2: Unary factor
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
-        "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
-        graph_msf::RobustNormEnum::None, 1.0, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
-        estStdDevXYZ);
-    // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
-    this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
+  // At start
+  if (leggedOdometryCallbackCounter_ == 0) {
+    T_O_Bl_km1_ = T_O_Bl_k;
+    legOdometryTimeKm1_ = legOdometryTimeK;
+    return;
   }
 
+  if (!areYawAndPositionInited()) {
+    if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_) {
+      // Measurement
+      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+          "Leg_odometry_6D", int(leggedOdometryRate_),
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(), graph_msf::RobustNormEnum::None, 1.0,
+          legOdometryTimeK, leggedOdometryKPtr->header.frame_id, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
+      // Add to graph
+      REGULAR_COUT << GREEN_START << " Legged odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+      this->initYawAndPosition(unary6DMeasurement);
+    }
+  } else {
+    // Only add every 40th measurement
+    int sampleRate = static_cast<int>(leggedOdometryRate_) / 40;
+    if ((leggedOdometryCallbackCounter_ % 40) == 0) {
+      // Compute Delta
+      const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
+      // Create measurement
+      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+          "Leg_odometry_6D", int(sampleRate), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
+          graph_msf::RobustNormEnum::None, 1.0, legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
+      // Add to graph
+      graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
 
-  /// Add GNSS to Path
-  addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,
-               graphConfigPtr_->imuBufferLength_ * 4);
-  /// Publish path
-  pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
+      // Prepare for next iteration
+      T_O_Bl_km1_ = T_O_Bl_k;
+      legOdometryTimeKm1_ = legOdometryTimeK;
+    }
+  }
 }
 
 }  // namespace anymal_se

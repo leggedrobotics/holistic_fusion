@@ -383,7 +383,6 @@ void GraphMsf::addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometr
     T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()) *
                 T_fkm1_fk *
                 staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
-    staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
   }
 
   static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(
@@ -399,11 +398,11 @@ void GraphMsf::addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometr
 }
 
 // Mixed Measurements -----------------------
-bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK) {
-  static_cast<void>(
-      graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), 1e-3 * Eigen::Matrix<double, 6, 1>::Ones(), timeKm1, timeK, 10));
+bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity) {
+  static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), noiseDensity * Eigen::Matrix<double, 6, 1>::Ones(),
+                                                       timeKm1, timeK, 10, RobustNormEnum::None, 0.0));
   graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
-      gtsam::Vector3::Zero(), 1e-3 * Eigen::Matrix<double, 3, 1>::Ones(), timeKm1);
+      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK);
 
   return true;
 }

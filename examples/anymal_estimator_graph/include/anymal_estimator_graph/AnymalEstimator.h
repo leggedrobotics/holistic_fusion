@@ -92,12 +92,10 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
 
-  // Legged callback measurement counter and placeholders.
-  int leggedOdometryCallbackCounter__{-1};
-  Eigen::Isometry3d T_O_Leg_km1__ = Eigen::Isometry3d::Identity();
-  double legOdometryTimeKm1__{0.0};
-
   // Callback Members ----------------------------
+  // GNSS
+  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
+  int gnssCallbackCounter_{-1};
   // LIO
   // Unary
   int lidarUnaryCallbackCounter_{-1};
@@ -105,9 +103,10 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   int lidarBetweenCallbackCounter_{-1};
   double lidarBetweenTimeKm1_{0.0};
   Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
-  // GNSS
-  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
-  int gnssCallbackCounter_{-1};
+  // Legged
+  int leggedOdometryCallbackCounter_{-1};
+  Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
+  double legOdometryTimeKm1_{0.0};
 
   // ROS Objects ----------------------------
 
