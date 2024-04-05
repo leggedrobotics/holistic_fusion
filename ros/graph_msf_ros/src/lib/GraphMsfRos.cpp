@@ -293,11 +293,13 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
         const Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
         const std::string& mapFrameName = transformIterator.first.first;
         const std::string& worldFrameName = transformIterator.first.second;
-        // std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
-        //        std::cout << "Uncertainty: " << std::endl
-        //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-        //                         mapFrameName, transformIterator.first.second)
-        //                  << std::endl;
+        if (graphConfigPtr_->verboseLevel_ >= 2) {
+          std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
+          std::cout << "Uncertainty: " << std::endl
+                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                           mapFrameName, transformIterator.first.second)
+                    << std::endl;
+        }
         // Map->imu
         addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
@@ -305,7 +307,7 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
         // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName + "_", optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+        publishTransform_(worldFrameName, mapFrameName + "_gmsf", optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
                           T_frame1_frame2.inverse());
 
       } else {

@@ -141,9 +141,22 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     return;
   }
 
-  // Convert to cartesian coordinates
+  // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // "east_north_up";
+
+  //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
+  //  // Random number generator
+  //  std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+  //  // Add noise
+  //  W_t_W_Gnss +=
+  //      Eigen::Vector3d(std::normal_distribution<double>(0.0, 0.1)(generator), std::normal_distribution<double>(0.0, 0.1)(generator),
+  //                      std::normal_distribution<double>(0.0, 0.1)(generator));
+  //  // Add to assumed standard deviation (\sigma_{GNSS+noise} = \sqrt{\sigma_{GNSS}^2 + \sigma_{noise}^2})
+  //  for (int i = 0; i < 3; ++i) {
+  //    estStdDevXYZ(i) = sqrt(estStdDevXYZ(i) * estStdDevXYZ(i) + 0.1 * 0.1);
+  //  }
 
   // Inital world yaw initialization options.
   if (!areYawAndPositionInited()) {  // 1: Initialization
@@ -174,15 +187,18 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   } else {  // 2: Unary factor
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame(),
-        graph_msf::RobustNormEnum::None, 1.0, gnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, W_t_W_Gnss,
-        estStdDevXYZ);
+        graph_msf::RobustNormEnum::None, 1.0, gnssMsgPtr->header.stamp.toSec(), fixedFrame, 1.0, W_t_W_Gnss, estStdDevXYZ);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
 
+  // Add _gmsf to the frame
+  if (fixedFrame != staticTransformsPtr_->getWorldFrame()) {
+    fixedFrame += "_gmsf";
+  }
+
   /// Add GNSS to Path
-  addToPathMsg(measGnss_worldGnssPathPtr_, staticTransformsPtr_->getWorldFrame(), gnssMsgPtr->header.stamp, W_t_W_Gnss,
-               graphConfigPtr_->imuBufferLength_ * 4);
+  addToPathMsg(measGnss_worldGnssPathPtr_, fixedFrame, gnssMsgPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength_ * 4);
   /// Publish path
   pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
 }
@@ -221,7 +237,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Visualization ----------------------------
   // Add to path message
   addToPathMsg(
-      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
+      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id + "_gmsf", odomLidarPtr->header.stamp,
       (lio_T_M_Lk * staticTransformsPtr_
                         ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
                                              staticTransformsPtr_->getImuFrame())

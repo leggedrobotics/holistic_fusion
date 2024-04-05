@@ -70,7 +70,7 @@ class GmsfUnaryExpression {
   [[nodiscard]] const gtsam::Values& getNewStateValues() const { return newStateValues_; }
 
   // New Prior Factors
-  const std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>>& getNewPriorFactors() const { return newPriorFactors_; }
+  const std::vector<gtsam::PriorFactor<gtsam::Pose3>>& getNewPriorPoseFactors() const { return newPriorPoseFactors_; }
 
   // Accessors
   const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return baseUnaryMeasurementPtr_; }
@@ -89,7 +89,7 @@ class GmsfUnaryExpression {
 
   // Containers
   gtsam::Values newStateValues_;
-  std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>> newPriorFactors_;
+  std::vector<gtsam::PriorFactor<gtsam::Pose3>> newPriorPoseFactors_;
 };
 
 }  // namespace graph_msf

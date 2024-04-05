@@ -130,8 +130,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(
     graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
   }
   // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-  if (!gmsfUnaryExpressionPtr->getNewPriorFactors().empty()) {
-    factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorFactors());
+  if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
+    factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
   }
 
   // Print summary --------------------------------------

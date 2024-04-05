@@ -51,7 +51,7 @@
 
     <!-- TF Tree Connection During Replay -->
     <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"
-          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_ compslam_lio/camera_init_CORRECTED 100"/>
+          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>
 
     <!-- Elevation mapping node -->
     <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>

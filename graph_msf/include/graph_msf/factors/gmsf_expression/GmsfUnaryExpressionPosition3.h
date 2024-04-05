@@ -43,12 +43,9 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
   }
 
   // Interface with three cases (non-exclusive):
-  // ii) holistically optimize over fixed frames
+  // ii) Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState) override {
-    // Terminal output for now
-    REGULAR_COUT << "GmsfUnaryExpressionPosition3: Running Holistic Optimization over Fixed Frames." << std::endl;
-
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAdded = false;
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
@@ -72,10 +69,13 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
                 << ", t (x, y, z): " << T_fixedFrame_W_initial.translation().transpose() << std::endl;
       // Insert Values
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
+      // Insert Prior
+      newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
+                                        gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
     }
   }
 
-  // iii) transform measurement to core imu frame
+  // iii) Transform Measurement to Core Imu Frame
   void transformStateToSensorFrame() override {
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrame_.translation();
@@ -86,7 +86,7 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
         gtsam::rotate(exp_R_fixedFrame_I_, I_t_I_sensorFrame);  // fixedFrame_t_fixedFrame_sensorFrame
   }
 
-  // iv) extrinsic calibration
+  // iv) Extrinsic Calibration
   void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
     // Terminal output for now
     REGULAR_COUT << "GmsfUnaryExpressionPosition3: Running Extrinsic Calibration Correction." << std::endl;
