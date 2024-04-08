@@ -1,7 +1,7 @@
 # Sensor Params
 sensor_params:
   imuRate: 400                            #Rate of IMU input (Hz)
-  createStateEveryNthImuMeasurement: 4   # Create a new state every n-th IMU measurement
+  createStateEveryNthImuMeasurement: 4    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
   imuBufferLength: 800
@@ -49,21 +49,21 @@ noise_params:
   ## Initial State
   initialPositionNoiseDensity: 10.0    # Prior/starting value of position
   initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
-  initialVelocityNoiseDensity: 1.0e-01    # Prior/starting value of velocity
-  initialAccBiasNoiseDensity: 1.0e-01     # Prior/starting value of accelerometer bias
-  initialGyroBiasNoiseDensity: 1.0e-01     # Prior/starting value of gyroscope bias
+  initialVelocityNoiseDensity: 1.0e-01 # Prior/starting value of velocity
+  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:
-  positionReLinTh: 1.0e-03                # Position linearization threshold
-  rotationReLinTh: 1.0e-03                # Rotation linearization threshold
-  velocityReLinTh: 1.0e-03                # Linear Velocity linearization threshold
-  accBiasReLinTh: 1.0e-03                 # Accelerometer bias linearization threshold
-  gyrBiasReLinTh: 1.0e-03                 # Gyroscope bias linearization threshold
-  fixedFrameReLinTh: 1.0e-03              # Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
-  displacementReLinTh: 1.0e-03            # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
-  relinearizeSkip: 1                      # Re-linearization is skipped every n-th step, default: 10
-  enableRelinearization: true             # Whether to use relinearization, default: true
-  evaluateNonlinearError: true            # Whether to evaluate the nonlinear errorr before and after the update, default: false
-  cacheLinearizedFactors: true            # Whether to cache the linearized factors, default: true
+  positionReLinTh: 1.0e-03                 # Position linearization threshold
+  rotationReLinTh: 1.0e-03                 # Rotation linearization threshold
+  velocityReLinTh: 1.0e-03                 # Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-03                  # Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-03                  # Gyroscope bias linearization threshold
+  fixedFrameReLinTh: 1.0e-03               # Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
+  displacementReLinTh: 1.0e-03             # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
+  relinearizeSkip: 1                       # Re-linearization is skipped every n-th step, default: 10
+  enableRelinearization: true              # Whether to use relinearization, default: true
+  evaluateNonlinearError: true             # Whether to evaluate the nonlinear errorr before and after the update, default: false
+  cacheLinearizedFactors: true             # Whether to cache the linearized factors, default: true
   enablePartialRelinearizationCheck: false # Whether potentially only parts of the tree needs to be relinearized, default: false

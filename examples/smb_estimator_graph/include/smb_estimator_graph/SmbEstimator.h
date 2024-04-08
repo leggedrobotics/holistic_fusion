@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -36,10 +36,11 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Virtual Functions
-  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
   virtual void readParams_(const ros::NodeHandle& privateNode) override;
+  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
+  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
+  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
+  virtual void initializeServices_(ros::NodeHandle& privateNode) override;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
@@ -60,10 +61,14 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // ROS Related stuff ----------------------------
 
   // Callbacks
-  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
   void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
   void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
+
+  // Callback Members
+  int wheelOdometryCallbackCounter_ = -1;
+  Eigen::Isometry3d T_O_Wheel_km1_;
+  double wheelOdometryTimeKm1_ = 0.0;
 
   // Subscribers
   // Instances

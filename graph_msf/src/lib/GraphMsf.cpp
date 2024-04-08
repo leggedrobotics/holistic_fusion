@@ -58,8 +58,8 @@ bool GraphMsf::setup() {
 }
 
 // Trigger functions -----------------------
-bool GraphMsf::optimizeSlowBatchSmoother() {
-  return graphMgrPtr_->optimizeSlowBatchSmoother();
+bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations) {
+  return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations);
 }
 
 // Getter functions -----------------------

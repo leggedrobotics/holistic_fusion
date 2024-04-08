@@ -42,7 +42,7 @@ class GraphMsf {
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
 
   // Trigger offline smoother optimization
-  bool optimizeSlowBatchSmoother();
+  bool optimizeSlowBatchSmoother(int maxIterations);
 
   // Getter functions
   bool areYawAndPositionInited();

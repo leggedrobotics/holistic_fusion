@@ -58,7 +58,7 @@ bool AnymalEstimator::setup() {
   // Messages ----------------------------
   AnymalEstimator::initializeMessages_(privateNode_);
 
-  // Server ----------------------------
+  // Services ----------------------------
   AnymalEstimator::initializeServices_(privateNode_);
 
   // Wrap up ----------------------------
@@ -75,6 +75,11 @@ void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
 
 void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // GNSS
+  if (useGnssUnaryFlag_) {
+    subGnssUnary_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_,
+                                                                   this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnssUnary_.getTopic() << std::endl;
+  }
 
   // LiDAR Odometry
   // Unary
@@ -89,13 +94,6 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
     subLioBetween_ = privateNode_.subscribe<nav_msgs::Odometry>(
         "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarBetweenCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLioBetween_.getTopic() << std::endl;
-  }
-
-  // GNSS
-  if (useGnssUnaryFlag_) {
-    subGnssUnary_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_,
-                                                                   this, ros::TransportHints().tcpNoDelay());
-    REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnssUnary_.getTopic() << std::endl;
   }
 
   // Legged Odometry

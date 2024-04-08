@@ -86,6 +86,8 @@ class OptimizerIsam2 : public OptimizerBase {
  protected:
   // Parameters
   gtsam::ISAM2Params isam2Params_;
+  // Flag
+  bool optimizedAtLeastOnceFlag_ = false;
 };
 
 }  // namespace graph_msf

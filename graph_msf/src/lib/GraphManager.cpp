@@ -514,11 +514,12 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-bool GraphManager::optimizeSlowBatchSmoother() {
+bool GraphManager::optimizeSlowBatchSmoother(int maxIterations) {
   if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
     // Optimization
+    batchOptimizerPtr_->optimize(maxIterations);
     const gtsam::Values& isam2OptimizedStates = batchOptimizerPtr_->getAllOptimizedStates();
     // Key to timestamp map
     const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
