@@ -4,11 +4,11 @@
     <arg name="use_sim_time" value="true"/>
     <arg name="dumped_param_file"
          default="$(find anymal_estimator_graph)/config/dumped_params_d/2023-01-13-16-27-14_anymal-d020-lpc_mission.yaml"/>
-    <arg name="launch_compslam" default="true"/>
+    <arg name="launch_compslam" default="false"/>
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary"     default="true"/>
+    <arg name="using_gnss_unary"     default="false"/>
     <arg name="using_lio_unary"      default="true"/>
     <arg name="using_lio_between"    default="false"/>
     <arg name="using_legged_between" default="true"/>
@@ -16,7 +16,7 @@
     <!-- Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
     <arg name="legged_odometry_topic_name" default="/state_estimator/pose_in_odom" />
-    <arg name="lidar_odometry_topic_name"  default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />  <!-- /open3d_slam/scan2map_odometry -->
+    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
     <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
     <!--Input Topics for LIO, for viz. -->
