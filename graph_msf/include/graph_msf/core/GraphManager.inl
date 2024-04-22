@@ -56,6 +56,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 template <class GTSAM_MEASUREMENT_TYPE>
 void GraphManager::addUnaryGmsfExpressionFactor(
     const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr) {
+
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
   if (!getUnaryFactorGeneralKey(closestGeneralKey, *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr())) {
@@ -64,11 +65,11 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
+  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->fixedFrameName() != worldFrame_) {
     gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
   }
 
-  //   C. Transform State to IMU Sensor Frame -----------------------------------------------------
+  //   C. Transform State to Sensor Frame -----------------------------------------------------
   if (gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->sensorFrameName() != imuFrame_) {
     gmsfUnaryExpressionPtr->transformStateToSensorFrame();
   }
@@ -129,8 +130,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(
     graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
   }
   // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-  if (!gmsfUnaryExpressionPtr->getNewPriorFactors().empty()) {
-    factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorFactors());
+  if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
+    factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
   }
 
   // Print summary --------------------------------------

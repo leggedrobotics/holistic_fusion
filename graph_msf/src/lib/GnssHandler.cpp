@@ -22,9 +22,11 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
 
   // Initialize Gnss converter
   if (usingGnssReferenceFlag) {
-    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Calculating reference." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting coordinate origin to current position." << COLOR_END
+              << std::endl;
     gnssSensor_.setReference(accumulatedLeftCoordinates(0), accumulatedLeftCoordinates(1), accumulatedLeftCoordinates(2), 0.0);
   }
 
@@ -49,8 +51,11 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
 
   // Initialize Gnss converter
   if (usingGnssReferenceFlag) {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting coordinate origin to current position." << COLOR_END
+              << std::endl;
     gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
               << std::endl;
@@ -60,7 +65,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
   Eigen::Vector3d position;
   convertNavSatToPosition(accumulatedCoordinates, position);
 
-  // Initial Gnss position
+  // Initial GNSS Position
   W_t_W_GnssL0_ = position;
 }
 

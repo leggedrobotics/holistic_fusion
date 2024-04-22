@@ -8,11 +8,6 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MANAGER_HPP_
 #define GRAPH_MANAGER_HPP_
 
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
-
 // C++
 #include <chrono>
 #include <mutex>
@@ -28,11 +23,16 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/TransformsExpressionKeys.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
-#include "graph_msf/factors/non_expression/YawFactor.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
+#include "graph_msf/measurements/Measurement.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+
+// General Unary Factor Interface
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+
+// General Binary Factor Interface
+// TODO: add binary factor interface
 
 namespace graph_msf {
 
@@ -51,8 +51,8 @@ class GraphManager {
   };
 
   // Initialization Interface ---------------------------------------------------
-  bool initImuIntegrators(double g);
-  bool initPoseVelocityBiasGraph(double ts, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
+  bool initImuIntegrators(double gravityValue);
+  bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
 
   // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
@@ -74,21 +74,17 @@ class GraphManager {
   template <class GTSAM_MEASUREMENT_TYPE>
   void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
 
-  // Unary Specializations
-  void addPositionUnaryFactor(const UnaryMeasurementXD<Eigen::Vector3d, 3>& unaryPositionMeasurement,
-                              const std::optional<Eigen::Vector3d>& I_t_I_sensorFrame = std::nullopt);
-  void addHeadingUnaryFactor(double measuredYaw, const Eigen::Matrix<double, 1, 1>& gnssHeadingUnaryNoiseDensity, double gnssTime);
-
-  // Between
+  // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
-                                  double lidarTimeKm1, double lidarTimeK, double rate);
+                                  double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,
+                                  const double robustNormConstant);
 
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  bool optimizeSlowBatchSmoother();
+  bool optimizeSlowBatchSmoother(int maxIterations);
 
   // Save Variables to File
   static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,

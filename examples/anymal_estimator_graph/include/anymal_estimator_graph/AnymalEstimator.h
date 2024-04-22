@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef AnymalESTIMATOR_H
-#define AnymalESTIMATOR_H
+#ifndef ANYMAL_ESTIMATOR_H
+#define ANYMAL_ESTIMATOR_H
 
 // std
 #include <chrono>
@@ -27,6 +27,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
@@ -37,7 +38,7 @@ namespace anymal_se {
 
 class AnymalEstimator : public graph_msf::GraphMsfRos {
  public:
-  AnymalEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
+  AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
   ~AnymalEstimator() = default;
   // Setup
@@ -51,9 +52,13 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   virtual void readParams_(const ros::NodeHandle& privateNode);
 
   // Callbacks
-  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
-  void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
-  void leggedOdometryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr);
+  // LIO
+  void lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  void lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  // GNSS
+  void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
+  // Legged
+  void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr);
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
@@ -61,33 +66,56 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
+  // TrajectoryAlignment Handler
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
   // Config -------------------------------------
+
   // Rates
   double lioOdometryRate_ = 5.0;
   double leggedOdometryRate_ = 400.0;
   double gnssRate_ = 10.0;
 
   // Flags
-  bool useGnssFlag_ = false;
-  bool useLioFlag_ = true;
-  bool useLeggedOdometryFlag_ = true;
+  bool useGnssUnaryFlag_ = false;
+  bool useLioUnaryFlag_ = true;
+  bool useLioBetweenFlag_ = false;
+  bool useLeggedBetweenFlag_ = false;
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
+
+  // Callback Members ----------------------------
+  // GNSS
+  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
+  int gnssCallbackCounter_{-1};
+  // LIO
+  // Unary
+  int lidarUnaryCallbackCounter_{-1};
+  // Between
+  int lidarBetweenCallbackCounter_{-1};
+  double lidarBetweenTimeKm1_{0.0};
+  Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
+  // Legged
+  int leggedOdometryCallbackCounter_{-1};
+  Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
+  double legOdometryTimeKm1_{0.0};
 
   // ROS Objects ----------------------------
 
   // Subscribers
   // Instances
-  ros::Subscriber subLidarOdometry_;
-  ros::Subscriber subGnss_;
-  ros::Subscriber leggedOdometry_;
+  ros::Subscriber subGnssUnary_;
+  ros::Subscriber subLioUnary_;
+  ros::Subscriber subLioBetween_;
+  ros::Subscriber subLeggedBetween_;
   tf::TransformListener tfListener_;
 
   // Publishers
@@ -102,5 +130,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
 };
+
 }  // namespace anymal_se
-#endif  // end M545ESTIMATORGRAPH_H
+
+#endif  // end ANYMAL_ESTIMATOR_H

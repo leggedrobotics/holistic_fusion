@@ -42,13 +42,16 @@ class OptimizerLMBatch : public OptimizerLM {
     return true;
   }
 
-  // Optimize bundle adjustement smoother (if desired)
-  const gtsam::Values& getAllOptimizedStates() override {
+  // Optimize
+  void optimize(int maxIterations) override {
     // Print
     std::cout << YELLOW_START << "GraphMSF: OptimizerIsam2Batch" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END
               << std::endl;
 
-    // Initialize Slow Bundle Adjustement Smoother
+    // Set LM Parameters
+    lmParams_.maxIterations = maxIterations;
+
+    // Initialize Slow Bundle Adjustment Smoother
     batchSmootherPtr_ =
         std::make_shared<gtsam::LevenbergMarquardtOptimizer>(containerBatchSmootherFactors_, containerBatchSmootherValues_, lmParams_);
 
@@ -62,6 +65,14 @@ class OptimizerLMBatch : public OptimizerLM {
     // Optimize
     batchSmootherOptimizedResult_ = batchSmootherPtr_->optimize();
     optimizedAtLeastOnceFlag_ = true;
+  }
+
+  // Optimize bundle adjustement smoother (if desired)
+  const gtsam::Values& getAllOptimizedStates() override {
+    // Check
+    if (!optimizedAtLeastOnceFlag_) {
+      throw std::runtime_error("GraphMSF: OptimizerLMBatch: getAllOptimizedStates: No optimization has been performed yet.");
+    }
 
     // Return result
     return batchSmootherOptimizedResult_;

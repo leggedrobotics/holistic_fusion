@@ -165,9 +165,22 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     return true;
   }
 
+  // Optimize
+  void optimize(int maxIterations) override {
+    // Optimize
+    fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
+    // Flag
+    optimizedAtLeastOnceFlag_ = true;
+  }
+
   // Get Result
   const gtsam::Values& getAllOptimizedStates() override {
-    fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
+    // Check
+    if (!optimizedAtLeastOnceFlag_) {
+      throw std::runtime_error("GraphMSF: Optimizer has not been optimized yet.");
+    }
+
+    // Return
     return fixedLagSmootherOptimizedResult_;
   }
 

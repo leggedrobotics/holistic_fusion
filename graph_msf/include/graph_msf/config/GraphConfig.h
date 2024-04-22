@@ -47,11 +47,7 @@ struct GraphConfig {
   bool usingBiasForPreIntegrationFlag_ = true;
   bool optimizeFixedFramePosesWrtWorld_ = true;
   double fixedFramePosesResetThreshold_ = 5.0;
-  bool optimizeWithImuToSensorLeverArm_ = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
-
-  // Outlier Rejection
-  double poseMotionOutlierThresold_ = 0.3;
 
   // Noise Params (Noise Amplitude Spectral Density)
   // Position

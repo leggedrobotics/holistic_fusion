@@ -21,6 +21,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/interface/GraphMsf.h"
+#include "graph_msf_ros/OfflineOptimizationTrigger.h"
 
 // Macros
 #define ROS_QUEUE_SIZE 10
@@ -62,7 +63,8 @@ class GraphMsfRos : public GraphMsf {
   virtual void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
 
   // Services
-  bool srvOfflineSmootherOptimizeCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+  bool srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
+                                           graph_msf_ros::OfflineOptimizationTrigger::Response& res);
 
   // Publishing -----------------------------------
   void publishOptimizedStateAndBias_(

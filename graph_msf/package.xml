@@ -16,7 +16,7 @@
     <build_depend>cmake_clang_tools</build_depend>
     <build_depend>Eigen3</build_depend>
     <build_depend>GTSAM</build_depend>
-    #<build_depend>gtsam_catkin</build_depend>
+    <build_depend>gtsam_catkin</build_depend>
 
     <exec_depend>Eigen3</exec_depend>
     <exec_depend>GTSAM</exec_depend>

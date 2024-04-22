@@ -28,7 +28,7 @@ void AnymalStaticTransforms::findTransformations() {
   // Print to console --------------------------
   REGULAR_COUT << " Looking up transforms in TF-tree." << std::endl;
   REGULAR_COUT << " Transforms between the following frames are required:" << std::endl;
-  REGULAR_COUT " " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
+  REGULAR_COUT << " " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
   REGULAR_COUT << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable

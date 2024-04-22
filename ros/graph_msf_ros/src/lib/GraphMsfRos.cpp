@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -134,9 +134,13 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   }
 }
 
-bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
+                                                      graph_msf_ros::OfflineOptimizationTrigger::Response& res) {
+  // Max Iterations from service call
+  int maxIterations = req.max_optimization_iterations;
+
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother()) {
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations)) {
     res.success = true;
     res.message = "Optimization successful.";
   } else {
@@ -293,11 +297,13 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
         const Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
         const std::string& mapFrameName = transformIterator.first.first;
         const std::string& worldFrameName = transformIterator.first.second;
-        // std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
-        //        std::cout << "Uncertainty: " << std::endl
-        //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-        //                         mapFrameName, transformIterator.first.second)
-        //                  << std::endl;
+        if (graphConfigPtr_->verboseLevel_ >= 2) {
+          std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
+          std::cout << "Uncertainty: " << std::endl
+                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                           mapFrameName, transformIterator.first.second)
+                    << std::endl;
+        }
         // Map->imu
         addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
@@ -305,7 +311,7 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
         // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName + "_", optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+        publishTransform_(worldFrameName, mapFrameName + "_gmsf", optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
                           T_frame1_frame2.inverse());
 
       } else {

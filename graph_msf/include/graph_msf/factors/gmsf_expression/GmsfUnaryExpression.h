@@ -18,8 +18,8 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Function for composing rigid body transformations with GTSAM expression factors
-inline gtsam::Pose3_ composeRigidTransformations(const gtsam::Pose3_& p, const gtsam::Pose3_& q) {
-  return gtsam::Pose3_(p, &gtsam::Pose3::transformPoseFrom, q);
+inline gtsam::Pose3_ composeRigidTransformations(const gtsam::Pose3_& T_frame1_frame2, const gtsam::Pose3_& T_frame2_frame3) {
+  return gtsam::Pose3_(T_frame1_frame2, &gtsam::Pose3::transformPoseFrom, T_frame2_frame3);
 }
 
 /**
@@ -70,7 +70,7 @@ class GmsfUnaryExpression {
   [[nodiscard]] const gtsam::Values& getNewStateValues() const { return newStateValues_; }
 
   // New Prior Factors
-  const std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>>& getNewPriorFactors() const { return newPriorFactors_; }
+  const std::vector<gtsam::PriorFactor<gtsam::Pose3>>& getNewPriorPoseFactors() const { return newPriorPoseFactors_; }
 
   // Accessors
   const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return baseUnaryMeasurementPtr_; }
@@ -82,14 +82,14 @@ class GmsfUnaryExpression {
   const std::shared_ptr<UnaryMeasurement> baseUnaryMeasurementPtr_;
 
   // Frame Name References
-  const std::string& worldFrameName_;
+  const std::string worldFrameName_;
 
   // IMU to Sensor Frame
   Eigen::Isometry3d T_I_sensorFrame_;
 
   // Containers
   gtsam::Values newStateValues_;
-  std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>> newPriorFactors_;
+  std::vector<gtsam::PriorFactor<gtsam::Pose3>> newPriorPoseFactors_;
 };
 
 }  // namespace graph_msf

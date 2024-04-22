@@ -32,6 +32,7 @@
   <run_depend>std_srvs</run_depend>
   <run_depend>compslam_lio</run_depend>
   <run_depend>anymal_d</run_depend>
+  <run_depend>elevation_mapping</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosbag</test_depend>

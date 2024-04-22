@@ -47,12 +47,8 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
   graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
   graphConfigPtr_->fixedFramePosesResetThreshold_ = tryGetParam<double>("graph_params/fixedFramePosesResetThreshold", privateNode);
-  graphConfigPtr_->optimizeWithImuToSensorLeverArm_ = tryGetParam<bool>("graph_params/optimizeWithImuToSensorLeverArm", privateNode);
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
-
-  // Outlier Parameters
-  graphConfigPtr_->poseMotionOutlierThresold_ = tryGetParam<double>("outlier_params/poseMotionOutlierThreshold", privateNode);
 
   // Noise Parameters
   /// IMU

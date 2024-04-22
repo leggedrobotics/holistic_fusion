@@ -59,7 +59,8 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
       // Insert Values
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Prior maybe not needed, but for safety (to keep well conditioned)
-      newPriorFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial, gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
+      newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
+                                        gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
     }
   }
 
@@ -83,10 +84,11 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     // Apply calibration correction
     exp_T_fixedFrame_sensorFrame_ = exp_T_fixedFrame_sensorFrame_ * gtsam::Pose3_(newGraphKey);  // T_fixedFrame_sensorFrameCorrected
     if (newGraphKeyAdded) {
+      // Insert Values
       newStateValues_.insert(newGraphKey, T_sensorFrame_sensorFrameCorrected_initial);
-      // Prior maybe not needed, but for safety (to keep well conditioned)
-      newPriorFactors_.emplace_back(newGraphKey, T_sensorFrame_sensorFrameCorrected_initial,
-                                    gtsam::noiseModel::Diagonal::Sigmas(1.0e-03 * gtsam::Vector::Ones(6)));
+      // Insert Prior (maybe not needed, but for safety (to keep well conditioned))
+      //      newPriorFactors_.emplace_back(newGraphKey, T_sensorFrame_sensorFrameCorrected_initial,
+      //                                    gtsam::noiseModel::Diagonal::Sigmas(1.0e-03 * gtsam::Vector::Ones(6)));
     }
     std::cout << "GmsfUnaryExpressionPose3: Extrinsic Calibration Correction added." << std::endl;
   }
