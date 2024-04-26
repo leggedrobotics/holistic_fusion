@@ -4,14 +4,14 @@
     <arg name="use_sim_time" value="true"/>
     <arg name="dumped_param_file"
          default="$(find anymal_estimator_graph)/config/dumped_params_d/2023-01-13-16-27-14_anymal-d020-lpc_mission.yaml"/>
-    <arg name="launch_compslam" default="false"/>
 
     <!-- Config -->
-    <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary"     default="false"/>
-    <arg name="using_lio_unary"      default="true"/>
-    <arg name="using_lio_between"    default="false"/>
-    <arg name="using_legged_between" default="true"/>
+    <arg name="extrinsics_from_urdf"        default="false"/>
+    <arg name="using_gnss_unary"            default="false"/>
+    <arg name="using_lio_unary"             default="true"/>
+    <arg name="using_lio_between"           default="false"/>
+    <arg name="using_legged_between"        default="false"/>
+    <arg name="using_legged_velocity_unary" default="false"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
@@ -19,14 +19,8 @@
     <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
     <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
 
-    <!--Input Topics for LIO, for viz. -->
-    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/>
-
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)"/>
-
-    <!-- Compslam Config -->
-    <arg name="compslam_config_file" default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch">
@@ -36,22 +30,12 @@
         <arg name="using_lio_unary" value="$(arg using_lio_unary)"/>
         <arg name="using_lio_between" value="$(arg using_lio_between)"/>
         <arg name="using_legged_between" value="$(arg using_legged_between)"/>
+        <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
         <!-- Input Topics -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
-
-    <!-- Launch compslam -->
-    <include file="$(find compslam_lio)/launch/compslam_lio.launch" if="$(arg launch_compslam)">
-        <arg name="pointcloud_topic_name" value="$(arg pointcloud_topic_name)"/>
-        <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
-        <arg name="config_filename" value="$(arg compslam_config_file)"/>
-    </include>
-
-    <!-- TF Tree Connection During Replay -->
-    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"
-          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>
 
     <!-- Elevation mapping node -->
     <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>

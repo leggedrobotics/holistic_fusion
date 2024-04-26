@@ -85,6 +85,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLioUnaryFlag_ = true;
   bool useLioBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
+  bool useLeggedVelocityUnaryFlag_ = false;
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
