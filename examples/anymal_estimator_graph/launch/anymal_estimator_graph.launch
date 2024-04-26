@@ -6,9 +6,10 @@
 
     <!-- GMSF Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
-    <arg name="legged_odometry_topic_name" default="/state_estimator/pose_in_odom" />
-    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />
     <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
+    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />
+    <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom" />
+    <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry" />
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
@@ -50,7 +51,8 @@
         <remap from="/imu_topic"             to="$(arg imu_topic_name)" />
         <remap from="/lidar_odometry_topic"  to="$(arg lidar_odometry_topic_name)" />
         <remap from="/gnss_topic"            to="$(arg gnss_topic_name)" />
-        <remap from="/legged_odometry_topic" to="$(arg legged_odometry_topic_name)" />
+        <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)" />
+        <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)" />
         <!-- Remapping of services -->
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)" />
     </node>

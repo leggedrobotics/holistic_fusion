@@ -397,10 +397,17 @@ void GraphMsf::addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometr
   }
 }
 
-// Mixed Measurements -----------------------
+// Ambiguous Measurements -----------------------
 bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity) {
   static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), noiseDensity * Eigen::Matrix<double, 6, 1>::Ones(),
                                                        timeKm1, timeK, 10, RobustNormEnum::None, 0.0));
+  graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
+      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK);
+
+  return true;
+}
+
+bool GraphMsf::addZeroVelocityFactor(double timeK, double noiseDensity) {
   graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
       gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK);
 

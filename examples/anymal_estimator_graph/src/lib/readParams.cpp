@@ -29,6 +29,9 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters ---------------------------------------------------
+  /// Gnss
+  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
+
   /// LiDAR Odometry
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
@@ -46,8 +49,9 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   legPoseBetweenNoise_ << legPoseBetweenNoise[0], legPoseBetweenNoise[1], legPoseBetweenNoise[2], legPoseBetweenNoise[3],
       legPoseBetweenNoise[4], legPoseBetweenNoise[5];
 
-  /// Gnss
-  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
+  /// Legged Velocity Unary
+  const auto legVelocityUnaryNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/legVelocityUnaryNoise", privateNode);  // vx,vy,vz
 
   // Flags ---------------------------------------------------
   // GNSS Unary

@@ -97,10 +97,20 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   }
 
   // Legged Odometry
+  // Between
   if (useLeggedBetweenFlag_) {
     subLeggedBetween_ = privateNode_.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
-        "/legged_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedBetweenCallback_, this, ros::TransportHints().tcpNoDelay());
+        "/legged_odometry_pose_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedBetweenCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Odometry subscriber with topic: " << subLeggedBetween_.getTopic() << std::endl;
+  }
+  // Unary
+  if (useLeggedVelocityUnaryFlag_) {
+    subLeggedVelocityUnary_ = privateNode_.subscribe<nav_msgs::Odometry>("/legged_odometry_odom_topic", ROS_QUEUE_SIZE,
+                                                                         &AnymalEstimator::leggedVelocityUnaryCallback_, this,
+                                                                         ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END
+                 << " Initialized Legged Velocity Unary Factor Odometry subscriber with topic: " << subLeggedVelocityUnary_.getTopic()
+                 << std::endl;
   }
 }
 
@@ -294,7 +304,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
         "Lidar_between_6D", int(lioOdometryRate_), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
         graph_msf::RobustNormEnum::None, 1.0, lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
     // Add to graph
-    graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
+    this->addBinaryPoseMeasurement(delta6DMeasurement);
   }
   // Provide for next iteration
   lio_T_M_Lkm1_ = lio_T_M_Lk;
@@ -316,7 +326,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
 }
 
 // Priority: 4
-void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr) {
+void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr) {
   if (!areRollAndPitchInited()) {
     return;
   }
@@ -326,8 +336,8 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
 
   // Eigen Type
   Eigen::Isometry3d T_O_Bl_k = Eigen::Isometry3d::Identity();
-  graph_msf::geometryPoseToEigen(*leggedOdometryKPtr, T_O_Bl_k.matrix());
-  double legOdometryTimeK = leggedOdometryKPtr->header.stamp.toSec();
+  graph_msf::geometryPoseToEigen(*leggedOdometryPoseKPtr, T_O_Bl_k.matrix());
+  double legOdometryTimeK = leggedOdometryPoseKPtr->header.stamp.toSec();
 
   // At start
   if (leggedOdometryCallbackCounter_ == 0) {
@@ -342,7 +352,7 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryRate_),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(), graph_msf::RobustNormEnum::None, 1.0,
-          legOdometryTimeK, leggedOdometryKPtr->header.frame_id, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
+          legOdometryTimeK, leggedOdometryPoseKPtr->header.frame_id, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
@@ -358,12 +368,34 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
           "Leg_odometry_6D", int(sampleRate), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
           graph_msf::RobustNormEnum::None, 1.0, legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
       // Add to graph
-      graph_msf::GraphMsf::addBinaryPoseMeasurement(delta6DMeasurement);
+      this->addBinaryPoseMeasurement(delta6DMeasurement);
 
       // Prepare for next iteration
       T_O_Bl_km1_ = T_O_Bl_k;
       legOdometryTimeKm1_ = legOdometryTimeK;
     }
+  }
+}
+
+// Priority: 5
+void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::ConstPtr& leggedOdometryKPtr) {
+  if (!areRollAndPitchInited()) {
+    return;
+  }
+
+  // Eigen Type
+  Eigen::Vector3d legVelocity = Eigen::Vector3d(leggedOdometryKPtr->twist.twist.linear.x, leggedOdometryKPtr->twist.twist.linear.y,
+                                                leggedOdometryKPtr->twist.twist.linear.z);
+
+  // Norm of the velocity
+  double norm = legVelocity.norm();
+
+  // Printout
+  if (norm < 0.01) {
+    std::cout << "Robot standing still." << std::endl;
+
+    // Add zero velocity to the graph
+    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
   }
 }
 

@@ -58,7 +58,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // GNSS
   void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
   // Legged
-  void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryKPtr);
+  void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
+  void leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::ConstPtr& leggedOdometryKPtr);
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
@@ -88,10 +89,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLeggedVelocityUnaryFlag_ = false;
 
   // Noise
+  double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
-  double gnssPositionUnaryNoise_ = 1.0;  // in [m]
+  Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_;
 
   // Callback Members ----------------------------
   // GNSS
@@ -117,6 +119,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subLioUnary_;
   ros::Subscriber subLioBetween_;
   ros::Subscriber subLeggedBetween_;
+  ros::Subscriber subLeggedVelocityUnary_;
   tf::TransformListener tfListener_;
 
   // Publishers
