@@ -379,7 +379,7 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
 
 // Priority: 5
 void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::ConstPtr& leggedOdometryKPtr) {
-  if (!areRollAndPitchInited()) {
+  if (!areRollAndPitchInited() || !areYawAndPositionInited()) {
     return;
   }
 
@@ -395,7 +395,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
     std::cout << "Robot standing still." << std::endl;
 
     // Add zero velocity to the graph
-    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
+    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), 1e-3);
   }
 }
 

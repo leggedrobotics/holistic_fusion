@@ -31,9 +31,13 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
     }
   }
 
+  // Print closest key
+  //REGULAR_COUT << " Closest key to " << measurementTime << " is " << closestKey << " at " << closestGraphTime << std::endl;
+
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
   auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noise);
+  // auto robustErrorFunction = noise;
 
   // Create unary factor and ADD IT
   std::shared_ptr<FACTOR_TYPE> unaryFactorPtr;
@@ -56,7 +60,6 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 template <class GTSAM_MEASUREMENT_TYPE>
 void GraphManager::addUnaryGmsfExpressionFactor(
     const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr) {
-
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
   if (!getUnaryFactorGeneralKey(closestGeneralKey, *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr())) {
@@ -65,7 +68,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->fixedFrameName() != worldFrame_) {
+  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ &&
+      gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->fixedFrameName() != worldFrame_) {
     gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
   }
 
