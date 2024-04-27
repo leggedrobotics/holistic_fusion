@@ -108,6 +108,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
   // Legged
   int leggedOdometryCallbackCounter_{-1};
+  int leggedOdometryOdomCallbackCounter_{-1};
   Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
   double legOdometryTimeKm1_{0.0};
 

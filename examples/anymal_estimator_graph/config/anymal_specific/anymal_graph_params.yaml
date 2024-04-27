@@ -17,4 +17,4 @@ noise_params:
   ## Between Noise
   legPoseBetweenNoise: [ 0.2, 0.2, 0.2, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Velocity Unary Noise
-  legVelocityUnaryNoise: [ 0.001, 0.001, 0.001 ] # StdDev, ORDER XYZ(meters/sec)
+  legVelocityUnaryNoise: [ 0.1, 0.1, 0.1 ] # StdDev, ORDER XYZ(meters/sec)

@@ -383,6 +383,9 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
     return;
   }
 
+  // Counter
+  ++leggedOdometryOdomCallbackCounter_;
+
   // Eigen Type
   Eigen::Vector3d legVelocity = Eigen::Vector3d(leggedOdometryKPtr->twist.twist.linear.x, leggedOdometryKPtr->twist.twist.linear.y,
                                                 leggedOdometryKPtr->twist.twist.linear.z);
@@ -391,11 +394,13 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   double norm = legVelocity.norm();
 
   // Printout
-  if (norm < 0.01) {
+  if (norm < 0.01 && leggedOdometryOdomCallbackCounter_ > 50) {
     std::cout << "Robot standing still." << std::endl;
 
     // Add zero velocity to the graph
-    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), 1e-3);
+    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
+  } else {
+    std::cout << "Robot walking." << std::endl;
   }
 }
 
