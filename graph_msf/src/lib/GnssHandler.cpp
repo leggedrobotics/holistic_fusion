@@ -59,6 +59,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
     gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
               << std::endl;
+    referenceGPSposition_ = accumulatedCoordinates;
   }
 
   // Get Positions

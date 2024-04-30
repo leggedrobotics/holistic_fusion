@@ -71,6 +71,8 @@ void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
   // Paths
   pubMeasMapLioPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
   pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
+  pubReferenceNavSatFixCoordinates_ =
+      privateNode_.advertise<sensor_msgs::NavSatFix>("/graph_msf/gps_reference_position", ROS_QUEUE_SIZE, true);
 }
 
 void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
@@ -145,6 +147,15 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
     gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+
+    sensor_msgs::NavSatFix referencefix;
+    Eigen::Vector3d referenceFixValues = gnssHandlerPtr_->getGPSReference();
+    referencefix.header = gnssMsgPtr->header;
+    referencefix.latitude = referenceFixValues(0);
+    referencefix.longitude = referenceFixValues(1);
+    referencefix.altitude = referenceFixValues(2);
+    pubReferenceNavSatFixCoordinates_.publish(referencefix);
+
     std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
     return;
   }

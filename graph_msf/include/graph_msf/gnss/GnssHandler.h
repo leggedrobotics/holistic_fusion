@@ -24,6 +24,7 @@ class GnssHandler {
   // Methods
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
   void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
+  Eigen::Vector3d getGPSReference() { return referenceGPSposition_; };
 
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
@@ -43,6 +44,8 @@ class GnssHandler {
   double globalYawDegFromFile_{0.0};
   bool useYawInitialGuessFromFile_{false};
   bool yawInitialGuessFromAlignment_{false};
+
+  Eigen::Vector3d referenceGPSposition_ = Eigen::Vector3d::Zero();
 
  private:
   // Member methods
