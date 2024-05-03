@@ -2,4 +2,4 @@
 extrinsics:
   lioOdometryFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
   leggedOdometryFrame: base      #Tracked Legged odometry frame name
-  gnssFrame: gps
+  gnssFrame: base

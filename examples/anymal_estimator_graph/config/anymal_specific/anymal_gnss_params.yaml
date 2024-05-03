@@ -1,5 +1,5 @@
 gnss:
-  initYaw: 90.0
+  initYaw: 0.0
   useYawInitialGuessFromFile: true # If this and the next are false, 0 initial yaw is used.
   yawInitialGuessFromAlignment: false # Overrides the initial guess from file option.
   useGnssReference: false
