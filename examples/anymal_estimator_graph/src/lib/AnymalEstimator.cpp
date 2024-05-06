@@ -132,6 +132,20 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Counter
   ++gnssCallbackCounter_;
 
+  /*
+  int8 STATUS_NO_FIX =  -1        # unable to fix position
+  int8 STATUS_FIX =      0        # unaugmented fix
+  int8 STATUS_SBAS_FIX = 1        # with satellite-based augmentation
+  int8 STATUS_GBAS_FIX = 2        # with ground-based augmentation
+  */
+
+  // Refer to the piksi multi driver
+  // https://github.com/ethz-asl/ethz_piksi_ros/blob/d0ed038078045696661b9bd7789305b7acd20bfa/piksi_multi_cpp/src/sbp_callback_handler/sbp_callback_handler_relay/ros_relays.cc#L35
+  if (int(gnssMsgPtr->status.status) < int(sensor_msgs::NavSatStatus::STATUS_GBAS_FIX)) {
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS state is invalid." << std::endl;
+    return;
+  }
+
   // Convert to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
   Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
@@ -164,6 +178,13 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // "east_north_up";
+
+  Eigen::Vector3d diff = lastHealthyGPSmeasurement_ - W_t_W_Gnss;
+  lastHealthyGPSmeasurement_ = W_t_W_Gnss;
+  if (diff.norm() > 0.2) {
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS is jumped more than 20cm. Diff: " << diff.norm() << std::endl;
+    return;
+  }
 
   //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
   //  // Random number generator

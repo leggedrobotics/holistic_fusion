@@ -21,6 +21,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <sensor_msgs/NavSatStatus.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
@@ -111,6 +112,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   int leggedOdometryOdomCallbackCounter_{-1};
   Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
   double legOdometryTimeKm1_{0.0};
+
+  Eigen::Vector3d lastHealthyGPSmeasurement_{0.0, 0.0, 0.0};
 
   // ROS Objects ----------------------------
 
