@@ -86,8 +86,11 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // LiDAR Odometry
   // Unary
   if (useLioUnaryFlag_) {
-    subLioUnary_ = privateNode_.subscribe<nav_msgs::Odometry>(
-        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarUnaryCallback_, this, ros::TransportHints().tcpNoDelay());
+    // subLioUnary_ = privateNode_.subscribe<nav_msgs::Odometry>(
+    //    "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarUnaryCallback_, this, ros::TransportHints().tcpNoDelay());
+
+    subLioUnary_ = privateNode_.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::externalUnaryCallback_, this, ros::TransportHints().tcpNoDelay());
 
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Unary Factor Odometry subscriber with topic: " << subLioUnary_.getTopic() << std::endl;
   }
@@ -287,6 +290,57 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
+}
+
+// Priority: 2
+void AnymalEstimator::externalUnaryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& externalOdomPtr) {
+  // Counter
+  ++externalUnaryCallbackCounter_;
+
+  // Only add every 50th measurement ( CURRENTLY THIS IS JUST A HACK TO MAKE 400hz legged-SE to be fed as 8hz to the graph)
+  if ((externalUnaryCallbackCounter_ % 50) == 0) {
+
+    Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
+    graph_msf::geometryPoseToEigen(*externalOdomPtr, lio_T_M_Lk.matrix());
+
+    // Transform to IMU frame
+    double externalUnaryTimeK = externalOdomPtr->header.stamp.toSec();
+
+    if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+      trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), externalUnaryTimeK);
+    }
+
+    // Measurement
+    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+        "External_unary_6D", int(400 / 50), dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
+        graph_msf::RobustNormEnum::None, 1.0, externalUnaryTimeK, externalOdomPtr->header.frame_id, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+
+    if (externalUnaryCallbackCounter_ <= 2) {
+      return;
+    } else if (!areYawAndPositionInited()) {  // Initializing
+      if (!useGnssUnaryFlag_ || (externalUnaryCallbackCounter_ > NUM_GNSS_CALLBACKS_UNTIL_START)) {
+        REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END
+                     << std::endl;
+        this->initYawAndPosition(unary6DMeasurement);
+      }
+    } else {  // Already initialized --> unary factor
+      this->addUnaryPoseMeasurement(unary6DMeasurement);
+    }
+
+    // Visualization ----------------------------
+    // Add to path message
+    addToPathMsg(
+        measLio_mapImuPathPtr_, externalOdomPtr->header.frame_id + "_gmsf", externalOdomPtr->header.stamp,
+        (lio_T_M_Lk * staticTransformsPtr_
+                          ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
+                                               staticTransformsPtr_->getImuFrame())
+                          .matrix())
+            .block<3, 1>(0, 3),
+        graphConfigPtr_->imuBufferLength_ * 4);
+
+    // Publish Path
+    pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
+  }
 }
 
 // Priority: 3

@@ -7,15 +7,15 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"        default="false"/>
-    <arg name="using_gnss_unary"            default="true"/>
-    <arg name="using_lio_unary"             default="false"/>
+    <arg name="using_gnss_unary"            default="false"/>
+    <arg name="using_lio_unary"             default="true"/>
     <arg name="using_lio_between"           default="false"/>
     <arg name="using_legged_between"        default="false"/>
     <arg name="using_legged_velocity_unary" default="false"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
-    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+    <arg name="lidar_odometry_topic_name"  default="/state_estimator/pose_in_odom" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
     <!-- Load dumped parameters, mainly for description -->
     <rosparam command="load" file="$(arg dumped_param_file)"/>

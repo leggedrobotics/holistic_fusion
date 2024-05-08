@@ -55,6 +55,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Callbacks
   // LIO
   void lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
+  void externalUnaryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& externalOdomPtr);
   void lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   // GNSS
   void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
@@ -103,6 +104,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // LIO
   // Unary
   int lidarUnaryCallbackCounter_{-1};
+  int externalUnaryCallbackCounter_{-1};
   // Between
   int lidarBetweenCallbackCounter_{-1};
   double lidarBetweenTimeKm1_{0.0};
