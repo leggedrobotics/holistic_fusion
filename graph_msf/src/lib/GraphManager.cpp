@@ -433,7 +433,7 @@ void GraphManager::updateGraph() {
                                                                        T_frame1_frame2_covariance);
         // Mark that this key has at least been optimized once
         if (framePairIterator.second.getNumberStepsOptimized() == 0) {
-          REGULAR_COUT << GREEN_START << " Fixed Frame Transformation between " << framePairIterator.first.first << " and "
+          REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairIterator.first.first << " and "
                        << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
           gtsam::Pose3 T_frame1_frame2_firstOptimized(T_frame1_frame2);
           REGULAR_COUT << GREEN_START

@@ -189,6 +189,19 @@ void GraphMsfRos::addToOdometryMsg(const nav_msgs::OdometryPtr& msgPtr, const st
   }
 }
 
+void GraphMsfRos::addToPoseWithCovarianceStampedMsg(const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName,
+                                                    const ros::Time& stamp, const Eigen::Isometry3d& T,
+                                                    const Eigen::Matrix<double, 6, 6>& transformCovariance) {
+  msgPtr->header.frame_id = frameName;
+  msgPtr->header.stamp = stamp;
+  tf::poseTFToMsg(isometry3ToTf(T), msgPtr->pose.pose);
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
+      msgPtr->pose.covariance[6 * i + j] = transformCovariance(i, j);
+    }
+  }
+}
+
 void GraphMsfRos::extractCovariancesFromOptimizedState(
     Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
@@ -203,8 +216,8 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
   }
 }
 
-void GraphMsfRos::publishTransform_(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
-                                    const Eigen::Isometry3d& T_frame_childFrame) {
+void GraphMsfRos::publishTfTreeTransform_(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
+                                          const Eigen::Isometry3d& T_frame_childFrame) {
   tf::Transform transform_frame_childFrame = isometry3ToTf(T_frame_childFrame);
   tfBroadcaster_.sendTransform(tf::StampedTransform(transform_frame_childFrame, ros::Time(timeStamp), parentFrameName, childFrameName));
 }
@@ -291,34 +304,66 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
 
     // TFs in Optimized State
     for (const auto& transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
-      // Get transform
-      const Eigen::Isometry3d& T_frame1_frame2 = transformIterator.second;
+      // Case 1: Holistic transformation --> includes world frame
       if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
-        const Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+        // A. Get transform
+        const Eigen::Isometry3d& T_M_W = transformIterator.second;
+        const Eigen::Isometry3d T_M_Ik = T_M_W * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
         const std::string& mapFrameName = transformIterator.first.first;
         const std::string& worldFrameName = transformIterator.first.second;
         if (graphConfigPtr_->verboseLevel_ >= 2) {
           std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
           std::cout << "Uncertainty: " << std::endl
-                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-                           mapFrameName, transformIterator.first.second)
+                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(mapFrameName,
+                                                                                                                      worldFrameName)
                     << std::endl;
         }
-        // Map->imu
-        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
+        // B. Publish Odometry for Map->imu
+        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName + fixedFrameAlignedNameId_, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
                          optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
-        // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName + "_gmsf", optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
-                          T_frame1_frame2.inverse());
+        // C. Publish TransformStamped for Aligned Frames
+        std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + fixedFrameAlignedNameId_;
+        geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
+            boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+        addToPoseWithCovarianceStampedMsg(
+            poseWithCovarianceStampedMsgPtr, transformTopic, ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_W.inverse(),
+            optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(mapFrameName, worldFrameName));
+        // Check whether publisher already exists
+        if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
+          pubPoseStampedByTopicMap_[transformTopic] = privateNode_.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
+          REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+        }
+        pubPoseStampedByTopicMap_[transformTopic].publish(poseWithCovarianceStampedMsgPtr);
 
-      } else {
-        const std::string& worldFrameName = transformIterator.first.first;
-        const std::string& mapFrameName = transformIterator.first.second;
-        // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2);
+        // D. Publish TF Tree --> everything children of world
+        publishTfTreeTransform_(worldFrameName, mapFrameName + fixedFrameAlignedNameId_, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                                T_M_W.inverse());
+
+      } else {  // Case 2: Calibration transformation --> does not include world frame
+        const std::string& sensorFrameName = transformIterator.first.first;
+        const std::string& sensorFrameNameCorrected = sensorFrameName + sensorFrameCorrectedNameId_;  // transformIterator.first.second;
+        const Eigen::Isometry3d& T_sensor_sensorCorrected = transformIterator.second;
+        // A. Publish TransformStamped for Corrected Frames
+        std::string transformTopic = "/graph_msf/transform_" + sensorFrameName + "_to_" + sensorFrameNameCorrected;
+        geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
+            boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+        addToPoseWithCovarianceStampedMsg(poseWithCovarianceStampedMsgPtr, transformTopic,
+                                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_sensor_sensorCorrected,
+                                          optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                                              sensorFrameName, transformIterator.first.second));
+        // Check whether publisher already exists
+        if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
+          pubPoseStampedByTopicMap_[transformTopic] = privateNode_.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
+          REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+        }
+        pubPoseStampedByTopicMap_[transformTopic].publish(poseWithCovarianceStampedMsgPtr);
+
+        // D. Publish TF Tree --> as children of sensor frame
+        publishTfTreeTransform_(sensorFrameName, sensorFrameNameCorrected, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                                T_sensor_sensorCorrected);
       }
     }
   }
@@ -349,10 +394,10 @@ void GraphMsfRos::publishState_(
   Eigen::Isometry3d T_B_Ok =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
       T_O_Ik.inverse();
-  publishTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
+  publishTfTreeTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
-  publishTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
+  publishTfTreeTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
 
   // Publish paths
   publishImuPaths_(integratedNavStatePtr);

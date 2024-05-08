@@ -245,7 +245,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Visualization ----------------------------
   // Add to path message
   addToPathMsg(
-      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id + "_gmsf", odomLidarPtr->header.stamp,
+      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id + fixedFrameAlignedNameId_, odomLidarPtr->header.stamp,
       (lio_T_M_Lk * staticTransformsPtr_
                         ->rv_T_frame1_frame2(dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
                                              staticTransformsPtr_->getImuFrame())
