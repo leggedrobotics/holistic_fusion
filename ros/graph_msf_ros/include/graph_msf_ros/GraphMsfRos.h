@@ -84,7 +84,13 @@ class GraphMsfRos : public GraphMsf {
   void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
 
+  // Vector3 Variances
+  void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                  const double timeStamp) const;
+
+  // Paths
   void publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr) const;
+
   // Publish Added IMU Measurements
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
 
@@ -113,6 +119,9 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubEstMapImu_;
   ros::Publisher pubEstWorldImu_;
   ros::Publisher pubOptWorldImu_;
+  // Vector3 Variances
+  ros::Publisher pubEstWorldPosVariance_;
+  ros::Publisher pubEstWorldRotVariance_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
   ros::Publisher pubEstWorldImuPath_;
@@ -138,6 +147,9 @@ class GraphMsfRos : public GraphMsf {
   nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
+  // Vector3 Variances
+  geometry_msgs::Vector3StampedPtr estWorldPosVarianceMsgPtr_;
+  geometry_msgs::Vector3StampedPtr estWorldRotVarianceMsgPtr_;
   // Path
   // Estimated
   nav_msgs::PathPtr estOdomImuPathPtr_;

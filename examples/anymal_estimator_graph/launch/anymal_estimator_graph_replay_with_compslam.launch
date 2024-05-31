@@ -3,7 +3,7 @@
     <!-- Parameters -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
     <arg name="lidar_odometry_topic_name"  default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
-    <arg name="using_gnss_unary"            default="false"/>
+    <arg name="using_gnss_unary"            default="true"/>
     <arg name="using_legged_velocity_unary" default="false"/>
 
     <!-- Compslam Config -->

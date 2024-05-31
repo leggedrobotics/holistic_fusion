@@ -33,9 +33,9 @@ template <class GTSAM_MEASUREMENT_TYPE>
 class GmsfUnaryExpression {
  public:
   // Constructor
-  GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& unaryMeasurementPtr, const std::string& worldFrameName,
+  GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& baseUnaryMeasurementPtr, const std::string& worldFrameName,
                       const Eigen::Isometry3d& T_I_sensorFrame)
-      : baseUnaryMeasurementPtr_(unaryMeasurementPtr), worldFrameName_(worldFrameName), T_I_sensorFrame_(T_I_sensorFrame) {}
+      : baseUnaryMeasurementPtr_(baseUnaryMeasurementPtr), worldFrameName_(worldFrameName), T_I_sensorFrame_(T_I_sensorFrame) {}
 
   // Destructor
   virtual ~GmsfUnaryExpression() = default;

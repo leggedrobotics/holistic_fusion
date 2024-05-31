@@ -94,8 +94,8 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
     // Get delta transformation from sensorFrame to correctSensorFrame
     bool newGraphKeyAddedFlag = false;
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::D>(
-        newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->sensorFrameName(),
-        positionUnaryMeasurementPtr_->sensorFrameName() + "_corrected", positionUnaryMeasurementPtr_->timeK());
+        newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->sensorFrameName(), positionUnaryMeasurementPtr_->sensorFrameCorrectedName(),
+        positionUnaryMeasurementPtr_->timeK());
     gtsam::Point3_ exp_sensorFrame_t_sensorFrame_correctSensorFrame = gtsam::Point3_(newGraphKey);
 
     // Apply Correction

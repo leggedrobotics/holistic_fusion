@@ -17,11 +17,11 @@ class UnaryMeasurementXD final : public UnaryMeasurement {
  public:
   // Constructor
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                     const RobustNormEnum robustNormEnum, const double robustNormConstant, const double timeStamp,
-                     const std::string& fixedFrameName, const double covarianceViolationThreshold, const MEASUREMENT_TYPE& unaryMeasurement,
-                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
-      : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, robustNormEnum, robustNormConstant, timeStamp, fixedFrameName,
-                         covarianceViolationThreshold),
+                     const std::string& sensorFrameCorrectedName, const RobustNormEnum robustNormEnum, const double robustNormConstant,
+                     const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold,
+                     const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
+      : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
+                         timeStamp, fixedFrameName, covarianceViolationThreshold),
         unaryMeasurement_(unaryMeasurement),
         unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
         unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}
