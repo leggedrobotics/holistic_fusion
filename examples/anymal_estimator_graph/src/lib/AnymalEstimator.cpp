@@ -190,8 +190,9 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
     // Wait until measurements got accumulated
     accumulatedGnssCoordinates_ += gnssCoord;
-    if (!(gnssCallbackCounter_ % 10)) {
-      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+    if (!(gnssCallbackCounter_ % 5)) {
+      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED! See: " << gnssCallbackCounter_
+                << " / " << NUM_GNSS_CALLBACKS_UNTIL_START << std::endl;
     }
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
@@ -283,12 +284,22 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
 // Priority: 2
 void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  // In simulation the user can toggle LIO on / off.
   if (!useLIO_ && simulated_) {
     return;
   }
 
   // Counter
   ++lidarUnaryCallbackCounter_;
+
+  // Currently we are not allowing LIO to initialize the global frame before GPS.
+  // TODO, JN is devising a solution.
+  if (useGnssUnaryFlag_ && !gnssHandlerPtr_->getGNSSstate()) {
+    if (!(lidarUnaryCallbackCounter_ % 10)) {
+      REGULAR_COUT << YELLOW_START << " SLAM is available but GPS is not. Please give me GPS. (Throttled)" << COLOR_END << std::endl;
+    }
+    return;
+  }
 
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());

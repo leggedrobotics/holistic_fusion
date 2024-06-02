@@ -33,7 +33,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
-#define NUM_GNSS_CALLBACKS_UNTIL_START 20  // 0
+#define NUM_GNSS_CALLBACKS_UNTIL_START 60  // 0
 
 namespace anymal_se {
 

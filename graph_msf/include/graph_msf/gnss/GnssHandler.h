@@ -45,7 +45,11 @@ class GnssHandler {
   bool useYawInitialGuessFromFile_{false};
   bool yawInitialGuessFromAlignment_{false};
 
+  // Get calculated reference GPS position.
   Eigen::Vector3d referenceGPSposition_ = Eigen::Vector3d::Zero();
+
+  // Get the GNSS state
+  bool getGNSSstate() { return gnssInitialized_; }
 
  private:
   // Member methods
@@ -63,6 +67,8 @@ class GnssHandler {
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;
   double gnssReferenceHeading_;
+
+  bool gnssInitialized_ = false;
 };
 
 }  // namespace graph_msf

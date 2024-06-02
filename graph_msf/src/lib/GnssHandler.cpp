@@ -68,6 +68,8 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
 
   // Initial GNSS Position
   W_t_W_GnssL0_ = position;
+
+  gnssInitialized_ = true;
 }
 
 void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
