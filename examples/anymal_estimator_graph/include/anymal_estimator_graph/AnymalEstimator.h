@@ -64,6 +64,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
+  bool toggleSimulatedGPSCallback(std_srvs::Trigger::Request& /*req*/, std_srvs::Trigger::Response& res);
+  bool toggleLIOCallback(std_srvs::Trigger::Request& /*req*/, std_srvs::Trigger::Response& res);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
@@ -88,6 +90,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLioBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
+  bool simulated_ = false;
+
+  // Simulated Flags
+  bool useSimulatedGPS_ = false;
+  bool useLIO_ = true;
 
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
@@ -138,6 +145,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
+  ros::ServiceServer toggleSimulatedGPS_;
+  ros::ServiceServer toggleLIO_;
 };
 
 }  // namespace anymal_se

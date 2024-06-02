@@ -21,6 +21,7 @@
     <arg name="using_lio_between"           default="false" />
     <arg name="using_legged_between"        default="false" />
     <arg name="using_legged_velocity_unary" default="false" />
+    <arg name="simulated" default="false"/>
 
     <!-- Config Files -->
     <arg name="core_graph_config_param_file"     default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
@@ -39,6 +40,7 @@
         <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)" />
         <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)" />
         <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)" />
+        <param name="launch/simulated" type="bool" value="$(arg simulated)"/>
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />
         <rosparam command="load" file="$(arg core_graph_param_file)" />

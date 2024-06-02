@@ -123,12 +123,45 @@ void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
 }
 
 void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
-  // Nothing
   // TODO: add soft reset of the graph for on-the-go re-init.
+
+  if (simulated_) {
+    toggleSimulatedGPS_ = privateNode_.advertiseService("toggleGPS", &AnymalEstimator::toggleSimulatedGPSCallback, this);
+    toggleLIO_ = privateNode_.advertiseService("toggleLIO", &AnymalEstimator::toggleLIOCallback, this);
+  }
+  return;
+}
+
+bool AnymalEstimator::toggleSimulatedGPSCallback(std_srvs::Trigger::Request& /*req*/, std_srvs::Trigger::Response& res) {
+  if (useSimulatedGPS_) {
+    useSimulatedGPS_ = false;
+    REGULAR_COUT << "Simulated GPS is turned off." << std::endl;
+  } else {
+    useSimulatedGPS_ = true;
+    REGULAR_COUT << "Simulated GPS is turned on." << std::endl;
+  }
+  res.success = true;
+  return true;
+}
+
+bool AnymalEstimator::toggleLIOCallback(std_srvs::Trigger::Request& /*req*/, std_srvs::Trigger::Response& res) {
+  if (useLIO_) {
+    useLIO_ = false;
+    REGULAR_COUT << "LIO input is turned off." << std::endl;
+  } else {
+    useLIO_ = true;
+    REGULAR_COUT << "LIO input is turned on." << std::endl;
+  }
+  res.success = true;
+  return true;
 }
 
 // Priority: 1
 void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssMsgPtr) {
+  if (!useSimulatedGPS_ && simulated_) {
+    return;
+  }
+
   // Counter
   ++gnssCallbackCounter_;
 
@@ -142,7 +175,9 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Refer to the piksi multi driver
   // https://github.com/ethz-asl/ethz_piksi_ros/blob/d0ed038078045696661b9bd7789305b7acd20bfa/piksi_multi_cpp/src/sbp_callback_handler/sbp_callback_handler_relay/ros_relays.cc#L35
   if (int(gnssMsgPtr->status.status) < int(sensor_msgs::NavSatStatus::STATUS_GBAS_FIX)) {
-    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS state is invalid." << std::endl;
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS state is invalid. "
+              << "Expected: " << int(sensor_msgs::NavSatStatus::STATUS_GBAS_FIX) << " Received: " << int(gnssMsgPtr->status.status)
+              << std::endl;
     return;
   }
 
@@ -245,6 +280,10 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
 // Priority: 2
 void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  if (!useLIO_ && simulated_) {
+    return;
+  }
+
   // Counter
   ++lidarUnaryCallbackCounter_;
 
