@@ -140,7 +140,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubReferenceNavSatFixCoordinates_;
 
   // Messages
-  nav_msgs::PathPtr measLio_mapImuPathPtr_;
+  nav_msgs::PathPtr measLio_mapLidarPathPtr_;
   nav_msgs::PathPtr measGnss_worldGnssPathPtr_;
 
   // Servers

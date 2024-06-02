@@ -26,7 +26,8 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
                            const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
       : GmsfUnaryExpression(poseUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         poseUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
-        exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity()) {}
+        exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity())  // Placeholder --> will be modified later
+  {}
 
   // Destructor
   ~GmsfUnaryExpressionPose3() override = default;
@@ -64,7 +65,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     }
   }
 
-  // iii) transform measurement to core imu frame
+  // iii) transform estimate to sensor frame
   void transformStateToSensorFrame() override {
     exp_T_fixedFrame_sensorFrame_ =
         composeRigidTransformations(exp_T_fixedFrame_sensorFrame_, gtsam::Pose3(T_I_sensorFrame_.matrix()));  // T_fixedFrame_sensorFrame
@@ -78,7 +79,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     // Search for the new graph key of T_sensorFrame_sensorFrameCorrected
     bool newGraphKeyAdded = false;
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
-        newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameName() + "_corr",
+        newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         poseUnaryMeasurementPtr_->timeK());
 
     // Apply calibration correction

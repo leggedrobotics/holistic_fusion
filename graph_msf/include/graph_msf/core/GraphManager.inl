@@ -32,7 +32,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   }
 
   // Print closest key
-  //REGULAR_COUT << " Closest key to " << measurementTime << " is " << closestKey << " at " << closestGraphTime << std::endl;
+  // REGULAR_COUT << " Closest key to " << measurementTime << " is " << closestKey << " at " << closestGraphTime << std::endl;
 
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
@@ -72,7 +72,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
     gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
   }
 
-  //   C. Transform State to Sensor Frame -----------------------------------------------------
+  // C. Transform State to Sensor Frame -----------------------------------------------------
   if (gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->sensorFrameName() != imuFrame_) {
     gmsfUnaryExpressionPtr->transformStateToSensorFrame();
   }

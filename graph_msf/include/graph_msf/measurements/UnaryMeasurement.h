@@ -16,9 +16,10 @@ class UnaryMeasurement : public Measurement {
  public:
   // Constructor
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                   const RobustNormEnum robustNormEnum, const double robustNormConstant, const double timeStamp,
-                   const std::string& fixedFrameName, const double covarianceViolationThreshold = 0.0)
-      : Measurement(measurementName, measurementRate, sensorFrameName, robustNormEnum, robustNormConstant, MeasurementTypeEnum::Unary),
+                   const std::string& sensorFrameCorrectedName, const RobustNormEnum robustNormEnum, const double robustNormConstant,
+                   const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold = 0.0)
+      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
+                    MeasurementTypeEnum::Unary),
         timeK_(timeStamp),
         fixedFrameName_(fixedFrameName),
         covarianceViolationThreshold_(covarianceViolationThreshold) {}
@@ -28,7 +29,6 @@ class UnaryMeasurement : public Measurement {
 
   // Getters
   [[nodiscard]] const std::string& fixedFrameName() const { return fixedFrameName_; }
-  [[nodiscard]] const std::string& sensorFrameName() const { return sensorFrameName_; }
   std::string& lv_sensorFrameName() { return sensorFrameName_; }
   [[nodiscard]] double timeK() const { return timeK_; }
   [[nodiscard]] double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }

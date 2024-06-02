@@ -1,7 +1,13 @@
 #External Prior/Transform Input
 extrinsics:
-  worldFrame: world_graph_msf
-  odomFrame: odom_graph_msf
-  imuFrame: imu_link
-  baseLinkFrame: base
-  initializeZeroYawAndPositionOfFrame: base
+  # Published by GMSF
+  worldFrame: "world_graph_msf"
+  odomFrame: "odom_graph_msf"
+  # Used for estimation
+  imuFrame: "imu_link"
+  baseLinkFrame: "base"
+  initializeZeroYawAndPositionOfFrame: "base" # Initialize the yaw and position of the base frame to zero
+                                              # this is just meant to avoid any jump after getting the first true measurements
+name_ids:
+  fixedFrameAligned: "_graph_msf_aligned"  # Specifies what
+  sensorFrameCorrected: "_graph_msf_corrected"

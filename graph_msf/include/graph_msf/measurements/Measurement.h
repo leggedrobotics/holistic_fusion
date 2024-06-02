@@ -24,10 +24,12 @@ class Measurement {
  public:
   // Constructor
   Measurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-              const RobustNormEnum& robustNormEnum, const double robustNormConstant, const MeasurementTypeEnum& measurementTypeEnum)
+              const std::string& sensorFrameCorrectedName, const RobustNormEnum& robustNormEnum, const double robustNormConstant,
+              const MeasurementTypeEnum& measurementTypeEnum)
       : measurementName_(measurementName),
         measurementRate_(measurementRate),
         sensorFrameName_(sensorFrameName),
+        sensorFrameCorrectedName_(sensorFrameCorrectedName),
         robustNormEnum_(robustNormEnum),
         robustNormConstant_(robustNormConstant),  // Neglected if robustNormEnum_ == None
         measurementTypeEnum_(measurementTypeEnum) {}
@@ -36,9 +38,12 @@ class Measurement {
   virtual ~Measurement() = default;
 
   // Getters
+  /// Names
   [[nodiscard]] const std::string& measurementName() const { return measurementName_; }
-  [[nodiscard]] int measurementRate() const { return measurementRate_; }
   [[nodiscard]] const std::string& sensorFrameName() const { return sensorFrameName_; }
+  [[nodiscard]] const std::string& sensorFrameCorrectedName() const { return sensorFrameCorrectedName_; }
+  /// Rest
+  [[nodiscard]] int measurementRate() const { return measurementRate_; }
   [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNormEnum_; }
   [[nodiscard]] const double& robustNormConstant() const { return robustNormConstant_; }
 
@@ -50,6 +55,7 @@ class Measurement {
   std::string measurementName_;
   int measurementRate_;
   std::string sensorFrameName_;
+  std::string sensorFrameCorrectedName_;
 
   // Enum
   MeasurementTypeEnum measurementTypeEnum_;

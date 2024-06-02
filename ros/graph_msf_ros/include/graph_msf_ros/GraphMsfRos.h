@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 
 // ROS
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
@@ -52,6 +53,9 @@ class GraphMsfRos : public GraphMsf {
                                const Eigen::Vector3d& W_w_W_F,
                                const Eigen::Matrix<double, 6, 6>& poseCovariance = Eigen::Matrix<double, 6, 6>::Zero(),
                                const Eigen::Matrix<double, 6, 6>& twistCovariance = Eigen::Matrix<double, 6, 6>::Zero());
+  static void addToPoseWithCovarianceStampedMsg(
+      const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName, const ros::Time& stamp,
+      const Eigen::Isometry3d& T, const Eigen::Matrix<double, 6, 6>& transformCovariance = Eigen::Matrix<double, 6, 6>::Zero());
   static void extractCovariancesFromOptimizedState(
       Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
@@ -73,14 +77,20 @@ class GraphMsfRos : public GraphMsf {
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   // Publish Transform to TF
-  void publishTransform_(const std::string& frameName, const std::string& childFrameName, double timeStamp,
-                         const Eigen::Isometry3d& T_frame_childFrame);
+  void publishTfTreeTransform_(const std::string& frameName, const std::string& childFrameName, double timeStamp,
+                               const Eigen::Isometry3d& T_frame_childFrame);
 
   // Publish IMU Odometries
   void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
 
+  // Vector3 Variances
+  void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                  const double timeStamp) const;
+
+  // Paths
   void publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr) const;
+
   // Publish Added IMU Measurements
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
 
@@ -98,6 +108,10 @@ class GraphMsfRos : public GraphMsf {
   // TF
   tf::TransformBroadcaster tfBroadcaster_;
 
+  // Members
+  std::string fixedFrameAlignedNameId_ = "_graph_msf_aligned";
+  std::string sensorFrameCorrectedNameId_ = "_graph_msf_corrected";
+
  private:
   // Publishers
   // Odometry
@@ -105,6 +119,9 @@ class GraphMsfRos : public GraphMsf {
   ros::Publisher pubEstMapImu_;
   ros::Publisher pubEstWorldImu_;
   ros::Publisher pubOptWorldImu_;
+  // Vector3 Variances
+  ros::Publisher pubEstWorldPosVariance_;
+  ros::Publisher pubEstWorldRotVariance_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
   ros::Publisher pubEstWorldImuPath_;
@@ -118,6 +135,9 @@ class GraphMsfRos : public GraphMsf {
   // Added Imu Measurements
   ros::Publisher pubAddedImuMeas_;
 
+  // PoseStamped --> Needs to be dynamic as we do not know the number of sensors
+  std::map<std::string, ros::Publisher> pubPoseStampedByTopicMap_ = {};
+
   // Subscribers
   ros::Subscriber subImu_;
 
@@ -127,6 +147,9 @@ class GraphMsfRos : public GraphMsf {
   nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
+  // Vector3 Variances
+  geometry_msgs::Vector3StampedPtr estWorldPosVarianceMsgPtr_;
+  geometry_msgs::Vector3StampedPtr estWorldRotVarianceMsgPtr_;
   // Path
   // Estimated
   nav_msgs::PathPtr estOdomImuPathPtr_;

@@ -401,8 +401,11 @@ void GraphManager::updateGraph() {
   // Bias
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // Compute Covariance
-  gtsam::Matrix66 resultPoseCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
+  gtsam::Matrix66 resultPoseCovarianceBodyFrame = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
   gtsam::Matrix33 resultVelocityCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  // Transform covariance from I_S_I in body frame, to W_S_W in world frame
+  gtsam::Matrix66 adjointMatrix = resultNavState.pose().AdjointMap();
+  gtsam::Matrix66 resultPoseCovarianceWorldFrame = adjointMatrix * resultPoseCovarianceBodyFrame * adjointMatrix.transpose();
 
   // FixedFrame Transformations
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
@@ -416,12 +419,12 @@ void GraphManager::updateGraph() {
       // Try to optimize ---------------------------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
-        gtsam::Matrix66 T_frame1_frame2_covariance;
+        gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
         if (gtsam::Symbol(key).string()[0] == 't') {
           T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
           T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
         } else if (gtsam::Symbol(key).string()[0] == 'd') {
-          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(rtOptimizerPtr_->calculateEstimatedDisplacement(key)));
+          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
           T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
         } else {
           throw std::runtime_error("Key is neither a pose nor a displacement key.");
@@ -433,7 +436,7 @@ void GraphManager::updateGraph() {
                                                                        T_frame1_frame2_covariance);
         // Mark that this key has at least been optimized once
         if (framePairIterator.second.getNumberStepsOptimized() == 0) {
-          REGULAR_COUT << GREEN_START << " Fixed Frame Transformation between " << framePairIterator.first.first << " and "
+          REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairIterator.first.first << " and "
                        << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
           gtsam::Pose3 T_frame1_frame2_firstOptimized(T_frame1_frame2);
           REGULAR_COUT << GREEN_START
@@ -495,7 +498,7 @@ void GraphManager::updateGraph() {
                                                resultBias.correctGyroscope(currentAngularVelocity), resultBias);
     optimizedGraphState_.updateFixedFrameTransforms(resultFixedFrameTransformations_);
     optimizedGraphState_.updateFixedFrameTransformsCovariance(resultFixedFrameTransformationsCovariance_);
-    optimizedGraphState_.updateCovariances(resultPoseCovariance, resultVelocityCovariance);
+    optimizedGraphState_.updateCovariances(resultPoseCovarianceWorldFrame, resultVelocityCovariance);
     // Predict from solution to obtain refined propagated state
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, optimizedGraphState_.imuBias());

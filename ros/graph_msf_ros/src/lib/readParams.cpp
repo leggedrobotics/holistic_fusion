@@ -107,6 +107,10 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   staticTransformsPtr_->setInitializationFrame(tryGetParam<std::string>("extrinsics/initializeZeroYawAndPositionOfFrame", privateNode));
   // Base frame
   staticTransformsPtr_->setBaseLinkFrame(tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode));
+
+  // Name IDs
+  fixedFrameAlignedNameId_ = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
+  sensorFrameCorrectedNameId_ = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
 }
 
 }  // namespace graph_msf
