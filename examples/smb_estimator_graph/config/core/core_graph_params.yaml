@@ -1,7 +1,7 @@
 # Sensor Params
 sensor_params:
   imuRate: 200.0                          # Rate of IMU input (Hz)
-  createStateEveryNthImuMeasurement: 2    # Create a new state every n-th IMU measurement
+  createStateEveryNthImuMeasurement: 4    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
   imuBufferLength: 800
