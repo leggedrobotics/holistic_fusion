@@ -111,6 +111,7 @@ class GraphMsfRos : public GraphMsf {
   // Members
   std::string fixedFrameAlignedNameId_ = "_graph_msf_aligned";
   std::string sensorFrameCorrectedNameId_ = "_graph_msf_corrected";
+  std::string optimizationResultLoggingPath_ = "";
 
  private:
   // Publishers

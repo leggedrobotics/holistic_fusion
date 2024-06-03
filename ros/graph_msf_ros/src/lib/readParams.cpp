@@ -5,6 +5,9 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// C++
+#include <boost/filesystem.hpp>
+
 // Workspace
 #include "graph_msf_ros/GraphMsfRos.h"
 #include "graph_msf_ros/ros/read_ros_params.h"
@@ -111,6 +114,17 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   // Name IDs
   fixedFrameAlignedNameId_ = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
   sensorFrameCorrectedNameId_ = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
+
+  // Logging Path
+  optimizationResultLoggingPath_ = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
+  // Make sure the path ends with a slash
+  if (optimizationResultLoggingPath_.back() != '/') {
+    optimizationResultLoggingPath_ += "/";
+  }
+  // Create directory if it does not exist
+  if (!boost::filesystem::exists(optimizationResultLoggingPath_)) {
+    boost::filesystem::create_directories(optimizationResultLoggingPath_);
+  }
 }
 
 }  // namespace graph_msf

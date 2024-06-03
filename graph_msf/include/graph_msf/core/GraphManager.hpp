@@ -84,7 +84,7 @@ class GraphManager {
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  bool optimizeSlowBatchSmoother(int maxIterations);
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
 
   // Save Variables to File
   static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,

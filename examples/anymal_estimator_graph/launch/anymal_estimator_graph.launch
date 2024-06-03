@@ -31,6 +31,9 @@
     <arg name="anymal_gnss_param_file"           default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_gnss_params.yaml"/>
     <arg name="anymal_traj_alignment_param_file" default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_traj_align_params.yaml"/>
 
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find anymal_estimator_graph)/logging" />
+
     <!-- Node -->
     <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" > <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
@@ -39,6 +42,7 @@
         <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)" />
         <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)" />
         <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)" />
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />
         <rosparam command="load" file="$(arg core_graph_param_file)" />
