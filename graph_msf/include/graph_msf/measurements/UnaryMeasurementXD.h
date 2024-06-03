@@ -1,35 +1,42 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPH_MSF_UNARYMEASUREMENT6D_H
-#define GRAPH_MSF_UNARYMEASUREMENT6D_H
+#ifndef GRAPH_MSF_UNARYMEASUREMENTXD_H
+#define GRAPH_MSF_UNARYMEASUREMENTXD_H
 
 #include "graph_msf/measurements/UnaryMeasurement.h"
 
 namespace graph_msf {
 
 template <class MEASUREMENT_TYPE, int DIM>
-struct UnaryMeasurementXD : public UnaryMeasurement {
+class UnaryMeasurementXD final : public UnaryMeasurement {
  public:
-  UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const double timeStamp,
-                     const std::string& fixedFrameName, const std::string& sensorFrameName, const MEASUREMENT_TYPE& unaryMeasurement,
-                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity, const double covarianceViolationThreshold = 0.0,
-                     const bool useRobustNorm = false)
-      : UnaryMeasurement(measurementName, measurementRate, timeStamp, fixedFrameName, sensorFrameName, covarianceViolationThreshold,
-                         useRobustNorm),
+  // Constructor
+  UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
+                     const std::string& sensorFrameCorrectedName, const RobustNormEnum robustNormEnum, const double robustNormConstant,
+                     const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold,
+                     const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
+      : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
+                         timeStamp, fixedFrameName, covarianceViolationThreshold),
         unaryMeasurement_(unaryMeasurement),
         unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
         unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}
 
+  // Destructor
+  ~UnaryMeasurementXD() override = default;
+
+  // Accessors
   const MEASUREMENT_TYPE& unaryMeasurement() const { return unaryMeasurement_; }
-  MEASUREMENT_TYPE& lv_unaryMeasurement() { return unaryMeasurement_; }
   const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity() const { return unaryMeasurementNoiseDensity_; }
   const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseVariances() const { return unaryMeasurementNoiseVariances_; }
   const Eigen::Matrix<double, DIM, DIM> unaryMeasurementNoiseCovariance() const { return unaryMeasurementNoiseVariances_.asDiagonal(); }
+
+  // Modifiers
+  MEASUREMENT_TYPE& lv_unaryMeasurement() { return unaryMeasurement_; }
 
  protected:
   MEASUREMENT_TYPE unaryMeasurement_;
@@ -39,4 +46,4 @@ struct UnaryMeasurementXD : public UnaryMeasurement {
 
 }  // namespace graph_msf
 
-#endif  // GRAPH_MSF_UNARYMEASUREMENT_H
+#endif  // GRAPH_MSF_UNARYMEASUREMENTXD_H

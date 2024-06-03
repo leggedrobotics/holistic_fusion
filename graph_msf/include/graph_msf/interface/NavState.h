@@ -12,7 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <mutex>
 
 // Eigen
-#include <Eigen/Eigen>
+#include <utility>
 
 // Workspace
 #include "graph_msf/core/GraphState.hpp"
@@ -29,8 +29,8 @@ class NavState {
   NavState(const NavState& navState) = default;
 
   // Regular Constructor
-  NavState(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK)
-      : T_W_Ik_(T_W_Ik), I_v_W_I_(I_v_W_I), I_w_W_I_(I_w_W_I), timeK_(timeK) {}
+  NavState(const Eigen::Isometry3d& T_W_Ik, Eigen::Vector3d I_v_W_I, Eigen::Vector3d I_w_W_I, const double timeK)
+      : T_W_Ik_(T_W_Ik), I_v_W_I_(std::move(I_v_W_I)), I_w_W_I_(std::move(I_w_W_I)), timeK_(timeK) {}
 
   // Getters
   const Eigen::Isometry3d& getT_W_Ik() const { return T_W_Ik_; }
@@ -40,12 +40,12 @@ class NavState {
 
  protected:
   // Updates --> Keep all measurements consistent
-  void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK);
-  void updateYawInWorld(const double yaw_W_Ik);
-  void updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik);
+  void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, double timeK);
+  void updateYawInWorld(double yaw_W_Ik);
+  void updatePositionInWorld(const Eigen::Vector3d& W_t_W_Ik);
 
   // General Update
-  virtual void updateLatestMeasurementTimestamp(const double timeK);
+  virtual void updateLatestMeasurementTimestamp(double timeK);
 
  protected:
   // Transformations
@@ -72,11 +72,11 @@ class SafeIntegratedNavState : public NavState {
 
   // Regular Constructor
   SafeIntegratedNavState(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned, const Eigen::Vector3d& I_v_W_I,
-                         const Eigen::Vector3d& I_w_W_I, const double timeK, const bool relocalizeWorldToOdom)
+                         const Eigen::Vector3d& I_w_W_I, const double timeK, const bool odomNotJump)
       : NavState(T_W_O * T_O_Ik_gravityAligned, I_v_W_I, I_w_W_I, timeK),
         T_W_O_(T_W_O),
         T_O_Ik_gravityAligned_(T_O_Ik_gravityAligned),
-        relocalizedWorldToOdom_(relocalizeWorldToOdom) {}
+        relocalizedWorldToOdom_(odomNotJump) {}
 
   SafeIntegratedNavState(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
                          const double timeK)
@@ -84,11 +84,11 @@ class SafeIntegratedNavState : public NavState {
 
   // Stters/updaters
   void update(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned, const Eigen::Vector3d& I_v_W_I,
-              const Eigen::Vector3d& I_w_W_I, const double timeK, const bool relocalizeWorldToOdom);
+              const Eigen::Vector3d& I_w_W_I, double timeK, bool odomNotJump);
   void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
-                     const bool relocalizeWorldToOdom);
-  void updateYawInWorld(const double yaw_W_Ik, const bool relocalizeWorldToOdom);
-  void updatePositionInWorld(const Eigen::Vector3d W_t_W_Ik, const bool relocalizeWorldToOdom);
+                     bool odomNotJump);
+  void updateYawInWorld(double yaw_W_Ik, bool odomNotJump);
+  void updatePositionInWorld(const Eigen::Vector3d& W_t_W_Ik, bool odomNotJump);
 
   // General Update
   void updateLatestMeasurementTimestamp(const double timeK) override;
@@ -122,20 +122,19 @@ class SafeNavStateWithCovarianceAndBias : public NavState {
   // Regular Constructor
   SafeNavStateWithCovarianceAndBias(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
                                     const double timeK, const Eigen::Matrix<double, 6, 6>& poseCovariance,
-                                    const Eigen::Matrix<double, 3, 3>& velocityCovariance, const Eigen::Vector3d& accelerometerBias,
-                                    const Eigen::Vector3d& gyroscopeBias,
-                                    const TransformsDictionary<Eigen::Isometry3d>& fixedFrameTransforms,
+                                    const Eigen::Matrix<double, 3, 3>& velocityCovariance, Eigen::Vector3d accelerometerBias,
+                                    Eigen::Vector3d gyroscopeBias, const TransformsDictionary<Eigen::Isometry3d>& fixedFrameTransforms,
                                     const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& fixedFrameTransformsCovariance)
       : NavState(T_W_Ik, I_v_W_I, I_w_W_I, timeK),
         poseCovariance_(poseCovariance),
         velocityCovariance_(velocityCovariance),
-        accelerometerBias_(accelerometerBias),
-        gyroscopeBias_(gyroscopeBias),
+        accelerometerBias_(std::move(accelerometerBias)),
+        gyroscopeBias_(std::move(gyroscopeBias)),
         fixedFrameTransforms_(fixedFrameTransforms),
         fixedFrameTransformsCovariance_(fixedFrameTransformsCovariance) {}
 
   // From Optimized State
-  SafeNavStateWithCovarianceAndBias(const GraphState& graphState)
+  explicit SafeNavStateWithCovarianceAndBias(const GraphState& graphState)
       : SafeNavStateWithCovarianceAndBias(Eigen::Isometry3d(graphState.navState().pose().matrix()), graphState.navState().velocity(),
                                           graphState.angularVelocityCorrected(), graphState.ts(), graphState.poseCovariance(),
                                           graphState.velocityCovariance(), graphState.imuBias().accelerometer(),

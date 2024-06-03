@@ -17,7 +17,7 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
  public:
   explicit OptimizerIsam2Batch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
       // Initialize Slow Bundle Adjustement Smoother
       batchSmootherPtr_ = std::make_shared<gtsam::ISAM2>(isam2Params_);
       batchSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of Slow Batch Optimization Graph.");
@@ -39,8 +39,8 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
     return true;
   }
 
-  // Optimize bundle adjustement smoother (if desired)
-  const gtsam::Values& getAllOptimizedStates() override {
+  // Optimize
+  void optimize(int maxIterations) override {
     // Print
     std::cout << YELLOW_START << "GraphMSF: OptimizerIsam2Batch" << GREEN_START << " Optimizing slow batch smoother." << COLOR_END
               << std::endl;
@@ -53,6 +53,17 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
 
     // Get optimized result
     batchSmootherOptimizedResult_ = batchSmootherPtr_->calculateEstimate();
+
+    // Flag
+    optimizedAtLeastOnceFlag_ = true;
+  }
+
+  // Optimize bundle adjustement smoother (if desired)
+  const gtsam::Values& getAllOptimizedStates() override {
+    // Check
+    if (!optimizedAtLeastOnceFlag_) {
+      throw std::runtime_error("GraphMSF: OptimizerIsam2Batch: No optimization has been performed yet.");
+    }
 
     // Return result
     return batchSmootherOptimizedResult_;

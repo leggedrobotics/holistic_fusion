@@ -1,37 +1,50 @@
-<?xml version="1.0" encoding="UTF-8"?> 
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
     <arg name="use_sim_time" value="true"/>
-    <arg name="dumped_param_file" default="$(find anymal_estimator_graph)/config/dumped_params_d/2023-01-13-16-27-14_anymal-d020-lpc_mission.yaml"/>
-    <arg name="joint_states_topic"       default="/state_estimator/joint_states"/>
-    <arg name="launch_compslam"           default="true" />
-    
+    <arg name="dumped_param_file"
+         default="$(find anymal_estimator_graph)/config/dumped_params_d/2023-01-13-16-27-14_anymal-d020-lpc_mission.yaml"/>
+
+    <!-- Config -->
+    <arg name="extrinsics_from_urdf"        default="false"/>
+    <arg name="using_gnss_unary"            default="false"/>
+    <arg name="using_lio_unary"             default="true"/>
+    <arg name="using_lio_between"           default="false"/>
+    <arg name="using_legged_between"        default="false"/>
+    <arg name="using_legged_velocity_unary" default="false"/>
+
     <!-- Input Topics -->
-    <arg name="imu_topic_name"            default="/sensors/imu" />
-    <arg name="pointcloud_topic_name"     default="/point_cloud_filter/lidar/point_cloud_filtered" />
-    <arg name="lidar_odometry_topic_name" default="/open3d_slam/scan2map_odometry" />
+    <arg name="imu_topic_name"             default="/sensors/imu" />
+    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
     <!-- Load dumped parameters, mainly for description -->
-    <rosparam command="load" file="$(arg dumped_param_file)" />
-
-    <!-- Compslam Config -->
-    <arg name="compslam_config_file"  default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml" />
+    <rosparam command="load" file="$(arg dumped_param_file)"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch">
-        <arg name="use_sim_time" value="$(arg use_sim_time)" />
-        <arg name="imu_topic_name" value="$(arg imu_topic_name)" />
-<!--        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)" />-->
+        <!-- Config  -->
+        <arg name="extrinsics_from_urdf" value="$(arg extrinsics_from_urdf)"/>
+        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <arg name="using_lio_unary" value="$(arg using_lio_unary)"/>
+        <arg name="using_lio_between" value="$(arg using_lio_between)"/>
+        <arg name="using_legged_between" value="$(arg using_legged_between)"/>
+        <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
+        <!-- Input Topics -->
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
+        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
 
-    <!-- Launch compslam -->
-    <include file="$(find compslam_lio)/launch/compslam_lio.launch" if="$(arg launch_compslam)">
-        <arg name="pointcloud_topic_name"           value="$(arg pointcloud_topic_name)" />
-        <arg name="imu_topic_name"                  value="$(arg imu_topic_name)" />
-        <arg name="config_filename"                 value="$(arg compslam_config_file)" />
-    </include>
+    <!-- Elevation mapping node -->
+    <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
+    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/vlp16.yaml"/>
+
+    <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log">
+        <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
+        <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
+    </node>
 
     <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_estimator_graph)/rviz/gnss_lidar.rviz" />
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find anymal_estimator_graph)/rviz/gnss_lidar.rviz"/>
 
 </launch>

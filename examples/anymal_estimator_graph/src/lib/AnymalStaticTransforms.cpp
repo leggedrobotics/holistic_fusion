@@ -28,7 +28,7 @@ void AnymalStaticTransforms::findTransformations() {
   // Print to console --------------------------
   REGULAR_COUT << " Looking up transforms in TF-tree." << std::endl;
   REGULAR_COUT << " Transforms between the following frames are required:" << std::endl;
-  REGULAR_COUT " " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
+  REGULAR_COUT << " " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
   REGULAR_COUT << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable
@@ -39,13 +39,13 @@ void AnymalStaticTransforms::findTransformations() {
   ros::Rate rosRate(10);
   rosRate.sleep();
 
-  // Imu to Base Link ---
+  // Imu to Base ---
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(100.0));
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
-  // I_Cabin
+  // I_Base
   graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
   REGULAR_COUT << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
-  // Cabin_I
+  // Base_I
   lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
 
   // Imu to LiDAR Link ---

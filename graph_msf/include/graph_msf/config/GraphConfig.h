@@ -1,12 +1,12 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPHCONFIG_H
-#define GRAPHCONFIG_H
+#ifndef GRAPH_CONFIG_H
+#define GRAPH_CONFIG_H
 
 #include <Eigen/Eigen>
 
@@ -16,81 +16,80 @@ struct GraphConfig {
   GraphConfig() {}
 
   // General Config
-  int verboseLevel = 0;
-  bool reLocalizeWorldToMapAtStartFlag = false;
-
-  // Sensor Config
-  bool relocalizationAtStartFlag = true;
+  int verboseLevel_ = 0;
+  bool odomNotJumpAtStart_ = false;
 
   // Sensor Params
-  double imuRate = 100;
-  bool useImuSignalLowPassFilter = true;
-  double imuLowPassFilterCutoffFreqHz = 60;
-  int imuBufferLength = 200;
-  double imuTimeOffset = 0.0;
+  double imuRate_ = 100;
+  int createStateEveryNthImuMeasurement_ = 1;
+  bool useImuSignalLowPassFilter_ = true;
+  double imuLowPassFilterCutoffFreqHz_ = 60;
+  int imuBufferLength_ = 200;
+  double imuTimeOffset_ = 0.0;
 
   // Gravity
-  bool estimateGravityFromImuFlag = true;
-  double gravityMagnitude = 9.81;
-  Eigen::Vector3d W_gravityVector = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude;
+  bool estimateGravityFromImuFlag_ = true;
+  double gravityMagnitude_ = 9.81;
+  Eigen::Vector3d W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude_;
 
   // Factor Graph
-  bool realTimeSmootherUseIsamFlag = true;
-  double realTimeSmootherLag = 1.5;
-  bool useAdditionalSlowBatchSmoother = false;
-  bool slowBatchSmootherUseIsamFlag = true;
+  bool realTimeSmootherUseIsamFlag_ = true;
+  double realTimeSmootherLag_ = 1.5;
+  bool useAdditionalSlowBatchSmoother_ = false;
+  bool slowBatchSmootherUseIsamFlag_ = true;
   // Optimizer Config
-  double gaussNewtonWildfireThreshold = 0.001;
-  double maxOptimizationFrequency = 100;
-  int additionalOptimizationIterations = 0;
-  bool findUnusedFactorSlotsFlag = false;
-  bool enableDetailedResultsFlag = false;
-  bool usingCholeskyFactorizationFlag = true;
-  bool usingBiasForPreIntegrationFlag = true;
-  bool optimizeFixedFramePosesWrtWorld = true;
-  double fixedFramePosesResetThreshold = 5.0;
-  bool optimizeWithImuToSensorLeverArm = true;
-  bool optimizeExtrinsicSensorToSensorCorrectedOffset = false;
-
-  // Outlier Rejection
-  double poseMotionOutlierThresold = 0.3;
+  double gaussNewtonWildfireThreshold_ = 0.001;
+  double maxOptimizationFrequency_ = 100;
+  int additionalOptimizationIterations_ = 0;
+  bool findUnusedFactorSlotsFlag_ = false;
+  bool enableDetailedResultsFlag_ = false;
+  bool usingCholeskyFactorizationFlag_ = true;
+  bool usingBiasForPreIntegrationFlag_ = true;
+  bool optimizeFixedFramePosesWrtWorld_ = true;
+  double fixedFramePosesResetThreshold_ = 5.0;
+  bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
 
   // Noise Params (Noise Amplitude Spectral Density)
   // Position
-  double accNoiseDensity = 1e-3;  // [m/s^2/√Hz)]
-  double integrationNoiseDensity = 1.0e-4;
-  bool use2ndOrderCoriolisFlag = true;
+  double accNoiseDensity_ = 1e-03;  // [m/s^2/√Hz)]
+  double integrationNoiseDensity_ = 1.0e-04;
+  bool use2ndOrderCoriolisFlag_ = true;
   // Rotation
-  double gyroNoiseDensity = 1e-4;  // [rad/s/√Hz]
-  double omegaCoriolis = 0.0;
+  double gyroNoiseDensity_ = 1e-04;  // [rad/s/√Hz]
+  double omegaCoriolis_ = 0.0;
   // Bias
-  double accBiasRandomWalkNoiseDensity = 1e-4;   // [m/s^3/√Hz]
-  double gyroBiasRandomWalkNoiseDensity = 1e-5;  // [rad/s^2/√Hz]
-  double biasAccOmegaInit = 0.0;
-  Eigen::Vector3d accBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
-  Eigen::Vector3d gyroBiasPrior = Eigen::Vector3d(0.0, 0.0, 0.0);
-  // Preintegration
+  double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
+  double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]
+  double biasAccOmegaInit_ = 0.0;
+  Eigen::Vector3d accBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
+  Eigen::Vector3d gyroBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
+  // Initial State
+  double initialPositionNoiseDensity_ = 1e-01;
+  double initialOrientationNoiseDensity_ = 1e-01;
+  double initialVelocityNoiseDensity_ = 1e-01;
+  double initialAccBiasNoiseDensity_ = 1e-01;
+  double initialGyroBiasNoiseDensity_ = 1e-01;
 
   // Relinearization
   // Thresholds
-  double positionReLinTh = 1e-3;
-  double rotationReLinTh = 1e-3;
-  double velocityReLinTh = 1e-3;
-  double accBiasReLinTh = 1e-3;
-  double gyroBiasReLinTh = 1e-3;
-  double fixedFrameReLinTh = 1e-3;
-  double displacementReLinTh = 1e-3;
+  double positionReLinTh_ = 1e-3;
+  double rotationReLinTh_ = 1e-3;
+  double velocityReLinTh_ = 1e-3;
+  double accBiasReLinTh_ = 1e-3;
+  double gyroBiasReLinTh_ = 1e-3;
+  double fixedFrameReLinTh_ = 1e-3;
+  double displacementReLinTh_ = 1e-3;
   // Flags
-  int relinearizeSkip = 0;
-  bool enableRelinearizationFlag = true;
-  bool evaluateNonlinearErrorFlag = true;
-  bool cacheLinearizedFactorsFlag = true;
-  bool enablePartialRelinearizationCheckFlag = true;
+  int relinearizeSkip_ = 0;
+  bool enableRelinearizationFlag_ = true;
+  bool evaluateNonlinearErrorFlag_ = true;
+  bool cacheLinearizedFactorsFlag_ = true;
+  bool enablePartialRelinearizationCheckFlag_ = true;
 
   // Other
-  double maxSearchDeviation = 0.01;
+  double maxSearchDeviation_ = 0.01;
 };
 
 }  // namespace graph_msf
 
-#endif  // GRAPHCONFIG_H
+#endif  // GRAPH_CONFIG_H

@@ -5,10 +5,6 @@ project(graph_msf)
 add_compile_options(-std=c++17)
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
-#find_package(GTSAM REQUIRED)
-#message(STATUS "GTSAM version: ${GTSAM_VERSION}")
-#message(STATUS "GTSAM path: ${GTSAM_DIR}")
-
 find_package(Eigen3 REQUIRED)
 message("Eigen Version::" ${EIGEN3_VERSION_STRING})
 message("Eigen Path::" ${Eigen3_DIR})
@@ -37,11 +33,6 @@ set(CATKIN_PACKAGE_DEPENDENCIES
 find_package(catkin REQUIRED COMPONENTS
         ${CATKIN_PACKAGE_DEPENDENCIES}
         )
-
-#generate_messages(
-#  DEPENDENCIES
-#  std_msgs
-#)
 
 catkin_package(
         CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
@@ -73,7 +64,8 @@ add_library(${PROJECT_NAME}
         src/lib/TimeGraphKeyBuffer.cpp
         src/lib/TrajectoryAlignment.cpp
         src/lib/TrajectoryAlignmentHandler.cpp
-        src/lib/NavState.cpp)
+        src/lib/NavState.cpp
+        include/graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})

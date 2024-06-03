@@ -1,0 +1,22 @@
+robot_pose_with_covariance_topic: ""
+track_point_x: 0
+track_point_y: 0
+track_point_z: 0
+min_update_rate: 0.5
+length_in_x: 25
+length_in_y: 25
+position_x: 0
+position_y: 0
+resolution: 0.1
+min_variance: 0.000009  #0.00005 --> changes fast
+max_variance: 0.002
+mahalanobis_distance_threshold: 2.5
+multi_height_noise: 0.0001
+visibility_cleanup_rate: 1.0
+scanning_duration: 0.3
+enable_visibility_cleanup: true
+sensor_processor:
+  beam_angle: 0.0006
+  beam_constant: 0.0015
+  min_radius: 0.018
+  type: laser

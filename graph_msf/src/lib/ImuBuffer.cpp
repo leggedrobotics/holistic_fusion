@@ -23,14 +23,14 @@ ImuBuffer::ImuBuffer(const std::shared_ptr<GraphConfig> graphConfigPtr) {
   // Reset IMU Buffer
   timeToImuBuffer_.clear();
   // Parameters
-  useImuSignalLowPassFilter_ = graphConfigPtr->useImuSignalLowPassFilter;
-  imuRate_ = graphConfigPtr->imuRate;
-  imuBufferLength_ = graphConfigPtr->imuBufferLength;
-  verboseLevel_ = graphConfigPtr->verboseLevel;
+  useImuSignalLowPassFilter_ = graphConfigPtr->useImuSignalLowPassFilter_;
+  imuRate_ = graphConfigPtr->imuRate_;
+  imuBufferLength_ = graphConfigPtr->imuBufferLength_;
+  verboseLevel_ = graphConfigPtr->verboseLevel_;
   // If low pass filter is used, initialize it
   if (useImuSignalLowPassFilter_) {
     imuSignalLowPassFilterPtr_ =
-        std::make_unique<ImuSignalLowPassFilter>(graphConfigPtr->imuLowPassFilterCutoffFreqHz, 1.0 / graphConfigPtr->imuRate);
+        std::make_unique<ImuSignalLowPassFilter>(graphConfigPtr->imuLowPassFilterCutoffFreqHz_, 1.0 / graphConfigPtr->imuRate_);
   }
 }
 
@@ -136,8 +136,8 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Gravity Magnitude: " << gravityMagnitude << std::endl;
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Mean IMU Acceleration Vector(x,y,z): " << initAccMean.transpose()
               << " - Gravity Unit Vector(x,y,z): " << gUnitVecInWorld.transpose() << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << GREEN_START
-              << " Yaw/Pitch/Roll(deg): " << initAttitude.ypr().transpose() * (180.0 / M_PI) << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-ImuBuffer" << GREEN_START << " RPY (deg): " << initAttitude.rpy().transpose() * (180.0 / M_PI)
+              << COLOR_END << std::endl;
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << "  Gyro bias(x,y,z): " << initGyrMean.transpose() << std::endl;
   }
   return true;

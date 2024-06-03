@@ -21,7 +21,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   explicit OptimizerIsam2FixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
     // Initialize Real-time Smoother -----------------------------------------------
     fixedLagSmootherPtr_ =
-        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag,
+        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_,
                                                              isam2Params_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
     fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of real-time graph.");
   }
@@ -34,24 +34,98 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+    // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
+    // gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+
     // Try to update
     try {
       fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
-    } catch (const std::out_of_range& outOfRangeExeception) {  // Not specifically catching
-      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START
-                << " Out of Range exception while optimizing graph: " << outOfRangeExeception.what() << COLOR_END << std::endl;
+    } catch (const std::out_of_range& outOfRangeException) {  // Not specifically catching
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Out of Range exception while optimizing graph: '"
+                << outOfRangeException.what() << "'." << COLOR_END << std::endl;
       std::cout
           << YELLOW_START << "GMsf-ISAM2" << RED_START
           << " This usually happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
              "not connected. Increase the lag in this case."
           << COLOR_END << std::endl;
-      // throw std::out_of_range(outOfRangeExeception.what());
-      return false;
+
+      // Overwrite with old fixed lag smoother
+      //*fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+
+      // If this happens, for simplicity we remove all factors that that contain a timestamp older than the smoother lag
+      double latestTimeStamp = 0.0;
+      for (auto factor : newGraphFactors) {
+        for (auto key : factor->keys()) {
+          // Check whether key is in the keyTimestampMap
+          if (newGraphKeysTimeStampMap.find(key) != newGraphKeysTimeStampMap.end()) {
+            if (newGraphKeysTimeStampMap.at(key) > latestTimeStamp) {
+              latestTimeStamp = newGraphKeysTimeStampMap.at(key);
+            }
+          }
+        }
+      }
+      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Latest timestamp in new factors: " << latestTimeStamp << COLOR_END
+                << std::endl;
+      // Filter out the factor that caused the error -------------------------
+      bool filteredOutAtLeastOneKey = false;
+      // Containers
+      gtsam::NonlinearFactorGraph newGraphFactorsFiltered;
+      // Filtering the keyTimestampMap
+      std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered = newGraphKeysTimeStampMap;
+      // For loop
+      for (auto factor : newGraphFactors) {
+        bool factorContainsExistentKeys = true;
+        for (auto key : factor->keys()) {
+          if (newGraphKeysTimeStampMap.find(key) != newGraphKeysTimeStampMap.end()) {
+            if (newGraphKeysTimeStampMap.at(key) < latestTimeStamp - graphConfigPtr_->realTimeSmootherLag_) {
+              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                        << " Factor contains key older than smoother lag: " << gtsam::Symbol(key) << COLOR_END << std::endl;
+              factorContainsExistentKeys = false;
+              filteredOutAtLeastOneKey = true;
+              // Erase from keyTimestampMap
+              // newGraphKeysTimeStampMapFiltered.erase(key);
+            }
+          }
+        }
+        // Add factor if it does not contain any key older than the smoother lag
+        if (factorContainsExistentKeys) {
+          newGraphFactorsFiltered.add(factor);
+        }
+      }
+
+      // Limit depth of recursion
+      if (filteredOutAtLeastOneKey) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
+                  << " Filtered out factors that are older than the smoother lag. Trying to optimize again." << COLOR_END << std::endl;
+        return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
+      } else {
+        // Show all values and corresponding timestamps that are not in timestamp map
+        for (const auto& value : newGraphValues) {
+          if (newGraphKeysTimeStampMap.find(value.key) == newGraphKeysTimeStampMap.end()) {
+            std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Value: " << gtsam::Symbol(value.key) << " with timestamp: "
+                      << "not in timestamp map" << COLOR_END << std::endl;
+          }
+        }
+        // Show all factors and corresponding timestamps that are not in timestamp map
+        for (const auto& factor : newGraphFactors) {
+          for (const auto& key : factor->keys()) {
+            if (newGraphKeysTimeStampMap.find(key) == newGraphKeysTimeStampMap.end()) {
+              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Factor: " << gtsam::Symbol(key) << " with timestamp: "
+                        << "not in timestamp map" << COLOR_END << std::endl;
+            }
+          }
+        }
+
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                  << " Could not filter out any factors that are older than the smoother lag. Aborting optimization." << COLOR_END
+                  << std::endl;
+        return false;
+      }
     } catch (const gtsam::ValuesKeyDoesNotExist& valuesKeyDoesNotExistException) {  // Catching, as this can happen in practice (factors
                                                                                     // added that are outside the smoother window)
       std::cout << "----------------------------------------------------------" << std::endl;
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START
-                << " Values Key Does Not Exist exeception while optimizing graph: " << valuesKeyDoesNotExistException.what() << COLOR_END
+                << " Values Key Does Not Exist exception while optimizing graph: " << valuesKeyDoesNotExistException.what() << COLOR_END
                 << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                 << " This happens if a factor is added to the graph that contains a non-existent state. The most common case is a factor "
@@ -91,9 +165,22 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     return true;
   }
 
+  // Optimize
+  void optimize(int maxIterations) override {
+    // Optimize
+    fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
+    // Flag
+    optimizedAtLeastOnceFlag_ = true;
+  }
+
   // Get Result
   const gtsam::Values& getAllOptimizedStates() override {
-    fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
+    // Check
+    if (!optimizedAtLeastOnceFlag_) {
+      throw std::runtime_error("GraphMSF: Optimizer has not been optimized yet.");
+    }
+
+    // Return
     return fixedLagSmootherOptimizedResult_;
   }
 
@@ -122,7 +209,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
 
-  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
+  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) override { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
 
   // Marginal Covariance
   gtsam::Matrix marginalCovariance(const gtsam::Key& key) override { return fixedLagSmootherPtr_->marginalCovariance(key); }

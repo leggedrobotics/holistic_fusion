@@ -1,22 +1,19 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPH_MSF_GNSSHANDLER_H
-#define GRAPH_MSF_GNSSHANDLER_H
+#ifndef GRAPH_MSF_GNSS_HANDLER_H
+#define GRAPH_MSF_GNSS_HANDLER_H
 
 // C++
 #include <Eigen/Eigen>
+
 // Workspace
 #include "graph_msf/gnss/Gnss.h"
-
-// Defined macros
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define COLOR_END "\033[0m"
+#include "graph_msf/interface/Terminal.h"
 
 namespace graph_msf {
 
@@ -27,7 +24,6 @@ class GnssHandler {
   // Methods
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
   void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
-  void initHandler(const double& initYaw);
 
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
@@ -38,15 +34,15 @@ class GnssHandler {
   bool usingGnssReferenceFlag = false;
 
   // Setters
-  void setInitYaw(const double initYaw) { initYaw_ = initYaw; }
   void setGnssReferenceLatitude(const double gnssReferenceLatitude) { gnssReferenceLatitude_ = gnssReferenceLatitude; }
   void setGnssReferenceLongitude(const double gnssReferenceLongitude) { gnssReferenceLongitude_ = gnssReferenceLongitude; }
   void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
 
-  // Getters.
-  double getInitYaw();
-  Gnss getGnssSensor() { return gnssSensor_; }
+  // State Machine based bookkeeping.
+  double globalYawDegFromFile_{0.0};
+  bool useYawInitialGuessFromFile_{false};
+  bool yawInitialGuessFromAlignment_{false};
 
  private:
   // Member methods
@@ -60,7 +56,6 @@ class GnssHandler {
   double globalAttitudeYaw_;
 
   // Reference Parameters
-  double initYaw_;
   double gnssReferenceLatitude_;
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;
@@ -69,4 +64,4 @@ class GnssHandler {
 
 }  // namespace graph_msf
 
-#endif  // GRAPH_MSF_GNSSHANDLER_H
+#endif  // GRAPH_MSF_GNSS_HANDLER_H

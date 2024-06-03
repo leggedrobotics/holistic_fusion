@@ -22,8 +22,11 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
 
   // Initialize Gnss converter
   if (usingGnssReferenceFlag) {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting coordinate origin to current position." << COLOR_END
+              << std::endl;
     gnssSensor_.setReference(accumulatedLeftCoordinates(0), accumulatedLeftCoordinates(1), accumulatedLeftCoordinates(2), 0.0);
   }
 
@@ -48,25 +51,22 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
 
   // Initialize Gnss converter
   if (usingGnssReferenceFlag) {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting coordinate origin to current position." << COLOR_END
+              << std::endl;
     gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
+              << std::endl;
   }
 
   // Get Positions
   Eigen::Vector3d position;
   convertNavSatToPosition(accumulatedCoordinates, position);
 
-  // Initial Gnss position
+  // Initial GNSS Position
   W_t_W_GnssL0_ = position;
-}
-
-void GnssHandler::initHandler(const double& initYaw) {
-  std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler yaw." << COLOR_END << std::endl;
-
-  // Get initial global yaw
-  globalAttitudeYaw_ = initYaw;
-  std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initial global yaw is: " << 180 / M_PI * globalAttitudeYaw_ << std::endl;
 }
 
 void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
@@ -105,10 +105,6 @@ Eigen::Vector3d GnssHandler::computeHeading_(const Eigen::Vector3d& gnssPos1, co
 
 double GnssHandler::computeYawFromHeadingVector_(const Eigen::Vector3d& headingVector) {
   return atan2(headingVector(1), headingVector(0));
-}
-
-double GnssHandler::getInitYaw() {
-  return initYaw_;
 }
 
 }  // namespace graph_msf

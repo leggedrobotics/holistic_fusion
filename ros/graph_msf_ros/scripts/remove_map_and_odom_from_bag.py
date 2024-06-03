@@ -52,5 +52,5 @@ if __name__ == '__main__':
     out_bag = sys.argv[2]
     # filter_topics(in_bag, out_bag, ['base_link', 'odom', 'map',
     #                                 'torso', 'Hip', 'Pelvis', 'Tibia', 'base_footprint'])
-    filter_topics_2(in_bag, out_bag, ['odom'])
+    filter_topics_2(in_bag, out_bag, ['odom_graph_msf', 'world_graph_msf', 'map_o3d_gmsf'])
     print("Done")

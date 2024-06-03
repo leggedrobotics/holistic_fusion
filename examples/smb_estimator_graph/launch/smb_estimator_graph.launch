@@ -20,8 +20,13 @@
     <arg name="smb_graph_param_file"          default="$(find smb_estimator_graph)/config/smb_specific/smb_graph_params.yaml"/>
     <arg name="smb_extrinsic_param_file"      default="$(find smb_estimator_graph)/config/smb_specific/smb_extrinsic_params.yaml"/>
 
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find smb_estimator_graph)/logging" />
+
     <!-- Node -->
     <node pkg="smb_estimator_graph" type="smb_estimator_graph_node" name="smb_estimator_node" output="screen"> <!-- launch-prefix="gdb -ex run -args" -->
+        <!-- Launch Parameters -->
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />
         <rosparam command="load" file="$(arg core_graph_param_file)" />

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="imu_topic_name"             default="/sensors/imu" />
+    <arg name="lidar_odometry_topic_name"  default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+    <arg name="using_gnss_unary"            default="true"/>
+    <arg name="using_legged_velocity_unary" default="false"/>
+
+    <!-- Compslam Config -->
+    <arg name="launch_compslam" default="true"/>
+    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/>
+    <arg name="compslam_config_file" default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml"/>
+
+    <!-- Launch Stack -->
+    <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
+        <!-- Config  -->
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
+        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
+        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
+    </include>
+
+    <!-- Launch Compslam -->
+    <include file="$(find compslam_lio)/launch/compslam_lio.launch" if="$(arg launch_compslam)">
+        <arg name="pointcloud_topic_name" value="$(arg pointcloud_topic_name)"/>
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
+        <arg name="config_filename" value="$(arg compslam_config_file)"/>
+    </include>
+
+    <!-- TF Tree Connection During Replay -->
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"
+          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>
+
+</launch>

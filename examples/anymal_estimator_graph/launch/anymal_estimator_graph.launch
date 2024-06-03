@@ -6,17 +6,21 @@
 
     <!-- GMSF Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
-    <arg name="legged_odometry_topic_name" default="/state_estimator/pose_in_odom" />
-    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />
     <arg name="gnss_topic_name"            default="/rtk_gps_driver/position_receiver_0/ros/navsatfix" />
+    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />
+    <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom" />
+    <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry" />
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name"  default="/dual_graph_node/get_path_in_enu" />
 
     <!-- Config -->
-    <arg name="extrinsics_from_urdf"      default="false" />
-    <arg name="using_gnss"                default="true" />
-    <arg name="using_legged_odometry"     default="true" />
+    <arg name="extrinsics_from_urdf"        default="false" />
+    <arg name="using_gnss_unary"            default="false" />
+    <arg name="using_lio_unary"             default="true" />
+    <arg name="using_lio_between"           default="false" />
+    <arg name="using_legged_between"        default="false" />
+    <arg name="using_legged_velocity_unary" default="false" />
 
     <!-- Config Files -->
     <arg name="core_graph_config_param_file"     default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
@@ -27,11 +31,18 @@
     <arg name="anymal_gnss_param_file"           default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_gnss_params.yaml"/>
     <arg name="anymal_traj_alignment_param_file" default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_traj_align_params.yaml"/>
 
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find anymal_estimator_graph)/logging" />
+
     <!-- Node -->
-    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" launch-prefix="gdb -ex run -args" > <!--launch-prefix="gdb -ex run -args"-->
+    <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node" output="screen" > <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
-        <param name="launch/usingGnss" type="bool" value="$(arg using_gnss)" />
-        <param name="launch/usingLeggedOdometry" type="bool" value="$(arg using_legged_odometry)" />
+        <param name="launch/usingGnssUnary" type="bool" value="$(arg using_gnss_unary)" />
+        <param name="launch/usingLioUnary" type="bool" value="$(arg using_lio_unary)" />
+        <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)" />
+        <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)" />
+        <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)" />
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)" />
         <rosparam command="load" file="$(arg core_graph_param_file)" />
@@ -44,7 +55,8 @@
         <remap from="/imu_topic"             to="$(arg imu_topic_name)" />
         <remap from="/lidar_odometry_topic"  to="$(arg lidar_odometry_topic_name)" />
         <remap from="/gnss_topic"            to="$(arg gnss_topic_name)" />
-        <remap from="/legged_odometry_topic" to="$(arg legged_odometry_topic_name)" />
+        <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)" />
+        <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)" />
         <!-- Remapping of services -->
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)" />
     </node>

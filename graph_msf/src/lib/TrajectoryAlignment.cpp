@@ -40,10 +40,12 @@ std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignment::getGnssTraj
 }
 
 void TrajectoryAlignment::addLidarPose(Eigen::Vector3d position, double time) {
+  const std::lock_guard<std::mutex> alingmentLock(alignmentMutex);
   lidarTrajectory_.addPose(position, time);
 }
 
 void TrajectoryAlignment::addGnssPose(Eigen::Vector3d position, double time) {
+  const std::lock_guard<std::mutex> alingmentLock(alignmentMutex);
   gnssTrajectory_.addPose(position, time);
 }
 
@@ -112,12 +114,27 @@ bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajector
 }
 
 bool TrajectoryAlignment::alignTrajectories(double& yaw) {
+  // Mutex for alignment Flag
+  const std::lock_guard<std::mutex> alingmentLock(alignmentMutex);
+
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Current Distance (LiDAR/GNSS): " << COLOR_END
             << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << std::endl;
-  if (lidarTrajectory_.distance() < minDistanceHeadingInit_) return false;
-  if (!lidarTrajectory_.standing(lidarRate_, noMovementTime_, noMovementDistance_)) return false;
-  if (gnssTrajectory_.distance() < minDistanceHeadingInit_) return false;
-  if (!gnssTrajectory_.standing(gnssRate_, noMovementTime_, noMovementDistance_)) return false;
+
+  if (lidarTrajectory_.distance() < minDistanceHeadingInit_) {
+    return false;
+  }
+
+  if (gnssTrajectory_.distance() < minDistanceHeadingInit_) {
+    return false;
+  }
+
+  if (!lidarTrajectory_.standing(lidarRate_, noMovementTime_, noMovementDistance_)) {
+    return false;
+  }
+
+  if (!gnssTrajectory_.standing(gnssRate_, noMovementTime_, noMovementDistance_)) {
+    return false;
+  }
 
   // aligin trajectories
   Trajectory newLidarTrajectory;

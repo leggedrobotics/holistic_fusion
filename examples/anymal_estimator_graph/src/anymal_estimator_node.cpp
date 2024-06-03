@@ -7,11 +7,20 @@ Please see the LICENSE file that has been included as part of this package.
 
 // ROS
 #include <ros/ros.h>
+
+// Debugging
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
 // Local packages
 #include "anymal_estimator_graph/AnymalEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {
+  google::InitGoogleLogging(argv[0]);
+  FLAGS_alsologtostderr = true;
+  google::InstallFailureSignalHandler();
+
   // ROS related
   ros::init(argc, argv, "anymal_estimator_graph");
   std::shared_ptr<ros::NodeHandle> privateNodePtr = std::make_shared<ros::NodeHandle>("~");

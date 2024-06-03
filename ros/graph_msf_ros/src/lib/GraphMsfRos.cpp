@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-GraphMsfRos::GraphMsfRos(std::shared_ptr<ros::NodeHandle> privateNodePtr) : GraphMsf(), privateNode_(*privateNodePtr) {
+GraphMsfRos::GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : GraphMsf(), privateNode_(*privateNodePtr) {
   REGULAR_COUT << GREEN_START << " Initializing." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -48,6 +48,9 @@ bool GraphMsfRos::setup() {
   // Messages ----------------------------
   GraphMsfRos::initializeMessages_(privateNode_);
 
+  // Services ----------------------------
+  GraphMsfRos::initializeServices_(privateNode_);
+
   // Time
   startTime_ = std::chrono::high_resolution_clock::now();
 
@@ -64,6 +67,9 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   pubEstMapImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_map_imu", ROS_QUEUE_SIZE);
   pubEstWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImu_ = privateNode.advertise<nav_msgs::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
+  // Vector3 Variances
+  pubEstWorldPosVariance_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/est_world_pos_variance", ROS_QUEUE_SIZE);
+  pubEstWorldRotVariance_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/est_world_rot_variance", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
   pubEstWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
@@ -75,22 +81,6 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   pubAddedImuMeas_ = privateNode.advertise<sensor_msgs::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
 }
 
-void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
-  REGULAR_COUT << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
-  // Odometry
-  estOdomImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  estMapImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  estWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  optWorldImuMsgPtr_ = nav_msgs::OdometryPtr(new nav_msgs::Odometry);
-  // Path
-  estOdomImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  estWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  optWorldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
-  // Imu Bias
-  accelBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
-  gyroBiasMsgPtr_ = geometry_msgs::Vector3StampedPtr(new geometry_msgs::Vector3Stamped);
-}
-
 void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
   REGULAR_COUT << GREEN_START << " Initializing subscribers." << COLOR_END << std::endl;
   // Imu
@@ -100,15 +90,40 @@ void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
             << std::endl;
 }
 
+void GraphMsfRos::initializeMessages_(ros::NodeHandle& privateNode) {
+  REGULAR_COUT << GREEN_START << " Initializing messages." << COLOR_END << std::endl;
+  // Odometry
+  estOdomImuMsgPtr_ = boost::make_shared<nav_msgs::Odometry>();
+  estMapImuMsgPtr_ = boost::make_shared<nav_msgs::Odometry>();
+  estWorldImuMsgPtr_ = boost::make_shared<nav_msgs::Odometry>();
+  optWorldImuMsgPtr_ = boost::make_shared<nav_msgs::Odometry>();
+  // Vector3 Variances
+  estWorldPosVarianceMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
+  estWorldRotVarianceMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
+  // Path
+  estOdomImuPathPtr_ = boost::make_shared<nav_msgs::Path>();
+  estWorldImuPathPtr_ = boost::make_shared<nav_msgs::Path>();
+  optWorldImuPathPtr_ = boost::make_shared<nav_msgs::Path>();
+  // Imu Bias
+  accelBiasMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
+  gyroBiasMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
+}
+
+void GraphMsfRos::initializeServices_(ros::NodeHandle& privateNode) {
+  // Trigger offline smoother optimization
+  srvSmootherOptimize_ =
+      privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback_, this);
+}
+
 void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   // Convert to Eigen
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
   Eigen::Matrix<double, 6, 1> addedImuMeasurements;  // accel, gyro
-  Eigen::Vector3d addedAngularVel(0.0, 0.0, 0.0);
+
   // Create pointer for carrying state
-  std::shared_ptr<graph_msf::SafeIntegratedNavState> preIntegratedNavStatePtr = nullptr;
-  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
+  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr = nullptr;
+  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
   // Add measurement and get state
   if (this->addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
                                          optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
@@ -125,7 +140,23 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   }
 }
 
-void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& fixedFrameName, const ros::Time& stamp,
+bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
+                                                      graph_msf_ros::OfflineOptimizationTrigger::Response& res) {
+  // Max Iterations from service call
+  int maxIterations = req.max_optimization_iterations;
+
+  // Trigger offline smoother optimization and create response
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath_)) {
+    res.success = true;
+    res.message = "Optimization successful.";
+  } else {
+    res.success = false;
+    res.message = "Optimization failed.";
+  }
+  return true;
+}
+
+void GraphMsfRos::addToPathMsg(const nav_msgs::PathPtr& pathPtr, const std::string& fixedFrameName, const ros::Time& stamp,
                                const Eigen::Vector3d& t, const int maxBufferLength) {
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = fixedFrameName;
@@ -141,7 +172,7 @@ void GraphMsfRos::addToPathMsg(nav_msgs::PathPtr pathPtr, const std::string& fix
   }
 }
 
-void GraphMsfRos::addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
+void GraphMsfRos::addToOdometryMsg(const nav_msgs::OdometryPtr& msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
                                    const ros::Time& stamp, const Eigen::Isometry3d& T, const Eigen::Vector3d& F_v_W_F,
                                    const Eigen::Vector3d& F_w_W_F, const Eigen::Matrix<double, 6, 6>& poseCovariance,
                                    const Eigen::Matrix<double, 6, 6>& twistCovariance) {
@@ -164,6 +195,19 @@ void GraphMsfRos::addToOdometryMsg(nav_msgs::OdometryPtr msgPtr, const std::stri
   }
 }
 
+void GraphMsfRos::addToPoseWithCovarianceStampedMsg(const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName,
+                                                    const ros::Time& stamp, const Eigen::Isometry3d& T,
+                                                    const Eigen::Matrix<double, 6, 6>& transformCovariance) {
+  msgPtr->header.frame_id = frameName;
+  msgPtr->header.stamp = stamp;
+  tf::poseTFToMsg(isometry3ToTf(T), msgPtr->pose.pose);
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
+      msgPtr->pose.covariance[6 * i + j] = transformCovariance(i, j);
+    }
+  }
+}
+
 void GraphMsfRos::extractCovariancesFromOptimizedState(
     Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
@@ -178,39 +222,57 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
   }
 }
 
-void GraphMsfRos::publishTransform_(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
-                                    const Eigen::Isometry3d& T_frame_childFrame) {
+void GraphMsfRos::publishTfTreeTransform_(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
+                                          const Eigen::Isometry3d& T_frame_childFrame) {
   tf::Transform transform_frame_childFrame = isometry3ToTf(T_frame_childFrame);
   tfBroadcaster_.sendTransform(tf::StampedTransform(transform_frame_childFrame, ros::Time(timeStamp), parentFrameName, childFrameName));
 }
 
-void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr,
+void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                                    const Eigen::Matrix<double, 6, 6>& poseCovarianceRos,
-                                   const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) {
+                                   const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const {
   // Odom->imu with 100 Hz
   addToOdometryMsg(estOdomImuMsgPtr_, staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getImuFrame(),
-                   ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_O_Ik_gravityAligned(), navStatePtr->getI_v_W_I(),
-                   navStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
+                   ros::Time(preIntegratedNavStatePtr->getTimeK()), preIntegratedNavStatePtr->getT_O_Ik_gravityAligned(),
+                   preIntegratedNavStatePtr->getI_v_W_I(), preIntegratedNavStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
   pubEstOdomImu_.publish(estOdomImuMsgPtr_);
   // World->imu with 100 Hz
   addToOdometryMsg(estWorldImuMsgPtr_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
-                   ros::Time(navStatePtr->getTimeK()), navStatePtr->getT_W_Ik(), navStatePtr->getI_v_W_I(), navStatePtr->getI_w_W_I(),
-                   poseCovarianceRos, twistCovarianceRos);
+                   ros::Time(preIntegratedNavStatePtr->getTimeK()), preIntegratedNavStatePtr->getT_W_Ik(),
+                   preIntegratedNavStatePtr->getI_v_W_I(), preIntegratedNavStatePtr->getI_w_W_I(), poseCovarianceRos, twistCovarianceRos);
   pubEstWorldImu_.publish(estWorldImuMsgPtr_);
 }
 
-void GraphMsfRos::publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr) {
+void GraphMsfRos::publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                             const double timeStamp) const {
+  // World Position Variance
+  estWorldPosVarianceMsgPtr_->header.stamp = ros::Time(timeStamp);
+  estWorldPosVarianceMsgPtr_->header.frame_id = staticTransformsPtr_->getWorldFrame();
+  estWorldPosVarianceMsgPtr_->vector.x = posVarianceRos(0);
+  estWorldPosVarianceMsgPtr_->vector.y = posVarianceRos(1);
+  estWorldPosVarianceMsgPtr_->vector.z = posVarianceRos(2);
+  pubEstWorldPosVariance_.publish(estWorldPosVarianceMsgPtr_);
+  // World Rotation Variance
+  estWorldRotVarianceMsgPtr_->header.stamp = ros::Time(timeStamp);
+  estWorldRotVarianceMsgPtr_->header.frame_id = staticTransformsPtr_->getWorldFrame();
+  estWorldRotVarianceMsgPtr_->vector.x = rotVarianceRos(0);
+  estWorldRotVarianceMsgPtr_->vector.y = rotVarianceRos(1);
+  estWorldRotVarianceMsgPtr_->vector.z = rotVarianceRos(2);
+  pubEstWorldRotVariance_.publish(estWorldRotVarianceMsgPtr_);
+}
+
+void GraphMsfRos::publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr) const {
   // odom->imu
   addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), ros::Time(navStatePtr->getTimeK()),
-               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength * 20);
+               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength_ * 20);
   pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
   // world->imu
   addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(navStatePtr->getTimeK()),
-               (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength * 20);
+               (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength_ * 20);
   pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
 }
 
-void GraphMsfRos::publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) {
+void GraphMsfRos::publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const {
   // Publish added imu measurement
   sensor_msgs::Imu addedImuMeasMsg;
   addedImuMeasMsg.header.stamp = stamp;
@@ -243,7 +305,7 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     // Path
     // world->imu
     addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
-                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength * 20);
+                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 20);
     pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
 
     // Biases
@@ -265,31 +327,68 @@ void GraphMsfRos::publishOptimizedStateAndBias_(
     pubGyroBias_.publish(gyroBiasMsgPtr_);
 
     // TFs in Optimized State
-    for (const auto transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
-      // Get transform
-      const Eigen::Isometry3d& T_frame1_frame2 = transformIterator.second;
+    for (const auto& transformIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
+      // Case 1: Holistic transformation --> includes world frame
       if (transformIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
-        const Eigen::Isometry3d T_M_Ik = T_frame1_frame2 * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+        // A. Get transform
+        const Eigen::Isometry3d& T_M_W = transformIterator.second;
+        const Eigen::Isometry3d T_M_Ik = T_M_W * optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
         const std::string& mapFrameName = transformIterator.first.first;
         const std::string& worldFrameName = transformIterator.first.second;
-        // std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
-        //        std::cout << "Uncertainty: " << std::endl
-        //                  << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-        //                         mapFrameName, transformIterator.first.second)
-        //                  << std::endl;
-        // Map->imu
-        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName, staticTransformsPtr_->getImuFrame(),
+        if (graphConfigPtr_->verboseLevel_ >= 2) {
+          std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
+          std::cout << "Uncertainty: " << std::endl
+                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(mapFrameName,
+                                                                                                                      worldFrameName)
+                    << std::endl;
+        }
+        // B. Publish Odometry for Map->imu
+        addToOdometryMsg(estMapImuMsgPtr_, mapFrameName + fixedFrameAlignedNameId_, staticTransformsPtr_->getImuFrame(),
                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_Ik,
                          optimizedStateWithCovarianceAndBiasPtr->getI_v_W_I(), optimizedStateWithCovarianceAndBiasPtr->getI_w_W_I(),
                          poseCovarianceRos, twistCovarianceRos);
         pubEstMapImu_.publish(estMapImuMsgPtr_);
-        // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2.inverse());
-      } else {
-        const std::string& worldFrameName = transformIterator.first.first;
-        const std::string& mapFrameName = transformIterator.first.second;
-        // Publish TF --> everything children of world
-        publishTransform_(worldFrameName, mapFrameName, optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_frame1_frame2);
+        // C. Publish TransformStamped for Aligned Frames
+        std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + fixedFrameAlignedNameId_;
+        geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
+            boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+        addToPoseWithCovarianceStampedMsg(
+            poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
+            ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_W.inverse(),
+            optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(mapFrameName, worldFrameName));
+        // Check whether publisher already exists
+        if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
+          pubPoseStampedByTopicMap_[transformTopic] = privateNode_.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
+          REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+        }
+        pubPoseStampedByTopicMap_[transformTopic].publish(poseWithCovarianceStampedMsgPtr);
+
+        // D. Publish TF Tree --> everything children of world
+        publishTfTreeTransform_(worldFrameName, mapFrameName + fixedFrameAlignedNameId_, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                                T_M_W.inverse());
+
+      } else {  // Case 2: Calibration transformation --> does not include world frame
+        const std::string& sensorFrameName = transformIterator.first.first;
+        const std::string& sensorFrameNameCorrected = sensorFrameName + sensorFrameCorrectedNameId_;  // transformIterator.first.second;
+        const Eigen::Isometry3d& T_sensor_sensorCorrected = transformIterator.second;
+        // A. Publish TransformStamped for Corrected Frames
+        std::string transformTopic = "/graph_msf/transform_" + sensorFrameName + "_to_" + sensorFrameNameCorrected;
+        geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
+            boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+        addToPoseWithCovarianceStampedMsg(poseWithCovarianceStampedMsgPtr, sensorFrameName,
+                                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_sensor_sensorCorrected,
+                                          optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                                              sensorFrameName, transformIterator.first.second));
+        // Check whether publisher already exists
+        if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
+          pubPoseStampedByTopicMap_[transformTopic] = privateNode_.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
+          REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+        }
+        pubPoseStampedByTopicMap_[transformTopic].publish(poseWithCovarianceStampedMsgPtr);
+
+        // D. Publish TF Tree --> as children of sensor frame
+        publishTfTreeTransform_(sensorFrameName, sensorFrameNameCorrected, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+                                T_sensor_sensorCorrected);
       }
     }
   }
@@ -308,6 +407,10 @@ void GraphMsfRos::publishState_(
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
   extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos, optimizedStateWithCovarianceAndBiasPtr);
 
+  // Variances (only digonal elements
+  Eigen::Vector3d positionVarianceRos = poseCovarianceRos.block<3, 3>(0, 0).diagonal();
+  Eigen::Vector3d orientationVarianceRos = poseCovarianceRos.block<3, 3>(3, 3).diagonal();
+
   // Alias
   const Eigen::Isometry3d& T_O_Ik = integratedNavStatePtr->getT_O_Ik_gravityAligned();
   const double& timeK = integratedNavStatePtr->getTimeK();
@@ -320,10 +423,13 @@ void GraphMsfRos::publishState_(
   Eigen::Isometry3d T_B_Ok =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
       T_O_Ik.inverse();
-  publishTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
+  publishTfTreeTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
-  publishTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
+  publishTfTreeTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
+
+  // Publish Variances
+  publishDiagVarianceVectors(positionVarianceRos, orientationVarianceRos, timeK);
 
   // Publish paths
   publishImuPaths_(integratedNavStatePtr);

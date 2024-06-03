@@ -1,5 +1,5 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -11,7 +11,6 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <mutex>
 #include <stdexcept>
-#include <string_view>
 #include <thread>
 
 // Package
@@ -21,12 +20,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
-
-// Defined macros
-#define GREEN_START "\033[92m"
-#define YELLOW_START "\033[33m"
-#define RED_START "\033[31m"
-#define COLOR_END "\033[0m"
 
 namespace graph_msf {
 
@@ -39,7 +32,7 @@ class GraphMsf {
   // Constructor
   GraphMsf();
   // Destructor
-  ~GraphMsf() = default;
+  virtual ~GraphMsf() = default;
   // Setup
   virtual bool setup();
 
@@ -47,23 +40,34 @@ class GraphMsf {
   bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
                           const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
+
+  // Trigger offline smoother optimization
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
+
+  // Getter functions
   bool areYawAndPositionInited();
   bool areRollAndPitchInited();
+  bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
   // Adder functions
-  /// Return
+  /// Main: IMU
   bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                     std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
                                     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
-  /// No return
-  void addOdometryMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
+  /// Unary Measurements
   void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
-  bool addPositionMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
-  bool addHeadingMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
-  bool addZeroMotionFactor(double maxTimestampDistance, double timeKm1, double timeK, const gtsam::Pose3 pose);
+  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
+  bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_W_frame);
+  bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_W_frame);
+  bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
 
-  bool getNormalOperationFlag() const { return normalOperationFlag_; }
+  /// Binary Measurements
+  void addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
+
+  /// Ambiguous Measurements
+  bool addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity);
+  bool addZeroVelocityFactor(double timeK, double noiseDensity);
 
  protected:
   // Methods -------------
@@ -74,7 +78,8 @@ class GraphMsf {
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
   void optimizeGraph_();
-  //// GNSS Violation
+
+  /// Convenience functions
   template <int DIM>
   bool isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& gnssCovarianceXYZ, const double covarianceViolationThreshold);
 
@@ -83,14 +88,14 @@ class GraphMsf {
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
 
-  // Graph Config
-  std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
-
-  // Extrinsics
-  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
-
   // Initialization
   void pretendFirstMeasurementReceived();
+
+  // Members
+  // Graph Config
+  std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
+  // Extrinsics
+  std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
 
  private:  // Variables -------------
   // Threads

@@ -20,7 +20,7 @@ class OptimizerLMFixedLag : public OptimizerLM {
  public:
   explicit OptimizerLMFixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
     // Initialize Real-time Smoother -----------------------------------------------
-    fixedLagSmootherPtr_ = std::make_shared<gtsam::BatchFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag, lmParams_);
+    fixedLagSmootherPtr_ = std::make_shared<gtsam::BatchFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_, lmParams_);
     // Print
     fixedLagSmootherPtr_->print("LM FixedLagSmoother initialized with lag: ");
   }
@@ -90,11 +90,18 @@ class OptimizerLMFixedLag : public OptimizerLM {
     return true;
   }
 
-  // Get Result
-  const gtsam::Values& getAllOptimizedStates() override {
+  // Optimize
+  void optimize(int maxIterations) override {
+    // Print
+    std::cout << YELLOW_START << "GraphMSF: OptimizerLMFixedLag" << GREEN_START << " Optimizing fixed-lag smoother." << COLOR_END
+              << std::endl;
+
+    // Optimize
     fixedLagSmootherOptimizedResult_ = fixedLagSmootherPtr_->calculateEstimate();
-    return fixedLagSmootherOptimizedResult_;
   }
+
+  // Get Result
+  const gtsam::Values& getAllOptimizedStates() override { return fixedLagSmootherOptimizedResult_; }
 
   // Get all keys of optimized states
   gtsam::KeyVector getAllOptimizedKeys() override { return fixedLagSmootherOptimizedResult_.keys(); }
