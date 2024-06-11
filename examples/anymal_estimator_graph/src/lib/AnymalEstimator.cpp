@@ -161,10 +161,6 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   if (!useSimulatedGPS_ && simulated_) {
     return;
   }
-
-  // Counter
-  ++gnssCallbackCounter_;
-
   /*
   int8 STATUS_NO_FIX =  -1        # unable to fix position
   int8 STATUS_FIX =      0        # unaugmented fix
@@ -185,6 +181,15 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
   Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
                                sqrt(gnssMsgPtr->position_covariance[8]));
+
+  if ((estStdDevXYZ[0] > 2.0) || (estStdDevXYZ[1] > 2.0)) {
+    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS is rejected due to high std deviation. "
+              << "Expected: < 2.0 Received: " << estStdDevXYZ[0] << " and " << estStdDevXYZ[1] << " Received: " << std::endl;
+    return;
+  }
+
+  // Counter
+  ++gnssCallbackCounter_;
 
   // Initialize GNSS Handler
   if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
@@ -216,12 +221,12 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
   // fixedFrame = "east_north_up";
 
-  Eigen::Vector3d diff = lastHealthyGPSmeasurement_ - W_t_W_Gnss;
+  /*Eigen::Vector3d diff = lastHealthyGPSmeasurement_ - W_t_W_Gnss;
   lastHealthyGPSmeasurement_ = W_t_W_Gnss;
   if (diff.norm() > 0.2) {
     std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS is jumped more than 20cm. Diff: " << diff.norm() << std::endl;
     return;
-  }
+  }*/
 
   //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
   //  // Random number generator

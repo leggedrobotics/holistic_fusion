@@ -262,7 +262,9 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
     bool covarianceViolatedFlag = isCovarianceViolated_<6>(T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
                                                            T_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor. Expected: "
+                   << T_fixedFrame_sensorFrame.covarianceViolationThreshold()
+                   << " Received: " << T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << COLOR_END << std::endl;
       return;
     }
 
@@ -298,7 +300,9 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
     bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
                                                            fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor. Expected: "
+                   << T_fixedFrame_sensorFrame.covarianceViolationThreshold()
+                   << " Received: " << T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << COLOR_END << std::endl;
       return;
     }
 
