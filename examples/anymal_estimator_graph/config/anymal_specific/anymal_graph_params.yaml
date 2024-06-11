@@ -7,10 +7,10 @@ sensor_params:
 # Noise Parameters
 noise_params:
   ## GNSS
-  gnssPositionUnaryNoise: 0.01 # x, y, z of global position
+  gnssPositionUnaryNoise: 0.1 # x, y, z of global position
   ## LiDAR Odometry
   ## Unary Noise
-  lioPoseUnaryNoise: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioPoseUnaryNoise: [ 0.01, 0.01, 0.01, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Binary Noise
   lioPoseBetweenNoise: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Legged Odometry

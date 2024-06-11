@@ -132,11 +132,36 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
       std::cout << RED_START << "GraphMsfRos" << COLOR_END << " Encountered delay of "
                 << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
     }
+
+    /*Eigen::Vector3d t = (preIntegratedNavStatePtr->getT_W_Ik()).translation();
+    Eigen::Vector3d diff = t - t_minus_1;
+    if (diff.norm() > 1.5) {
+      killCounter_++;
+      std::cout << RED_START << "GraphMsfRos" << COLOR_END << " The  (navStatePtr->getT_W_Ik()).translation() diff is " << diff.norm()
+                << " meters."
+                << " killCounter_: " << killCounter_ << " /10" << std::endl;
+
+      if (killCounter_ > 10) {
+        std::cout << RED_START << "GraphMsfRos" << COLOR_END << " The  (navStatePtr->getT_W_Ik()).translation() diff is " << diff.norm()
+                  << " meters." << std::endl;
+
+        throw std::runtime_error("Turcan's throwback, too big jump.");
+      }
+    } else {
+      goodCounter_++;
+    }
+
+    if (goodCounter_ > 50) {
+      killCounter_ = 0;
+      goodCounter_ = 0;
+    }
+    t_minus_1 = t;
+*/
     // Publish Odometry
     this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
 
     // Publish Filtered Imu Measurements
-    this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
+    // this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
   }
 }
 

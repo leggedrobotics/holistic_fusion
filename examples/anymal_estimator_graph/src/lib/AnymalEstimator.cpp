@@ -182,37 +182,47 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   Eigen::Vector3d estStdDevXYZ(sqrt(gnssMsgPtr->position_covariance[0]), sqrt(gnssMsgPtr->position_covariance[4]),
                                sqrt(gnssMsgPtr->position_covariance[8]));
 
-  if ((estStdDevXYZ[0] > 2.0) || (estStdDevXYZ[1] > 2.0)) {
+  if ((estStdDevXYZ[0] > gnssHandlerPtr_->covarianceViolationThreshold_[0]) ||
+      (estStdDevXYZ[1] > gnssHandlerPtr_->covarianceViolationThreshold_[1]) ||
+      (estStdDevXYZ[2] > gnssHandlerPtr_->covarianceViolationThreshold_[2])) {
     std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS is rejected due to high std deviation. "
-              << "Expected: < 2.0 Received: " << estStdDevXYZ[0] << " and " << estStdDevXYZ[1] << " Received: " << std::endl;
+              << "Expected: < " << gnssHandlerPtr_->covarianceViolationThreshold_[0] << " Received:" << estStdDevXYZ[0] << " Expected: < "
+              << gnssHandlerPtr_->covarianceViolationThreshold_[1] << " Received:" << estStdDevXYZ[1] << " Expected: < "
+              << gnssHandlerPtr_->covarianceViolationThreshold_[2] << " Received:" << estStdDevXYZ[2] << std::endl;
+    gnssCallbackCounter_ = -1;
     return;
   }
 
   // Counter
   ++gnssCallbackCounter_;
 
-  // Initialize GNSS Handler
-  if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
-    // Wait until measurements got accumulated
-    accumulatedGnssCoordinates_ += gnssCoord;
-    if (!(gnssCallbackCounter_ % 5)) {
-      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED! See: " << gnssCallbackCounter_
-                << " / " << NUM_GNSS_CALLBACKS_UNTIL_START << std::endl;
+  if (!gnssHandlerPtr_->getGNSSstate()) {
+    // Initialize GNSS Handler
+    if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
+      // Wait until measurements got accumulated
+      accumulatedGnssCoordinates_ += gnssCoord;
+      if (!(gnssCallbackCounter_ % 5)) {
+        std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED! See: " << gnssCallbackCounter_
+                  << " / " << NUM_GNSS_CALLBACKS_UNTIL_START << std::endl;
+      }
+      return;
+    } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
+
+      if (!gnssHandlerPtr_->getGNSSstate()) {
+        gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+
+        sensor_msgs::NavSatFix referencefix;
+        Eigen::Vector3d referenceFixValues = gnssHandlerPtr_->getGPSReference();
+        referencefix.header = gnssMsgPtr->header;
+        referencefix.latitude = referenceFixValues(0);
+        referencefix.longitude = referenceFixValues(1);
+        referencefix.altitude = referenceFixValues(2);
+        pubReferenceNavSatFixCoordinates_.publish(referencefix);
+
+        std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
+      }
+      return;
     }
-    return;
-  } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
-    gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
-
-    sensor_msgs::NavSatFix referencefix;
-    Eigen::Vector3d referenceFixValues = gnssHandlerPtr_->getGPSReference();
-    referencefix.header = gnssMsgPtr->header;
-    referencefix.latitude = referenceFixValues(0);
-    referencefix.longitude = referenceFixValues(1);
-    referencefix.altitude = referenceFixValues(2);
-    pubReferenceNavSatFixCoordinates_.publish(referencefix);
-
-    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
-    return;
   }
 
   // Convert to Cartesian Coordinates
@@ -271,7 +281,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.0,
-        gnssMsgPtr->header.stamp.toSec(), fixedFrame, 2.0, W_t_W_Gnss, estStdDevXYZ);
+        gnssMsgPtr->header.stamp.toSec(), fixedFrame, 3.0, W_t_W_Gnss, estStdDevXYZ);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
@@ -446,8 +456,8 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     }
   } else {
     // Only add every 40th measurement
-    int sampleRate = static_cast<int>(leggedOdometryRate_) / 40;
-    if ((leggedOdometryCallbackCounter_ % 40) == 0) {
+    int sampleRate = static_cast<int>(leggedOdometryRate_) / 20;
+    if ((leggedOdometryCallbackCounter_ % 20) == 0) {
       // Compute Delta
       const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
       // Create measurement

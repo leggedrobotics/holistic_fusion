@@ -26,6 +26,8 @@ class GnssHandler {
   void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
   Eigen::Vector3d getGPSReference() { return referenceGPSposition_; };
 
+  Eigen::Vector3d covarianceViolationThreshold_ = Eigen::Vector3d::Zero();
+
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
   void convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);

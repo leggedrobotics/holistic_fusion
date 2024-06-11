@@ -15,16 +15,16 @@ initialization_params:
 # Factor Graph
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
-  realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+  realTimeSmootherLag: 5.0                # Lag of real-time fixed lag smoother[seconds]
   useAdditionalSlowBatchSmoother: false    # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
-  maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
+  maxOptimizationFrequency: 30.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
+  usingCholeskyFactorization: false        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
   optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset

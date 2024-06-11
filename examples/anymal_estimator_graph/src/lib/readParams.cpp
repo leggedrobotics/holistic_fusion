@@ -30,7 +30,7 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   // Noise Parameters ---------------------------------------------------
   /// Gnss
-  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
+  // gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
 
   /// LiDAR Odometry
   const auto poseUnaryNoise =
@@ -75,6 +75,11 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
     // Read Yaw initial guess options
     gnssHandlerPtr_->useYawInitialGuessFromFile_ = graph_msf::tryGetParam<bool>("gnss/useYawInitialGuessFromFile", privateNode);
     gnssHandlerPtr_->yawInitialGuessFromAlignment_ = graph_msf::tryGetParam<bool>("gnss/yawInitialGuessFromAlignment", privateNode);
+    // GNSS covariance thresholds
+    const auto covarianceVIolationThreshold = graph_msf::tryGetParam<std::vector<double>>("gnss/covarianceVIolationThreshold", privateNode);
+
+    gnssHandlerPtr_->covarianceViolationThreshold_ << covarianceVIolationThreshold[0], covarianceVIolationThreshold[1],
+        covarianceVIolationThreshold[2];
 
     // Alignment options.
     if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
