@@ -392,7 +392,8 @@ void GraphManager::updateGraph() {
                                                                     graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
   if (!successfulOptimizationFlag) {
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
-    return;
+    throw std::runtime_error("Graph optimization failed, will restart.");
+    // return;
   }
 
   // Compute entire result

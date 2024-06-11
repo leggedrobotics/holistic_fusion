@@ -271,7 +271,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.0,
-        gnssMsgPtr->header.stamp.toSec(), fixedFrame, 1.0, W_t_W_Gnss, estStdDevXYZ);
+        gnssMsgPtr->header.stamp.toSec(), fixedFrame, 2.0, W_t_W_Gnss, estStdDevXYZ);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
@@ -294,17 +294,17 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
     return;
   }
 
-  // Counter
-  ++lidarUnaryCallbackCounter_;
-
   // Currently we are not allowing LIO to initialize the global frame before GPS.
   // TODO, JN is devising a solution.
   if (useGnssUnaryFlag_ && !gnssHandlerPtr_->getGNSSstate()) {
-    if (!(lidarUnaryCallbackCounter_ % 10)) {
-      REGULAR_COUT << YELLOW_START << " SLAM is available but GPS is not. Please give me GPS. (Throttled)" << COLOR_END << std::endl;
-    }
+    // if (!(lidarUnaryCallbackCounter_ % 10)) {
+    REGULAR_COUT << YELLOW_START << " SLAM is available but GPS is not. Please give me GPS. (Throttled)" << COLOR_END << std::endl;
+    //}
     return;
   }
+
+  // Counter
+  ++lidarUnaryCallbackCounter_;
 
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
