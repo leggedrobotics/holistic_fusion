@@ -301,8 +301,8 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
                                                            fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
       REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor. Expected: "
-                   << T_fixedFrame_sensorFrame.covarianceViolationThreshold()
-                   << " Received: " << T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << COLOR_END << std::endl;
+                   << fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold()
+                   << " Received: " << fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << COLOR_END << std::endl;
       return;
     }
 
