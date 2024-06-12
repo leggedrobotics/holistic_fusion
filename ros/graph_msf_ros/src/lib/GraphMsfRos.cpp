@@ -135,7 +135,7 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
 
     Eigen::Vector3d t = (preIntegratedNavStatePtr->getT_W_Ik()).translation();
     Eigen::Vector3d diff = t - t_minus_1;
-    if (diff.norm() > 1.5) {
+    if (diff.norm() > 10.5) {
       killCounter_++;
       std::cout << RED_START << "GraphMsfRos" << COLOR_END << " The  (navStatePtr->getT_W_Ik()).translation() diff is " << diff.norm()
                 << " meters."
@@ -148,13 +148,13 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
         throw std::runtime_error("Turcan's throwback, too big jump.");
       }
     } else {
-      goodCounter_++;
+      // goodCounter_++;
     }
 
-    if (goodCounter_ > 50) {
-      killCounter_ = 0;
-      goodCounter_ = 0;
-    }
+    // if (goodCounter_ > 50) {
+    //  killCounter_ = 0;
+    //  goodCounter_ = 0;
+    //}
     t_minus_1 = t;
 
     // Publish Odometry
