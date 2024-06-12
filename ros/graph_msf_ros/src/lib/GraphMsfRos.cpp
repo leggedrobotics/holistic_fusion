@@ -133,7 +133,7 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
                 << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
     }
 
-    /*Eigen::Vector3d t = (preIntegratedNavStatePtr->getT_W_Ik()).translation();
+    Eigen::Vector3d t = (preIntegratedNavStatePtr->getT_W_Ik()).translation();
     Eigen::Vector3d diff = t - t_minus_1;
     if (diff.norm() > 1.5) {
       killCounter_++;
@@ -141,7 +141,7 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
                 << " meters."
                 << " killCounter_: " << killCounter_ << " /10" << std::endl;
 
-      if (killCounter_ > 10) {
+      if (killCounter_ > 20) {
         std::cout << RED_START << "GraphMsfRos" << COLOR_END << " The  (navStatePtr->getT_W_Ik()).translation() diff is " << diff.norm()
                   << " meters." << std::endl;
 
@@ -156,7 +156,7 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
       goodCounter_ = 0;
     }
     t_minus_1 = t;
-*/
+
     // Publish Odometry
     this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
 
