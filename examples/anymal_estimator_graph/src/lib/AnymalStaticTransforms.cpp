@@ -27,8 +27,8 @@ AnymalStaticTransforms::AnymalStaticTransforms(const std::shared_ptr<ros::NodeHa
 void AnymalStaticTransforms::findTransformations() {
   // Print to console --------------------------
   REGULAR_COUT << " Looking up transforms in TF-tree." << std::endl;
-  REGULAR_COUT << " Transforms between the following frames are required:" << std::endl;
-  REGULAR_COUT << " " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
+  REGULAR_COUT << " Transforms between the following frames are required: " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_
+               << ", " << baseLinkFrame_ << std::endl;
   REGULAR_COUT << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable
@@ -40,6 +40,7 @@ void AnymalStaticTransforms::findTransformations() {
   rosRate.sleep();
 
   // Imu to Base ---
+  REGULAR_COUT << " Looking up transform from " << imuFrame_ << " to " << baseLinkFrame_ << std::endl;
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(100.0));
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
   // I_Base
@@ -49,7 +50,7 @@ void AnymalStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
 
   // Imu to LiDAR Link ---
-  REGULAR_COUT << " Waiting for transform for 10 seconds.";
+  REGULAR_COUT << " Looking up transform from " << imuFrame_ << " to " << lioOdometryFrame_ << std::endl;
   listener_.waitForTransform(imuFrame_, lioOdometryFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, lioOdometryFrame_, ros::Time(0), transform);
   // I_Lidar
@@ -60,6 +61,7 @@ void AnymalStaticTransforms::findTransformations() {
 
   // Imu to GNSS Link ---
   try {
+    REGULAR_COUT << " Looking up transform from " << imuFrame_ << " to " << gnssFrame_ << std::endl;
     listener_.waitForTransform(imuFrame_, gnssFrame_, ros::Time(0), ros::Duration(1.0));
     listener_.lookupTransform(imuFrame_, gnssFrame_, ros::Time(0), transform);
     // I_Gnss
