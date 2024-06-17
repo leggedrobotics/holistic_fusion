@@ -306,6 +306,9 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
       return;
     }
 
+    //    std::cout << "Adding unary position measurement in frame " << fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()
+    //              << " with covariance " << fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << std::endl;
+
     // Create GMSF expression
     GmsfUnaryExpressionPosition3 gmsfUnaryExpressionPosition3(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),
@@ -482,6 +485,7 @@ void GraphMsf::optimizeGraph_() {
   REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  bool optimizedAtLeastOnce = false;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
@@ -489,13 +493,17 @@ void GraphMsf::optimizeGraph_() {
       // Lock
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-      if (optimizeGraphFlag_ && (currentTime - lastOptimizedTime > 1.0 / graphConfigPtr_->maxOptimizationFrequency_)) {
-        optimizeGraphFlag = optimizeGraphFlag_;
-        optimizeGraphFlag_ = false;
+      // Optimize at most at the rate of maxOptimizationFrequency but at least every second
+      if ((optimizeGraphFlag_ && ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->maxOptimizationFrequency_))) ||
+          (currentTime - lastOptimizedTime) > 1.0 && optimizedAtLeastOnce) {
+        optimizeGraphFlag = true;
         lastOptimizedTime = currentTime;
+        optimizedAtLeastOnce = true;
+        optimizeGraphFlag_ = false;
       }
     }
 
+    // Optimize
     if (optimizeGraphFlag) {
       graphMgrPtr_->updateGraph();
     }  // else just sleep for a short amount of time before polling again
