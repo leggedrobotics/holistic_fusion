@@ -1,7 +1,7 @@
 gnss:
-  initYaw: 90.0
-  useYawInitialGuessFromFile: true # If this and the next are false, 0 initial yaw is used.
-  yawInitialGuessFromAlignment: false # Overrides the initial guess from file option.
+  initYaw: 0.0
+  useYawInitialGuessFromFile: false # If this and the next are false, 0 initial yaw is used.
+  yawInitialGuessFromAlignment: true # Overrides the initial guess from file option.
   covarianceVIolationThreshold: [1.5, 1.5, 2.0] # in Meters: [ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   useGnssReference: false
   referenceLatitude: 47.4084860363  # Wangen a.A.: 47.234593265310046, Hoengg: 47.4084860363, Oberglatt: 47.4801402
