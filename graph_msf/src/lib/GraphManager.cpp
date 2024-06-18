@@ -183,7 +183,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   propagatedStateTime_ = imuTimeK;
   currentAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
 
-  // 1.2 Update IMU preintegrator
+  // 1.2 Update IMU Pre-integrator
   updateImuIntegrators_(imuMeas);
 
   // 1.3 Predict propagated state via forward integration

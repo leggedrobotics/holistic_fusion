@@ -180,7 +180,9 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
       // In radians.
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
-        std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
+        if (gnssCallbackCounter_ % 10 == 0) {
+          std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
+        }
         return;
       }
       std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
@@ -246,7 +248,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
+    this->addUnaryPose3Measurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -396,14 +398,25 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   // Norm of the velocity
   double norm = legVelocity.norm();
 
+  // Create the unary measurement
+  graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
+      "Leg_velocity_unary", int(leggedOdometryRate_),
+      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
+      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId_,
+      graph_msf::RobustNormEnum::None, 1.0, leggedOdometryKPtr->header.stamp.toSec(), leggedOdometryKPtr->header.frame_id, 1.0, legVelocity,
+      legVelocityUnaryNoise_);
+
+  // Print Summary
+//  std::cout << "Legged Odometry Velocity: " << legVelocityUnaryMeasurement << std::endl;
+
   // Printout
   if (norm < 0.01 && leggedOdometryOdomCallbackCounter_ > 50) {
     std::cout << "Robot standing still." << std::endl;
-
     // Add zero velocity to the graph
-    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
+    //this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
   } else {
     std::cout << "Robot walking." << std::endl;
+    // Add unary velocity to the graph
   }
 }
 

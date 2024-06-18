@@ -25,7 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/OfflineOptimizationTrigger.h"
 
 // Macros
-#define ROS_QUEUE_SIZE 10
+#define ROS_QUEUE_SIZE 20
 
 namespace graph_msf {
 
@@ -80,13 +80,13 @@ class GraphMsfRos : public GraphMsf {
       const Eigen::Vector3d orientationVarianceRos, const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr);
   void publishOptimizedStateAndBias_(
-      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
   // Lower Level Functions
   void publishTfTreeTransform_(const std::string& frameName, const std::string& childFrameName, double timeStamp,
                                const Eigen::Isometry3d& T_frame_childFrame);
-  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+  void publishImuOdoms_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
   void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
                                   const double timeStamp) const;
@@ -167,6 +167,9 @@ class GraphMsfRos : public GraphMsf {
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
+
+  // Mutex
+  std::mutex rosPublisherMutex_;
 };
 }  // namespace graph_msf
 

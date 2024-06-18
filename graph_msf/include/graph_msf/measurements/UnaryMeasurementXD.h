@@ -29,6 +29,20 @@ class UnaryMeasurementXD final : public UnaryMeasurement {
   // Destructor
   ~UnaryMeasurementXD() override = default;
 
+  // Summary for printout
+  std::string summary() const override {
+    std::stringstream ss;
+    std::string summary = UnaryMeasurement::summary();
+    ss << summary << "Measurement: " << std::endl; // << unaryMeasurement_ << std::endl;
+    return ss.str();
+  }
+
+  // Overload << operator
+  friend std::ostream& operator<<(std::ostream& os, const UnaryMeasurementXD& unaryMeasurementXD) {
+    os << unaryMeasurementXD.summary();
+    return os;
+  }
+
   // Accessors
   const MEASUREMENT_TYPE& unaryMeasurement() const { return unaryMeasurement_; }
   const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity() const { return unaryMeasurementNoiseDensity_; }

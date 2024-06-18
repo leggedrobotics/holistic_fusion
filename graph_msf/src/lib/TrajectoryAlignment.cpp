@@ -115,42 +115,40 @@ bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajector
 
 bool TrajectoryAlignment::alignTrajectories(double& yaw) {
   // Mutex for alignment Flag
-  const std::lock_guard<std::mutex> alingmentLock(alignmentMutex);
+  const std::lock_guard<std::mutex> alignmentLock(alignmentMutex);
 
   // We only check LIO since GNSS measurements might be jumpy, i.e. RTK Float.
   if (lidarTrajectory_.isStanding(10, 1, 0.50)) {
-    std::cout << "LIO indicates standing. Resetting both trajectories to not register noise." << std::endl;
     lidarTrajectory_.poses().clear();
     gnssTrajectory_.poses().clear();
     return false;
   }
 
   // Status
-  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Current Distance of LiDAR/GNSS [m]: " << COLOR_END
-            << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << " of required [m] " << minDistanceHeadingInit_
-            << std::endl;
+  if (gnssTrajectory_.poses().size() % 10 == 0) {
+    std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Current Distance of LiDAR/GNSS [m]: " << COLOR_END
+              << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << " of required [m] " << minDistanceHeadingInit_
+              << std::endl;
+  }
 
   // Perform Checks
   if (lidarTrajectory_.distance() < minDistanceHeadingInit_) {
-    std::cout << "TrajectoryAlignment::alignTrajectories failed. LiDAR distance too short." << std::endl;
     return false;
   }
   if (gnssTrajectory_.distance() < minDistanceHeadingInit_) {
-    std::cout << "TrajectoryAlignment::alignTrajectories failed. GNSS distance too short." << std::endl;
     return false;
   }
 
   // Align Trajectories
   Trajectory newLidarTrajectory;
   Trajectory newGnssTrajectory;
-  if (!associateTrajectories(lidarTrajectory_, gnssTrajectory_, newLidarTrajectory, newGnssTrajectory)) {
-    std::cout << "TrajectoryAlignment::initializeYaw associateTrajectories failed." << std::endl;
-    return false;
-  }
+  // Associate Trajectories
+  associateTrajectories(lidarTrajectory_, gnssTrajectory_, newLidarTrajectory, newGnssTrajectory);
   // Update Trajectories
   lidarTrajectory_ = newLidarTrajectory;
   gnssTrajectory_ = newGnssTrajectory;
   Eigen::Matrix4d transform;
+  // Trajectory Alignment
   if (!trajectoryAlignment(newGnssTrajectory, newLidarTrajectory, transform)) {
     std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;
     return false;
