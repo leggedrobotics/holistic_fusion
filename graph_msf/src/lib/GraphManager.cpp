@@ -518,7 +518,7 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-bool GraphManager::optimizeSlowBatchSmoother(int maxIterations) {
+bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
   if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
@@ -534,7 +534,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations) {
     std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
 
     // Save Optimized Result
-    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, "/home/nubertj/");
+    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, savePath);
 
     // Return
     return true;
@@ -570,6 +570,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     if (fileStreams.find(stateCategory) == fileStreams.end()) {
       // If not, create a new file stream for this category
       std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + "_" + timeString + ".csv";
+      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);
       // Write header

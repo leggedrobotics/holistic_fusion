@@ -171,7 +171,7 @@ bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOpti
   int maxIterations = req.max_optimization_iterations;
 
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations)) {
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath_)) {
     res.success = true;
     res.message = "Optimization successful.";
   } else {

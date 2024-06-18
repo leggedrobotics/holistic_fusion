@@ -111,6 +111,7 @@ class GraphMsfRos : public GraphMsf {
   // Members
   std::string fixedFrameAlignedNameId_ = "_graph_msf_aligned";
   std::string sensorFrameCorrectedNameId_ = "_graph_msf_corrected";
+  std::string optimizationResultLoggingPath_ = "";
 
   Eigen::Vector3d t_minus_1 = Eigen::Vector3d::Zero();
   int killCounter_ = 0;
