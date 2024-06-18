@@ -117,6 +117,14 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
   // Mutex for alignment Flag
   const std::lock_guard<std::mutex> alingmentLock(alignmentMutex);
 
+  // We only check LIO since GNSS measurements might be jumpy, i.e. RTK Float.
+  if (lidarTrajectory_.isStanding(10, 1, 0.50)) {
+    std::cout << "LIO indicates standing. Resetting both trajectories to not register noise." << std::endl;
+    lidarTrajectory_.poses().clear();
+    gnssTrajectory_.poses().clear();
+    return false;
+  }
+
   // Status
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Current Distance of LiDAR/GNSS [m]: " << COLOR_END
             << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << " of required [m] " << minDistanceHeadingInit_
@@ -131,14 +139,6 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
     std::cout << "TrajectoryAlignment::alignTrajectories failed. GNSS distance too short." << std::endl;
     return false;
   }
-  //  if (!lidarTrajectory_.isStanding(lidarRate_, noMovementTime_, noMovementDistance_)) {
-  //    std::cout << "TrajectoryAlignment::alignTrajectories failed. LiDAR not standing." << std::endl;
-  //    return false;
-  //  }
-  //  if (!gnssTrajectory_.isStanding(gnssRate_, noMovementTime_, noMovementDistance_)) {
-  //    std::cout << "TrajectoryAlignment::alignTrajectories failed. GNSS not standing." << std::endl;
-  //    return false;
-  //  }
 
   // Align Trajectories
   Trajectory newLidarTrajectory;
