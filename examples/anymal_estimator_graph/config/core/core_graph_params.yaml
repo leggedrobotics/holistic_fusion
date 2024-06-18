@@ -49,7 +49,7 @@ noise_params:
   ## Initial State
   initialPositionNoiseDensity: 10.0    # Prior/starting value of position
   initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
-  initialVelocityNoiseDensity: 1.0e-01 # Prior/starting value of velocity
+  initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
   initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
   initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
 
