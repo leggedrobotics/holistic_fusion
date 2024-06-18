@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
-#define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 100
+#define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 1000
 
 // C++
 #include <string>
@@ -411,49 +411,55 @@ void GraphManager::updateGraph() {
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
-    // Get map with all frame-pair to key correspondences
-    // Iterate through all dynamically allocated transforms --------------------------------
+
+    // Iterate through all dynamically allocated transforms (holistic and calibration) --------------------------------
     for (auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
       // Get Transform
       const gtsam::Key& key = framePairIterator.second.key();  // alias
-      // Try to optimize ---------------------------------------------------------------
+
+      // Case 1: Try to optimize ---------------------------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
+
+        // 6D Transformation
         if (gtsam::Symbol(key).string()[0] == 't') {
           T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
           T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
-        } else if (gtsam::Symbol(key).string()[0] == 'd') {
+        }
+        // 3D Displacement
+        else if (gtsam::Symbol(key).string()[0] == 'd') {
           T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
           T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
-        } else {
+        }
+        // Only these two are supported for now
+        else {
           throw std::runtime_error("Key is neither a pose nor a displacement key.");
         }
-        // Write to dictionary
+
+        // Write to Result Dictionaries
         resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                              Eigen::Isometry3d(T_frame1_frame2.matrix()));
         resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                                        T_frame1_frame2_covariance);
+
         // Mark that this key has at least been optimized once
         if (framePairIterator.second.getNumberStepsOptimized() == 0) {
           REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairIterator.first.first << " and "
                        << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
-          gtsam::Pose3 T_frame1_frame2_firstOptimized(T_frame1_frame2);
-          REGULAR_COUT << GREEN_START
-                       << " Result, RPY (deg): " << T_frame1_frame2_firstOptimized.rotation().rpy().transpose() * (180.0 / M_PI)
-                       << ", t (x, y, z): " << T_frame1_frame2_firstOptimized.translation().transpose() << COLOR_END << std::endl;
+          REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
+                       << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
         }
         // Increase Counter
         framePairIterator.second.incrementNumberStepsOptimized();
-        // Check health status of transformation --> Might need to be deleted if diverged too much --> only necessary for global fixed
-        // frames
+
+        // Check health status of transformation --> Delete if diverged too much --> only necessary for global fixed frames
         if (framePairIterator.first.second == worldFrame_ &&
             framePairIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
-          // const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  //
-          // alias
-          double errorTangentSpace = 0.0;
+          const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  // alias
+          const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
           if (errorTangentSpace > graphConfigPtr_->fixedFramePosesResetThreshold_) {
-            REGULAR_COUT << "Error in tangent space: " << errorTangentSpace << std::endl;
+            REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
             std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
                       << framePairIterator.first.first << " and " << framePairIterator.first.second
                       << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
@@ -463,8 +469,8 @@ void GraphManager::updateGraph() {
             break;
           }
         }
-      }
-      // Optimization failed -----------------------------------------
+      }  // try statement
+      // Case 2: Optimization failed -----------------------------------------
       catch (const std::out_of_range& exception) {
         if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
                                                                        // --> as querying was unsuccessful, we remove it from the graph
@@ -483,8 +489,8 @@ void GraphManager::updateGraph() {
                        << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
                        << COLOR_END << std::endl;
         }
-      }
-    }
+      }  // catch statement
+    }    // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -505,7 +511,8 @@ void GraphManager::updateGraph() {
     } else {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
     }
-#// Correct rotation only for roll and pitch, keep integrated yaw
+
+    // Correct rotation only for roll and pitch, keep integrated yaw
     gtsam::Rot3 R_O_I_rp_corrected =
         gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
                          W_imuPropagatedState_.pose().rotation().roll());
