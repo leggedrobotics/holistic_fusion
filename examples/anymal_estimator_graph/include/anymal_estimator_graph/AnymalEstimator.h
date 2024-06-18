@@ -97,7 +97,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLIO_ = true;
 
   // Noise
-  // double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;

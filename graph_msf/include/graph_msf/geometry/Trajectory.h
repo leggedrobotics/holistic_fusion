@@ -35,7 +35,9 @@ class Trajectory {
   }
 
   bool isStanding(const int& rate, const int& seconds, const double& noMovementThreshold) {
-    if (_poses.size() < rate * seconds) return false;
+    if (_poses.size() < rate * seconds) {
+      return false;
+    }
 
     double distance = 0.0;
     Eigen::Vector3d lastPose = (_poses.end() - rate * seconds)->position();
@@ -43,7 +45,6 @@ class Trajectory {
       distance += ((poseIt->position() - lastPose).norm());
       lastPose = poseIt->position();
     }
-
     return distance < noMovementThreshold;
   }
 

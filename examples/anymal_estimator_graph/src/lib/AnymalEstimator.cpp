@@ -263,7 +263,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
       // In radians.
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
-        std::cout << RED_START << "Trajectory Alignment Failed. Waiting for larger distance." << COLOR_END << std::endl;
+        std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
         return;
       }
       std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
