@@ -106,15 +106,15 @@ Visualization Manager:
         LF_KFE_drive:
           Value: true
         LF_SHANK:
-          Value: false
+          Value: true
         LF_THIGH:
-          Value: false
+          Value: true
         LF_hip_fixed:
-          Value: false
+          Value: true
         LF_shank_fixed:
-          Value: false
+          Value: true
         LF_thigh_fixed:
-          Value: false
+          Value: true
         LH_FOOT:
           Value: false
         LH_HAA_drive:
@@ -128,15 +128,15 @@ Visualization Manager:
         LH_KFE_drive:
           Value: true
         LH_SHANK:
-          Value: false
+          Value: true
         LH_THIGH:
-          Value: false
+          Value: true
         LH_hip_fixed:
-          Value: false
+          Value: true
         LH_shank_fixed:
-          Value: false
+          Value: true
         LH_thigh_fixed:
-          Value: false
+          Value: true
         RF_FOOT:
           Value: false
         RF_HAA_drive:
@@ -150,15 +150,15 @@ Visualization Manager:
         RF_KFE_drive:
           Value: true
         RF_SHANK:
-          Value: false
+          Value: true
         RF_THIGH:
-          Value: false
+          Value: true
         RF_hip_fixed:
-          Value: false
+          Value: true
         RF_shank_fixed:
-          Value: false
+          Value: true
         RF_thigh_fixed:
-          Value: false
+          Value: true
         RH_FOOT:
           Value: false
         RH_HAA_drive:
@@ -172,13 +172,13 @@ Visualization Manager:
         RH_KFE_drive:
           Value: true
         RH_SHANK:
-          Value: false
+          Value: true
         RH_THIGH:
-          Value: false
+          Value: true
         RH_hip_fixed:
-          Value: false
+          Value: true
         RH_shank_fixed:
-          Value: false
+          Value: true
         RH_thigh_fixed:
           Value: false
         base:
@@ -188,9 +188,9 @@ Visualization Manager:
         base_inverted:
           Value: true
         battery:
-          Value: false
+          Value: true
         body_top:
-          Value: false
+          Value: true
         bottom_shell:
           Value: false
         default:
@@ -228,9 +228,9 @@ Visualization Manager:
         depth_camera_front_upper_infra2_optical_frame:
           Value: true
         depth_camera_left_camera:
-          Value: false
+          Value: true
         depth_camera_left_camera_parent:
-          Value: false
+          Value: true
         depth_camera_left_depth_frame:
           Value: true
         depth_camera_left_depth_optical_frame:
@@ -276,9 +276,9 @@ Visualization Manager:
         depth_camera_rear_upper_infra2_optical_frame:
           Value: true
         depth_camera_right_camera:
-          Value: false
+          Value: true
         depth_camera_right_camera_parent:
-          Value: false
+          Value: true
         depth_camera_right_depth_frame:
           Value: true
         depth_camera_right_depth_optical_frame:
@@ -294,7 +294,7 @@ Visualization Manager:
         docking_socket:
           Value: true
         face_front:
-          Value: false
+          Value: true
         face_rear:
           Value: false
         face_shell_front:
@@ -320,23 +320,23 @@ Visualization Manager:
         map_o3d:
           Value: true
         odom_graph_msf:
-          Value: false
+          Value: true
         odom_o3d:
           Value: true
         raw_rs_o3d:
           Value: true
         top_shell:
-          Value: false
+          Value: true
         wide_angle_camera_front_camera:
-          Value: false
+          Value: true
         wide_angle_camera_front_camera_parent:
-          Value: false
+          Value: true
         wide_angle_camera_rear_camera:
-          Value: false
+          Value: true
         wide_angle_camera_rear_camera_parent:
-          Value: false
+          Value: true
         world_graph_msf:
-          Value: false
+          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF

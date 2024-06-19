@@ -25,7 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/OfflineOptimizationTrigger.h"
 
 // Macros
-#define ROS_QUEUE_SIZE 10
+#define ROS_QUEUE_SIZE 20
 
 namespace graph_msf {
 
@@ -71,27 +71,26 @@ class GraphMsfRos : public GraphMsf {
                                            graph_msf_ros::OfflineOptimizationTrigger::Response& res);
 
   // Publishing -----------------------------------
-  void publishOptimizedStateAndBias_(
-      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
-      const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
+  // Higher Level Functions
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
-  // Publish Transform to TF
+  void publishNonTimeCriticalData_(
+      const Eigen::Isometry3d T_O_Ik, const double timeK, const Eigen::Matrix<double, 6, 6> poseCovarianceRos,
+      const Eigen::Matrix<double, 6, 6> twistCovarianceRos, const Eigen::Vector3d positionVarianceRos,
+      const Eigen::Vector3d orientationVarianceRos, const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr);
+  void publishOptimizedStateAndBias_(
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
+      const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
+
+  // Lower Level Functions
   void publishTfTreeTransform_(const std::string& frameName, const std::string& childFrameName, double timeStamp,
                                const Eigen::Isometry3d& T_frame_childFrame);
-
-  // Publish IMU Odometries
-  void publishImuOdoms_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+  void publishImuOdoms_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
-
-  // Vector3 Variances
   void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
                                   const double timeStamp) const;
-
-  // Paths
-  void publishImuPaths_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& navStatePtr) const;
-
-  // Publish Added IMU Measurements
+  void publishImuPaths_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
 
   // Measure time
@@ -172,6 +171,9 @@ class GraphMsfRos : public GraphMsf {
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
+
+  // Mutex
+  std::mutex rosPublisherMutex_;
 };
 }  // namespace graph_msf
 

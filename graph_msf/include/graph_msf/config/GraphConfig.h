@@ -46,7 +46,7 @@ struct GraphConfig {
   bool usingCholeskyFactorizationFlag_ = true;
   bool usingBiasForPreIntegrationFlag_ = true;
   bool optimizeFixedFramePosesWrtWorld_ = true;
-  double fixedFramePosesResetThreshold_ = 5.0;
+  double fixedFramePosesResetThreshold_ = 0.5;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
 
   // Noise Params (Noise Amplitude Spectral Density)

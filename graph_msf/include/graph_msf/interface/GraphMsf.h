@@ -45,8 +45,9 @@ class GraphMsf {
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
 
   // Getter functions
-  bool areYawAndPositionInited();
-  bool areRollAndPitchInited();
+  bool areYawAndPositionInited() const;
+  bool areRollAndPitchInited() const;
+  bool isGraphInited() const;
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
   // Adder functions
@@ -56,11 +57,13 @@ class GraphMsf {
                                     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
                                     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
   /// Unary Measurements
-  void addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary);
-  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& W_t_W_frame);
-  bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_W_frame);
-  bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_W_frame);
-  bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_W_frame);
+  void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S);
+  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_t_F_S);
+  void addUnaryVelocity3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S);
+  void addUnaryVelocity3BodyMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S);
+  bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_F_S);
+  bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_F_S);
+  bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_F_S);
 
   /// Binary Measurements
   void addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);

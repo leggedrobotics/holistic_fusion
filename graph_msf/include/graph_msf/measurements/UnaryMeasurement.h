@@ -27,6 +27,23 @@ class UnaryMeasurement : public Measurement {
   // Destructor
   ~UnaryMeasurement() override = default;
 
+  // Summary for printout
+  [[nodiscard]] virtual std::string summary() const {
+    std::stringstream ss;
+    ss << std::endl;
+    ss << "Measurement Name: " << this->measurementName() << std::endl;
+    ss << "Timestamp: " << this->timeK_ << std::endl;
+    ss << "Fixed Frame: " << this->fixedFrameName() << std::endl;
+    ss << "Sensor Frame: " << this->sensorFrameName() << std::endl;
+    return ss.str();
+  }
+
+  // Overload << operator
+  friend std::ostream& operator<<(std::ostream& os, const UnaryMeasurement& unaryMeasurement) {
+    os << unaryMeasurement.summary();
+    return os;
+  }
+
   // Getters
   [[nodiscard]] const std::string& fixedFrameName() const { return fixedFrameName_; }
   std::string& lv_sensorFrameName() { return sensorFrameName_; }
