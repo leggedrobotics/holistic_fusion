@@ -46,7 +46,8 @@ class GmsfUnaryExpression {
 
   // ii) holistically optimize over fixed frames
   virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                                   const gtsam::NavState& W_currentPropagatedState) = 0;
+                                                   const gtsam::NavState& W_currentPropagatedState,
+                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
 
   // iii) transform measurement to core imu frame
   virtual void transformStateToSensorFrame() = 0;

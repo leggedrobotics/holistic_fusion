@@ -323,8 +323,6 @@ Visualization Manager:
           Value: true
         map_o3d:
           Value: true
-        map_o3d_graph_msf_aligned:
-          Value: true
         map_o3d_localization_manager:
           Value: true
         odom:
@@ -513,8 +511,7 @@ Visualization Manager:
                   {}
             odom_graph_msf:
               world_graph_msf:
-                map_o3d_graph_msf_aligned:
-                  {}
+                {}
             top_shell:
               {}
           feetcenter:
@@ -1273,7 +1270,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom_graph_msf
+    Fixed Frame: world_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
