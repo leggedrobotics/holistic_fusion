@@ -45,13 +45,21 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
   // Interface with three cases (non-exclusive):
   // ii) Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState) override {
+                                           const gtsam::NavState& W_currentPropagatedState,
+                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
+    // Compute the initial guess for T_fixedFrame_W
+    // TODO: Add good initial guess (containing position)
+    //    Eigen::Vector3d fixedFrame_t_fixedFrame_sensorFrame_meas = positionUnaryMeasurementPtr_->unaryMeasurement();
+    //    Eigen::Vector3d W_t_W_I_est = W_currentPropagatedState.pose().translation();
+    //    Eigen::Vector3d fixedFrame_t_fixedFrame_W_initial = fixedFrame_t_fixedFrame_sensorFrame_meas + W_t_W_I_est;
+
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAdded = false;
+    Eigen::Vector3d _;  // Placeholder
     gtsam::Pose3 T_fixedFrame_W_initial(gtsam::Pose3::Identity());
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
-        newGraphKeyAdded, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK(),
-        T_fixedFrame_W_initial);
+        newGraphKeyAdded, _, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK(),
+        T_fixedFrame_W_initial, false);
 
     // Define expression for T_fixedFrame_W
     gtsam::Pose3_ exp_T_fixedFrame_W(newGraphKey);  // T_fixedFrame_W

@@ -39,17 +39,28 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
   // Interface with three cases (non-exclusive):
   // ii) holistically optimize over fixed frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState) override {
-    // Get Measurement & Estimate aliases
-    const auto& T_fixedFrame_sensorFrame_meas = poseUnaryMeasurementPtr_->unaryMeasurement();
+                                           const gtsam::NavState& W_currentPropagatedState,
+                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
+    // Get Measurement & Estimate Aliases
+    auto& T_fixedFrame_sensorFrame_meas = poseUnaryMeasurementPtr_->unaryMeasurement();
     const auto& T_W_I_est = W_currentPropagatedState.pose().matrix();
 
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAdded = false;
+    Eigen::Vector3d measurementOriginPosition = T_fixedFrame_sensorFrame_meas.translation();
     gtsam::Pose3 T_fixedFrame_W_initial(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
-        newGraphKeyAdded, poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, poseUnaryMeasurementPtr_->timeK(),
-        T_fixedFrame_W_initial);
+        newGraphKeyAdded, measurementOriginPosition, poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_,
+        poseUnaryMeasurementPtr_->timeK(), T_fixedFrame_W_initial, centerMeasurementsAtRobotPositionBeforeAlignment);
+
+    // Shift the measurement to the robot position and recompute initial guess
+    if (centerMeasurementsAtRobotPositionBeforeAlignment) {
+      // Shift the measurement to the robot position
+      T_fixedFrame_sensorFrame_meas.translation() = T_fixedFrame_sensorFrame_meas.translation() - measurementOriginPosition;
+      T_fixedFrame_W_initial = gtsam::Pose3(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
+      transformsExpressionKeys.lv_T_frame1_frame2(poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_)
+          .setApproximateTransformationBeforeOptimization(T_fixedFrame_W_initial);
+    }
 
     // Transform state to fixed frame
     // Corresponding expression
@@ -83,6 +94,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
         newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         poseUnaryMeasurementPtr_->timeK(), T_sensorFrame_sensorFrameCorrected_initial);
+    assert(_ == Eigen::Vector3d::Zero() && "GmsfUnaryExpressionPose3: Measurement origin position should be zero.");
 
     // Apply calibration correction
     exp_T_fixedFrame_sensorFrame_ = exp_T_fixedFrame_sensorFrame_ * gtsam::Pose3_(newGraphKey);  // T_fixedFrame_sensorFrameCorrected
