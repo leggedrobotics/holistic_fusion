@@ -33,7 +33,7 @@ class UnaryMeasurementXD final : public UnaryMeasurement {
   std::string summary() const override {
     std::stringstream ss;
     std::string summary = UnaryMeasurement::summary();
-    ss << summary << "Measurement: " << std::endl; // << unaryMeasurement_ << std::endl;
+    ss << summary << "Measurement: " << std::endl;  // << unaryMeasurement_ << std::endl;
     return ss.str();
   }
 
