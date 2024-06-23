@@ -274,9 +274,9 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
         isTrajectoryAligned_ = false;
         alignmentStatus.data = isTrajectoryAligned_;
         pubTrajectoryAlignmentBoolean.publish(alignmentStatus);
-        if (gnssCallbackCounter_ % 10 == 0) {
-          std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
-        }
+        // if (gnssCallbackCounter_ % 10 == 0) {
+        //   std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
+        // }
         return;
       }
       isTrajectoryAligned_ = true;
