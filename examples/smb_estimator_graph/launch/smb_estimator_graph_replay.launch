@@ -3,7 +3,7 @@
     <!-- Parameters -->
     <arg name="use_sim_time" default="true"/>
     <arg name="imu_topic_name"            default="/imu" />
-    <arg name="lidar_odometry_topic_name" default="/mapping_node/scan2map_odometry"/>
+    <arg name="lidar_odometry_topic_name" default="/mapping/scan2map_odometry"/>
     <arg name="core_graph_param_file" default="$(find smb_estimator_graph)/config/core/core_graph_params.yaml"/>
     <arg name="smb_graph_param_file" default="$(find smb_estimator_graph)/config/smb_specific/smb_graph_params.yaml"/>
 
