@@ -229,8 +229,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss = Eigen::Vector3d::Zero();
-  // gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-  gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
+   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  //gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
   // fixedFrame = "east_north_up";
 
@@ -266,6 +266,11 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       alignmentStatus.data = true;
       pubTrajectoryAlignmentBoolean.publish(alignmentStatus);
     } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // c: From alignment
+
+      if (lidarUnaryCallbackCounter_ < 2) {
+        return;
+      }
+
       // Adding the GNSS measurement
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
       // In radians.

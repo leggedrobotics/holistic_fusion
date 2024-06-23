@@ -122,6 +122,12 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
     std::cout << "LIO indicates standing. Resetting both trajectories to not register noise." << std::endl;
     lidarTrajectory_.poses().clear();
     gnssTrajectory_.poses().clear();
+
+    if (!lidarTrajectory_.empty() && !gnssTrajectory_.empty())
+    {
+      std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " Clearing vectors did not work." << COLOR_END << std::endl;
+    }
+
     return false;
   }
 
@@ -152,7 +158,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
   // Update Trajectories
   lidarTrajectory_ = newLidarTrajectory;
   gnssTrajectory_ = newGnssTrajectory;
-  Eigen::Matrix4d transform;
+  Eigen::Matrix4d transform :: Eigen::Matrix4d::Identity();
   // Trajectory Alignment
   if (!trajectoryAlignment(newGnssTrajectory, newLidarTrajectory, transform)) {
     std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;
