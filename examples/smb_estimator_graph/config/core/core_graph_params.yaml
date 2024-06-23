@@ -29,6 +29,7 @@ graph_params:
   optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
+  centerMeasurementsAtRobotPositionBeforeAlignment: false # If true, the measurements are centered before alignment
 
 # Noise Parameters
 noise_params:

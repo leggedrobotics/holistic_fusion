@@ -133,7 +133,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
+    this->addUnaryPose3Measurement(unary6DMeasurement);
   } else {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(unary6DMeasurement);

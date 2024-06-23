@@ -6,7 +6,7 @@
 
     <!-- GMSF Input Topics -->
     <arg name="imu_topic_name"            default="/imu" />
-    <arg name="lidar_odometry_topic_name" default="/mapping_node/scan2map_odometry"/> <!--/compslam_lio/odom_aft_mapped_to_init_CORRECTED" /-->
+    <arg name="lidar_odometry_topic_name" default="/mapping/scan2map_odometry"/> <!--/compslam_lio/odom_aft_mapped_to_init_CORRECTED" /-->
     <arg name="wheel_odometry_topic_name" default="/control/smb_diff_drive/odom" />
     <arg name="vio_odometry_topic_name"   default="/tracking_camera/odom/sample" />
 
