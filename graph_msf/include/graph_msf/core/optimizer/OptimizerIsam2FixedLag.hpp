@@ -157,8 +157,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         if (keyTimeStamp.first != valuesKeyNotExistent) {
           newGraphKeysTimeStampMapFiltered.insert(keyTimeStamp);
         } else {
-          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " GraphKeysTimeStampMap contains non-existent key: "
-                    << gtsam::Symbol(keyTimeStamp.first) << ". --> Removed." << COLOR_END << std::endl;
+          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                    << " GraphKeysTimeStampMap contains non-existent key: " << gtsam::Symbol(keyTimeStamp.first) << ". --> Removed."
+                    << COLOR_END << std::endl;
           removedAtLeastOneFactorOrKey = true;
         }
       }
@@ -170,8 +171,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       // Potentially try to optimize again
       if (removedAtLeastOneFactorOrKey) {
         std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
-                  << " Filtered out the factor or key that caused the error (i.e. containing the key " << gtsam::Symbol(valuesKeyNotExistent)
-                  << "). Trying to optimize again." << COLOR_END << std::endl;
+                  << " Filtered out the factor or key that caused the error (i.e. containing the key "
+                  << gtsam::Symbol(valuesKeyNotExistent) << "). Trying to optimize again." << COLOR_END << std::endl;
         std::cout << "----------------------------------------------------------" << std::endl;
         return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
       } else {

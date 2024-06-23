@@ -27,9 +27,10 @@ graph_params:
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
   optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
-  fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
-  centerMeasurementsAtRobotPositionBeforeAlignment: false # If true, the measurements are centered before alignment
+  # Alignment Parameters
+  fixedFramePosesResetThreshold: 20.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
+  centerMeasurementsAtRobotPositionBeforeAlignment: false
 
 # Noise Parameters
 noise_params:

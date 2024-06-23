@@ -440,7 +440,7 @@ void GraphManager::updateGraph() {
         // Write to Result Dictionaries
         Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
         T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairIterator.second.getMeasurementOriginPosition();
-        //T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
+        // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
         resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                              Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
         resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
@@ -462,7 +462,7 @@ void GraphManager::updateGraph() {
           const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  // alias
           const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
           // Check error in tangent space
-          //std::cout << "Error in tangent space: " << errorTangentSpace << std::endl;
+          // std::cout << "Error in tangent space: " << errorTangentSpace << std::endl;
           if (errorTangentSpace > graphConfigPtr_->fixedFramePosesResetThreshold_) {
             REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
             std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
