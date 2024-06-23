@@ -43,7 +43,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
   std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initial global yaw is: " << 180 / M_PI * globalAttitudeYaw_ << std::endl;
 
   // Initial Gnss position
-  W_t_W_GnssL0_ = leftPosition;
+  // W_t_W_GnssL0_ = leftPosition;
 }
 
 void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
@@ -56,18 +56,28 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
   } else {
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting coordinate origin to current position." << COLOR_END
               << std::endl;
-    gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+    // gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+    // std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
+    //           << std::endl;
+
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
               << std::endl;
+
+    gnssSensor_.setReferencelv03(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
+
     referenceGPSposition_ = accumulatedCoordinates;
   }
 
+  // // Get Positions
+  // Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  // convertNavSatToPosition(accumulatedCoordinates, position);
+
   // Get Positions
-  Eigen::Vector3d position;
-  convertNavSatToPosition(accumulatedCoordinates, position);
+  // Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  // convertNavSatToPositionLV03(accumulatedCoordinates, position);
 
   // Initial GNSS Position
-  W_t_W_GnssL0_ = position;
+  // W_t_W_GnssL0_ = position;
 
   gnssInitialized_ = true;
 }
@@ -83,6 +93,10 @@ void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordi
 
 void GnssHandler::convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position) {
   position = gnssSensor_.gpsToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
+}
+
+void GnssHandler::convertNavSatToPositionLV03(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position) {
+  position = gnssSensor_.gpsToLv03(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
 }
 
 // Heading is defined as the orthogonal vector pointing from gnssPos2 to gnssPos1, projected to x,y-plane

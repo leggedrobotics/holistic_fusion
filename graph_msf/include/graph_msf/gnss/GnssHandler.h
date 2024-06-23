@@ -42,6 +42,8 @@ class GnssHandler {
   void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
 
+  void convertNavSatToPositionLV03(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
+
   // State Machine based bookkeeping.
   double globalYawDegFromFile_{0.0};
   bool useYawInitialGuessFromFile_{false};
@@ -61,7 +63,7 @@ class GnssHandler {
 
   // Member variables
   Gnss gnssSensor_;
-  Eigen::Vector3d W_t_W_GnssL0_;
+  // Eigen::Vector3d W_t_W_GnssL0_;
   double globalAttitudeYaw_;
 
   // Reference Parameters

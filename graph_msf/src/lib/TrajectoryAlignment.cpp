@@ -126,21 +126,21 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
   }
 
   // Status
-  if (gnssTrajectory_.poses().size() % 10 == 0) {
+  if (gnssTrajectory_.poses().size() % 2 == 0) {
     std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Current Distance of LiDAR/GNSS [m]: " << COLOR_END
-              << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << " of required [m] " << minDistanceHeadingInit_
+              << lidarTrajectory_.distance() << "/" << gnssTrajectory_.distance() << " of required " << minDistanceHeadingInit_ << " [m]"
               << std::endl;
   }
 
   // Perform Checks
   if (lidarTrajectory_.distance() < minDistanceHeadingInit_) {
-    std::cout << "TrajectoryAlignment::alignTrajectories not ready. LiDAR distance too short." << lidarTrajectory_.distance() << " / "
-              << minDistanceHeadingInit_ << std::endl;
+    // std::cout << "TrajectoryAlignment::alignTrajectories not ready. LiDAR distance too short." << lidarTrajectory_.distance() << " / "
+    //          << minDistanceHeadingInit_ << std::endl;
     return false;
   }
   if (gnssTrajectory_.distance() < minDistanceHeadingInit_) {
-    std::cout << "TrajectoryAlignment::alignTrajectories not ready. GNSS distance too short." << gnssTrajectory_.distance() << " / "
-              << minDistanceHeadingInit_ << std::endl;
+    // std::cout << "TrajectoryAlignment::alignTrajectories not ready. GNSS distance too short." << gnssTrajectory_.distance() << " / "
+    //          << minDistanceHeadingInit_ << std::endl;
     return false;
   }
 

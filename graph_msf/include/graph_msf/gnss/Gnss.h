@@ -21,6 +21,10 @@ class Gnss {
 
   void setReference(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
                     const double& referenceHeading);
+
+  void setReferencelv03(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
+                        const double& referenceHeading);
+
   Eigen::Vector3d gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
   Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position);
   Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
@@ -31,6 +35,13 @@ class Gnss {
   double getReferenceLatitude() { return referenceLatitude_; }
   double getReferenceAltitude() { return referenceAltitude_; }
   double getReferenceHeading() { return referenceHeading_; }
+
+  Eigen::Vector3d gpsToLv03Raw(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude);
+  Eigen::Vector3d gpsToLv03(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude);
+  double WGStoCHx(double lat, double lng);
+  double WGStoCHy(double lat, double lng);
+  double DecToSexAngle(double dec);
+  double SexAngleToSeconds(double dms);
 
  protected:
   void calculateConversionParameters();

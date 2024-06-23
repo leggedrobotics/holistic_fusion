@@ -19,9 +19,11 @@ Please see the LICENSE file that has been included as part of this package.
 #include <message_filters/synchronizer.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/NavSatStatus.h>
+#include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
@@ -121,6 +123,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   Eigen::Vector3d lastHealthyGPSmeasurement_{0.0, 0.0, 0.0};
 
+  bool isTrajectoryAligned_{false};
+
   // ROS Objects ----------------------------
 
   // Subscribers
@@ -137,6 +141,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Publisher pubMeasMapLioPath_;
   ros::Publisher pubMeasWorldGnssPath_;
   ros::Publisher pubReferenceNavSatFixCoordinates_;
+  ros::Publisher pubTrajectoryAlignmentBoolean;
 
   // Messages
   nav_msgs::PathPtr measLio_mapLidarPathPtr_;

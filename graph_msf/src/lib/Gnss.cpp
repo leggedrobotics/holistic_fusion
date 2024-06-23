@@ -31,6 +31,18 @@ void Gnss::setReference(const double& referenceLatitude, const double& reference
   calculateConversionParameters();
 }
 
+void Gnss::setReferencelv03(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
+                            const double& referenceHeading) {
+  Eigen::Vector3d referenceLv03 = gpsToLv03(referenceLatitude, referenceLongitude, referenceAltitude);
+
+  referenceLatitude_ = referenceLv03[0];
+  referenceLongitude_ = referenceLv03[1];
+  referenceAltitude_ = referenceLv03[2];
+  referenceHeading_ = referenceHeading;
+
+  // calculateConversionParameters();
+}
+
 Eigen::Vector3d Gnss::gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude) {
   const double cn = cos(referenceHeading_);
   const double sn = sin(referenceHeading_);
@@ -79,6 +91,58 @@ Eigen::Vector3d Gnss::besselEllipsoidToMercator(const double& latitudeInRad, con
 
   return Eigen::Vector3d(Y, X, altitude) - xyzOffset_;  // Yes, this is correct. A point in swiss coordinates is denoted as (y,x). See
                                                         // https://en.wikipedia.org/wiki/Swiss_coordinate_system
+}
+
+Eigen::Vector3d Gnss::gpsToLv03(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
+  Eigen::Vector3d position = gpsToLv03Raw(latitude_in_degrees, longitude_in_degrees, altitude);
+  position(0) = position(0) - referenceLatitude_;
+  position(1) = position(1) - referenceLongitude_;
+  position(2) = position(2) - referenceAltitude_;
+  return position;
+}
+
+Eigen::Vector3d Gnss::gpsToLv03Raw(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
+  double east = WGStoCHy(latitude_in_degrees, longitude_in_degrees);
+  double north = WGStoCHx(latitude_in_degrees, longitude_in_degrees);
+  return Eigen::Vector3d(east, north, altitude);
+}
+
+double Gnss::WGStoCHx(double lat, double lng) {
+  lat = SexAngleToSeconds(DecToSexAngle(lat));
+  lng = SexAngleToSeconds(DecToSexAngle(lng));
+
+  double lat_aux = (lat - 169028.66) / 10000.0;
+  double lng_aux = (lng - 26782.5) / 10000.0;
+
+  double x = (200147.07 + (308807.95 * lat_aux) + (3745.25 * std::pow(lng_aux, 2)) + (76.63 * std::pow(lat_aux, 2)) -
+              (194.56 * std::pow(lng_aux, 2) * lat_aux) + (119.79 * std::pow(lat_aux, 3)));
+  return x;
+}
+
+double Gnss::WGStoCHy(double lat, double lng) {
+  lat = SexAngleToSeconds(DecToSexAngle(lat));
+  lng = SexAngleToSeconds(DecToSexAngle(lng));
+
+  double lat_aux = (lat - 169028.66) / 10000.0;
+  double lng_aux = (lng - 26782.5) / 10000.0;
+
+  double y = (600072.37 + (211455.93 * lng_aux) - (10938.51 * lng_aux * lat_aux) - (0.36 * lng_aux * std::pow(lat_aux, 2)) -
+              (44.54 * std::pow(lng_aux, 3)));
+  return y;
+}
+
+double Gnss::DecToSexAngle(double dec) {
+  int degree = std::floor(dec);
+  int minute = std::floor((dec - degree) * 60.0);
+  double second = (((dec - degree) * 60.0) - minute) * 60.0;
+  return degree + (static_cast<double>(minute) / 100.0) + (second / 10000.0);
+}
+
+double Gnss::SexAngleToSeconds(double dms) {
+  int degree = std::floor(dms);
+  int minute = std::floor((dms - degree) * 100.0);
+  double second = (((dms - degree) * 100.0) - minute) * 100.0;
+  return second + (minute * 60.0) + (degree * 3600.0);
 }
 
 }  // namespace graph_msf

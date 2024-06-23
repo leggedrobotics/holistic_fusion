@@ -52,7 +52,7 @@ class TrajectoryAlignment {
   Trajectory lidarTrajectory_;
 
   // Reference Parameters
-  double gnssRate_{20.0};
+  double gnssRate_{10.0};
   double lidarRate_{10.0};
   double minDistanceHeadingInit_{3.0};
   double noMovementDistance_{1.0};

@@ -73,6 +73,7 @@ void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
   pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
   pubReferenceNavSatFixCoordinates_ =
       privateNode_.advertise<sensor_msgs::NavSatFix>("/graph_msf/gps_reference_position", ROS_QUEUE_SIZE, true);
+  pubTrajectoryAlignmentBoolean = privateNode_.advertise<std_msgs::Bool>("/graph_msf/alignment_status", ROS_QUEUE_SIZE, true);
 }
 
 void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
@@ -174,6 +175,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GPS state is invalid. "
               << "Expected: " << int(sensor_msgs::NavSatStatus::STATUS_GBAS_FIX) << " Received: " << int(gnssMsgPtr->status.status)
               << std::endl;
+    gnssCallbackCounter_ = -1;
     return;
   }
 
@@ -226,8 +228,9 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   }
 
   // Convert to Cartesian Coordinates
-  Eigen::Vector3d W_t_W_Gnss;
-  gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  Eigen::Vector3d W_t_W_Gnss = Eigen::Vector3d::Zero();
+  // gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
   // fixedFrame = "east_north_up";
 
@@ -258,16 +261,27 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // b: From file
     if (gnssHandlerPtr_->useYawInitialGuessFromFile_) {
       initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
+      std_msgs::Bool alignmentStatus;
+      isTrajectoryAligned_ = true;
+      alignmentStatus.data = true;
+      pubTrajectoryAlignmentBoolean.publish(alignmentStatus);
     } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // c: From alignment
       // Adding the GNSS measurement
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
       // In radians.
+      std_msgs::Bool alignmentStatus;
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
+        isTrajectoryAligned_ = false;
+        alignmentStatus.data = isTrajectoryAligned_;
+        pubTrajectoryAlignmentBoolean.publish(alignmentStatus);
         if (gnssCallbackCounter_ % 10 == 0) {
           std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
         }
         return;
       }
+      isTrajectoryAligned_ = true;
+      alignmentStatus.data = true;
+      pubTrajectoryAlignmentBoolean.publish(alignmentStatus);
       std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
                 << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
@@ -330,6 +344,10 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
     trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarUnaryTimeK);
   }
+
+  // if (!isTrajectoryAligned_) {
+  //   return;
+  // }
 
   // Measurement
   const std::string& lioOdomFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
