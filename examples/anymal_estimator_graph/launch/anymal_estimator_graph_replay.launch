@@ -7,10 +7,10 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf"        default="false"/>
-    <arg name="using_gnss_unary"            default="false"/>
+    <arg name="using_gnss_unary"            default="true"/>
     <arg name="using_lio_unary"             default="true"/>
     <arg name="using_lio_between"           default="false"/>
-    <arg name="using_legged_between"        default="false"/>
+    <arg name="using_legged_between"        default="true"/>
     <arg name="using_legged_velocity_unary" default="false"/>
 
     <!-- Input Topics -->

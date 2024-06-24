@@ -69,7 +69,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
   if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ &&
       gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->fixedFrameName() != worldFrame_) {
-    gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
+    gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
+                                                                graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
   }
 
   // C. Transform State to Sensor Frame -----------------------------------------------------

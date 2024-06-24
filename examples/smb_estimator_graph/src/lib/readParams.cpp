@@ -32,6 +32,12 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
   wheelOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryRate", privateNode);
   vioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
 
+  // Alignment Parameters
+  const auto poseAlignmentNoise =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
+      poseAlignmentNoise[4], poseAlignmentNoise[5];
+
   // Noise Parameters
   /// LiDAR Odometry
   const auto poseUnaryNoise =

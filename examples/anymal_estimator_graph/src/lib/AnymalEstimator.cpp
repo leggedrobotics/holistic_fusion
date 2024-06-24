@@ -167,24 +167,29 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   //    estStdDevXYZ(i) = sqrt(estStdDevXYZ(i) * estStdDevXYZ(i) + 0.1 * 0.1);
   //  }
 
-  // Inital world yaw initialization options.
-  if (!areYawAndPositionInited()) {  // 1: Initialization
-    // 0: Default
+  // Inital world yaw initialization options
+  // Case 1: Initialization
+  if (!areYawAndPositionInited()) {
+    // a: Default
     double initYaw_W_Base{0.0};  // Default is 0 yaw
-    // 1: From file
+    // b: From file
     if (gnssHandlerPtr_->useYawInitialGuessFromFile_) {
       initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
-    } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // 2: From alignment
+    } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // c: From alignment
       // Adding the GNSS measurement
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
       // In radians.
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
+        if (gnssCallbackCounter_ % 10 == 0) {
+          std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
+        }
         return;
       }
-      std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value : " << COLOR_END << initYaw_W_Base << std::endl;
+      std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
+                << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
 
-    // Initialization
+    // Actual Initialization
     if (not this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
                                      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
@@ -193,7 +198,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     } else {
       REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
     }
-  } else {  // 2: Unary factor
+  } else {  // Case 2: Already initialized --> Unary factor
     const std::string& gnssFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame();  // Alias
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
@@ -237,13 +242,13 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;
-  } else if (!areYawAndPositionInited()) {  // Initializing
-    if (!useGnssUnaryFlag_ || (lidarUnaryCallbackCounter_ > NUM_GNSS_CALLBACKS_UNTIL_START)) {
+  } else if (!areYawAndPositionInited()) {  // Initializing if no GNSS
+    if (!useGnssUnaryFlag_) {
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> unary factor
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
+    this->addUnaryPose3Measurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -393,14 +398,25 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   // Norm of the velocity
   double norm = legVelocity.norm();
 
+  // Create the unary measurement
+  graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
+      "Leg_velocity_unary", int(leggedOdometryRate_),
+      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
+      dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId_,
+      graph_msf::RobustNormEnum::None, 1.0, leggedOdometryKPtr->header.stamp.toSec(), leggedOdometryKPtr->header.frame_id, 1.0, legVelocity,
+      legVelocityUnaryNoise_);
+
+  // Print Summary
+//  std::cout << "Legged Odometry Velocity: " << legVelocityUnaryMeasurement << std::endl;
+
   // Printout
   if (norm < 0.01 && leggedOdometryOdomCallbackCounter_ > 50) {
     std::cout << "Robot standing still." << std::endl;
-
     // Add zero velocity to the graph
-    this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
+    //this->addZeroVelocityFactor(leggedOdometryKPtr->header.stamp.toSec(), legVelocityUnaryNoise_(0));
   } else {
     std::cout << "Robot walking." << std::endl;
+    // Add unary velocity to the graph
   }
 }
 

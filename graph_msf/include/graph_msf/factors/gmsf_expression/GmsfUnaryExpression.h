@@ -35,7 +35,7 @@ class GmsfUnaryExpression {
   // Constructor
   GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& baseUnaryMeasurementPtr, const std::string& worldFrameName,
                       const Eigen::Isometry3d& T_I_sensorFrame)
-      : baseUnaryMeasurementPtr_(baseUnaryMeasurementPtr), worldFrameName_(worldFrameName), T_I_sensorFrame_(T_I_sensorFrame) {}
+      : baseUnaryMeasurementPtr_(baseUnaryMeasurementPtr), worldFrameName_(worldFrameName), T_I_sensorFrameInit_(T_I_sensorFrame) {}
 
   // Destructor
   virtual ~GmsfUnaryExpression() = default;
@@ -46,7 +46,8 @@ class GmsfUnaryExpression {
 
   // ii) holistically optimize over fixed frames
   virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                                   const gtsam::NavState& W_currentPropagatedState) = 0;
+                                                   const gtsam::NavState& W_currentPropagatedState,
+                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
 
   // iii) transform measurement to core imu frame
   virtual void transformStateToSensorFrame() = 0;
@@ -75,7 +76,7 @@ class GmsfUnaryExpression {
   // Accessors
   const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return baseUnaryMeasurementPtr_; }
 
-  const Eigen::Isometry3d& getT_I_sensorFrame() const { return T_I_sensorFrame_; }
+  const Eigen::Isometry3d& getT_I_sensorFrameInit() const { return T_I_sensorFrameInit_; }
 
  protected:
   // Main Measurement Pointer
@@ -85,7 +86,7 @@ class GmsfUnaryExpression {
   const std::string worldFrameName_;
 
   // IMU to Sensor Frame
-  Eigen::Isometry3d T_I_sensorFrame_;
+  Eigen::Isometry3d T_I_sensorFrameInit_;
 
   // Containers
   gtsam::Values newStateValues_;

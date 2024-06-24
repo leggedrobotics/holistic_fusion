@@ -45,11 +45,21 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
   // Interface with three cases (non-exclusive):
   // ii) Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState) override {
+                                           const gtsam::NavState& W_currentPropagatedState,
+                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
+    // Compute the initial guess for T_fixedFrame_W
+    // TODO: Add good initial guess (containing position)
+    //    Eigen::Vector3d fixedFrame_t_fixedFrame_sensorFrame_meas = positionUnaryMeasurementPtr_->unaryMeasurement();
+    //    Eigen::Vector3d W_t_W_I_est = W_currentPropagatedState.pose().translation();
+    //    Eigen::Vector3d fixedFrame_t_fixedFrame_W_initial = fixedFrame_t_fixedFrame_sensorFrame_meas + W_t_W_I_est;
+
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAdded = false;
+    Eigen::Vector3d _;  // Placeholder
+    gtsam::Pose3 T_fixedFrame_W_initial(gtsam::Pose3::Identity());
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
-        newGraphKeyAdded, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK());
+        newGraphKeyAdded, _, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK(),
+        T_fixedFrame_W_initial, false);
 
     // Define expression for T_fixedFrame_W
     gtsam::Pose3_ exp_T_fixedFrame_W(newGraphKey);  // T_fixedFrame_W
@@ -62,8 +72,6 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
     exp_R_fixedFrame_I_ = gtsam::rotation(exp_T_fixedFrame_W) * exp_R_fixedFrame_I_;  // R_fixedFrame_I at this point
 
     if (newGraphKeyAdded) {
-      // Compute Initial guess
-      gtsam::Pose3 T_fixedFrame_W_initial(gtsam::Pose3::Identity());
       std::cout << "GmsfUnaryExpressionPose3: Initial Guess for T_" << positionUnaryMeasurementPtr_->fixedFrameName()
                 << "_W, RPY (deg): " << T_fixedFrame_W_initial.rotation().rpy().transpose() * (180.0 / M_PI)
                 << ", t (x, y, z): " << T_fixedFrame_W_initial.translation().transpose() << std::endl;
@@ -71,19 +79,19 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Insert Prior
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
+                                        gtsam::noiseModel::Diagonal::Sigmas(baseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 
   // iii) Transform Measurement to Core Imu Frame
   void transformStateToSensorFrame() override {
     // Get relative translation
-    Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrame_.translation();
+    Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 
     // Rotation of IMU frame
     exp_fixedFrame_t_fixedFrame_sensorFrame_ =
         exp_fixedFrame_t_fixedFrame_sensorFrame_ +
-        gtsam::rotate(exp_R_fixedFrame_I_, I_t_I_sensorFrame);  // fixedFrame_t_fixedFrame_sensorFrame
+        gtsam::rotate(exp_R_fixedFrame_I_, I_t_I_sensorFrame);  // fixedFrame_t_fixedFrame_sensorFrameInit
   }
 
   // iv) Extrinsic Calibration
@@ -93,20 +101,21 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
 
     // Get delta transformation from sensorFrame to correctSensorFrame
     bool newGraphKeyAddedFlag = false;
+    gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::D>(
         newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->sensorFrameName(), positionUnaryMeasurementPtr_->sensorFrameCorrectedName(),
-        positionUnaryMeasurementPtr_->timeK());
+        positionUnaryMeasurementPtr_->timeK(), gtsam::Pose3(gtsam::Rot3::Identity(), sensorFrame_t_sensorFrame_correctSensorFrame_initial));
     gtsam::Point3_ exp_sensorFrame_t_sensorFrame_correctSensorFrame = gtsam::Point3_(newGraphKey);
 
     // Apply Correction
-    gtsam::Rot3_ exp_R_fixedFrame_sensorFrame = exp_R_fixedFrame_I_ * gtsam::Rot3_(gtsam::Rot3(T_I_sensorFrame_.rotation()));
+    gtsam::Rot3_ exp_R_fixedFrame_sensorFrame = exp_R_fixedFrame_I_ * gtsam::Rot3_(gtsam::Rot3(T_I_sensorFrameInit_.rotation()));
     exp_fixedFrame_t_fixedFrame_sensorFrame_ =
         exp_fixedFrame_t_fixedFrame_sensorFrame_ +
-        gtsam::rotate(exp_R_fixedFrame_sensorFrame, exp_sensorFrame_t_sensorFrame_correctSensorFrame);
+        gtsam::rotate(exp_R_fixedFrame_sensorFrame,
+                      exp_sensorFrame_t_sensorFrame_correctSensorFrame);  // fixedFrame_t_fixedFrame_sensorFrameCorrected
 
     // Initial Values
     if (newGraphKeyAddedFlag) {
-      gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
       newStateValues_.insert(newGraphKey, sensorFrame_t_sensorFrame_correctSensorFrame_initial);
     }
   }

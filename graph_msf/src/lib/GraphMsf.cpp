@@ -63,12 +63,16 @@ bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations, const std::string& s
 }
 
 // Getter functions -----------------------
-bool GraphMsf::areYawAndPositionInited() {
+bool GraphMsf::areYawAndPositionInited() const {
   return foundInitialYawAndPositionFlag_;
 }
 
-bool GraphMsf::areRollAndPitchInited() {
+bool GraphMsf::areRollAndPitchInited() const {
   return alignedImuFlag_;
+}
+
+bool GraphMsf::isGraphInited() const {
+  return initedGraphFlag_;
 }
 
 // Initialization -----------------------
@@ -232,23 +236,27 @@ bool GraphMsf::addImuMeasurementAndGetState(
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     REGULAR_COUT << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
-  } else if (!normalOperationFlag_) {  // Case 5: IMU aligned, yaw and position initialized, graph initialized --> normal operation, meaning
-                                       // predicting the next state
-                                       // via integration
-    normalOperationFlag_ = true;
   }
-  // Case 6: Normal operation, meaning predicting the next state via integration -------------
-  // Only create state every n-th measurements
-  bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0;
+
+  // Case 5: Normal operation, meaning predicting the next state via integration -------------
+  // Only create state every n-th measurements (or at first successful iteration)
+  bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0 || !normalOperationFlag_;
   // Add IMU factor and return propagated & optimized state
   graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, imuBufferPtr_, imuTimeK,
                                         createNewStateFlag);
   returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
 
+  // Set to normal operation
+  if (!normalOperationFlag_) {
+    normalOperationFlag_ = true;
+  }
+
+  // Return
   return true;
 }
 
-void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
+// Pose3
+void GraphMsf::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -262,7 +270,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
     bool covarianceViolatedFlag = isCovarianceViolated_<6>(T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
                                                            T_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Pose covariance violated. Not adding factor." << COLOR_END << std::endl;
       return;
     }
 
@@ -283,7 +291,7 @@ void GraphMsf::addUnaryPoseMeasurement(const UnaryMeasurementXD<Eigen::Isometry3
   }
 }
 
-/// Position
+/// Position3
 void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
@@ -301,6 +309,9 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
       REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
       return;
     }
+
+    //    std::cout << "Adding unary position measurement in frame " << fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()
+    //              << " with covariance " << fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << std::endl;
 
     // Create GMSF expression
     GmsfUnaryExpressionPosition3 gmsfUnaryExpressionPosition3(
@@ -320,6 +331,16 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
       optimizeGraphFlag_ = true;
     }
   }
+}
+
+// Velocity3
+void GraphMsf::addUnaryVelocity3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) {
+  throw std::runtime_error("Velocity measurements are not yet supported.");
+}
+
+// Velocity3 in Body Frame
+void addUnaryVelocity3BodyMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
+  throw std::runtime_error("Velocity measurements are not yet supported.");
 }
 
 // Roll
@@ -478,6 +499,7 @@ void GraphMsf::optimizeGraph_() {
   REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+  bool optimizedAtLeastOnce = false;
   while (true) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
@@ -485,13 +507,17 @@ void GraphMsf::optimizeGraph_() {
       // Lock
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-      if (optimizeGraphFlag_ && (currentTime - lastOptimizedTime > 1.0 / graphConfigPtr_->maxOptimizationFrequency_)) {
-        optimizeGraphFlag = optimizeGraphFlag_;
-        optimizeGraphFlag_ = false;
+      // Optimize at most at the rate of maxOptimizationFrequency but at least every second
+      if ((optimizeGraphFlag_ && ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->maxOptimizationFrequency_))) ||
+          (currentTime - lastOptimizedTime) > 1.0 && optimizedAtLeastOnce) {
+        optimizeGraphFlag = true;
         lastOptimizedTime = currentTime;
+        optimizedAtLeastOnce = true;
+        optimizeGraphFlag_ = false;
       }
     }
 
+    // Optimize
     if (optimizeGraphFlag) {
       graphMgrPtr_->updateGraph();
     }  // else just sleep for a short amount of time before polling again
