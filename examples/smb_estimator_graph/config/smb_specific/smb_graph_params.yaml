@@ -9,6 +9,10 @@ sensor_params:
   wheelOdometryRate: 50
   vioOdometryRate: 50
 
+# Alignment Parameters
+alignment_params:
+  initialSe3AlignmentNoiseDensity: [ 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+
 # Noise Parameters
 noise_params:
   ## LiDAR

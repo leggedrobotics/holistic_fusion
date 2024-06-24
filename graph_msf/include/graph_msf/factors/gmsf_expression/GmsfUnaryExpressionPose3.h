@@ -74,7 +74,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Prior maybe not needed, but for safety (to keep well conditioned)
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(10 * gtsam::Vector::Ones(6)));
+                                        gtsam::noiseModel::Diagonal::Sigmas(baseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 
@@ -94,7 +94,6 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
         newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         poseUnaryMeasurementPtr_->timeK(), T_sensorFrame_sensorFrameCorrected_initial);
-    assert(_ == Eigen::Vector3d::Zero() && "GmsfUnaryExpressionPose3: Measurement origin position should be zero.");
 
     // Apply calibration correction
     exp_T_fixedFrame_sensorFrame_ = exp_T_fixedFrame_sensorFrame_ * gtsam::Pose3_(newGraphKey);  // T_fixedFrame_sensorFrameCorrected

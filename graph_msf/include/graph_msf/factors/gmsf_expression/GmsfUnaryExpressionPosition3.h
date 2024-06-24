@@ -79,7 +79,7 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Insert Prior
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
+                                        gtsam::noiseModel::Diagonal::Sigmas(baseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 

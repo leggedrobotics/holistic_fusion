@@ -53,6 +53,9 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   double wheelOdometryRate_ = 50.0;
   double vioOdometryRate_ = 50.0;
 
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_;
+
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_;
