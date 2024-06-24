@@ -106,6 +106,26 @@ void SmbEstimator::initializeServices_(ros::NodeHandle& privateNode) {
   // Nothing for now
 }
 
+void SmbEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) {
+  // Check whether any of the measurements is available, otherwise do pure imu integration
+  if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
+      !useWheelOdometryFlag_ && !useVioOdometryFlag_) {
+    // Pretent that we received first measurement
+    graph_msf::GraphMsf::pretendFirstMeasurementReceived();
+    // Create dummy measurement for initialization
+    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+        "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId_,
+        graph_msf::RobustNormEnum::None, 1.345, imuPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, Eigen::Isometry3d::Identity(),
+        Eigen::MatrixXd::Identity(6, 6));
+    // Initialize
+    graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+    REGULAR_COUT << "Initialized yaw and position to identity, as lio, wheel and vio are all set to false." << std::endl;
+  }
+
+  // Super class
+  graph_msf::GraphMsfRos::imuCallback_(imuPtr);
+}
+
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int lidarOdometryCallbackCounter__ = -1;

@@ -36,11 +36,12 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
  private:
   // Virtual Functions
-  virtual void readParams_(const ros::NodeHandle& privateNode) override;
-  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
-  virtual void initializeServices_(ros::NodeHandle& privateNode) override;
+  void readParams_(const ros::NodeHandle& privateNode) override;
+  void initializePublishers_(ros::NodeHandle& privateNode) override;
+  void initializeSubscribers_(ros::NodeHandle& privateNode) override;
+  void initializeMessages_(ros::NodeHandle& privateNode) override;
+  void initializeServices_(ros::NodeHandle& privateNode) override;
+  void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
