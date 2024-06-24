@@ -123,8 +123,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
     lidarTrajectory_.poses().clear();
     gnssTrajectory_.poses().clear();
 
-    if (!lidarTrajectory_.empty() && !gnssTrajectory_.empty())
-    {
+    if (!lidarTrajectory_.poses().empty() && !gnssTrajectory_.poses().empty()) {
       std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " Clearing vectors did not work." << COLOR_END << std::endl;
     }
 
@@ -158,7 +157,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
   // Update Trajectories
   lidarTrajectory_ = newLidarTrajectory;
   gnssTrajectory_ = newGnssTrajectory;
-  Eigen::Matrix4d transform :: Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   // Trajectory Alignment
   if (!trajectoryAlignment(newGnssTrajectory, newLidarTrajectory, transform)) {
     std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;

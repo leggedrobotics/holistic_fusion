@@ -24,9 +24,9 @@ class Trajectory {
 
   double distance() {
     double distance = 0.0;
-    if (_poses.size() < 2){ 
-      return distance
-    };
+    if (_poses.size() < 2) {
+      return distance;
+    }
     Eigen::Vector3d lastPose = _poses.front().position();
     for (auto poseIt = std::next(_poses.begin()); poseIt != _poses.end(); ++poseIt) {
       distance += ((poseIt->position() - lastPose).norm());
