@@ -191,11 +191,12 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
     // Average IMU measurements and set assumed gravity direction
     initAccMean /= timeToImuBuffer_.size();
     gravityMagnitude = initAccMean.norm();
-    Eigen::Vector3d gUnitVecInWorld = Eigen::Vector3d(0.0, 0.0, 1.0);  // ROS convention
+    Eigen::Vector3d gUnitVecInWorld = Eigen::Vector3d(-1.0, 0.0, 0.0);  // HarveriHPK v2 imu orientation specific
 
     // Normalize gravity vectors to remove the affect of gravity magnitude from place-to-place
     initAccMean.normalize();
-    initAttitude = gtsam::Rot3(Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVecInWorld));
+    initAttitude = gtsam::Rot3(Eigen::Quaterniond(0.5, -0.5, 0.5, 0.5) *  // HarveriHPK v2 imu orientation specific
+                               Eigen::Quaterniond().setFromTwoVectors(initAccMean, gUnitVecInWorld));
 
     // Gyro
     initGyrMean /= timeToImuBuffer_.size();
