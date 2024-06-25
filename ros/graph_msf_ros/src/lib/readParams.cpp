@@ -8,8 +8,10 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <boost/filesystem.hpp>
 
-// Workspace
+// Implementation
 #include "graph_msf_ros/GraphMsfRos.h"
+
+// Workspace
 #include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace graph_msf {
