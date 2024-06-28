@@ -20,7 +20,8 @@ graph_params:
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
-  maxOptimizationFrequency: 5.0           # Maximum optimization frequency [Hz], can be used to control computational load
+  minOptimizationFrequency: 5.0           # Minimum optimization frequency [Hz], makes sure that optimization is triggered at least every x Hz
+  maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false

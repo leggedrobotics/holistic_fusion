@@ -40,19 +40,18 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     // Try to update
     try {
       fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
-    } catch (const std::out_of_range& outOfRangeException) {  // CASE 1 : Out of Range exception -----------------------------------
+    }
+    // Case 1: Catching the failure of marginalization (as some states which should be marginalized have not been optimized before)
+    catch (const std::out_of_range& outOfRangeException) {
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Out of Range exception while optimizing graph: '"
                 << outOfRangeException.what() << "'." << COLOR_END << std::endl;
-      std::cout
-          << YELLOW_START << "GMsf-ISAM2" << RED_START
-          << " This usually happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "
-             "not connected. Increase the lag in this case."
-          << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                << " This happens if the FixedLagSmoother tries to marginalize out states that have never been optimized before. This e.g. "
+                   "happens if the graph hasn't been optimized for the duration of the smoother lag. Increase the lag or optimization "
+                   "frequency in this case."
+                << COLOR_END << std::endl;
 
-      // Overwrite with old fixed lag smoother
-      //*fixedLagSmootherPtr_ = fixedLagSmootherCopy;
-
-      // If this happens, for simplicity we remove all factors that that contain a timestamp older than the smoother lag
+      // Detect all factors that contain a timestamp older than the smoother lag
       double latestTimeStamp = 0.0;
       for (auto factor : newGraphFactors) {
         for (auto key : factor->keys()) {
@@ -64,8 +63,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
           }
         }
       }
-      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Latest timestamp in new factors: " << latestTimeStamp << COLOR_END
-                << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Latest timestamp in new factors: " << std::setprecision(14)
+                << latestTimeStamp << COLOR_END << std::endl;
       // Filter out the factor that caused the error -------------------------
       bool filteredOutAtLeastOneKey = false;
       // Containers
@@ -74,55 +73,46 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered = newGraphKeysTimeStampMap;
       // For loop
       for (auto factor : newGraphFactors) {
-        bool factorContainsExistentKeys = true;
+        bool factorOnlyContainsExistentKeys = true;
         for (auto key : factor->keys()) {
+          // Exists
           if (newGraphKeysTimeStampMap.find(key) != newGraphKeysTimeStampMap.end()) {
-            if (newGraphKeysTimeStampMap.at(key) < latestTimeStamp - graphConfigPtr_->realTimeSmootherLag_) {
+            double timestampAtKey = newGraphKeysTimeStampMap.at(key);
+            // Check if key is older than smoother lag
+            if (latestTimeStamp - timestampAtKey > graphConfigPtr_->realTimeSmootherLag_) {
               std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                        << " Factor contains key older than smoother lag: " << gtsam::Symbol(key) << COLOR_END << std::endl;
-              factorContainsExistentKeys = false;
+                        << " Factor contains key older than smoother lag: " << gtsam::Symbol(key) << ", which is "
+                        << latestTimeStamp - timestampAtKey << "s old." << COLOR_END << std::endl;
+              factorOnlyContainsExistentKeys = false;
               filteredOutAtLeastOneKey = true;
-              // Erase from keyTimestampMap
-              // newGraphKeysTimeStampMapFiltered.erase(key);
             }
           }
         }
         // Add factor if it does not contain any key older than the smoother lag
-        if (factorContainsExistentKeys) {
+        if (factorOnlyContainsExistentKeys) {
           newGraphFactorsFiltered.add(factor);
-          std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START << " Factor added to new graph." << COLOR_END << std::endl;
         }
       }
 
       // Limit depth of recursion
+      // Try again
       if (filteredOutAtLeastOneKey) {
         std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
-                  << " Filtered out factors that are older than the smoother lag. Trying to optimize again." << COLOR_END << std::endl;
+                  << " Filtered out factors that are older than the smoother lag. Trying to optimize again, which only helps in some cases."
+                  << COLOR_END << std::endl;
         return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
-      } else {
+      }
+      // Nothing changed, hence abort
+      else {
         // Show all values and corresponding timestamps that are not in timestamp map
-        for (const auto& value : newGraphValues) {
-          if (newGraphKeysTimeStampMap.find(value.key) == newGraphKeysTimeStampMap.end()) {
-            std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Value: " << gtsam::Symbol(value.key) << " with timestamp: "
-                      << "not in timestamp map" << COLOR_END << std::endl;
-          }
-        }
-        // Show all factors and corresponding timestamps that are not in timestamp map
-        for (const auto& factor : newGraphFactors) {
-          for (const auto& key : factor->keys()) {
-            if (newGraphKeysTimeStampMap.find(key) == newGraphKeysTimeStampMap.end()) {
-              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Factor: " << gtsam::Symbol(key) << " with timestamp: "
-                        << "not in timestamp map" << COLOR_END << std::endl;
-            }
-          }
-        }
-
         std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                   << " Could not filter out any factors that are older than the smoother lag. Aborting optimization." << COLOR_END
                   << std::endl;
         return false;
       }
-    } catch (const gtsam::ValuesKeyDoesNotExist& valuesKeyDoesNotExistException) {  // CASE 2 : ValuesKeyDoesNotExist exception ------------
+    }
+    // Case 2: Catching the addition of a bad factor (pointing to a state that does not exist)
+    catch (const gtsam::ValuesKeyDoesNotExist& valuesKeyDoesNotExistException) {
       std::cout << "----------------------------------------------------------" << std::endl;
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " ValuesKeyDoesNotExist exception while optimizing graph: '" << COLOR_END
                 << valuesKeyDoesNotExistException.what() << "'" << std::endl;
@@ -164,10 +154,6 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         }
       }
 
-      // Filtering the keyTimestampMap
-      //      std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered = newGraphKeysTimeStampMap;
-      //      newGraphKeysTimeStampMapFiltered.erase(valuesKeyNotExistent);
-
       // Potentially try to optimize again
       if (removedAtLeastOneFactorOrKey) {
         std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
@@ -182,7 +168,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         std::cout << "----------------------------------------------------------" << std::endl;
         return false;
       }
-    } catch (const std::runtime_error& runtimeError) {  // CASE 3 : Runtime error ------------------------------------------------
+    }
+    // Case 3: Runtime error --> can't handle explicitly
+    catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
