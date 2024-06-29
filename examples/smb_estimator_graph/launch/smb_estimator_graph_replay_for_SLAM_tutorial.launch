@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" default="true"/>
+    <arg name="launch_rviz" default="true"/>
+    
+    <arg name="imu_topic_name"            default="/imu" />
+    <arg name="lidar_odometry_topic_name" default="/mapping/scan2map_odometry"/>
+    <arg name="core_graph_param_file" default="$(find smb_estimator_graph)/config/core/core_graph_params.yaml"/>
+    <arg name="smb_graph_param_file" default="$(find smb_estimator_graph)/config/smb_specific/smb_graph_params.yaml"/>
+
+    <!-- Launch Stack -->
+    <include file="$(find smb_estimator_graph)/launch/smb_estimator_graph.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)" />
+        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)" />
+        <arg name="core_graph_param_file" value="$(arg core_graph_param_file)" />
+        <arg name="smb_graph_param_file"  value="$(arg smb_graph_param_file)" />
+    </include>
+
+    <!-- Visualization -->
+  <include
+      file="$(find smb_estimator_graph)/launch/vis.launch"
+      if="$(arg launch_rviz)">
+  </include>
+
+  <!-- static_transform_publisher x y z yaw pitch roll frame_id child_frame_id period_in_ms-->
+  <node pkg="tf" type="static_transform_publisher" name="rslidar_base_link_to_rslidar" args="0 0 0 0 0 0 rslidar rslidar_base_link 1" />
+
+
+
+</launch>
