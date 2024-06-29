@@ -509,7 +509,7 @@ void GraphMsf::optimizeGraph_() {
       currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
       // Optimize at most at the rate of maxOptimizationFrequency but at least every second
       if ((optimizeGraphFlag_ && ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->maxOptimizationFrequency_))) ||
-          (currentTime - lastOptimizedTime) > 1.0 && optimizedAtLeastOnce) {
+          ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->minOptimizationFrequency_) && optimizedAtLeastOnce)) {
         optimizeGraphFlag = true;
         lastOptimizedTime = currentTime;
         optimizedAtLeastOnce = true;

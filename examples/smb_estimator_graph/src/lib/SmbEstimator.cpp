@@ -114,8 +114,9 @@ void SmbEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) {
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
     // Create dummy measurement for initialization
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId_,
-        graph_msf::RobustNormEnum::None, 1.345, imuPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, Eigen::Isometry3d::Identity(),
+        "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(),
+        staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.345,
+        imuPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, Eigen::Isometry3d::Identity(),
         Eigen::MatrixXd::Identity(6, 6));
     // Initialize
     graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
@@ -129,8 +130,6 @@ void SmbEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) {
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
   // Static members
   static int lidarOdometryCallbackCounter__ = -1;
-  static Eigen::Isometry3d lio_T_M_LKm1__;
-  static double lidarOdometryTimeKm1__ = 0;
 
   // Counter
   ++lidarOdometryCallbackCounter__;
@@ -159,10 +158,6 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(unary6DMeasurement);
   }
-
-  // Wrap up iteration
-  lio_T_M_LKm1__ = lio_T_M_Lk;
-  lidarOdometryTimeKm1__ = lidarOdometryTimeK;
 
   // Visualization ----------------------------
   // Add to path message
