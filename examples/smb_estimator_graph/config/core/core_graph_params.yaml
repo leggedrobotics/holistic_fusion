@@ -20,7 +20,7 @@ graph_params:
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
-  minOptimizationFrequency: 5.0           # Minimum optimization frequency [Hz], makes sure that optimization is triggered at least every x Hz
+  minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz], makes sure that optimization is triggered at least every x Hz
   maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
@@ -37,7 +37,7 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  accNoiseDensity: 2.2555e-03             # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
+  accNoiseDensity: 2.2555e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
   integrationNoiseDensity: 1.0e-04        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
   use2ndOrderCoriolis: false              # Whether to use 2nd order coriolis effect
   ### Rotation
@@ -50,11 +50,11 @@ noise_params:
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
   ## Initial State
-  initialPositionNoiseDensity: 1.0e-02    # Prior/starting value of position
-  initialOrientationNoiseDensity: 1.0e-01 # Prior/starting value of orientation
-  initialVelocityNoiseDensity: 1.0 # Prior/starting value of velocity
-  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
-  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
+  initialPositionNoiseDensity: 1.0e-04    # Prior/starting value of position
+  initialOrientationNoiseDensity: 1.0e-03 # Prior/starting value of orientation
+  initialVelocityNoiseDensity: 1.0e-02 # Prior/starting value of velocity
+  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:

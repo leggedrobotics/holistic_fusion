@@ -110,17 +110,19 @@ void SmbEstimator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) {
   // Check whether any of the measurements is available, otherwise do pure imu integration
   if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
       !useWheelOdometryFlag_ && !useVioOdometryFlag_) {
+    // Initialization
+    REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
+                 << COLOR_END << std::endl;
     // Create dummy measurement for initialization
     graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
         "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(),
         staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.345,
         imuPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, Eigen::Isometry3d::Identity(),
-        Eigen::MatrixXd::Identity(6, 6));
+        Eigen::MatrixXd::Identity(6, 1));
     // Initialize
     graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
-    REGULAR_COUT << RED_START << " Initialized yaw and position to identity, as lio, wheel and vio are all set to false." << COLOR_END
-                 << std::endl;
-    // Pretent that we received first measurement --> In order to allow for optimization
+    REGULAR_COUT << RED_START << " ...initialized yaw and position to identity." << COLOR_END << std::endl;
+    // Pretend that we received first measurement --> In order to allow for optimization
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
   }
 
@@ -206,7 +208,7 @@ void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wh
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(wheelOdometryRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId_,
           graph_msf::RobustNormEnum::None, 1.345, wheelOdometryTimeK, staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_,
-          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 6));
+          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
       REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
                    << std::endl;
@@ -221,7 +223,7 @@ void SmbEstimator::wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wh
       // Create measurement
       graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
           "Wheel_odometry_6D", measurementRate, wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId_,
-          graph_msf::RobustNormEnum::Huber, 0.1, wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
+          graph_msf::RobustNormEnum::Tukey, 1.0, wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
       // Add to graph
       this->addBinaryPoseMeasurement(delta6DMeasurement);
 

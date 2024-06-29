@@ -114,16 +114,14 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
     // World Frame
-    REGULAR_COUT << GREEN_START << "Initialization:" << COLOR_END << " --------------------\n"
-                 << "World Frame: " << COLOR_END << std::endl;
+    REGULAR_COUT << " --------------------" << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
                  << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
                  << "." << COLOR_END << std::endl;
     // Odom Frame
     const double& yaw_O_I0 = gtsam::Rot3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().rotation().matrix()).yaw();  // alias
-    REGULAR_COUT << GREEN_START << "Initialization" << COLOR_END << " --------------------\n"
-                 << "Odom Frame: " << COLOR_END << std::endl;
+    REGULAR_COUT << " --------------------" << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global yaw of from odom frame to imu frame has been set to (deg) " << 180.0 * yaw_O_I0 / M_PI
                  << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in odom frame has been set to (m) "

@@ -89,8 +89,6 @@ Visualization Manager:
           Value: true
         odom_graph_msf:
           Value: true
-        odom_o3d:
-          Value: true
         raw_rs_o3d:
           Value: true
         rgb_camera_link:
@@ -135,8 +133,6 @@ Visualization Manager:
                   {}
                 raw_rs_o3d:
                   {}
-              odom_o3d:
-                {}
           odom_graph_msf:
             world_graph_msf:
               odom:
@@ -398,7 +394,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 4
+      Size (Pixels): 2
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /mapping/assembled_map
