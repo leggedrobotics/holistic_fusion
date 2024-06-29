@@ -71,7 +71,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Callback Members
   int wheelOdometryCallbackCounter_ = -1;
-  Eigen::Isometry3d T_O_Wheel_km1_;
+  Eigen::Isometry3d T_O_Bw_km1_;
   double wheelOdometryTimeKm1_ = 0.0;
 
   // Subscribers
