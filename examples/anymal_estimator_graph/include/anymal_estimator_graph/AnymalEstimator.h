@@ -88,6 +88,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
 
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;

@@ -41,9 +41,7 @@ class TransformsDictionary {
     if (keyIterator == T_frame1_frame2_map_.end()) {
       return false;
     } else {
-      std::cout << "Length of map: " << T_frame1_frame2_map_.size() << std::endl;
       T_frame1_frame2_map_.erase(keyIterator);
-      std::cout << "Length of map after removal: " << T_frame1_frame2_map_.size() << std::endl;
       return true;
     }
   }
