@@ -366,13 +366,14 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     }
   } else {
     // Only add every 40th measurement
-    int sampleRate = static_cast<int>(leggedOdometryRate_) / 40;
+    int measurementRate = static_cast<int>(leggedOdometryRate_) / 40;
+    // Check
     if ((leggedOdometryCallbackCounter_ % 40) == 0) {
       // Compute Delta
       const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
       // Create measurement
       graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-          "Leg_odometry_6D", int(sampleRate), leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
+          "Leg_odometry_6D", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
           graph_msf::RobustNormEnum::None, 1.0, legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
       // Add to graph
       this->addBinaryPoseMeasurement(delta6DMeasurement);
