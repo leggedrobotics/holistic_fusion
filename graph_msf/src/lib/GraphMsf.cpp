@@ -207,7 +207,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
                    << ", hence iniital position of IMU is: " << O_t_O_Ik.transpose() << std::endl;
       Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
       preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
-      REGULAR_COUT << " IMU aligned. Initial pre-integrated state in odom frame: "
+      REGULAR_COUT << GREEN_START << " IMU aligned. Initial pre-integrated state in odom frame: "
                    << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << COLOR_END << std::endl;
       alignedImuFlag_ = true;
       return false;
