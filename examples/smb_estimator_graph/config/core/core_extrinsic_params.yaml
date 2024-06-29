@@ -6,7 +6,7 @@ extrinsics:
   # Used for estimation
   imuFrame: "imu"
   baseLinkFrame: "base_link"
-  initializeZeroYawAndPositionOfFrame: "base_link"
+  initializeZeroYawAndPositionOfFrame: "rslidar"
 
 name_ids:
   fixedFrameAligned: "_graph_msf_aligned"

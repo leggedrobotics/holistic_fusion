@@ -217,7 +217,8 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
                                      false);
 
   // Check whether new state can be created (in case fixed lag smoother has a short window)
-  if (createNewStateFlag && imuTimeK - lastOptimizedStateTime_ > graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME) {
+  if (createNewStateFlag && imuTimeK - lastOptimizedStateTime_ > graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME &&
+      lastOptimizedStateTime_ > 0.0) {
     createNewStateFlag = false;
     REGULAR_COUT << RED_START
                  << " The current measurement would fall outside of the real-time smoother lag, hence skipping the creation of a new"
