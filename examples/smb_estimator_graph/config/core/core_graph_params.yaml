@@ -16,7 +16,7 @@ initialization_params:
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
-  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  useAdditionalSlowBatchSmoother: false   # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
@@ -30,7 +30,7 @@ graph_params:
   optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
   # Alignment Parameters
-  fixedFramePosesResetThreshold: 20.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
+  fixedFramePosesResetThreshold: 200.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
   centerMeasurementsAtRobotPositionBeforeAlignment: false
 
 # Noise Parameters
