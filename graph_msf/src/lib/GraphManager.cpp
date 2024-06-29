@@ -171,8 +171,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 // IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK,
-                                           const bool createNewStateFlag) {
+                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -217,6 +216,14 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
                                      optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
                                      false);
 
+  // Check whether new state can be created (in case fixed lag smoother has a short window)
+  if (createNewStateFlag && imuTimeK - lastOptimizedStateTime_ > graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME) {
+    createNewStateFlag = false;
+    REGULAR_COUT << RED_START
+                 << " The current measurement would fall outside of the real-time smoother lag, hence skipping the creation of a new"
+                 << "IMU measurement. Not creating new state." << COLOR_END << std::endl;
+  }
+
   // Part 2 (OPTIONAL): Create new state and add IMU factor to graph ------------------------------
   if (createNewStateFlag) {
     // Get new key
@@ -230,7 +237,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK);
+    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
 
     // Add IMU values
     gtsam::Values valuesEstimate;
@@ -247,7 +254,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     } else {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
-  }
+  }  // End of create new state
 }
 
 // Unary factors ----------------------------------------------------------------
@@ -417,7 +424,7 @@ void GraphManager::updateGraph() {
       // Get Transform
       const gtsam::Key& key = framePairIterator.second.key();  // alias
 
-      // Case 1: Try to optimize ---------------------------------------------------------------
+      // Case 1: Try to compute results and uncertainties ------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
@@ -474,15 +481,15 @@ void GraphManager::updateGraph() {
             break;
           }
         }
-      }  // try statement
-      // Case 2: Optimization failed -----------------------------------------
+      }  // end: try statement
+      // Case 2: Result computation failed -----------------------------------------
       catch (const std::out_of_range& exception) {
         if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
                                                                        // --> as querying was unsuccessful, we remove it from the graph
           REGULAR_COUT
-              << RED_START << " Out of Range exeception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
+              << RED_START << " OutOfRange-exception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
               << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
-              << " This happen if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
+              << " This happens if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
                  "and remove it from the state dictionary. To fix this, increase the smoother window."
               << COLOR_END << std::endl;
           // Remove state from state dictionary
@@ -491,8 +498,9 @@ void GraphManager::updateGraph() {
         } else {
           REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
                        << framePairIterator.first.first << " to " << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
-                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
-                       << COLOR_END << std::endl;
+                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
+                          "Current state key: "
+                       << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
     }    // for loop over all transforms
@@ -526,6 +534,9 @@ void GraphManager::updateGraph() {
     // Update the NavState
     O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
     T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+
+    // Update the time of the last optimized state
+    lastOptimizedStateTime_ = currentPropagatedTime;
   }  // end of locking
 }
 
@@ -652,7 +663,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
-  // Lock for optimization (as shared rtOptimizer os optimized)
+  // Lock for optimization (as shared rtOptimizer is optimized)
   const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
 
   // Perform update of the real-time smoother, including optimization

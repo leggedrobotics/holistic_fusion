@@ -35,7 +35,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
-    // gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+    gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
 
     // Try to update
     try {
@@ -121,6 +121,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                    "containing a graph state that was marginalized out before. To avoid this, increase the factor graph lag or reduce "
                    "the delay of your measurements."
                 << std::endl;
+
       // Filter out the factor that caused the error -------------------------
       gtsam::NonlinearFactorGraph newGraphFactorsFiltered;
       gtsam::Key valuesKeyNotExistent = valuesKeyDoesNotExistException.key();
@@ -130,10 +131,10 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         for (auto key : factor->keys()) {
           if (key == valuesKeyNotExistent) {
             std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Factor contains non-existent key: " << gtsam::Symbol(key)
-                      << ". --> Removed." << COLOR_END << std::endl;
+                      << ". -> Removed." << COLOR_END << std::endl;
             factorContainsExistentKeys = false;
             removedAtLeastOneFactorOrKey = true;
-            break;
+            break;  // factor contains dangerous key --> break inner loop
           }
         }
         if (factorContainsExistentKeys) {
@@ -141,15 +142,24 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         }
       }
 
-      // Filter out the key from the keyTimestampMap
+      // Filter out the key from the keyTimestampMap -------------------------
       std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered;
       for (auto keyTimeStamp : newGraphKeysTimeStampMap) {
         if (keyTimeStamp.first != valuesKeyNotExistent) {
           newGraphKeysTimeStampMapFiltered.insert(keyTimeStamp);
         } else {
           std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                    << " GraphKeysTimeStampMap contains non-existent key: " << gtsam::Symbol(keyTimeStamp.first) << ". --> Removed."
+                    << " GraphKeysTimeStampMap contains non-existent key: " << gtsam::Symbol(keyTimeStamp.first) << ". -> Removed."
                     << COLOR_END << std::endl;
+          removedAtLeastOneFactorOrKey = true;
+        }
+      }
+
+      // Keys in values
+      for (auto key : newGraphValues.keys()) {
+        if (key == valuesKeyNotExistent) {
+          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Values contains non-existent key: " << gtsam::Symbol(key)
+                    << ". -> Removed." << COLOR_END << std::endl;
           removedAtLeastOneFactorOrKey = true;
         }
       }
@@ -160,6 +170,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << " Filtered out the factor or key that caused the error (i.e. containing the key "
                   << gtsam::Symbol(valuesKeyNotExistent) << "). Trying to optimize again." << COLOR_END << std::endl;
         std::cout << "----------------------------------------------------------" << std::endl;
+        // Copy back
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        // Try again
         return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
       } else {
         std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
@@ -169,7 +182,17 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         return false;
       }
     }
-    // Case 3: Runtime error --> can't handle explicitly
+    // Case 3: ValuesKeyAlreadyExists
+    catch (const gtsam::ValuesKeyAlreadyExists& valuesKeyAlreadyExistsException) {
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " ValuesKeyAlreadyExists exception while optimizing graph: '"
+                << valuesKeyAlreadyExistsException.what() << "'" << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
+                << " This happens if a factor is added to the graph that contains a state that already exists. This is usually a sign of "
+                   "a bug in the code. Please check the factor graph construction."
+                << std::endl;
+      throw std::runtime_error(valuesKeyAlreadyExistsException.what());
+    }
+    // Case 4: Runtime error --> can't handle explicitly
     catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;

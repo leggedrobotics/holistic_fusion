@@ -59,16 +59,18 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 template <class GTSAM_MEASUREMENT_TYPE>
 void GraphManager::addUnaryGmsfExpressionFactor(
     const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr) {
+  // Measurement
+  const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr();
+
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
-  if (!getUnaryFactorGeneralKey(closestGeneralKey, *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr())) {
+  if (!getUnaryFactorGeneralKey(closestGeneralKey, unaryMeasurement)) {
     return;
   }
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ &&
-      gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->fixedFrameName() != worldFrame_) {
+  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
     gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
                                                                 graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
   }
@@ -116,26 +118,28 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   // Operating on graph data
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   // Add to graph
-  addFactorToGraph_<const gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>*>(unaryExpressionFactorPtr.get(),
-                                                                            gmsfUnaryExpressionPtr->getTimestamp());
-  // Write to timestamp map for fixed lag smoother if newer than existing one
-  for (const auto& key : unaryExpressionFactorPtr->keys()) {
-    // Find timestamp in existing buffer
-    if (graphKeysTimestampsMapBufferPtr_->find(key) != graphKeysTimestampsMapBufferPtr_->end()) {
-      if (graphKeysTimestampsMapBufferPtr_->at(key) > gmsfUnaryExpressionPtr->getTimestamp()) {
-        continue;
+  const bool success = addFactorToGraph_<const gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>*>(
+      unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression");
+
+  // If successful
+  if (success) {
+    // Write to timestamp map for fixed lag smoother if newer than existing one
+    for (const auto& key : unaryExpressionFactorPtr->keys()) {
+      // Find timestamp in existing buffer: if i) not existent or ii) newer than existing one -> write
+      if (graphKeysTimestampsMapBufferPtr_->find(key) == graphKeysTimestampsMapBufferPtr_->end()) {
+        writeKeyToKeyTimeStampMap_(key, propagatedStateTime_, graphKeysTimestampsMapBufferPtr_);
+      } else if (gmsfUnaryExpressionPtr->getTimestamp() > graphKeysTimestampsMapBufferPtr_->at(key)) {
+        writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
       }
     }
-    // If not found or newer, write to buffer
-    writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
-  }
-  // If one of the states was newly created, then add it to the values
-  if (!gmsfUnaryExpressionPtr->getNewStateValues().empty()) {
-    graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
-  }
-  // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-  if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
-    factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
+    // If one of the states was newly created, then add it to the values
+    if (!gmsfUnaryExpressionPtr->getNewStateValues().empty()) {
+      graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
+    }
+    // If new factors are there (due to newly generated factor or for regularization), add it to the graph
+    if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
+      factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
+    }
   }
 
   // Print summary --------------------------------------
@@ -151,29 +155,35 @@ void GraphManager::addUnaryGmsfExpressionFactor(
 
 // Private -----------------------------------------------------------------------------------------
 template <class CHILDPTR>
-void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
+bool GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
   factorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  return true;
 }
 
 template <class CHILDPTR>
-void GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
+bool GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp,
+                                     const std::string& measurementName) {
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
-      graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME) {
-    REGULAR_COUT << RED_START
-                 << " Measurement Delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
+      (graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME)) {
+    REGULAR_COUT << RED_START << " " << measurementName
+                 << "-measurement delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence skipping this measurement."
                  << COLOR_END << std::endl;
+    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << ", measurement time " << measurementTimestamp
+                 << ", latest time in buffer " << timeToKeyBufferPtr_->getLatestTimestampInBuffer()
+                 << ", delay: " << timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp << "s." << std::endl;
+    return false;
   }
   // Add measurements
   return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr);
 }
 
 template <class CHILDPTR>
-void GraphManager::addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
+bool GraphManager::addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
   // Operating on graph data --> acquire mutex
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   // Add measurements
-  addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr, measurementTimestamp);
+  return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr, measurementTimestamp, "safe");
 }
 
 void GraphManager::writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,

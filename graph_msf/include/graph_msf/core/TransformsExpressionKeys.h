@@ -131,6 +131,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
                                        const Eigen::Vector3d& measurementOriginPosition) {
     // Create new key
     gtsam::Key returnKey = SYMBOL_SHORTHAND(getNumberStoredTransformationPairs());
+    REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(returnKey) << " created for frame pair " << frame1 << " and " << frame2
+                 << COLOR_END << std::endl;
 
     FactorGraphStateKey factorGraphStateKey(returnKey, timeK, 0, approximateTransformationBeforeOptimization, measurementOriginPosition);
     set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);

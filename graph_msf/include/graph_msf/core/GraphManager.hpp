@@ -114,11 +114,12 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  void addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
+  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
+                         const std::string& measurementName);
   template <class CHILDPTR>
-  void addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
+  bool addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
@@ -158,6 +159,7 @@ class GraphManager {
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
   gtsam::Key propagatedStateKey_ = 0;                        // Current state key
   double propagatedStateTime_ = 0.0;                         // Current state time
+  double lastOptimizedStateTime_ = 0.0;                      // Last optimized state time
   gtsam::Vector3 currentAngularVelocity_ = gtsam::Vector3(0, 0, 0);
 
   // Optimizer(s)
