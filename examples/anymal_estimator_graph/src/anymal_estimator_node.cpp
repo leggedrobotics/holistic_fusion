@@ -17,6 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Main node entry point
 int main(int argc, char** argv) {
+  // Debugging
   google::InitGoogleLogging(argv[0]);
   FLAGS_alsologtostderr = true;
   google::InstallFailureSignalHandler();
