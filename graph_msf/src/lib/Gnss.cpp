@@ -95,10 +95,13 @@ Eigen::Vector3d Gnss::besselEllipsoidToMercator(const double& latitudeInRad, con
 
 Eigen::Vector3d Gnss::gpsToLv03(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
   Eigen::Vector3d position = gpsToLv03Raw(latitude_in_degrees, longitude_in_degrees, altitude);
-  position(0) = position(0) - referenceLatitude_;
-  position(1) = position(1) - referenceLongitude_;
-  position(2) = position(2) - referenceAltitude_;
-  return position;
+
+  Eigen::Vector3d positionOut = Eigen::Vector3d::Zero();
+  positionOut(0) = position(0) - referenceLatitude_;
+  positionOut(1) = (position(1) - referenceLongitude_);
+  positionOut(2) = position(2) - referenceAltitude_;
+
+  return positionOut;
 }
 
 Eigen::Vector3d Gnss::gpsToLv03Raw(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
