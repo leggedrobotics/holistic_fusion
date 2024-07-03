@@ -1265,7 +1265,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: world_graph_msf
+    Fixed Frame: offline_world_graph_msf
     Frame Rate: 30
   Name: root
   Tools:

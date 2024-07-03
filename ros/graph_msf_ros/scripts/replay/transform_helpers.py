@@ -1,27 +1,23 @@
-#!/usr/bin/env python
-import os.path
-# Other
-from pathlib import Path
+#!/usr/bin/env python# General Packages
 
-import tf.transformations
-HOME_DIR = str(Path.home())
 from scipy.spatial.transform import Rotation as R
 import copy
 
 # ROS
 import rospy
-import rosbag
 from geometry_msgs.msg import TransformStamped
+import rosbag
 from tf.msg import tfMessage
-
-# Input and output files
-input_file_path = os.path.join(HOME_DIR, 'data/ANYmal/william/separate/replayed_for_GMSF_tests.txt')
-output_bag_path = os.path.join(HOME_DIR, 'data/ANYmal/william/separate/replayed_for_GMSF_tests_tf.bag')
 
 
 def invert_transform(tf_msg):
     # Old orientation
-    q_old = [tf_msg.transform.rotation.x, tf_msg.transform.rotation.y, tf_msg.transform.rotation.z, tf_msg.transform.rotation.w]
+    q_old = [
+        tf_msg.transform.rotation.x,
+        tf_msg.transform.rotation.y,
+        tf_msg.transform.rotation.z,
+        tf_msg.transform.rotation.w,
+    ]
     # Invert the orientation
     r_old = R.from_quat(q_old)
 
@@ -30,7 +26,11 @@ def invert_transform(tf_msg):
     q_new = r_new.as_quat()
 
     # Old translation
-    t_old = [tf_msg.transform.translation.x, tf_msg.transform.translation.y, tf_msg.transform.translation.z]
+    t_old = [
+        tf_msg.transform.translation.x,
+        tf_msg.transform.translation.y,
+        tf_msg.transform.translation.z,
+    ]
 
     # New translation
     t_new = -r_new.apply(t_old)
@@ -54,9 +54,20 @@ def invert_transform(tf_msg):
 
     return tf_msg_new
 
-def create_transform_stamped(timestamp, x, y, z, qw, qx, qy, qz):
+
+def create_transform_stamped(
+    timestamp: float,
+    x: float,
+    y: float,
+    z: float,
+    qw: float,
+    qx: float,
+    qy: float,
+    qz: float,
+    fixed_frame_id: str,
+    child_frame_id: str,
+):
     t = TransformStamped()
-    print(timestamp)
     t.header.stamp = rospy.Time.from_sec(float(timestamp))
     # Map to imu
     t.transform.translation.x = float(x)
@@ -67,34 +78,41 @@ def create_transform_stamped(timestamp, x, y, z, qw, qx, qy, qz):
     t.transform.rotation.z = float(qz)
     t.transform.rotation.w = float(qw)
     # Set the frame IDs
-    t.header.frame_id = 'william_map'
-    t.child_frame_id = 'imu_link'
+    t.header.frame_id = fixed_frame_id
+    t.child_frame_id = child_frame_id
     return t
 
-def main():
-    # Go through the input file and write the data to the output bag
+def write_bag(input_file_path, output_bag_path, fixed_frame_id, child_frame_id):
     first_line = True
-    with open(input_file_path, 'r') as file, rosbag.Bag(output_bag_path, 'w') as bag:
+    with open(input_file_path, "r") as file, rosbag.Bag(output_bag_path, "w") as bag:
         for line in file:
             # Header file
             if first_line:
                 first_line = False
                 continue
             # Assuming your file format is: timestamp,x,y,z,qw,qx,qy,qz
-            parts = line.strip().split(',')
-            if len(parts) < 8:
+            parts = line.strip().split(",")
+            if len(parts) < 11:
                 continue  # Skip malformed lines
-            timestamp, x, y, z, qw, qx, qy, qz = parts
-            tf_msg = create_transform_stamped(timestamp, x, y, z, qw, qx, qy, qz)
+            timestamp, x, y, z, qx, qy, qz, qw, roll, pitch, yaw = parts
+            tf_msg = create_transform_stamped(
+                timestamp=timestamp,
+                x=x,
+                y=y,
+                z=z,
+                qw=qw,
+                qx=qx,
+                qy=qy,
+                qz=qz,
+                fixed_frame_id=fixed_frame_id,
+                child_frame_id=child_frame_id,
+            )
 
             # Invert the transform to get the correct orientation
             inv_tf = invert_transform(tf_msg)
 
             # Wrap the TransformStamped in a tfMessage
             tfm = tfMessage([inv_tf])
-            bag.write('/tf', tfm, tf_msg.header.stamp)
+            bag.write("/tf", tfm, tf_msg.header.stamp)
 
     print(f"Conversion complete. Output saved to {output_bag_path}")
-
-if __name__ == "__main__":
-    main()

@@ -570,8 +570,9 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
   // Get current time as string for file name
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  // String of time
+  // String of time without line breaks
   std::string timeString = std::ctime(&now);
+  timeString.erase(std::remove(timeString.begin(), timeString.end(), '\n'), timeString.end());
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
