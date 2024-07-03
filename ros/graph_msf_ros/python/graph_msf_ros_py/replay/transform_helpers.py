@@ -1,5 +1,6 @@
-#!/usr/bin/env python# General Packages
+#!/usr/bin/env python
 
+# General Packages
 from scipy.spatial.transform import Rotation as R
 import copy
 

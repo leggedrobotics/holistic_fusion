@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <iomanip>
 #include <string>
 #include <utility>
 
@@ -569,9 +570,14 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   std::map<std::string, std::ofstream> fileStreams;
 
   // Get current time as string for file name
-  std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  // String of time without line breaks
-  std::string timeString = std::ctime(&now);
+  std::time_t now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::tm now_tm = *std::localtime(&now_time_t);
+  // String of time without line breaks: year_month_day_hour_min_sec
+  std::ostringstream oss;
+  oss << std::put_time(&now_tm, "%Y_%m_%d_%H_%M_%S");
+  // Convert stream to string
+  std::string timeString = oss.str();
+  // Remove any line breaks
   timeString.erase(std::remove(timeString.begin(), timeString.end(), '\n'), timeString.end());
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
