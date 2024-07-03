@@ -31,9 +31,6 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
     }
   }
 
-  // Print closest key
-  // REGULAR_COUT << " Closest key to " << measurementTime << " is " << closestKey << " at " << closestGraphTime << std::endl;
-
   // Create noise model
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(unaryNoiseDensity)));  // m,m,m
   auto robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noise);

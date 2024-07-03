@@ -10,7 +10,6 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <string>
-#include <type_traits>
 #include <utility>
 
 // IO
@@ -18,10 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/expressions.h>
 
 // Workspace
 #include "graph_msf/core/GraphManager.hpp"
@@ -570,7 +566,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath) {
   // Map to hold file streams, keyed by category
-  std::map<char, std::ofstream> fileStreams;
+  std::map<std::string, std::ofstream> fileStreams;
 
   // Get current time as string for file name
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -589,29 +585,142 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const char stateCategory = symbol.chr();
     const double timeStamp = keyTimestampMap.at(key);
 
+    // Additional strings
+    std::string stateCategoryString = "";
+    std::string frameInformation = "";
+
+    // Case 1: Navigation State Position
+    if (stateCategory == 'x') {
+      stateCategoryString = "X_state_transform";
+    }
+    // Case 2: Frame Transform
+    else if (stateCategory == 't' || stateCategory == 'c') {
+      std::pair<std::string, std::string> framePair;
+      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+        frameInformation = framePair.first + "_to_" + framePair.second;
+      } else {
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+      }
+      // Case 2.1: Holistic Transform
+      if (stateCategory == 't') {
+        stateCategoryString = "T_align_transform_";
+      }
+      // Case 2.2: Calibration Transform
+      else if (stateCategory == 'c') {
+        stateCategoryString = "C_calib_transform_";
+      }
+      // Otherwise: Undefined --> throw error
+      else {
+        throw std::runtime_error("Unknown state category.");
+      }
+    }
+    // Put together the identifier
+    std::string transformIdentifier = stateCategoryString + frameInformation;
+
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(stateCategory) == fileStreams.end()) {
+    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + "_" + timeString + ".csv";
+      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
-      fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);
+      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
       // Write header
-      fileStreams[stateCategory] << "time, x, y, z, roll, pitch, yaw\n";
+      fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
     }
 
     // Write the values to the appropriate file
-    fileStreams[stateCategory] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
-                               << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
+    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
+                                     << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
+                                     << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
+                                     << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
+  }  // end of for loop over all pose states
+
+  // R(3) states (e.g. Velocity, Displacement)
+  for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {
+    // Read out information
+    const gtsam::Key& key = keyVectorPair.first;
+    const gtsam::Vector& vector = keyVectorPair.second;
+    const gtsam::Symbol symbol(key);
+    const char stateCategory = symbol.chr();
+    const double timeStamp = keyTimestampMap.at(key);
+
+    // Additional strings
+    std::string stateCategoryString = "";
+    std::string frameInformation = "";
+
+    // Case 1: Navigation State Velocity
+    if (stateCategory == 'v') {
+      stateCategoryString = "V_state_velocity";
+    }
+    // Case 2: Displacement
+    else if (stateCategory == 'd') {
+      std::pair<std::string, std::string> framePair;
+      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+        frameInformation = framePair.first + "_to_" + framePair.second;
+      } else {
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+      }
+      stateCategoryString = "D_displacement";
+    }
+    // Otherwise: Undefined --> throw error
+    else {
+      throw std::runtime_error("Unknown state category.");
+    }
+    // Put together the identifier
+    std::string transformIdentifier = stateCategoryString + frameInformation;
+
+    // Check if we already have a file stream for this category --> if not, create one
+    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
+      // If not, create a new file stream for this category
+      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+      // Open for writing and appending
+      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
+      // Write header
+      fileStreams[transformIdentifier] << "time, x, y, z\n";
+    }
+
+    // Write the values to the appropriate file
+    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << vector.x() << ", " << vector.y() << ", " << vector.z()
+                                     << "\n";
+  }  // end of for loop over all vector states
+
+  // IMU Bias States
+  for (const auto& keyBiasPair : optimizedValues.extract<gtsam::imuBias::ConstantBias>()) {
+    // Read out information
+    const gtsam::Key& key = keyBiasPair.first;
+    const gtsam::imuBias::ConstantBias& bias = keyBiasPair.second;
+    const gtsam::Symbol symbol(key);
+    const char stateCategory = symbol.chr();
+    const double timeStamp = keyTimestampMap.at(key);
+
+    // Assert that the symbol is a bias
+    assert(stateCategory == 'b');
+
+    // Additional strings
+    std::string stateCategoryString = "B_bias";
+
+    // Check if we already have a file stream for this category --> if not, create one
+    if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
+      // If not, create a new file stream for this category
+      std::string fileName = savePath + timeString + "_optimized_" + stateCategoryString + ".csv";
+      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+      // Open for writing and appending
+      fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);
+      // Write header
+      fileStreams[stateCategoryString] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
+    }
+
+    // Write the values to the appropriate file
+    fileStreams[stateCategoryString] << std::setprecision(14) << timeStamp << ", " << bias.accelerometer().x() << ", "
+                                     << bias.accelerometer().y() << ", " << bias.accelerometer().z() << ", " << bias.gyroscope().x() << ", "
+                                     << bias.gyroscope().y() << ", " << bias.gyroscope().z() << "\n";
   }
 
   // Close all file streams
   for (auto& pair : fileStreams) {
     pair.second.close();
   }
-
-  // R(3) states (e.g. Velocity)
-  // TODO: later the remaining states
 }
 
 // Save optimized Graph to Common Open source G2o format

@@ -87,8 +87,8 @@ class GraphManager {
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
 
   // Save Variables to File
-  static void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                        const std::string& savePath);
+  void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
+                                 const std::string& savePath);
 
   // Save Optimized Graph to G2O Format
   static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,

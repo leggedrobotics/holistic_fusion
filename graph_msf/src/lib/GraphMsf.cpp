@@ -187,6 +187,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
               .rotation()
               .matrix());
       // Set yaw of base frame to zero
+      // Set yaw of base frame to zero
       R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
       R_W_I0_attitude =
           R_W_Init0_attitude.matrix() *
