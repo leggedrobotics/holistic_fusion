@@ -120,5 +120,6 @@ install(DIRECTORY config rviz
 catkin_install_python(PROGRAMS
         python/graph_msf_ros_py/replay/manual_pose_files_to_tf_and_odom_bag.py
         python/graph_msf_ros_py/plotting/plot_latest_quantitites_in_folder.py
+        python/graph_msf_ros_py/bag_filter/remove_tf_from_bag.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
