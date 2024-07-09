@@ -119,12 +119,21 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw) {
 
   // We only check LIO since GNSS measurements might be jumpy, i.e. RTK Float.
   if (lidarTrajectory_.isStanding(lidarRate_, noMovementTime_, noMovementDistance_)) {
-    std::cout << "LIO indicates standing. Resetting both trajectories to not register noise." << std::endl;
-    lidarTrajectory_.poses().clear();
-    gnssTrajectory_.poses().clear();
+    std::cout << "LIO indicates standing. Resetting both trajectories to not register noise. To align, move forward." << std::endl;
 
-    if (!lidarTrajectory_.poses().empty() && !gnssTrajectory_.poses().empty()) {
+    if (!lidarTrajectory_.clearPoses() || !gnssTrajectory_.clearPoses()) {
+      std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " Clearing vector call did not work." << COLOR_END
+                << std::endl;
+    }
+
+    if (!lidarTrajectory_.poses().empty() || !gnssTrajectory_.poses().empty()) {
       std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " Clearing vectors did not work." << COLOR_END << std::endl;
+
+      // Print the size of the vectors.
+      std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " LiDAR Trajectory Size: " << COLOR_END
+                << lidarTrajectory_.poses().size() << std::endl;
+      std::cout << YELLOW_START << "Trajectory Alignment" << YELLOW_START << " GNSS Trajectory Size: " << COLOR_END
+                << gnssTrajectory_.poses().size() << std::endl;
     }
 
     return false;

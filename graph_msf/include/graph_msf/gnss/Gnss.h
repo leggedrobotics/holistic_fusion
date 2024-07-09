@@ -11,6 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 #pragma once
 
 #include <Eigen/Dense>
+#include <iostream>
 
 namespace graph_msf {
 
@@ -36,8 +37,8 @@ class Gnss {
   double getReferenceAltitude() { return referenceAltitude_; }
   double getReferenceHeading() { return referenceHeading_; }
 
-  Eigen::Vector3d gpsToLv03Raw(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude);
-  Eigen::Vector3d gpsToLv03(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude);
+  Eigen::Vector3d gpsToLv03Raw(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
+  Eigen::Vector3d gpsToLv03(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
   double WGStoCHx(double lat, double lng);
   double WGStoCHy(double lat, double lng);
   double DecToSexAngle(double dec);

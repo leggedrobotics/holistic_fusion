@@ -33,7 +33,9 @@ void Gnss::setReference(const double& referenceLatitude, const double& reference
 
 void Gnss::setReferencelv03(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
                             const double& referenceHeading) {
-  Eigen::Vector3d referenceLv03 = gpsToLv03(referenceLatitude, referenceLongitude, referenceAltitude);
+  Eigen::Vector3d referenceLv03 = gpsToLv03Raw(referenceLatitude, referenceLongitude, referenceAltitude);
+
+  // std::cout << "Reference LV03: " << referenceLv03.transpose() << std::endl;
 
   referenceLatitude_ = referenceLv03[0];
   referenceLongitude_ = referenceLv03[1];
@@ -93,18 +95,20 @@ Eigen::Vector3d Gnss::besselEllipsoidToMercator(const double& latitudeInRad, con
                                                         // https://en.wikipedia.org/wiki/Swiss_coordinate_system
 }
 
-Eigen::Vector3d Gnss::gpsToLv03(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
+Eigen::Vector3d Gnss::gpsToLv03(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude) {
   Eigen::Vector3d position = gpsToLv03Raw(latitude_in_degrees, longitude_in_degrees, altitude);
-
+  // std::cout << "position: " << position.transpose() << std::endl;
   Eigen::Vector3d positionOut = Eigen::Vector3d::Zero();
   positionOut(0) = position(0) - referenceLatitude_;
-  positionOut(1) = (position(1) - referenceLongitude_);
+  positionOut(1) = position(1) - referenceLongitude_;
   positionOut(2) = position(2) - referenceAltitude_;
+
+  // std::cout << "positionOut: " << positionOut.transpose() << std::endl;
 
   return positionOut;
 }
 
-Eigen::Vector3d Gnss::gpsToLv03Raw(const double& latitude_in_degrees, const double& longitude_in_degrees, const double& altitude) {
+Eigen::Vector3d Gnss::gpsToLv03Raw(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude) {
   double east = WGStoCHy(latitude_in_degrees, longitude_in_degrees);
   double north = WGStoCHx(latitude_in_degrees, longitude_in_degrees);
   return Eigen::Vector3d(east, north, altitude);
@@ -114,8 +118,9 @@ double Gnss::WGStoCHx(double lat, double lng) {
   lat = SexAngleToSeconds(DecToSexAngle(lat));
   lng = SexAngleToSeconds(DecToSexAngle(lng));
 
-  double lat_aux = (lat - 169028.66) / 10000.0;
-  double lng_aux = (lng - 26782.5) / 10000.0;
+  // Axiliary values (% Bern)
+  const double lat_aux = (lat - 169028.66) / 10000.0;
+  const double lng_aux = (lng - 26782.5) / 10000.0;
 
   double x = (200147.07 + (308807.95 * lat_aux) + (3745.25 * std::pow(lng_aux, 2)) + (76.63 * std::pow(lat_aux, 2)) -
               (194.56 * std::pow(lng_aux, 2) * lat_aux) + (119.79 * std::pow(lat_aux, 3)));
@@ -126,8 +131,8 @@ double Gnss::WGStoCHy(double lat, double lng) {
   lat = SexAngleToSeconds(DecToSexAngle(lat));
   lng = SexAngleToSeconds(DecToSexAngle(lng));
 
-  double lat_aux = (lat - 169028.66) / 10000.0;
-  double lng_aux = (lng - 26782.5) / 10000.0;
+  const double lat_aux = (lat - 169028.66) / 10000.0;
+  const double lng_aux = (lng - 26782.5) / 10000.0;
 
   double y = (600072.37 + (211455.93 * lng_aux) - (10938.51 * lng_aux * lat_aux) - (0.36 * lng_aux * std::pow(lat_aux, 2)) -
               (44.54 * std::pow(lng_aux, 3)));

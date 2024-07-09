@@ -230,8 +230,10 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss = Eigen::Vector3d::Zero();
   // gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  // std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS LLA Position: " << gnssCoord.transpose() << std::endl;
   gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  // std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Position: " << W_t_W_Gnss.transpose() << std::endl;
   // fixedFrame = "east_north_up";
 
   /*Eigen::Vector3d diff = lastHealthyGPSmeasurement_ - W_t_W_Gnss;

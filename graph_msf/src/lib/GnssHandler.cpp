@@ -6,7 +6,6 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // C++
-#include <iostream>
 // Package
 #include "graph_msf/gnss/GnssHandler.h"
 
@@ -66,7 +65,6 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
     //           << std::endl;
 
     gnssSensor_.setReferencelv03(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
-
     referenceGPSposition_ = accumulatedCoordinates;
   }
 

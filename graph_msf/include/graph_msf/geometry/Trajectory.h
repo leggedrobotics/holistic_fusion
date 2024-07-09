@@ -22,6 +22,15 @@ class Trajectory {
 
   void addPose(Pose pose) { _poses.push_back(pose); }
 
+  bool clearPoses() {
+    _poses.clear();
+
+    if (_poses.size() > 0) {
+      return false;
+    }
+    return true;
+  }
+
   double distance() {
     double distance = 0.0;
     if (_poses.size() < 2) {
