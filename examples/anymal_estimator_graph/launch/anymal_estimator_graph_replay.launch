@@ -22,7 +22,7 @@
          default="/open3d_slam/scan2map_odometry"/>  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
     <!-- Load dumped parameters, mainly for description -->
-     <!--<rosparam command="load" file="$(arg dumped_param_file)"/>-->
+    <rosparam command="load" file="$(arg dumped_param_file)"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch" if="$(arg run_estimator)">
