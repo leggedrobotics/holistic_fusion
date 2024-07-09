@@ -45,11 +45,16 @@ add_service_files(
         OfflineOptimizationTrigger.srv
 )
 
+# Python
+catkin_python_setup()
+
+# Message generation
 generate_messages(
         DEPENDENCIES
         std_msgs
 )
 
+# Catkin Package
 catkin_package(
         CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
         DEPENDS EIGEN3
@@ -109,4 +114,12 @@ install(DIRECTORY include/${PROJECT_NAME}/
 ## Mark cpp header files for installation
 install(DIRECTORY config rviz
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+# Python
+catkin_install_python(PROGRAMS
+        python/graph_msf_ros_py/replay/manual_pose_files_to_tf_and_odom_bag.py
+        python/graph_msf_ros_py/plotting/plot_latest_quantitites_in_folder.py
+        python/graph_msf_ros_py/bag_filter/remove_tf_from_bag.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

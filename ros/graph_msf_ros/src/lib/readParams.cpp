@@ -8,8 +8,10 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <boost/filesystem.hpp>
 
-// Workspace
+// Implementation
 #include "graph_msf_ros/GraphMsfRos.h"
+
+// Workspace
 #include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace graph_msf {
@@ -42,6 +44,7 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->slowBatchSmootherUseIsamFlag_ = tryGetParam<bool>("graph_params/slowBatchSmootherUseIsam", privateNode);
   // Optimizer Config
   graphConfigPtr_->gaussNewtonWildfireThreshold_ = tryGetParam<double>("graph_params/gaussNewtonWildfireThreshold", privateNode);
+  graphConfigPtr_->minOptimizationFrequency_ = tryGetParam<double>("graph_params/minOptimizationFrequency", privateNode);
   graphConfigPtr_->maxOptimizationFrequency_ = tryGetParam<double>("graph_params/maxOptimizationFrequency", privateNode);
   graphConfigPtr_->additionalOptimizationIterations_ = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlotsFlag_ = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);

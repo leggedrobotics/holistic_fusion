@@ -9,8 +9,8 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <iomanip>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 // IO
@@ -18,10 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/expressions.h>
 
 // Workspace
 #include "graph_msf/core/GraphManager.hpp"
@@ -171,8 +168,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 // IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK,
-                                           const bool createNewStateFlag) {
+                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -217,6 +213,15 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
                                      optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
                                      false);
 
+  // Check whether new state can be created (in case fixed lag smoother has a short window)
+  if (createNewStateFlag && imuTimeK - lastOptimizedStateTime_ > graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME &&
+      lastOptimizedStateTime_ > 0.0) {
+    createNewStateFlag = false;
+    REGULAR_COUT << RED_START
+                 << " The current measurement would fall outside of the real-time smoother lag, hence skipping the creation of a new"
+                 << "IMU measurement. Not creating new state." << COLOR_END << std::endl;
+  }
+
   // Part 2 (OPTIONAL): Create new state and add IMU factor to graph ------------------------------
   if (createNewStateFlag) {
     // Get new key
@@ -230,7 +235,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK);
+    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
 
     // Add IMU values
     gtsam::Values valuesEstimate;
@@ -247,7 +252,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     } else {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
-  }
+  }  // End of create new state
 }
 
 // Unary factors ----------------------------------------------------------------
@@ -418,7 +423,7 @@ void GraphManager::updateGraph() {
       // Get Transform
       const gtsam::Key& key = framePairIterator.second.key();  // alias
 
-      // Case 1: Try to optimize ---------------------------------------------------------------
+      // Case 1: Try to compute results and uncertainties ------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
@@ -475,15 +480,15 @@ void GraphManager::updateGraph() {
             break;
           }
         }
-      }  // try statement
-      // Case 2: Optimization failed -----------------------------------------
+      }  // end: try statement
+      // Case 2: Result computation failed -----------------------------------------
       catch (const std::out_of_range& exception) {
         if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
                                                                        // --> as querying was unsuccessful, we remove it from the graph
           REGULAR_COUT
-              << RED_START << " Out of Range exeception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
+              << RED_START << " OutOfRange-exception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
               << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
-              << " This happen if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
+              << " This happens if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
                  "and remove it from the state dictionary. To fix this, increase the smoother window."
               << COLOR_END << std::endl;
           // Remove state from state dictionary
@@ -492,8 +497,9 @@ void GraphManager::updateGraph() {
         } else {
           REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
                        << framePairIterator.first.first << " to " << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
-                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it."
-                       << COLOR_END << std::endl;
+                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
+                          "Current state key: "
+                       << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
     }    // for loop over all transforms
@@ -527,6 +533,9 @@ void GraphManager::updateGraph() {
     // Update the NavState
     O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
     T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+
+    // Update the time of the last optimized state
+    lastOptimizedStateTime_ = currentPropagatedTime;
   }  // end of locking
 }
 
@@ -559,12 +568,18 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath) {
   // Map to hold file streams, keyed by category
-  std::map<char, std::ofstream> fileStreams;
+  std::map<std::string, std::ofstream> fileStreams;
 
   // Get current time as string for file name
-  std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  // String of time
-  std::string timeString = std::ctime(&now);
+  std::time_t now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::tm now_tm = *std::localtime(&now_time_t);
+  // String of time without line breaks: year_month_day_hour_min_sec
+  std::ostringstream oss;
+  oss << std::put_time(&now_tm, "%Y_%m_%d_%H_%M_%S");
+  // Convert stream to string
+  std::string timeString = oss.str();
+  // Remove any line breaks
+  timeString.erase(std::remove(timeString.begin(), timeString.end(), '\n'), timeString.end());
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
@@ -578,29 +593,142 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const char stateCategory = symbol.chr();
     const double timeStamp = keyTimestampMap.at(key);
 
+    // Additional strings
+    std::string stateCategoryString = "";
+    std::string frameInformation = "";
+
+    // Case 1: Navigation State Position
+    if (stateCategory == 'x') {
+      stateCategoryString = "X_state_transform";
+    }
+    // Case 2: Frame Transform
+    else if (stateCategory == 't' || stateCategory == 'c') {
+      std::pair<std::string, std::string> framePair;
+      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+        frameInformation = framePair.first + "_to_" + framePair.second;
+      } else {
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+      }
+      // Case 2.1: Holistic Transform
+      if (stateCategory == 't') {
+        stateCategoryString = "T_align_transform_";
+      }
+      // Case 2.2: Calibration Transform
+      else if (stateCategory == 'c') {
+        stateCategoryString = "C_calib_transform_";
+      }
+      // Otherwise: Undefined --> throw error
+      else {
+        throw std::runtime_error("Unknown state category.");
+      }
+    }
+    // Put together the identifier
+    std::string transformIdentifier = stateCategoryString + frameInformation;
+
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(stateCategory) == fileStreams.end()) {
+    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + "optimized_state-" + std::string(1, symbol.chr()) + "_" + timeString + ".csv";
+      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
-      fileStreams[stateCategory].open(fileName, std::ofstream::out | std::ofstream::app);
+      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
       // Write header
-      fileStreams[stateCategory] << "time, x, y, z, roll, pitch, yaw\n";
+      fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
     }
 
     // Write the values to the appropriate file
-    fileStreams[stateCategory] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
-                               << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
+    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
+                                     << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
+                                     << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
+                                     << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
+  }  // end of for loop over all pose states
+
+  // R(3) states (e.g. Velocity, Displacement)
+  for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {
+    // Read out information
+    const gtsam::Key& key = keyVectorPair.first;
+    const gtsam::Vector& vector = keyVectorPair.second;
+    const gtsam::Symbol symbol(key);
+    const char stateCategory = symbol.chr();
+    const double timeStamp = keyTimestampMap.at(key);
+
+    // Additional strings
+    std::string stateCategoryString = "";
+    std::string frameInformation = "";
+
+    // Case 1: Navigation State Velocity
+    if (stateCategory == 'v') {
+      stateCategoryString = "V_state_velocity";
+    }
+    // Case 2: Displacement
+    else if (stateCategory == 'd') {
+      std::pair<std::string, std::string> framePair;
+      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+        frameInformation = framePair.first + "_to_" + framePair.second;
+      } else {
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+      }
+      stateCategoryString = "D_displacement";
+    }
+    // Otherwise: Undefined --> throw error
+    else {
+      throw std::runtime_error("Unknown state category.");
+    }
+    // Put together the identifier
+    std::string transformIdentifier = stateCategoryString + frameInformation;
+
+    // Check if we already have a file stream for this category --> if not, create one
+    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
+      // If not, create a new file stream for this category
+      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+      // Open for writing and appending
+      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
+      // Write header
+      fileStreams[transformIdentifier] << "time, x, y, z\n";
+    }
+
+    // Write the values to the appropriate file
+    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << vector.x() << ", " << vector.y() << ", " << vector.z()
+                                     << "\n";
+  }  // end of for loop over all vector states
+
+  // IMU Bias States
+  for (const auto& keyBiasPair : optimizedValues.extract<gtsam::imuBias::ConstantBias>()) {
+    // Read out information
+    const gtsam::Key& key = keyBiasPair.first;
+    const gtsam::imuBias::ConstantBias& bias = keyBiasPair.second;
+    const gtsam::Symbol symbol(key);
+    const char stateCategory = symbol.chr();
+    const double timeStamp = keyTimestampMap.at(key);
+
+    // Assert that the symbol is a bias
+    assert(stateCategory == 'b');
+
+    // Additional strings
+    std::string stateCategoryString = "B_bias";
+
+    // Check if we already have a file stream for this category --> if not, create one
+    if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
+      // If not, create a new file stream for this category
+      std::string fileName = savePath + timeString + "_optimized_" + stateCategoryString + ".csv";
+      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+      // Open for writing and appending
+      fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);
+      // Write header
+      fileStreams[stateCategoryString] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
+    }
+
+    // Write the values to the appropriate file
+    fileStreams[stateCategoryString] << std::setprecision(14) << timeStamp << ", " << bias.accelerometer().x() << ", "
+                                     << bias.accelerometer().y() << ", " << bias.accelerometer().z() << ", " << bias.gyroscope().x() << ", "
+                                     << bias.gyroscope().y() << ", " << bias.gyroscope().z() << "\n";
   }
 
   // Close all file streams
   for (auto& pair : fileStreams) {
     pair.second.close();
   }
-
-  // R(3) states (e.g. Velocity)
-  // TODO: later the remaining states
 }
 
 // Save optimized Graph to Common Open source G2o format
@@ -653,7 +781,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
 
-  // Lock for optimization (as shared rtOptimizer os optimized)
+  // Lock for optimization (as shared rtOptimizer is optimized)
   const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
 
   // Perform update of the real-time smoother, including optimization

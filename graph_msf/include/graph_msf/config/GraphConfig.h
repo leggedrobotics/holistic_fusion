@@ -39,6 +39,7 @@ struct GraphConfig {
   bool slowBatchSmootherUseIsamFlag_ = true;
   // Optimizer Config
   double gaussNewtonWildfireThreshold_ = 0.001;
+  double minOptimizationFrequency_ = 5;
   double maxOptimizationFrequency_ = 100;
   int additionalOptimizationIterations_ = 0;
   bool findUnusedFactorSlotsFlag_ = false;

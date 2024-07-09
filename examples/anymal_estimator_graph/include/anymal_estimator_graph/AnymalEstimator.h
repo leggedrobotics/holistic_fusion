@@ -98,6 +98,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useSimulatedGPS_ = false;
   bool useLIO_ = true;
 
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;

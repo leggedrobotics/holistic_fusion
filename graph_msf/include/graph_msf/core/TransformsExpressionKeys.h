@@ -29,7 +29,7 @@ class FactorGraphStateKey {
   FactorGraphStateKey() {}
 
   // Accessors
-  const gtsam::Key& key() const { return key_; }
+  const gtsam::Key key() const { return key_; }
   int getNumberStepsOptimized() const { return numberStepsOptimized_; }
   double getTime() const { return time_; }
   [[nodiscard]] gtsam::Pose3 getApproximateTransformationBeforeOptimization() const { return approximateTransformationBeforeOptimization_; }
@@ -62,6 +62,18 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   }
 
   // Safe Modifiers
+  // Get key to frame pair map
+  const std::map<gtsam::Key, std::pair<std::string, std::string>>& getKeyToFramePairMap() const { return keyToFramePairMap_; }
+  bool getFramePairFromKey(std::pair<std::string, std::string>& framePairRef, const gtsam::Key& key) const {
+    // Check if key is in map
+    if (keyToFramePairMap_.find(key) == keyToFramePairMap_.end()) {
+      return false;
+    }
+    // Retrieve frame pair
+    framePairRef = keyToFramePairMap_.at(key);
+    return true;
+  }
+
   // Returns
   typedef gtsam::Key (*F)(std::uint64_t);
   template <F SYMBOL_SHORTHAND>
@@ -76,7 +88,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     newGraphKeyAdded = this->newFramePairSafelyAddedToDictionary<SYMBOL_SHORTHAND>(T_key, modifiedMeasurementOriginPosition, frame1, frame2,
                                                                                    timeK, approximateTransformationBeforeOptimization,
                                                                                    centerMeasurementsAtRobotPositionBeforeAlignment);
-    modifiedMeasurementOriginPosition = this->lv_T_frame1_frame2(frame1, frame2).getMeasurementOriginPosition();
+    modifiedMeasurementOriginPosition = this->rv_T_frame1_frame2(frame1, frame2).getMeasurementOriginPosition();
 
     // Return
     return T_key;
@@ -87,8 +99,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   gtsam::Key getTransformationExpression(bool& newGraphKeyAdded, const std::string& frame1, const std::string& frame2, const double timeK,
                                          const gtsam::Pose3& approximateTransformationBeforeOptimization) {
     Eigen::Vector3d _;  // Placeholder
-    getTransformationExpression<SYMBOL_SHORTHAND>(newGraphKeyAdded, _, frame1, frame2, timeK, approximateTransformationBeforeOptimization,
-                                                  false);
+    return getTransformationExpression<SYMBOL_SHORTHAND>(newGraphKeyAdded, _, frame1, frame2, timeK,
+                                                         approximateTransformationBeforeOptimization, false);
   }
 
   template <F SYMBOL_SHORTHAND>
@@ -120,6 +132,10 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       }  // else: updatedMeasurementOrigin is set in the function that calls this function
       returnKey = addNewFactorGraphStateKey<SYMBOL_SHORTHAND>(frame1, frame2, timeK, approximateTransformationBeforeOptimization,
                                                               modifiedMeasurementOriginPosition);
+      // Add to key to frame pair map
+      keyToFramePairMap_[returnKey] = std::make_pair(frame1, frame2);
+
+      // Return
       return true;
     }
   }
@@ -131,7 +147,9 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
                                        const Eigen::Vector3d& measurementOriginPosition) {
     // Create new key
     gtsam::Key returnKey = SYMBOL_SHORTHAND(getNumberStoredTransformationPairs());
-
+    REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(returnKey) << " created for frame pair " << frame1 << " and " << frame2
+                 << COLOR_END << std::endl;
+    // Add to dictionary
     FactorGraphStateKey factorGraphStateKey(returnKey, timeK, 0, approximateTransformationBeforeOptimization, measurementOriginPosition);
     set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
 
@@ -145,6 +163,9 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   // Mutex
   std::mutex internalDictionaryModifierMutex_;
   std::mutex externalModifierMutex_;
+
+  // Mapping in other direction --> from key to frame pair
+  std::map<gtsam::Key, std::pair<std::string, std::string>> keyToFramePairMap_;
 };
 
 }  // namespace graph_msf

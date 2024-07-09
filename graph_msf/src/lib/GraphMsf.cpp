@@ -114,16 +114,14 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
     // Wrap Up
     foundInitialYawAndPositionFlag_ = true;
     // World Frame
-    REGULAR_COUT << GREEN_START << "Initialization:" << COLOR_END << " --------------------\n"
-                 << "World Frame: " << COLOR_END << std::endl;
+    REGULAR_COUT << " --------------------" << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
                  << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
                  << "." << COLOR_END << std::endl;
     // Odom Frame
     const double& yaw_O_I0 = gtsam::Rot3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().rotation().matrix()).yaw();  // alias
-    REGULAR_COUT << GREEN_START << "Initialization" << COLOR_END << " --------------------\n"
-                 << "Odom Frame: " << COLOR_END << std::endl;
+    REGULAR_COUT << " --------------------" << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global yaw of from odom frame to imu frame has been set to (deg) " << 180.0 * yaw_O_I0 / M_PI
                  << "." << COLOR_END << std::endl;
     REGULAR_COUT << GREEN_START << " Initial global position of imu frame in odom frame has been set to (m) "
@@ -189,6 +187,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
               .rotation()
               .matrix());
       // Set yaw of base frame to zero
+      // Set yaw of base frame to zero
       R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
       R_W_I0_attitude =
           R_W_Init0_attitude.matrix() *
@@ -207,7 +206,7 @@ bool GraphMsf::addImuMeasurementAndGetState(
                    << ", hence iniital position of IMU is: " << O_t_O_Ik.transpose() << std::endl;
       Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
       preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
-      REGULAR_COUT << " IMU aligned. Initial pre-integrated state in odom frame: "
+      REGULAR_COUT << GREEN_START << " IMU aligned. Initial pre-integrated state in odom frame: "
                    << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << COLOR_END << std::endl;
       alignedImuFlag_ = true;
       return false;
@@ -513,7 +512,7 @@ void GraphMsf::optimizeGraph_() {
       currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
       // Optimize at most at the rate of maxOptimizationFrequency but at least every second
       if ((optimizeGraphFlag_ && ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->maxOptimizationFrequency_))) ||
-          (currentTime - lastOptimizedTime) > 1.0 && optimizedAtLeastOnce) {
+          ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->minOptimizationFrequency_) && optimizedAtLeastOnce)) {
         optimizeGraphFlag = true;
         lastOptimizedTime = currentTime;
         optimizedAtLeastOnce = true;

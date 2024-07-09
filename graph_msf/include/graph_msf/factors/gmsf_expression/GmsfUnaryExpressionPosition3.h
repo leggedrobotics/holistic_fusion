@@ -79,7 +79,7 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Insert Prior
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(1.0 * gtsam::Vector::Ones(6)));
+                                        gtsam::noiseModel::Diagonal::Sigmas(baseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 
@@ -96,9 +96,6 @@ class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Poi
 
   // iv) Extrinsic Calibration
   void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
-    // Terminal output for now
-    REGULAR_COUT << "GmsfUnaryExpressionPosition3: Running Extrinsic Calibration Correction." << std::endl;
-
     // Get delta transformation from sensorFrame to correctSensorFrame
     bool newGraphKeyAddedFlag = false;
     gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();

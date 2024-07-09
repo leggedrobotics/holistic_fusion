@@ -25,7 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/OfflineOptimizationTrigger.h"
 
 // Macros
-#define ROS_QUEUE_SIZE 20
+#define ROS_QUEUE_SIZE 1
 
 namespace graph_msf {
 

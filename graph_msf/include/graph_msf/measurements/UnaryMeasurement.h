@@ -17,12 +17,14 @@ class UnaryMeasurement : public Measurement {
   // Constructor
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                    const std::string& sensorFrameCorrectedName, const RobustNormEnum robustNormEnum, const double robustNormConstant,
-                   const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold = 0.0)
+                   const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold,
+                   const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise)
       : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
                     MeasurementTypeEnum::Unary),
         timeK_(timeStamp),
         fixedFrameName_(fixedFrameName),
-        covarianceViolationThreshold_(covarianceViolationThreshold) {}
+        covarianceViolationThreshold_(covarianceViolationThreshold),
+        initialSe3AlignmentNoise_(initialSe3AlignmentNoise) {}
 
   // Destructor
   ~UnaryMeasurement() override = default;
@@ -49,7 +51,7 @@ class UnaryMeasurement : public Measurement {
   std::string& lv_sensorFrameName() { return sensorFrameName_; }
   [[nodiscard]] double timeK() const { return timeK_; }
   [[nodiscard]] double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }
-
+  [[nodiscard]] const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise() const { return initialSe3AlignmentNoise_; }
   const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
 
  protected:
@@ -57,6 +59,7 @@ class UnaryMeasurement : public Measurement {
   std::string fixedFrameName_;
   double timeK_;
   double covarianceViolationThreshold_;
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_;
 };
 
 }  // namespace graph_msf
