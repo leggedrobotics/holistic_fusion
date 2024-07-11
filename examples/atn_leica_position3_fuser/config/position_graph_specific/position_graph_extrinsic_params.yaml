@@ -1,0 +1,5 @@
+#External Prior/Transform Input
+extrinsics:
+  BodyFrame: body
+  positionMeasFrame: Prism
+  realsenseFrame: camera

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+    <!-- Parameters -->
+    <param name="use_sim_time"            value="true"/>
+
+    <!-- Input Topics -->
+    <arg name="imu_topic_name"            default="/atnj1/imu/data_raw" />
+    <arg name="position_topic_name"      default="/leica/position/rostime" />
+
+    <!-- Graph -->
+    <include file="$(find atn_leica_position_graph)/launch/graph_no_urdf.launch" pass_all_args="true"/>
+
+    <!-- Static TF Publisher -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="body_to_prism_tf_publisher" args="0.05513 -0.01502 -0.1503 0 0 0 body Prism" />
+    <node pkg="tf2_ros" type="static_transform_publisher" name="body_to_imu_tf_publisher" args="0.0 0.0 0.0 1.5708 0 0 body imu" />
+    <!-- Realsense Publisher TF to right camera: (Origin_Vicon to RealsenseT265:    [136.3mm, -38.7mm, -58.3mm]), Pose Frame is 32mm away from opitcal center, Realsense Pose Frame is 90° rotated and Camera is looking 30° downward -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="body_to_realsense_tf_publisher" args="0.1363 -0.0067 -0.0583 0 0.523599 0 body camera" />
+
+
+    <!-- Vicon Reference TF Publisher -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="leica_to_vicon_tf_publisher" args="-5.77765865 6.97464564 0.511816497 0.00280794 -0.00455179 0.99378397 -0.11119724 leica vicon"/>
+</launch>
