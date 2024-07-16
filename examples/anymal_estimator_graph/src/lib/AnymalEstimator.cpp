@@ -167,6 +167,13 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   //    estStdDevXYZ(i) = sqrt(estStdDevXYZ(i) * estStdDevXYZ(i) + 0.1 * 0.1);
   //  }
 
+  // For Debugging: Every 10th time move timestamp into the future by 1 second
+  double timeStamp = gnssMsgPtr->header.stamp.toSec();
+  //  if (gnssCallbackCounter_ % 3 == 0) {
+  //    timeStamp += 1.0;
+  //    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS TimeStamp moved into the future by 1 second." << std::endl;
+  //  }
+
   // Inital world yaw initialization options
   // Case 1: Initialization
   if (!areYawAndPositionInited()) {
@@ -177,7 +184,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
     } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // c: From alignment
       // Adding the GNSS measurement
-      trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
+      trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, timeStamp);
       // In radians.
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
         if (gnssCallbackCounter_ % 10 == 0) {
@@ -203,7 +210,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.0,
-        gnssMsgPtr->header.stamp.toSec(), fixedFrame, 1.0, initialSe3AlignmentNoise_, W_t_W_Gnss, estStdDevXYZ);
+        timeStamp, fixedFrame, 1.0, initialSe3AlignmentNoise_, W_t_W_Gnss, estStdDevXYZ);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3Measurement(meas_W_t_W_Gnss);
   }
