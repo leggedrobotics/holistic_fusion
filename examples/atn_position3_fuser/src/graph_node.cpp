@@ -8,7 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 // ROS
 #include <ros/ros.h>
 // Local packages
-#include "atn_leica_position3_fuser/Position3Estimator.h"
+#include "atn_position3_fuser/Position3Estimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {

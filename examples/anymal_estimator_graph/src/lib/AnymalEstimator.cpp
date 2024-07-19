@@ -180,9 +180,11 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // a: Default
     double initYaw_W_Base{0.0};  // Default is 0 yaw
     // b: From file
-    if (gnssHandlerPtr_->useYawInitialGuessFromFile_) {
-      initYaw_W_Base = gnssHandlerPtr_->globalYawDegFromFile_ / 180.0 * M_PI;
-    } else if (gnssHandlerPtr_->yawInitialGuessFromAlignment_) {  // c: From alignment
+    if (gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
+      initYaw_W_Base = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
+    }
+    // c: From alignment
+    else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
       // Adding the GNSS measurement
       trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, timeStamp);
       // In radians.
@@ -197,13 +199,13 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     }
 
     // Actual Initialization
-    if (not this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
-                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
-                                     dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
-      // Make clear that this was not successful
-      REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << std::endl;
-    } else {
+    if (this->initYawAndPosition(initYaw_W_Base, W_t_W_Gnss, staticTransformsPtr_->getWorldFrame(),
+                                 dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
+                                 dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
       REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
+
+    } else {
+      REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << std::endl;
     }
   } else {  // Case 2: Already initialized --> Unary factor
     const std::string& gnssFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame();  // Alias
@@ -237,7 +239,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Transform to IMU frame
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
-  if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+  if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
     trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarUnaryTimeK);
   }
 
@@ -290,7 +292,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
   }
 
   // Add to trajectory aligner if needed.
-  if (useGnssUnaryFlag_ && gnssHandlerPtr_->yawInitialGuessFromAlignment_) {
+  if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
     trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarBetweenTimeK);
   }
 

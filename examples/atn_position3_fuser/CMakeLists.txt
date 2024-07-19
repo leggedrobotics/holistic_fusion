@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(atn_leica_position3_fuser)
+project(atn_position3_fuser)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
   graph_msf

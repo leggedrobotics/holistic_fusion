@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "atn_leica_position3_fuser/Position3StaticTransforms.h"
+#include "atn_position3_fuser/Position3StaticTransforms.h"
 
 // ROS
 #include <ros/ros.h>
@@ -26,8 +26,7 @@ void Position3StaticTransforms::findTransformations() {
   // Print to console --------------------------
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
-  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " "
-            << ", " << positionMeasFrame_ << ", " << bodyFrame_ << ", " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
+  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " " << positionMeasFrame_ << ", " << imuFrame_ << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable
@@ -37,32 +36,6 @@ void Position3StaticTransforms::findTransformations() {
   // Sleep before subscribing, otherwise sometimes dying in the beginning of rosbag
   ros::Rate rosRate(10);
   rosRate.sleep();
-
-  // Imu to Body Frame Link ---
-  listener_.waitForTransform(imuFrame_, bodyFrame_, ros::Time(0), ros::Duration(100.0));
-  listener_.lookupTransform(imuFrame_, bodyFrame_, ros::Time(0), transform);
-  // I_Body
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, bodyFrame_));
-  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Body: " << std::endl
-            << rv_T_frame1_frame2(imuFrame_, bodyFrame_).translation() << std::endl;
-  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Body: " << std::endl
-            << rv_T_frame1_frame2(imuFrame_, bodyFrame_).rotation() << std::endl;
-  // Body_I
-  lv_T_frame1_frame2(bodyFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, bodyFrame_).inverse();
-
-  // Imu to Realsense Link ---
-  std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
-  listener_.waitForTransform(imuFrame_, realsenseFrame_, ros::Time(0), ros::Duration(1.0));
-  listener_.lookupTransform(imuFrame_, realsenseFrame_, ros::Time(0), transform);
-
-  // I_Realsense
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, realsenseFrame_));
-  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Realsense: " << std::endl
-            << rv_T_frame1_frame2(imuFrame_, realsenseFrame_).translation() << std::endl;
-  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Realsense: " << std::endl
-            << rv_T_frame1_frame2(imuFrame_, realsenseFrame_).rotation() << std::endl;
-  // Realsense_I
-  lv_T_frame1_frame2(realsenseFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, realsenseFrame_).inverse();
 
   // Imu to Prism Link ---
   listener_.waitForTransform(imuFrame_, positionMeasFrame_, ros::Time(0), ros::Duration(1.0));
@@ -74,11 +47,14 @@ void Position3StaticTransforms::findTransformations() {
             << rv_T_frame1_frame2(imuFrame_, positionMeasFrame_).translation() << std::endl;
   std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Prism: " << std::endl
             << rv_T_frame1_frame2(imuFrame_, positionMeasFrame_).rotation() << std::endl;
-
-  // GnssL_I
+  // Prism_I
   lv_T_frame1_frame2(positionMeasFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, positionMeasFrame_).inverse();
 
+  // Wrapping up --------------------------
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
+
+  // Call parent class
+  graph_msf::StaticTransformsTf::findTransformations();
 }
 
 }  // namespace position3_se

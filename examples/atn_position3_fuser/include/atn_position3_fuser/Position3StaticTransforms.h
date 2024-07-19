@@ -20,11 +20,9 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Setters ---------------------------------------------------------------
   void setPositionMeasFrame(const std::string& s) { positionMeasFrame_ = s; }
-  void setBodyFrame(const std::string& s) { bodyFrame_ = s; }
 
   // Getters ---------------------------------------------------------------
   const std::string& getPositionMeasFrame() { return positionMeasFrame_; }
-  const std::string& getBodyFrame() { return bodyFrame_; }
 
  protected:  // Methods
   void findTransformations() override;
@@ -32,7 +30,6 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
  private:  // Members
   // Robot frame names
   std::string positionMeasFrame_;
-  std::string bodyFrame_;
 };
 
 }  // namespace position3_se

@@ -25,13 +25,13 @@ Please see the LICENSE file that has been included as part of this package.
 #include <geometry_msgs/PointStamped.h>
 
 // Workspace
-#include "atn_leica_position3_fuser/Position3StaticTransforms.h"
+#include "atn_position3_fuser/Position3StaticTransforms.h"
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
-#define POSITION_MEAS_POSITION_COVARIANCE_VIOLATION_THRESHOLD 0.2  // 10000
+#define POS_COVARIANCE_VIOLATION_THRESHOLD 0.2
 
 namespace position3_se {
 
@@ -56,11 +56,6 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Callbacks
   void positionCallback_(const geometry_msgs::PointStamped::ConstPtr& LeicaPositionPtr);
 
-  // Publish State
-  virtual void publishState_(
-      const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
-      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
-
   // Members ----------------------------------
   // Publishers
   // Path
@@ -83,11 +78,18 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+
   // Rates
   double positionRate_ = 20.0;
 
   // Noise
   double positionMeasUnaryNoise_ = 1.0;  // in [m]
+
+  // Variables
+  int positionCallbackCounter_ = 0;
+  bool measuredPositionHealthyFlag_ = true;
 };
 
 }  // namespace position3_se

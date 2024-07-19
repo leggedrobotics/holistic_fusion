@@ -9,5 +9,5 @@ extrinsics:
   initializeZeroYawAndPositionOfFrame: "base" # Initialize the yaw and position of the base frame to zero
                                               # this is just meant to avoid any jump after getting the first true measurements
 name_ids:
-  fixedFrameAligned: "_graph_msf_aligned"  # Specifies what
-  sensorFrameCorrected: "_graph_msf_corrected"
+  fixedFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
+  sensorFrameCorrected: "_graph_msf_corrected" # Specifies what is the suffix of the corrected published sensor frames
