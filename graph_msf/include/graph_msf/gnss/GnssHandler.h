@@ -30,19 +30,25 @@ class GnssHandler {
   void convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
   double computeYaw(const Eigen::Vector3d& gnssPos1, const Eigen::Vector3d& gnssPos2);
 
-  // Flags
-  bool usingGnssReferenceFlag = false;
-
   // Setters
+  // For state machine and bookkeeping
+  void setUseGnssReferenceFlag(const bool useGnssReferenceFlag) { useGnssReferenceFlag_ = useGnssReferenceFlag; }
+  void setGlobalYawDegFromFile(const double globalYawDegFromFile) { globalYawDegFromFile_ = globalYawDegFromFile; }
+  void setUseYawInitialGuessFromFile(const bool useYawInitialGuessFromFile) { useYawInitialGuessFromFile_ = useYawInitialGuessFromFile; }
+  void setUseYawInitialGuessFromAlignment(const bool useYawInitialGuessFromAlignment) {
+    useYawInitialGuessFromAlignment_ = useYawInitialGuessFromAlignment;
+  }
+  // Actual Reference Coordinate Parameters
   void setGnssReferenceLatitude(const double gnssReferenceLatitude) { gnssReferenceLatitude_ = gnssReferenceLatitude; }
   void setGnssReferenceLongitude(const double gnssReferenceLongitude) { gnssReferenceLongitude_ = gnssReferenceLongitude; }
   void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
   void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
 
-  // State Machine based bookkeeping.
-  double globalYawDegFromFile_{0.0};
-  bool useYawInitialGuessFromFile_{false};
-  bool yawInitialGuessFromAlignment_{false};
+  // Getters
+  bool getUseGnssReferenceFlag() const { return useGnssReferenceFlag_; }
+  double getGlobalYawDegFromFile() const { return globalYawDegFromFile_; }
+  bool getUseYawInitialGuessFromFile() const { return useYawInitialGuessFromFile_; }
+  bool getUseYawInitialGuessFromAlignment() const { return useYawInitialGuessFromAlignment_; }
 
  private:
   // Member methods
@@ -55,7 +61,13 @@ class GnssHandler {
   Eigen::Vector3d W_t_W_GnssL0_;
   double globalAttitudeYaw_;
 
-  // Reference Parameters
+  // State Machine and bookkeeping.
+  bool useGnssReferenceFlag_ = false;
+  double globalYawDegFromFile_{0.0};
+  bool useYawInitialGuessFromFile_{false};
+  bool useYawInitialGuessFromAlignment_{false};
+
+  // Reference Coordinate Parameters
   double gnssReferenceLatitude_;
   double gnssReferenceLongitude_;
   double gnssReferenceAltitude_;

@@ -1,0 +1,9 @@
+# Sensor Params
+sensor_params:
+  positionRate: 20 # Rate of the Position input (Hz)
+
+# Noise Parameters
+noise_params:
+  ## Position measurement
+  PositionMeasUnaryNoise: 0.04 # x, y, z of global position
+  RealsenseOdomPoseUnaryNoise: [ 0.5, 0.5, 0.5, 0.1, 0.1, 0.1 ] # ORDER RPY(rad) - XYZ(meters)

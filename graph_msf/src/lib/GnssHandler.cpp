@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -21,7 +21,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates,
   std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler." << COLOR_END << std::endl;
 
   // Initialize Gnss converter
-  if (usingGnssReferenceFlag) {
+  if (useGnssReferenceFlag_) {
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {
@@ -50,7 +50,7 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
   std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler position." << COLOR_END << std::endl;
 
   // Initialize Gnss converter
-  if (usingGnssReferenceFlag) {
+  if (useGnssReferenceFlag_) {
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(gnssReferenceLatitude_, gnssReferenceLongitude_, gnssReferenceAltitude_, gnssReferenceHeading_);
   } else {

@@ -309,9 +309,6 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
       return;
     }
 
-    //    std::cout << "Adding unary position measurement in frame " << fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()
-    //              << " with covariance " << fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity() << std::endl;
-
     // Create GMSF expression
     GmsfUnaryExpressionPosition3 gmsfUnaryExpressionPosition3(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),

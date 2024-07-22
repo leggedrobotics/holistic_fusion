@@ -130,8 +130,8 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
                                          optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // Encountered Delay
     if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
-      std::cout << RED_START << "GraphMsfRos" << COLOR_END << " Encountered delay of "
-                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
+      REGULAR_COUT << RED_START << " Encountered delay of " << std::setprecision(14)
+                   << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << COLOR_END << std::endl;
     }
 
     // Publish Odometry
