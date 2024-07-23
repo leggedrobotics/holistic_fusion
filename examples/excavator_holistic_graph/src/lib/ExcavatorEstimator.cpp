@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -121,19 +121,21 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   // Transform to IMU frame
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
 
+  // Measurement
+  // Frame Names
+  const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();
+  const std::string& fixedFrameName = odomLidarPtr->header.frame_id;
+  // Measurement
+  graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None,
+      1.0, lidarOdometryTimeK, fixedFrameName, 1.0, initialSe3AlignmentNoise_, lio_T_M_Lk, lioPoseUnaryNoise_);
+
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    // Measurement
-    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
-        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
-    this->addUnaryPoseMeasurement(unary6DMeasurement);
+    this->addUnaryPose3Measurement(unary6DMeasurement);
   } else if (!(useLeftGnssFlag_ || useRightGnssFlag_) || secondsSinceStart_() > 15) {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "Lidar_unary_6D", int(lioOdometryRate_), lidarOdometryTimeK, odomLidarPtr->header.frame_id,
-        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(), lio_T_M_Lk, lioPoseUnaryNoise_);
     this->initYawAndPosition(unary6DMeasurement);
   }
 
@@ -150,7 +152,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
                                              staticTransformsPtr_->getImuFrame())
                         .matrix())
           .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength * 4);
+      graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
@@ -161,9 +163,6 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
   // Static method variables
   static Eigen::Vector3d accumulatedLeftCoordinates__(0.0, 0.0, 0.0);
   static Eigen::Vector3d accumulatedRightCoordinates__(0.0, 0.0, 0.0);
-  static bool gnssHeadingHealthyFlag__ = true;
-  static bool leftGnssPositionHealthyFlag__ = true;
-  static bool rightGnssPositionHealthyFlag__ = true;
   // static Eigen::Vector3d W_t_W_GnssL_km1__, W_t_W_GnssR_km1__;
   static int gnssCallbackCounter__ = 0;
 
@@ -197,6 +196,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
   gnssHandlerPtr_->convertNavSatToPositions(leftGnssCoord, rightGnssCoord, W_t_W_GnssL, W_t_W_GnssR);
   double yaw_W_C = gnssHandlerPtr_->computeYaw(W_t_W_GnssL, W_t_W_GnssR);
 
+  std::string fixedFrameName = staticTransformsPtr_->getWorldFrame();  // + "_ENU";
+
   // State Machine
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {  // Try to initialize yaw and position if not done already
     if (this->initYawAndPosition(yaw_W_C, W_t_W_GnssL, staticTransformsPtr_->getWorldFrame(),
@@ -207,71 +208,54 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
   } else {  // Already initialized --> add to graph
     // Measurement type 1: GNSS Yaw ----------------------------------------------------
     if (useGnssYawFlag_) {
+      // Sensor Frame Name
+      const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame();
       // Create yaw measurement and add it
       Eigen::Matrix<double, 1, 1> gnssHeadingUnaryNoise(std::max(5.0 * leftGnssCovarianceXYZ.maxCoeff(), gnssHeadingUnaryNoise_));
       graph_msf::UnaryMeasurementXD<double, 1> meas_yaw_W_C(
-          "GnssYaw", int(gnssRate_), leftGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
-          dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(), yaw_W_C, gnssHeadingUnaryNoise,
-          GNSS_HEADING_COVARIANCE_VIOLATION_THRESHOLD);
-      if (!this->addHeadingMeasurement(meas_yaw_W_C)) {
-        if (gnssHeadingHealthyFlag__) {
-          REGULAR_COUT << RED_START << " Gnss heading measurement not added due to large covariance." << COLOR_END << std::endl;
-          gnssHeadingHealthyFlag__ = false;
-        }
-      } else if (!gnssHeadingHealthyFlag__) {
-        REGULAR_COUT << GREEN_START << " Gnss heading measurement returned." << COLOR_END << std::endl;
-        gnssHeadingHealthyFlag__ = true;
-      }
+          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.0,
+          leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_, yaw_W_C, gnssHeadingUnaryNoise);
+      this->addUnaryYawMeasurement(meas_yaw_W_C);
     }
     // Measurement type 2: GNSS Left Position ----------------------------------------------------
     if (useLeftGnssFlag_) {
+      // Sensor Frame Name
+      const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame();
+      // Create left position measurement and add it
       leftGnssCovarianceXYZ = Eigen::Vector3d(std::max(leftGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
-          "GnssLeftPosition", int(gnssRate_), leftGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
-          dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame(), W_t_W_GnssL, leftGnssCovarianceXYZ,
-          GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
-      if (!this->addPositionMeasurement(meas_W_t_W_GnssL)) {
-        if (leftGnssPositionHealthyFlag__) {
-          REGULAR_COUT << RED_START << " Gnss left position measurement not added." << COLOR_END << std::endl;
-          leftGnssPositionHealthyFlag__ = false;
-        }
-      } else if (!leftGnssPositionHealthyFlag__) {
-        REGULAR_COUT << GREEN_START << " Gnss left position measurement returned." << COLOR_END << std::endl;
-        leftGnssPositionHealthyFlag__ = true;
-      }
+          "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_,
+          graph_msf::RobustNormEnum::None, 1.0, leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
+          W_t_W_GnssL, leftGnssCovarianceXYZ);
+      this->addUnaryPosition3Measurement(meas_W_t_W_GnssL);
     }
     // Measurement type 3: GNSS Right Position ----------------------------------------------------
     if (useRightGnssFlag_) {
+      // Sensor Frame Name
+      const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame();
+      // Create right position measurement and add it
       rightGnssCovarianceXYZ = Eigen::Vector3d(std::max(rightGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
-          "GnssRightPosition", int(gnssRate_), rightGnssMsgPtr->header.stamp.toSec(), staticTransformsPtr_->getWorldFrame() + "_ENU",
-          dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getRightGnssFrame(), W_t_W_GnssR, rightGnssCovarianceXYZ,
-          GNSS_POSITION_COVARIANCE_VIOLATION_THRESHOLD);
-      if (!this->addPositionMeasurement(meas_W_t_W_GnssR)) {
-        if (rightGnssPositionHealthyFlag__) {
-          REGULAR_COUT << RED_START << " Gnss right position measurement not added." << COLOR_END << std::endl;
-          rightGnssPositionHealthyFlag__ = false;
-        }
-      } else if (!rightGnssPositionHealthyFlag__) {
-        REGULAR_COUT << GREEN_START << " Gnss right position measurement returned." << COLOR_END << std::endl;
-        rightGnssPositionHealthyFlag__ = true;
-      }
+          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_,
+          graph_msf::RobustNormEnum::None, 1.0, rightGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
+          W_t_W_GnssR, rightGnssCovarianceXYZ);
+      this->addUnaryPosition3Measurement(meas_W_t_W_GnssR);
     }
     // Visualizations ------------------------------------------------------------
     // Left GNSS
     if (useLeftGnssFlag_) {
       addToPathMsg(measGnss_worldGnssLPathPtr_, staticTransformsPtr_->getWorldFrame(), leftGnssMsgPtr->header.stamp, W_t_W_GnssL,
-                   graphConfigPtr_->imuBufferLength * 4);
+                   graphConfigPtr_->imuBufferLength_ * 4);
       pubMeasWorldGnssLPath_.publish(measGnss_worldGnssLPathPtr_);
     }
     // Right GNSS
     if (useRightGnssFlag_) {
       addToPathMsg(measGnss_worldGnssRPathPtr_, staticTransformsPtr_->getWorldFrame(), rightGnssMsgPtr->header.stamp, W_t_W_GnssR,
-                   graphConfigPtr_->imuBufferLength * 4);
+                   graphConfigPtr_->imuBufferLength_ * 4);
       pubMeasWorldGnssRPath_.publish(measGnss_worldGnssRPathPtr_);
     }
   }

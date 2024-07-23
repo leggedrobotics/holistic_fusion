@@ -1,5 +1,5 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -95,6 +95,9 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // Rates
   double lioOdometryRate_ = 5.0;
   double gnssRate_ = 20.0;
+
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;

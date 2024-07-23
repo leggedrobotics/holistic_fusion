@@ -20,20 +20,19 @@ graph_params:
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
+  minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
   maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  # Alignment Parameters
   optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
   fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
-  optimizeWithImuToSensorLeverArm: false   # If true, the IMU to sensor lever arm is considered in the optimization (important for position-only measurements)
+  centerMeasurementsAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
-
-# Outlier Rejection
-outlier_params:
-  poseMotionOutlierThreshold: 0.3         # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
 
 # Noise Parameters
 noise_params:
@@ -51,6 +50,12 @@ noise_params:
   biasAccOmegaInit: 1.0e-02               # StdDev of bias at start
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
+  ## Initial State
+  initialPositionNoiseDensity: 10.0    # Prior/starting value of position
+  initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
+  initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
+  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:

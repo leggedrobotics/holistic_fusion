@@ -1,6 +1,7 @@
 # Sensor Params
 sensor_params:
   imuRate: 100.0                          # Rate of IMU input (Hz)
+  createStateEveryNthImuMeasurement: 1    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
   imuBufferLength: 400
@@ -13,23 +14,25 @@ initialization_params:
 
 # Factor Graph
 graph_params:
-  useIsam: true                           # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
-  smootherLag: 1.5                        # Lag of fixed lag smoother[seconds], not needed for ISAM2
+  realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
+  realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
+  # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
+  minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
   maxOptimizationFrequency: 20.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     #Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  # Alignment Parameters
   optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
-  fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
-  optimizeWithImuToSensorLeverArm: true   # If true, the IMU to sensor lever arm is considered in the optimization
+  fixedFramePosesResetThreshold: 8.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
+  centerMeasurementsAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
-
-# Outlier Rejection
-outlier_params:
-  poseMotionOutlierThreshold: 0.3 # in meters, if jumping more than this, it is considered as absent GNSS, occurs between two GNSS measurements
 
 # Noise Parameters
 noise_params:
@@ -47,6 +50,12 @@ noise_params:
   biasAccOmegaInit: 1.0e-05               # StdDev of bias at start: default: sqrt(1.0e-07)
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
+  ## Initial State
+  initialPositionNoiseDensity: 10.0    # Prior/starting value of position
+  initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
+  initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
+  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:

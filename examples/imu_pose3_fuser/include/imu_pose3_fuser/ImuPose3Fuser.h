@@ -51,6 +51,9 @@ class ImuPose3Fuser : public graph_msf::GraphMsfRos {
   // Rates
   double pose3OdometryRate_ = 5.0;
 
+  // Alignment Parameters
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+
   // Noise
   Eigen::Matrix<double, 6, 1> pose3UnaryNoise_;
 
@@ -69,6 +72,9 @@ class ImuPose3Fuser : public graph_msf::GraphMsfRos {
 
   // Messages
   nav_msgs::PathPtr measPose3_worldImuPathPtr_;
+
+  // Frame
+  std::string unaryPose3Frame_;
 };
 }  // namespace imu_pose3_fuser
 #endif  // end Smb_Estimator_H
