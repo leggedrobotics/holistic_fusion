@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package>
+    <name>graph_msf_examples</name>
+    <version>0.0.0</version>
+
+    <description>
+        Meta package for the graph msf examples.
+    </description>
+
+    <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+    <license>BSD</license>
+    <author email="nubertj@ethz.ch">Julian Nubert</author>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <run_depend>anymal_estimator_graph</run_depend>
+    <run_depend>atn_position3_fuser</run_depend>
+    <run_depend>excavator_holistic_graph</run_depend>
+    <run_depend>imu_pose3_fuser</run_depend>
+    <run_depend>pure_imu_integration</run_depend>
+    <run_depend>smb_estimator_graph</run_depend>
+</package>
