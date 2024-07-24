@@ -86,7 +86,7 @@ void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // Imu
   subImu_ = privateNode.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
                                                     ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized IMU cabin subscriber with topic: " << subImu_.getTopic()
+  std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized main IMU subscriber with topic: " << subImu_.getTopic()
             << std::endl;
 }
 

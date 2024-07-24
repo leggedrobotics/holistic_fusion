@@ -22,15 +22,16 @@ namespace graph_msf {
 class GmsfUnaryExpressionPosition3 final : public GmsfUnaryExpression<gtsam::Point3> {
  public:
   // Constructor
-  GmsfUnaryExpressionPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& poseUnaryMeasurementPtr,
+  GmsfUnaryExpressionPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& positionUnaryMeasurementPtr,
                                const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression(poseUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
-        positionUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
+      : GmsfUnaryExpression(positionUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+        positionUnaryMeasurementPtr_(positionUnaryMeasurementPtr),
         exp_fixedFrame_t_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {}
 
   // Destructor
   ~GmsfUnaryExpressionPosition3() override = default;
+
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Translation (core part)

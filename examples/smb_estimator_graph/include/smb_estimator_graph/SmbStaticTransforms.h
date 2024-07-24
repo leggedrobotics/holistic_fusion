@@ -19,23 +19,31 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
-  void setWheelOdometryFrame(const std::string& s) { wheelOdometryFrame_ = s; }
-  void setLegOdometryFrame(const std::string& s) { legOdometryFrame_ = s; }
+  void setWheelOdometryBetweenFrame(const std::string& s) { wheelOdometryBetweenFrame_ = s; }
+  void setWheelLinearVelocityLeftFrame(const std::string& s) { wheelLinearVelocityLeftFrame_ = s; }
+  void setWheelLinearVelocityRightFrame(const std::string& s) { wheelLinearVelocityRightFrame_ = s; }
   void setVioOdometryFrame(const std::string& s) { vioOdometryFrame_ = s; }
 
   // Getters
   const std::string& getLioOdometryFrame() { return lidarOdometryFrame_; }
-  const std::string& getWheelOdometryFrame() { return wheelOdometryFrame_; }
-  const std::string& getLegOdometryFrame() { return legOdometryFrame_; }
+  const std::string& getWheelOdometryBetweenFrame() { return wheelOdometryBetweenFrame_; }
+  const std::string& getWheelLinearVelocityLeftFrame() { return wheelLinearVelocityLeftFrame_; }
+  const std::string& getWheelLinearVelocityRightFrame() { return wheelLinearVelocityRightFrame_; }
   const std::string& getVioOdometryFrame() { return vioOdometryFrame_; }
 
  private:
   void findTransformations() override;
 
-  // Members
+  // Frames
+  // LiDAR
   std::string lidarOdometryFrame_;
-  std::string wheelOdometryFrame_;
-  std::string legOdometryFrame_;
+  // Wheel
+  // Between
+  std::string wheelOdometryBetweenFrame_;
+  // Linear Velocities
+  std::string wheelLinearVelocityLeftFrame_;
+  std::string wheelLinearVelocityRightFrame_;
+  // VIO
   std::string vioOdometryFrame_;
 };
 }  // namespace smb_se

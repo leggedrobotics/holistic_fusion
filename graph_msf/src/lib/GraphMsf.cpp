@@ -16,6 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Unary Factors
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPosition3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionVelocity3SensorFrame.h"
 #include "graph_msf/factors/non_expression/unaryYawFactor.h"
 
 // Binary Factors
@@ -329,14 +330,45 @@ void GraphMsf::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 
   }
 }
 
-// Velocity3
-void GraphMsf::addUnaryVelocity3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) {
-  throw std::runtime_error("Velocity measurements are not yet supported.");
+// Velocity3 in Fixed Frame
+void GraphMsf::addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) {
+  throw std::runtime_error("Velocity measurements in fixed frame are not yet supported.");
 }
 
 // Velocity3 in Body Frame
-void addUnaryVelocity3BodyMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
-  throw std::runtime_error("Velocity measurements are not yet supported.");
+void GraphMsf::addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
+    return;
+  } else {  // Case 2: Graph Initialized
+    // Check for covariance violation
+    bool covarianceViolatedFlag = isCovarianceViolated_<3>(S_v_F_S.unaryMeasurementNoiseDensity(), S_v_F_S.covarianceViolationThreshold());
+    if (covarianceViolatedFlag) {
+      REGULAR_COUT << RED_START << " Velocity covariance violated. Not adding factor." << COLOR_END << std::endl;
+      return;
+    }
+
+    // Create GMSF expression
+    GmsfUnaryExpressionVelocity3SensorFrame gmsfUnaryExpressionVelocity3SensorFrame(
+        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getWorldFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()));
+
+    // Add factor to graph
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Vector3>(
+        std::make_shared<GmsfUnaryExpressionVelocity3SensorFrame>(gmsfUnaryExpressionVelocity3SensorFrame));
+
+    // Optimize ---------------------------------------------------------------
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
 }
 
 // Roll

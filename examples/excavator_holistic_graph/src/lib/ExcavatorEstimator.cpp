@@ -127,8 +127,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   const std::string& fixedFrameName = odomLidarPtr->header.frame_id;
   // Measurement
   graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None,
-      1.0, lidarOdometryTimeK, fixedFrameName, 1.0, initialSe3AlignmentNoise_, lio_T_M_Lk, lioPoseUnaryNoise_);
+      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(), lidarOdometryTimeK, fixedFrameName, 1.0, initialSe3AlignmentNoise_, lio_T_M_Lk, lioPoseUnaryNoise_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
@@ -213,7 +212,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       // Create yaw measurement and add it
       Eigen::Matrix<double, 1, 1> gnssHeadingUnaryNoise(std::max(5.0 * leftGnssCovarianceXYZ.maxCoeff(), gnssHeadingUnaryNoise_));
       graph_msf::UnaryMeasurementXD<double, 1> meas_yaw_W_C(
-          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNormEnum::None, 1.0,
+          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(),
           leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_, yaw_W_C, gnssHeadingUnaryNoise);
       this->addUnaryYawMeasurement(meas_yaw_W_C);
     }
@@ -227,7 +226,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                               std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
           "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_,
-          graph_msf::RobustNormEnum::None, 1.0, leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
+          graph_msf::RobustNorm::None(), leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
           W_t_W_GnssL, leftGnssCovarianceXYZ);
       this->addUnaryPosition3Measurement(meas_W_t_W_GnssL);
     }
@@ -241,7 +240,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
           "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_,
-          graph_msf::RobustNormEnum::None, 1.0, rightGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
+          graph_msf::RobustNorm::None(), rightGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_,
           W_t_W_GnssR, rightGnssCovarianceXYZ);
       this->addUnaryPosition3Measurement(meas_W_t_W_GnssR);
     }

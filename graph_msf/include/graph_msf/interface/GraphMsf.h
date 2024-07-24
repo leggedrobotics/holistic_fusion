@@ -59,8 +59,8 @@ class GraphMsf {
   /// Unary Measurements
   void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S);
   void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_t_F_S);
-  void addUnaryVelocity3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S);
-  void addUnaryVelocity3BodyMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S);
+  void addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S);
+  void addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S);
   bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_F_S);
   bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_F_S);
   bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_F_S);

@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <tf/transform_listener.h>
 
 // Workspace
@@ -51,22 +52,34 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Rates
   double lioOdometryRate_ = 5.0;
-  double wheelOdometryRate_ = 50.0;
+  double wheelOdometryBetweenRate_ = 50.0;
+  double wheelLinearVelocitiesRate_ = 50.0;
   double vioOdometryRate_ = 50.0;
 
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_;
 
   // Noise
+  // LiDAR Odometry
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
+  // Wheel Odometry
+  // Between
   Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_;
+  // Linear Velocities
+  Eigen::Matrix<double, 3, 1> wheelLinearVelocitiesNoise_;
+  // VIO Odometry
   Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_;
 
   // ROS Related stuff ----------------------------
 
   // Callbacks
+  // LiDAR
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
-  void wheelOdometryCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
+  // Wheel Between
+  void wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
+  // Wheel Linear Velocities
+  void wheelLinearVelocitiesCallback_(const std_msgs::Float64MultiArray::ConstPtr& wheelsSpeedsPtr);
+  // VIO
   void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
 
   // Callback Members
@@ -76,9 +89,15 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Subscribers
   // Instances
+  // LIO
   ros::Subscriber subLioOdometry_;
-  ros::Subscriber subWheelOdometry_;
+  // Wheel Between
+  ros::Subscriber subWheelOdometryBetween_;
+  // Wheel Linear Velocities
+  ros::Subscriber subWheelLinearVelocities_;
+  // VIO
   ros::Subscriber subVioOdometry_;
+  // TF Listener
   tf::TransformListener tfListener_;
 
   // Publishers
@@ -92,8 +111,12 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Flags
   bool useLioOdometryFlag_ = true;
-  bool useWheelOdometryFlag_ = false;
+  bool useWheelOdometryBetweenFlag_ = false;
+  bool useWheelLinearVelocitiesFlag_ = false;
   bool useVioOdometryFlag_ = false;
+
+  // Wheel Radius
+  double wheelRadiusMeter_ = 0.195;
 };
 }  // namespace smb_se
 #endif  // end Smb_Estimator_H

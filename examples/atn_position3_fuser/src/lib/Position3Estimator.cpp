@@ -119,7 +119,7 @@ void Position3Estimator::positionCallback_(const geometry_msgs::PointStamped::Co
     // Already initialized --> add position measurement to graph
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_P(
         "LeicaPosition", int(positionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId_,
-        graph_msf::RobustNormEnum::None, 1.0, leicaPositionPtr->header.stamp.toSec(), fixedFrame, POS_COVARIANCE_VIOLATION_THRESHOLD,
+        graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), fixedFrame, POS_COVARIANCE_VIOLATION_THRESHOLD,
         initialSe3AlignmentNoise_, positionMeas, positionCovarianceXYZ);
     this->addUnaryPosition3Measurement(meas_W_t_W_P);
   }

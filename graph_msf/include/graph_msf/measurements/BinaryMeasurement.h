@@ -16,10 +16,8 @@ class BinaryMeasurement : public Measurement {
  public:
   // Constructor
   BinaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                    const std::string& sensorFrameCorrectedName, const RobustNormEnum& robustNormEnum, const double robustNormConstant,
-                    const double timeKm1, const double timeK)
-      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
-                    MeasurementTypeEnum::Binary),
+                    const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const double timeKm1, const double timeK)
+      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Binary),
         timeKm1_(timeKm1),
         timeK_(timeK) {}
 

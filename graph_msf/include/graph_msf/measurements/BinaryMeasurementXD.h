@@ -17,10 +17,10 @@ class BinaryMeasurementXD final : public BinaryMeasurement {
  public:
   // Constructor
   BinaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                      const std::string& sensorFrameCorrectedName, const RobustNormEnum& robustNormEnum, const double robustNormConstant,
+                      const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm,
                       const double timeKm1, const double timeK, const MEASUREMENT_TYPE& deltaMeasurement,
-                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity, const bool useRobustNorm = false)
-      : BinaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
+                      const Eigen::Matrix<double, DIM, 1> deltaMeasurementNoiseDensity)
+      : BinaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm,
                           timeKm1, timeK),
         deltaMeasurement_(deltaMeasurement),
         deltaMeasurementNoiseDensity_(deltaMeasurementNoiseDensity) {}
