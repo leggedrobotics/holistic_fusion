@@ -1,7 +1,8 @@
 # Sensor Params
 sensor_params:
   lioOdometryRate: 5
-  leggedOdometryRate: 400
+  leggedOdometryBetweenRate: 400
+  leggedOdometryVelocityRate: 20
   gnssRate: 20
 
 # Noise Parameters

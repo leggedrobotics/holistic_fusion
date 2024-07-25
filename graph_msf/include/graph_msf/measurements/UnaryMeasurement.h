@@ -33,7 +33,7 @@ class UnaryMeasurement : public Measurement {
     std::stringstream ss;
     ss << std::endl;
     ss << "Measurement Name: " << this->measurementName() << std::endl;
-    ss << "Timestamp: " << this->timeK_ << std::endl;
+    ss << std::setprecision(14) << "Timestamp: " << this->timeK_ << std::endl;
     ss << "Fixed Frame: " << this->fixedFrameName() << std::endl;
     ss << "Sensor Frame: " << this->sensorFrameName() << std::endl;
     return ss.str();

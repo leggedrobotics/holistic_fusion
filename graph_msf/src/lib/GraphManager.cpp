@@ -5,7 +5,6 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
@@ -28,6 +27,8 @@ Please see the LICENSE file that has been included as part of this package.
 // LM
 #include "graph_msf/core/optimizer/OptimizerLMBatch.hpp"
 #include "graph_msf/core/optimizer/OptimizerLMFixedLag.hpp"
+
+#define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 
 namespace graph_msf {
 
@@ -402,6 +403,12 @@ void GraphManager::updateGraph() {
     }
   }  // end of locking
 
+  // if no factors are present, return
+  if (newGraphFactors.size() == 0) {
+    REGULAR_COUT << " No factors present, not optimizing." << std::endl;
+    return;
+  }
+
   // Graph Update (time consuming) -------------------
   bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap,
                                                                     graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
@@ -511,7 +518,7 @@ void GraphManager::updateGraph() {
                        << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
-    }    // for loop over all transforms
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------

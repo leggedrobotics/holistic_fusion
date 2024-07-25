@@ -78,7 +78,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Rates
   double lioOdometryRate_ = 5.0;
-  double leggedOdometryRate_ = 400.0;
+  double leggedOdometryBetweenRate_ = 400.0;
+  double leggedOdometryVelocityRate_ = 20.0;
   double gnssRate_ = 10.0;
 
   // Flags
@@ -110,7 +111,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   double lidarBetweenTimeKm1_{0.0};
   Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
   // Legged
-  int leggedOdometryCallbackCounter_{-1};
+  int leggedOdometryPoseCallbackCounter_{-1};
   int leggedOdometryOdomCallbackCounter_{-1};
   Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
   double legOdometryTimeKm1_{0.0};
