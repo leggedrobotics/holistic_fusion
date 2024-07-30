@@ -23,11 +23,21 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
  public:
   // Constructor
   GmsfUnaryExpressionVelocity3SensorFrame(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
-                                          const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+                                          const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                                          const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
       : GmsfUnaryExpression(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
-        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {}
+        exp_R_fixedFrame_I_(gtsam::Rot3::Identity())
+  {
+    // Check whether we can find an IMU measurement at the same time
+    graph_msf::ImuMeasurement imuMeasurement;
+    if (imuBufferPtr->getImuMeasurementAtTime(imuMeasurement, velocityUnaryMeasurementPtr_->timeK())) {
+      REGULAR_COUT << "Found IMU Measurement at the same time as the velocity measurement." << std::endl;
+    } else {
+      REGULAR_COUT << RED_START << "No IMU Measurement found at the same time as the velocity measurement." << COLOR_END << std::endl;
+    }
+  }
 
   // Destructor
   ~GmsfUnaryExpressionVelocity3SensorFrame() override = default;

@@ -69,7 +69,7 @@ Eigen::Matrix<double, 6, 1> ImuBuffer::addToImuBuffer(double ts, const Eigen::Ve
     }
   }
 
-  // If IMU buffer is too large, remove first element
+  // If IMU buffer is too large, remove oldest element
   if (timeToImuBuffer_.size() > imuBufferLength_) {
     timeToImuBuffer_.erase(timeToImuBuffer_.begin());
   }
@@ -88,6 +88,19 @@ double ImuBuffer::getLatestTimestampInBuffer() {
   // Reading from IMU buffer --> acquire mutex
   const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
   return tLatestInBuffer_;
+}
+
+bool ImuBuffer::getImuMeasurementAtTime(graph_msf::ImuMeasurement& returnedImuMeasurement, const double ts) {
+  // Get IMU measurement
+  TimeToImuMap::iterator imuItr = timeToImuBuffer_.find(ts);
+  if (imuItr == timeToImuBuffer_.end()) {
+    std::ostringstream errorStream;
+    errorStream << YELLOW_START << "GMsf-ImuBuffer" << RED_START << " IMU Measurement at time " << std::fixed << ts
+                << " not found in buffer.";
+    return false;
+  }
+  returnedImuMeasurement = imuItr->second;
+  return true;
 }
 
 void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
@@ -143,7 +156,7 @@ bool ImuBuffer::estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravi
   return true;
 }
 
-bool ImuBuffer::getIMUBufferIteratorsInInterval(const double& tsStart, const double& tsEnd, TimeToImuMap::iterator& startIterator,
+bool ImuBuffer::getIMUBufferIteratorsInInterval(const double tsStart, const double tsEnd, TimeToImuMap::iterator& startIterator,
                                                 TimeToImuMap::iterator& endIterator) {
   // Check if timestamps are in correct order
   if (tsStart >= tsEnd) {
