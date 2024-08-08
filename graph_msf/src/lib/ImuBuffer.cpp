@@ -212,8 +212,8 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double tsStart, const doub
 
 // This function is better suitable for finding the closest IMU timestamp than the timeToKeyBuffer_ version, as there might be fewer keys
 // than IMU measurements
-bool ImuBuffer::getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement, const double maxSearchDeviation,
-                                         const double tK) {
+bool ImuBuffer::getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement,
+                                         const double maxSearchDeviation, const double tK) {
   std::_Rb_tree_iterator<std::pair<const double, ImuMeasurement>> upperIterator;
   {
     // Read from IMU buffer --> acquire mutex
@@ -231,15 +231,18 @@ bool ImuBuffer::getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasur
   --lowerIterator;
 
   // Keep key which is closer to tLidar
-  returnedImuTimestamp = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  returnedImuMeasurement = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
+  returnedImuTimestamp =
+      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
+  returnedImuMeasurement =
+      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
   double timeDeviation = returnedImuTimestamp - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Searched time step: " << std::setprecision(14) << tK << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Found time step: " << std::setprecision(14) << returnedImuTimestamp << std::endl;
-    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation
-              << " ms" << std::endl;
+    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Found time step: " << std::setprecision(14) << returnedImuTimestamp
+              << std::endl;
+    std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation << " ms"
+              << std::endl;
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
               << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
   }

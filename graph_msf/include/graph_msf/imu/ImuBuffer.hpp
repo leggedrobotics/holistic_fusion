@@ -65,7 +65,7 @@ class ImuBuffer {
 
   // Get closest timestamp
   bool getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement, const double maxSearchDeviation,
-                                           const double tK);
+                                const double tK);
 
   // Integrate NavState from Timestamp
   gtsam::NavState integrateNavStateFromTimestamp(const double& tsStart, const double& tsEnd, const gtsam::NavState& stateStart,

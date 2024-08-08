@@ -28,7 +28,8 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   leggedOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryBetweenRate", privateNode);
   leggedOdometryPoseDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedOdometryPoseDownsampleFactor", privateNode);
   leggedOdometryVelocityRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryVelocityRate", privateNode);
-  leggedOdometryVelocityDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedOdometryVelocityDownsampleFactor", privateNode);
+  leggedOdometryVelocityDownsampleFactor_ =
+      graph_msf::tryGetParam<int>("sensor_params/leggedOdometryVelocityDownsampleFactor", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Noise Parameters ---------------------------------------------------

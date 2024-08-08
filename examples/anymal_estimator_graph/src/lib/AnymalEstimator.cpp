@@ -366,11 +366,12 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_) {
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
-          graph_msf::RobustNorm::None(), legOdometryTimeK, leggedOdometryPoseKPtr->header.frame_id, 1.0, initialSe3AlignmentNoise_,
-          T_O_Bl_k, legPoseBetweenNoise_);
+          "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName,
+          leggedOdometryFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(), legOdometryTimeK,
+          leggedOdometryPoseKPtr->header.frame_id, 1.0, initialSe3AlignmentNoise_, T_O_Bl_k, legPoseBetweenNoise_);
       // Add to graph
-      REGULAR_COUT << GREEN_START << " Legged odometry between callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+      REGULAR_COUT << GREEN_START << " Legged odometry between callback is setting global yaw, as it was not set so far." << COLOR_END
+                   << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {
@@ -413,7 +414,8 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
           graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), leggedOdometryKPtr->header.frame_id, 1.0,
           initialSe3AlignmentNoise_, Eigen::Isometry3d::Identity(), legPoseBetweenNoise_);
       // Add to graph
-      REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
+      REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
+                   << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {
