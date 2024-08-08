@@ -7,7 +7,7 @@
     <arg name="using_lio_unary"             default="true"/>
     <arg name="using_lio_between"           default="false"/>
     <arg name="using_legged_between"        default="true"/>
-    <arg name="using_legged_velocity_unary" default="false"/>
+    <arg name="using_legged_velocity_unary" default="true"/>
     <arg name="simulated" default="false"/>
 
 
@@ -20,8 +20,6 @@
         <!-- Config  -->
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
-        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
-        <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
     </include>
 
     <!-- Launch Compslam -->

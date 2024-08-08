@@ -490,7 +490,7 @@ Visualization Manager:
                 {}
           feetcenter:
             {}
-          imu_link:
+          footprint:
             {}
           ground_plane:
             ground_plane__link:

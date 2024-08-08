@@ -13,8 +13,8 @@ namespace graph_msf {
 
 void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
   if (verboseLevel_ >= 5) {
-    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Adding key " << key << " to timeToKeyBuffer for time " << ts
-              << std::endl;
+    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Adding key " << key << " to timeToKeyBuffer for time "
+              << std::setprecision(14) << ts << std::endl;
   }
 
   // Mutex block

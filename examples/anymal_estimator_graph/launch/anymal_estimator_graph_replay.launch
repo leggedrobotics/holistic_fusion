@@ -41,13 +41,13 @@
     </include>
 
     <!-- Elevation mapping node -->
-    <!-- <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
-    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/vlp16.yaml"/>
+    <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
+    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/online_vlp16.yaml"/>
 
     <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log">
         <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
         <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
-    </node> -->
+    </node>
 
     <!-- RVIZ for Visualization -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" required="true" output="screen"/>

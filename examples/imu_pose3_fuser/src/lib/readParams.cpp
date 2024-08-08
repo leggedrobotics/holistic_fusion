@@ -27,6 +27,9 @@ void ImuPose3Fuser::readParams_(const ros::NodeHandle& privateNode) {
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/pose3UnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   pose3UnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
+
+  // Coordinate Frame
+  unaryPose3Frame_ = graph_msf::tryGetParam<std::string>("extrinsics/unaryPose3Frame", privateNode);
 }
 
 }  // namespace imu_pose3_fuser

@@ -16,11 +16,10 @@ class UnaryMeasurement : public Measurement {
  public:
   // Constructor
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                   const std::string& sensorFrameCorrectedName, const RobustNormEnum robustNormEnum, const double robustNormConstant,
-                   const double timeStamp, const std::string& fixedFrameName, const double covarianceViolationThreshold,
+                   const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
+                   const std::string& fixedFrameName, const double covarianceViolationThreshold,
                    const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise)
-      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNormEnum, robustNormConstant,
-                    MeasurementTypeEnum::Unary),
+      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Unary),
         timeK_(timeStamp),
         fixedFrameName_(fixedFrameName),
         covarianceViolationThreshold_(covarianceViolationThreshold),
@@ -34,7 +33,7 @@ class UnaryMeasurement : public Measurement {
     std::stringstream ss;
     ss << std::endl;
     ss << "Measurement Name: " << this->measurementName() << std::endl;
-    ss << "Timestamp: " << this->timeK_ << std::endl;
+    ss << std::setprecision(14) << "Timestamp: " << this->timeK_ << std::endl;
     ss << "Fixed Frame: " << this->fixedFrameName() << std::endl;
     ss << "Sensor Frame: " << this->sensorFrameName() << std::endl;
     return ss.str();

@@ -31,6 +31,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
 
   // Destructor
   ~GmsfUnaryExpressionPose3() override = default;
+
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     exp_T_fixedFrame_sensorFrame_ = gtsam::Expression<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestGeneralKey));

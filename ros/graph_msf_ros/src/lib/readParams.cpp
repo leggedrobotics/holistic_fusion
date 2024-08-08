@@ -121,15 +121,18 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   fixedFrameAlignedNameId_ = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
   sensorFrameCorrectedNameId_ = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
 
-  // Logging Path
-  optimizationResultLoggingPath_ = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
-  // Make sure the path ends with a slash
-  if (optimizationResultLoggingPath_.back() != '/') {
-    optimizationResultLoggingPath_ += "/";
-  }
-  // Create directory if it does not exist
-  if (!boost::filesystem::exists(optimizationResultLoggingPath_)) {
-    boost::filesystem::create_directories(optimizationResultLoggingPath_);
+  // Logging path in case we run offline optimization
+  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    // Get the path
+    optimizationResultLoggingPath_ = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
+    // Make sure the path ends with a slash
+    if (optimizationResultLoggingPath_.back() != '/') {
+      optimizationResultLoggingPath_ += "/";
+    }
+    // Create directory if it does not exist
+    if (!boost::filesystem::exists(optimizationResultLoggingPath_)) {
+      boost::filesystem::create_directories(optimizationResultLoggingPath_);
+    }
   }
 }
 

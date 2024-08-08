@@ -26,6 +26,9 @@
     <arg name="excavator_extrinsic_file"       default="$(find excavator_holistic_graph)/config/excavator_specific/excavator_extrinsic_params.yaml"/>
     <arg name="excavator_gnss_parameter_file"  default="$(find excavator_holistic_graph)/config/excavator_specific/excavator_gnss_params.yaml"/>
 
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find excavator_holistic_graph)/logging" />
+
     <!-- Node -->
     <node pkg="excavator_holistic_graph" type="excavator_holistic_graph_node" name="holistic_graph_node" output="screen" > <!-- launch-prefix="gdb -args"-->
         <!-- Launch Parameters -->
@@ -33,6 +36,7 @@
         <param name="launch/useLeftGnss" type="bool" value="$(arg useLeftGnss)" />
         <param name="launch/useRightGnss" type="bool" value="$(arg useRightGnss)" />
         <param name="launch/useLioOdometry" type="bool" value="$(arg useLioOdometry)" />
+        <param name="launch/optimizationResultLoggingPath" type="string" value="$(arg logging_dir_location)" />
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_file)" />
         <rosparam command="load" file="$(arg core_graph_parameter_file)" />

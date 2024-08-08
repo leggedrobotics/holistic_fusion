@@ -21,7 +21,7 @@ class StaticTransformsTf : public StaticTransforms {
   StaticTransformsTf(const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
 
  protected:
-  virtual void findTransformations() = 0;
+  void findTransformations() override;
 
   // Members
   tf::TransformListener listener_;

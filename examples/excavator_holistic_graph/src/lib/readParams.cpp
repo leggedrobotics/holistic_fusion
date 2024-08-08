@@ -1,11 +1,15 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// Implementation
 #include "excavator_holistic_graph/ExcavatorEstimator.h"
+
+// Workspace
+#include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace excavator_se {
 
@@ -56,7 +60,7 @@ void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
   // GNSS Parameters
   if (useLeftGnssFlag_ || useRightGnssFlag_) {
     // Gnss parameters
-    gnssHandlerPtr_->usingGnssReferenceFlag = graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode);
+    gnssHandlerPtr_->setUseGnssReferenceFlag(graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode));
     gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
     gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));

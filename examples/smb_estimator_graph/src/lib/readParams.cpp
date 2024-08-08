@@ -8,11 +8,12 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "smb_estimator_graph/SmbEstimator.h"
 
-// GraphMSF ROS
-#include "graph_msf_ros/ros/read_ros_params.h"
-
 // Project
 #include "smb_estimator_graph/SmbStaticTransforms.h"
+#include "smb_estimator_graph/constants.h"
+
+// GraphMSF ROS
+#include "graph_msf_ros/ros/read_ros_params.h"
 
 namespace smb_se {
 
@@ -24,12 +25,14 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
 
   // Flags
   useLioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useLioOdometry", privateNode);
-  useWheelOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelOdometry", privateNode);
+  useWheelOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelOdometryBetween", privateNode);
+  useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelLinearVelocities", privateNode);
   useVioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useVioOdometry", privateNode);
 
   // Sensor Params
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
-  wheelOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryRate", privateNode);
+  wheelOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryBetweenRate", privateNode);
+  wheelLinearVelocitiesRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelLinearVelocitiesRate", privateNode);
   vioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
 
   // Alignment Parameters
@@ -44,10 +47,15 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
+  /// Between
   const auto wheelPoseBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   wheelPoseBetweenNoise_ << wheelPoseBetweenNoise[0], wheelPoseBetweenNoise[1], wheelPoseBetweenNoise[2], wheelPoseBetweenNoise[3],
       wheelPoseBetweenNoise[4], wheelPoseBetweenNoise[5];
+  /// Linear Velocities
+  const auto wheelLinearVelocitiesNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelLinearVelocitiesNoiseDensity", privateNode);  // left,right
+  wheelLinearVelocitiesNoise_ << wheelLinearVelocitiesNoise[0], wheelLinearVelocitiesNoise[1], wheelLinearVelocitiesNoise[2];
   /// VIO Odometry
   const auto vioPoseBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
@@ -60,10 +68,21 @@ void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
   /// Wheel Odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelOdometryFrame", privateNode));
+      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelOdometryBetweenFrame", privateNode));
+  /// Whel Linear Velocities frames
+  /// Left
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
+      ->setWheelLinearVelocityLeftFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelLinearVelocityLeftFrame", privateNode));
+  /// Right
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
+      ->setWheelLinearVelocityRightFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelLinearVelocityRightFrame", privateNode));
+
   /// VIO Odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
       ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/vioOdometryFrame", privateNode));
+
+  // Wheel Radius
+  wheelRadiusMeter_ = graph_msf::tryGetParam<double>("sensor_params/wheelRadius", privateNode);
 }
 
 }  // namespace smb_se

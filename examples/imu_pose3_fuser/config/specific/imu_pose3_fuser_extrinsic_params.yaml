@@ -1,0 +1,3 @@
+# External Prior/Transform Input
+extrinsics:
+  unaryPose3Frame: "imu_link" # Frame of the unary pose sensor

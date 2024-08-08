@@ -22,6 +22,11 @@ inline gtsam::Pose3_ composeRigidTransformations(const gtsam::Pose3_& T_frame1_f
   return gtsam::Pose3_(T_frame1_frame2, &gtsam::Pose3::transformPoseFrom, T_frame2_frame3);
 }
 
+// Function for Transposing of a Rot3
+inline gtsam::Rot3_ inverseRot3(const gtsam::Rot3_& R) {
+  return gtsam::Rot3_(&gtsam::LieGroup<gtsam::Rot3, 3>::inverse, R);
+}
+
 /**
  * UnaryExpression is a base class for unary expressions.
  * Unary expressions are used to represent unary factors in the factor graph.

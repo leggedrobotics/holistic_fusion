@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -39,16 +39,6 @@ void AnymalStaticTransforms::findTransformations() {
   ros::Rate rosRate(10);
   rosRate.sleep();
 
-  // Imu to Base ---
-  REGULAR_COUT << " Looking up transform from " << imuFrame_ << " to " << baseLinkFrame_ << std::endl;
-  listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(100.0));
-  listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
-  // I_Base
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
-  REGULAR_COUT << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
-  // Base_I
-  lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
-
   // Imu to LiDAR Link ---
   REGULAR_COUT << " Looking up transform from " << imuFrame_ << " to " << lioOdometryFrame_ << std::endl;
   listener_.waitForTransform(imuFrame_, lioOdometryFrame_, ros::Time(0), ros::Duration(1.0));
@@ -74,6 +64,9 @@ void AnymalStaticTransforms::findTransformations() {
   }
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
+
+  // Call parent class
+  graph_msf::StaticTransformsTf::findTransformations();
 }
 
 }  // namespace anymal_se

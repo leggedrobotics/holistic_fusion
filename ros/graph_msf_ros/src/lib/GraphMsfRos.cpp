@@ -86,7 +86,7 @@ void GraphMsfRos::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // Imu
   subImu_ = privateNode.subscribe<sensor_msgs::Imu>("/imu_topic", ROS_QUEUE_SIZE, &GraphMsfRos::imuCallback_, this,
                                                     ros::TransportHints().tcpNoDelay());
-  std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized IMU cabin subscriber with topic: " << subImu_.getTopic()
+  std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END << " Initialized main IMU subscriber with topic: " << subImu_.getTopic()
             << std::endl;
 }
 
@@ -130,8 +130,8 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
                                          optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // Encountered Delay
     if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
-      std::cout << RED_START << "GraphMsfRos" << COLOR_END << " Encountered delay of "
-                << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << std::endl;
+      REGULAR_COUT << RED_START << " Encountered delay of " << std::setprecision(14)
+                   << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << COLOR_END << std::endl;
     }
 
     // Eigen::Vector3d t = (preIntegratedNavStatePtr->getT_W_Ik()).translation();

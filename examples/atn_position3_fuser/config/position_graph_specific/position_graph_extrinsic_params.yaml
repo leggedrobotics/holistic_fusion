@@ -1,0 +1,3 @@
+#External Prior/Transform Input
+extrinsics:
+  positionMeasFrame: Prism
