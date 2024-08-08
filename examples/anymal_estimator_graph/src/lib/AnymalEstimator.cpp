@@ -375,9 +375,9 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     }
   } else {
     // Only add every 40th measurement
-    int measurementRate = static_cast<int>(leggedOdometryBetweenRate_) / 40;
+    int measurementRate = static_cast<int>(leggedOdometryBetweenRate_) / leggedOdometryPoseDownsampleFactor_;
     // Check
-    if ((leggedOdometryPoseCallbackCounter_ % 40) == 0) {
+    if ((leggedOdometryPoseCallbackCounter_ % leggedOdometryPoseDownsampleFactor_) == 0) {
       // Compute Delta
       const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
       // Create measurement
@@ -418,10 +418,10 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
     }
   } else {
     // Only add every 20th measurement
-    int measurementRate = static_cast<int>(leggedOdometryVelocityRate_) / 4;
+    int measurementRate = static_cast<int>(leggedOdometryVelocityRate_) / leggedOdometryVelocityDownsampleFactor_;
 
     // Check
-    if ((leggedOdometryOdomCallbackCounter_ % 4) == 0) {
+    if ((leggedOdometryOdomCallbackCounter_ % leggedOdometryVelocityDownsampleFactor_) == 0) {
       // Eigen Type
       Eigen::Vector3d legVelocity = Eigen::Vector3d(leggedOdometryKPtr->twist.twist.linear.x, leggedOdometryKPtr->twist.twist.linear.y,
                                                     leggedOdometryKPtr->twist.twist.linear.z);

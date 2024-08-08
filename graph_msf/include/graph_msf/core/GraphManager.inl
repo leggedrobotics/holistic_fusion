@@ -61,7 +61,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(
 
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
-  if (!getUnaryFactorGeneralKey(closestGeneralKey, unaryMeasurement)) {
+  double closestGeneralKeyTime;
+  if (!getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement)) {
     return;
   }
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);

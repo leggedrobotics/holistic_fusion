@@ -79,7 +79,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Rates
   double lioOdometryRate_ = 5.0;
   double leggedOdometryBetweenRate_ = 400.0;
+  int leggedOdometryPoseDownsampleFactor_ = 40;
   double leggedOdometryVelocityRate_ = 20.0;
+  int leggedOdometryVelocityDownsampleFactor_ = 4;
   double gnssRate_ = 10.0;
 
   // Flags
