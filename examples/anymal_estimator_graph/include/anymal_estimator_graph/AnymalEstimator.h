@@ -24,6 +24,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
+// Custom Messages
+#include "anymal_msgs/AnymalState.h"
+
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
@@ -59,7 +62,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
   // Legged
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
-  void leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::ConstPtr& leggedOdometryKPtr);
+  void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
+  void leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
@@ -82,6 +86,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   int leggedOdometryPoseDownsampleFactor_ = 40;
   double leggedOdometryVelocityRate_ = 20.0;
   int leggedOdometryVelocityDownsampleFactor_ = 4;
+  double leggedKinematicsRate_ = 400.0;
+  int leggedKinematicsDownsampleFactor_ = 10;
   double gnssRate_ = 10.0;
 
   // Flags
@@ -90,6 +96,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLioBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
+  bool useLeggedKinematicsFlag_ = false;
 
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
@@ -115,6 +122,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Legged
   int leggedOdometryPoseCallbackCounter_{-1};
   int leggedOdometryOdomCallbackCounter_{-1};
+  int leggedKinematicsCallbackCounter_{-1};
   Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
   double legOdometryTimeKm1_{0.0};
 
@@ -127,6 +135,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subLioBetween_;
   ros::Subscriber subLeggedBetween_;
   ros::Subscriber subLeggedVelocityUnary_;
+  ros::Subscriber subLeggedKinematics_;
   tf::TransformListener tfListener_;
 
   // Publishers

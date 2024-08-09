@@ -112,6 +112,12 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
                  << " Initialized Legged Velocity Unary Factor Odometry subscriber with topic: " << subLeggedVelocityUnary_.getTopic()
                  << std::endl;
   }
+  // Kinematics
+  if (useLeggedKinematicsFlag_) {
+    subLeggedKinematics_ = privateNode_.subscribe<anymal_msgs::AnymalState>(
+        "/anymal_state_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedKinematicsCallback_, this, ros::TransportHints().tcpNoDelay());
+    REGULAR_COUT << COLOR_END << " Initialized Legged Kinematics subscriber with topic: " << subLeggedKinematics_.getTopic() << std::endl;
+  }
 }
 
 void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
@@ -419,7 +425,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {
-    // Only add every 20th measurement
+    // Only add every nth measurement
     int measurementRate = static_cast<int>(leggedOdometryVelocityRate_) / leggedOdometryVelocityDownsampleFactor_;
 
     // Check
@@ -439,6 +445,39 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
 
       // Add to graph
       this->addUnaryVelocity3SensorFrameMeasurement(legVelocityUnaryMeasurement);
+    }
+  }
+}
+
+void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr) {
+  if (!areRollAndPitchInited()) {
+    return;
+  }
+
+  // Counter
+  ++leggedKinematicsCallbackCounter_;
+
+  if (!areYawAndPositionInited()) {
+    // nothing
+  } else {
+    // Only add every nth measurement
+    int measurementRate = static_cast<int>(leggedKinematicsRate_) / leggedKinematicsDownsampleFactor_;
+
+    // Check
+    if ((leggedKinematicsCallbackCounter_ % leggedKinematicsDownsampleFactor_) == 0) {
+      // Get contact states
+      // LF_FOOT
+      bool lfInContact = anymalStatePtr->contacts[0].state;
+      // RF_FOOT
+      bool rfInContact = anymalStatePtr->contacts[1].state;
+      // LH_FOOT
+      bool lhInContact = anymalStatePtr->contacts[2].state;
+      // RH_FOOT
+      bool rhInContact = anymalStatePtr->contacts[3].state;
+
+      // Summarize
+      REGULAR_COUT << " Contacts. LF: " << lfInContact << " RF: " << rfInContact << " LH: " << lhInContact << " RH: " << rhInContact
+                   << std::endl;
     }
   }
 }

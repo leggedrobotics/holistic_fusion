@@ -38,6 +38,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
         roscpp
         std_msgs
         tf
+        anymal_msgs
 )
 
 find_package(catkin REQUIRED COMPONENTS

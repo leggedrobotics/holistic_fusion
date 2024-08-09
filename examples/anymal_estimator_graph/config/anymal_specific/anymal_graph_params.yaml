@@ -5,6 +5,8 @@ sensor_params:
   leggedOdometryPoseDownsampleFactor: 40
   leggedOdometryVelocityRate: 20
   leggedOdometryVelocityDownsampleFactor: 1
+  leggedKinematicsRate: 400
+  leggedKinematicsDownsampleFactor: 10
   gnssRate: 20
 
 # Noise Parameters

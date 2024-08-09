@@ -14,6 +14,7 @@
     <arg name="using_lio_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
     <arg name="using_legged_velocity_unary" default="true"/>
+    <arg name="using_legged_kinematics" default="true"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
@@ -32,6 +33,7 @@
         <arg name="using_lio_between" value="$(arg using_lio_between)"/>
         <arg name="using_legged_between" value="$(arg using_legged_between)"/>
         <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
+        <arg name="using_legged_kinematics" value="$(arg using_legged_kinematics)"/>
         <!-- Input Topics -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>

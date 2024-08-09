@@ -24,13 +24,20 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   }
 
   // Sensor Params
+  // GNSS
+  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  // LIO
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
+  // Legged Between
   leggedOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryBetweenRate", privateNode);
   leggedOdometryPoseDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedOdometryPoseDownsampleFactor", privateNode);
+  // Legged Velocity
   leggedOdometryVelocityRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryVelocityRate", privateNode);
   leggedOdometryVelocityDownsampleFactor_ =
       graph_msf::tryGetParam<int>("sensor_params/leggedOdometryVelocityDownsampleFactor", privateNode);
-  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  // Legged Kinematics
+  leggedKinematicsRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedKinematicsRate", privateNode);
+  leggedKinematicsDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedKinematicsDownsampleFactor", privateNode);
 
   // Noise Parameters ---------------------------------------------------
   /// Gnss
@@ -69,6 +76,8 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   useLeggedBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedBetween", privateNode);
   // Legged Velocity Unary
   useLeggedVelocityUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedVelocityUnary", privateNode);
+  // Legged Kinematics
+  useLeggedKinematicsFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedKinematics", privateNode);
 
   // Gnss parameters ---------------------------------------------------
   if (useGnssUnaryFlag_) {
