@@ -23,11 +23,24 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
  public:
   // Constructor
   GmsfUnaryExpressionVelocity3SensorFrame(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
-                                          const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+                                          const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                                          const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
       : GmsfUnaryExpression(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
-        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {}
+        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
+    // Find Angular Velocity in IMU Buffer which is closest to the measurement time
+    // Check whether we can find an IMU measurement corresponding to the velocity measurement
+    double imuTimestamp;
+    graph_msf::ImuMeasurement imuMeasurement = graph_msf::ImuMeasurement();
+    if (!imuBufferPtr->getClosestImuMeasurement(imuTimestamp, imuMeasurement, 0.02, velocityUnaryMeasurementPtr->timeK())) {
+      REGULAR_COUT << RED_START << "No IMU Measurement (in time interval) found, assuming 0 angular velocity for the factor." << COLOR_END
+                   << std::endl;
+    }
+
+    // Angular Velocity
+    angularVelocity_ = imuMeasurement.angularVelocity;
+  }
 
   // Destructor
   ~GmsfUnaryExpressionVelocity3SensorFrame() override = default;
@@ -60,12 +73,13 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 
-    // Zero angular velocity in the sensor frame
-    gtsam::Point3_ angularVelocity(gtsam::Point3::Zero());
+    // Angular velocity in the sensor frame
+    // TODO: Add angular velocity bias
+    gtsam::Point3_ I_w_W_I(angularVelocity_);
 
     // Compute Velocity of the Sensor Frame with Angular Velocity
     exp_sensorFrame_v_fixedFrame_sensorFrame_ =
-        exp_sensorFrame_v_fixedFrame_sensorFrame_ + gtsam::cross(angularVelocity, I_t_I_sensorFrame);  // I_v_I_sensorFrame at this point
+        exp_sensorFrame_v_fixedFrame_sensorFrame_ + gtsam::cross(I_w_W_I, I_t_I_sensorFrame);  // I_v_W_sensorFrame at this point
 
     // Get Rotation from Sensor Frame to Inertial Frame
     gtsam::Rot3 R_sensorFrame_I = gtsam::Rot3(T_I_sensorFrameInit_.rotation().inverse());
@@ -78,6 +92,8 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
   // iv) Extrinsic Calibration
   void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
     // TODO: Implement
+    REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
+                 << std::endl;
   }
 
   // Noise as GTSAM Datatype
@@ -96,6 +112,9 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
  private:
   // Full Measurement Type
   std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>> velocityUnaryMeasurementPtr_;
+
+  // Angular Velocity
+  gtsam::Point3 angularVelocity_;  // Angular Velocity
 
   // Expression
   gtsam::Expression<gtsam::Point3> exp_sensorFrame_v_fixedFrame_sensorFrame_;  // Translation

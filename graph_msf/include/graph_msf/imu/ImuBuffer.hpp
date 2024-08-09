@@ -50,6 +50,7 @@ class ImuBuffer {
   // Getters
   double getImuRate() const { return imuRate_; }
   double getLatestTimestampInBuffer();
+  bool getImuMeasurementAtTime(graph_msf::ImuMeasurement& returnedImuMeasurement, const double ts);
   void getLastTwoMeasurements(TimeToImuMap& imuMap);
   bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
                                  const double tLidar);
@@ -59,8 +60,14 @@ class ImuBuffer {
   bool estimateAttitudeFromImu(gtsam::Rot3& initAttitude, double& gravityMagnitude, Eigen::Vector3d& gyrBias);
 
   // Integrate NavState from Timestamp
-  bool getIMUBufferIteratorsInInterval(const double& tsStart, const double& tsEnd, TimeToImuMap::iterator& startIterator,
+  bool getIMUBufferIteratorsInInterval(const double tsStart, const double tsEnd, TimeToImuMap::iterator& startIterator,
                                        TimeToImuMap::iterator& endIterator);
+
+  // Get closest timestamp
+  bool getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement, const double maxSearchDeviation,
+                                const double tK);
+
+  // Integrate NavState from Timestamp
   gtsam::NavState integrateNavStateFromTimestamp(const double& tsStart, const double& tsEnd, const gtsam::NavState& stateStart,
                                                  const gtsam::imuBias::ConstantBias& imuBias, const Eigen::Vector3d& W_gravityVector);
 

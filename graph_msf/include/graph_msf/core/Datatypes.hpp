@@ -14,8 +14,8 @@ namespace graph_msf {
 
 struct ImuMeasurement {
   double timestamp;
-  Eigen::Vector3d acceleration;
-  Eigen::Vector3d angularVelocity;
+  Eigen::Vector3d acceleration = Eigen::Vector3d::Zero();
+  Eigen::Vector3d angularVelocity = Eigen::Vector3d::Zero();
 };
 
 }  // namespace graph_msf

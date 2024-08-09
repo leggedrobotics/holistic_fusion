@@ -360,7 +360,7 @@ void GraphMsf::addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen:
     // Create GMSF expression
     GmsfUnaryExpressionVelocity3SensorFrame gmsfUnaryExpressionVelocity3SensorFrame(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getWorldFrame(),
-        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()));
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()), imuBufferPtr_);
 
     // Add factor to graph
     graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Vector3>(

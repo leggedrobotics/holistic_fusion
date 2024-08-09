@@ -258,26 +258,25 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
-bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement) {
+bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
-  double closestGraphTime;
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, returnedKey, unaryMeasurement.measurementName(),
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
                                                       graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
     if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
       // Not too far in the future
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 2 * graphConfigPtr_->maxSearchDeviation_) {
+      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
       } else {
         REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
-                     << " at key " << returnedKey << " is " << 1000 * std::abs(closestGraphTime - unaryMeasurement.timeK())
+                     << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
                      << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
                      << " ms. Not adding to graph." << COLOR_END << std::endl;
         // TODO: Still adding it for now, has to be tested on all systems
-        return true;
+        // Later on: return false;
       }
     } else {  // Otherwise do not add it
       REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
-                   << 1000 * std::abs(closestGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
+                   << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
                    << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
     }

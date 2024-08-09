@@ -62,7 +62,7 @@ class GraphManager {
   // All other measurements -----------------------------------------------------
 
   // Unary commodity methods --> Key Lookup
-  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, const UnaryMeasurement& unaryMeasurement);
+  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
