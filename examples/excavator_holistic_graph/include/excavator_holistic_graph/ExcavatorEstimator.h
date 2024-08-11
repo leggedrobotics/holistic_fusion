@@ -40,7 +40,7 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // Destructor
   ~ExcavatorEstimator() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
 
  private:
   // Methods ------------------------------------

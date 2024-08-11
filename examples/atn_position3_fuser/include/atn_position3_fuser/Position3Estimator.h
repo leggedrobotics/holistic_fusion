@@ -41,7 +41,7 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Destructor
   ~Position3Estimator() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
 
  private:
   // Methods ------------------------------------

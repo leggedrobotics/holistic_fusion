@@ -17,27 +17,27 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-GraphMsfRos::GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : GraphMsf(), privateNode_(*privateNodePtr) {
-  REGULAR_COUT << GREEN_START << " Initializing." << COLOR_END << std::endl;
+GraphMsfRos::GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : privateNode_(*privateNodePtr) {
+  REGULAR_COUT << GREEN_START << " GraphMsfRos-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
+  // Graph Config
   graphConfigPtr_ = std::make_shared<GraphConfig>();
-  staticTransformsPtr_ = std::make_shared<StaticTransforms>();
-
-  // Wrap up
-  REGULAR_COUT << GREEN_START << " Initialized." << COLOR_END << std::endl;
 }
 
-bool GraphMsfRos::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void GraphMsfRos::setup(const std::shared_ptr<StaticTransforms> staticTransformsPtr) {
+  REGULAR_COUT << GREEN_START << " GraphMsfRos-Setup called." << COLOR_END << std::endl;
+
+  // Check
+  if (staticTransformsPtr_ == nullptr) {
+    std::runtime_error("Static transforms not set. Has to be set.");
+  }
 
   // Read parameters ----------------------------
   GraphMsfRos::readParams_(privateNode_);
 
-  // Super class
-  if (not graph_msf::GraphMsf::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  // Call super class Setup ----------------------------
+  GraphMsf::setup(graphConfigPtr_, staticTransformsPtr);
 
   // Publishers ----------------------------
   GraphMsfRos::initializePublishers_(privateNode_);
@@ -56,8 +56,6 @@ bool GraphMsfRos::setup() {
 
   // Wrap up
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
@@ -126,8 +124,8 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
 
   // Add measurement and get state
-  if (this->addImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
-                                         optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
+  if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
+                                                 optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // Encountered Delay
     if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
       REGULAR_COUT << RED_START << " Encountered delay of " << std::setprecision(14)
@@ -139,7 +137,7 @@ void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
 
     // Publish Filtered Imu Measurements
     //    this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
-  } else if (isGraphInited()) {
+  } else if (GraphMsf::isGraphInited()) {
     REGULAR_COUT << RED_START << " Could not add IMU measurement." << COLOR_END << std::endl;
   }
 }

@@ -44,8 +44,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
   ~AnymalEstimator() = default;
+
   // Setup
-  virtual bool setup() override;
+  void setup();
 
  private:
   // Virtual Functions
@@ -99,7 +100,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLeggedKinematicsFlag_ = false;
 
   // Alignment Parameters
-  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]

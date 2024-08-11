@@ -18,31 +18,26 @@ Please see the LICENSE file that has been included as part of this package.
 namespace imu_pose3_fuser {
 
 ImuPose3Fuser::ImuPose3Fuser(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  REGULAR_COUT << GREEN_START << " Initializing..." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<graph_msf::StaticTransforms>();
 
   // Set up
-  if (!ImuPose3Fuser::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    std::runtime_error("SmbEstimator failed to set up.");
-  }
-
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  ImuPose3Fuser::setup();
 }
 
-bool ImuPose3Fuser::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void ImuPose3Fuser::setup() {
+  REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Setup called." << COLOR_END << std::endl;
+
+  // Read parameters
+  ImuPose3Fuser::readParams_(privateNode_);
 
   // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  GraphMsfRos::setup(staticTransformsPtr_);
 
-  // Read parameters ----------------------------
-  ImuPose3Fuser::readParams_(privateNode_);
+  // Find transformations
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
@@ -59,8 +54,6 @@ bool ImuPose3Fuser::setup() {
 
   // Wrap up ----------------------------
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 void ImuPose3Fuser::initializePublishers_(ros::NodeHandle& privateNode) {

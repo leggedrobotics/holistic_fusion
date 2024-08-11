@@ -39,6 +39,12 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   leggedKinematicsRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedKinematicsRate", privateNode);
   leggedKinematicsDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedKinematicsDownsampleFactor", privateNode);
 
+  // Alignment Parameters
+  const auto poseAlignmentNoise =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
+      poseAlignmentNoise[4], poseAlignmentNoise[5];
+
   // Noise Parameters ---------------------------------------------------
   /// Gnss
   gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);

@@ -9,6 +9,10 @@ sensor_params:
   leggedKinematicsDownsampleFactor: 10
   gnssRate: 20
 
+# Alignment Parameters
+alignment_params:
+  initialSe3AlignmentNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+
 # Noise Parameters
 noise_params:
   ## GNSS

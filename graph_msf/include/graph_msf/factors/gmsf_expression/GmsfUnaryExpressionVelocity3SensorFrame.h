@@ -29,7 +29,6 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
-
     // Find Angular Velocity in IMU Buffer which is closest to the measurement time
     // Check whether we can find an IMU measurement corresponding to the velocity measurement
     double imuTimestamp;

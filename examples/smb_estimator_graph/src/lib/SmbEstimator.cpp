@@ -20,31 +20,24 @@ Please see the LICENSE file that has been included as part of this package.
 namespace smb_se {
 
 SmbEstimator::SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  REGULAR_COUT << GREEN_START << " Initializing..." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " SmbEstimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<SmbStaticTransforms>(privateNodePtr);
 
   // Set up
-  if (!SmbEstimator::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    std::runtime_error("SmbEstimator failed to set up.");
-  }
-
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  SmbEstimator::setup();
 }
 
-bool SmbEstimator::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
-
-  // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+void SmbEstimator::setup() {
+  REGULAR_COUT << GREEN_START << " SmbEstimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
   SmbEstimator::readParams_(privateNode_);
+
+  // Super class
+  GraphMsfRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   SmbEstimator::initializePublishers_(privateNode_);
@@ -63,8 +56,6 @@ bool SmbEstimator::setup() {
 
   // Wrap up ----------------------------
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 void SmbEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
@@ -234,7 +225,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
           "Wheel_odometry_6D", measurementRate, wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId_,
           graph_msf::RobustNorm::Tukey(1.0), wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
       // Add to graph
-      this->addBinaryPoseMeasurement(delta6DMeasurement);
+      this->addBinaryPose3Measurement(delta6DMeasurement);
 
       // Prepare for next iteration
       T_O_Bw_km1_ = T_O_Bw_k;

@@ -22,6 +22,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/interface/GraphMsf.h"
+#include "graph_msf/interface/GraphMsfClassic.h"
+#include "graph_msf/interface/GraphMsfHolistic.h"
 #include "graph_msf_ros/OfflineOptimizationTrigger.h"
 
 // Macros
@@ -29,13 +31,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-class GraphMsfRos : public GraphMsf {
+class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
  public:
   explicit GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
   ~GraphMsfRos() override = default;
+
   // Setup
-  bool setup() override;
+  void setup(const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
  protected:
   // Functions that need implementation

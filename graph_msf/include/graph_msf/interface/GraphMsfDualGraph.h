@@ -23,12 +23,12 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Actual Class
-class DualGraphMsf : GraphMsf {
+class GraphMsfDualGraph : GraphMsf {
  public:  // Interface
   // Constructor
-  DualGraphMsf();
+  GraphMsfDualGraph();
   // Destructor
-  ~DualGraphMsf() = default;
+  ~GraphMsfDualGraph() = default;
   // Setup
   virtual bool setup();
 

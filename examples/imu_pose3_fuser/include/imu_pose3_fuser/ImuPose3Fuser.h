@@ -32,7 +32,7 @@ class ImuPose3Fuser : public graph_msf::GraphMsfRos {
   // Destructor
   ~ImuPose3Fuser() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
 
  private:
   // Virtual Functions

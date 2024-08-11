@@ -20,7 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace position3_se {
 
 Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  std::cout << YELLOW_START << "LeicaPositionEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Position3Estimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static Transforms
@@ -30,25 +30,18 @@ Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateN
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
   // Setup
-  if (not Position3Estimator::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    throw std::runtime_error("LeicaPositionEstimator could not be initialized");
-  }
-
-  std::cout << YELLOW_START << "LeicaPositionEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  Position3Estimator::setup();
 }
 
 //---------------------------------------------------------------
-bool Position3Estimator::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void Position3Estimator::setup() {
+  REGULAR_COUT << GREEN_START << " Position3Estimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
   Position3Estimator::readParams_(privateNode_);
 
   // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  GraphMsfRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   Position3Estimator::initializePublishers_(privateNode_);
@@ -64,8 +57,6 @@ bool Position3Estimator::setup() {
 
   // Wrap up ----------------------------
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 //---------------------------------------------------------------

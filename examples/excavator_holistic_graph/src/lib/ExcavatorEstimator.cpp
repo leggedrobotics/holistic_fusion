@@ -20,7 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace excavator_se {
 
 ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  REGULAR_COUT << " ExcavatorEstimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static Transforms
@@ -30,24 +30,17 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
   // Setup
-  if (not ExcavatorEstimator::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    throw std::runtime_error("ExcavatorEstimator could not be initialized");
-  }
-
-  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  ExcavatorEstimator::setup();
 }
 
-bool ExcavatorEstimator::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void ExcavatorEstimator::setup() {
+  REGULAR_COUT << GREEN_START << " ExcavatorEstimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
   ExcavatorEstimator::readParams_(privateNode_);
 
   // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  graph_msf::GraphMsfRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   ExcavatorEstimator::initializePublishers_(privateNode_);
@@ -60,11 +53,6 @@ bool ExcavatorEstimator::setup() {
 
   // Static Transforms
   staticTransformsPtr_->findTransformations();
-
-  // Wrap up ----------------------------
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 void ExcavatorEstimator::initializePublishers_(ros::NodeHandle& privateNode) {

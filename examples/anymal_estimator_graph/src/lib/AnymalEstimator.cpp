@@ -20,31 +20,24 @@ Please see the LICENSE file that has been included as part of this package.
 namespace anymal_se {
 
 AnymalEstimator::AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  REGULAR_COUT << GREEN_START << " Initializing..." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " AnymalEstimatorGraph-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<AnymalStaticTransforms>(privateNodePtr);
 
   // Set up
-  if (!AnymalEstimator::setup()) {
-    REGULAR_COUT << COLOR_END << " Failed to set up." << std::endl;
-    throw std::runtime_error("ANYmalEstimatorGraph failed to set up.");
-  }
-
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  AnymalEstimator::setup();
 }
 
-bool AnymalEstimator::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
-
-  // Super class
-  if (not GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+void AnymalEstimator::setup() {
+  REGULAR_COUT << GREEN_START << " AnymalEstimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
   AnymalEstimator::readParams_(privateNode_);
+
+  // Super class
+  GraphMsfRos::setup(staticTransformsPtr_);
 
   // Wait for static transforms ----------------------------
   staticTransformsPtr_->findTransformations();
@@ -60,11 +53,6 @@ bool AnymalEstimator::setup() {
 
   // Services ----------------------------
   AnymalEstimator::initializeServices_(privateNode_);
-
-  // Wrap up ----------------------------
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
 void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
@@ -327,7 +315,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
         "Lidar_between_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId_,
         graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
     // Add to graph
-    this->addBinaryPoseMeasurement(delta6DMeasurement);
+    this->addBinaryPose3Measurement(delta6DMeasurement);
   }
   // Provide for next iteration
   lio_T_M_Lkm1_ = lio_T_M_Lk;
@@ -392,7 +380,7 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
           "Leg_odometry_6D", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
           graph_msf::RobustNorm::None(), legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
       // Add to graph
-      this->addBinaryPoseMeasurement(delta6DMeasurement);
+      this->addBinaryPose3Measurement(delta6DMeasurement);
 
       // Prepare for next iteration
       T_O_Bl_km1_ = T_O_Bl_k;

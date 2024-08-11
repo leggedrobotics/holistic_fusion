@@ -33,7 +33,7 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Destructor
   ~SmbEstimator() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
 
  private:
   // Virtual Functions
