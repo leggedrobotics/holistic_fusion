@@ -423,11 +423,12 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
                                                     leggedOdometryKPtr->twist.twist.linear.z);
 
       // Alias
-      const std::string& legOdometryFrame = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();
+      const std::string& leggedOdometryFrameName =
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();
 
       // Create the unary measurement
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
-          "LegVelocityUnary", measurementRate, legOdometryFrame, legOdometryFrame + sensorFrameCorrectedNameId_,
+          "LegVelocityUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
           graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), leggedOdometryKPtr->header.frame_id, 1.0,
           initialSe3AlignmentNoise_, legVelocity, legVelocityUnaryNoise_);
 
@@ -466,6 +467,22 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
       // Summarize
       REGULAR_COUT << " Contacts. LF: " << lfInContact << " RF: " << rfInContact << " LH: " << lhInContact << " RH: " << rhInContact
                    << std::endl;
+
+      // Alias
+      const std::string& leggedOdometryFrameName =
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();
+
+      // Create the unary measurement for each foot
+      for (int i = 0; i < numFeet; ++i) {
+        // Create the unary measurement
+        graph_msf::UnaryMeasurementXD<bool, 1> footContactUnaryMeasurement(
+            "FootContactUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
+            graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), leggedOdometryFrameName, 1.0, initialSe3AlignmentNoise_,
+            anymalStatePtr->contacts[i].state, footContactUnaryNoise_);
+
+        // Add to graph
+        this->addUnaryFootContactMeasurement(footContactUnaryMeasurement);
+      }
     }
   }
 }

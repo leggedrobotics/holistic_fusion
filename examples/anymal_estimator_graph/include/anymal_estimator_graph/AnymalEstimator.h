@@ -108,6 +108,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
   Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_;
+  Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_;
 
   // Callback Members ----------------------------
   // GNSS
