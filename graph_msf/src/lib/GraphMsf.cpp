@@ -66,8 +66,8 @@ bool GraphMsf::isGraphInited() const {
 }
 
 // Initialization -----------------------
-bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
-                                  const std::string& fixedFrame, const std::string& frame1, const std::string& frame2) {
+bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                                         const std::string& frame1, const std::string& frame2) {
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
 
@@ -81,9 +81,9 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
                                             // Transform yaw to imu frame
     REGULAR_COUT << " Pre-integrated state before init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
 
-    // TODO: here assume that world is fixed frame, which is not necessarily the case
     const gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
-    REGULAR_COUT << GREEN_START << " Setting yaw of " << frame1 << " frame in " << fixedFrame << " frame." << COLOR_END << std::endl;
+    REGULAR_COUT << GREEN_START << " Setting yaw of " << frame1 << " frame in " << staticTransformsPtr_->getWorldFrame() << " frame."
+                 << COLOR_END << std::endl;
     const double yaw_W_I0_ =
         (yawR_W_frame1 *
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
@@ -126,8 +126,8 @@ bool GraphMsf::initYawAndPosition(const double yaw_fixedFrame_frame1, const Eige
 
 bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
   gtsam::Pose3 T_fixedFrame_frame1(unary6DMeasurement.unaryMeasurement().matrix());
-  return initYawAndPosition(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(), unary6DMeasurement.fixedFrameName(),
-                            unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
+  return initYawAndPositionInWorld(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(), unary6DMeasurement.sensorFrameName(),
+                            unary6DMeasurement.sensorFrameName());
 }
 
 // Adders --------------------------------

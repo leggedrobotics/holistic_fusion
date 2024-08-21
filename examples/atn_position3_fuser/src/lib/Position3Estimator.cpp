@@ -98,8 +98,8 @@ void Position3Estimator::positionCallback_(const geometry_msgs::PointStamped::Co
   // State Machine
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {
     // Try to initialize yaw and position (WITH ZERO POSITION) if not done already
-    if (this->initYawAndPosition(0.0, positionMeas, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getBaseLinkFrame(),
-                                 dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPositionMeasFrame())) {
+    if (this->initYawAndPositionInWorld(0.0, positionMeas, staticTransformsPtr_->getBaseLinkFrame(),
+                                        dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPositionMeasFrame())) {
       REGULAR_COUT << " Set yaw and position successfully." << std::endl;
     } else {
       REGULAR_COUT << " Could not set yaw and position." << std::endl;
@@ -108,11 +108,11 @@ void Position3Estimator::positionCallback_(const geometry_msgs::PointStamped::Co
     const std::string& positionMeasFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPositionMeasFrame();
     const std::string& fixedFrame = staticTransformsPtr_->getWorldFrame();
     // Already initialized --> add position measurement to graph
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_P(
+    graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
         "LeicaPosition", int(positionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId_,
-        graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), fixedFrame, POS_COVARIANCE_VIOLATION_THRESHOLD,
-        initialSe3AlignmentNoise_, positionMeas, positionCovarianceXYZ);
-    this->addUnaryPosition3Measurement(meas_W_t_W_P);
+        graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
+        positionCovarianceXYZ, fixedFrame, initialSe3AlignmentNoise_);
+    this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   }
 
   // Visualizations

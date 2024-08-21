@@ -110,6 +110,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_;
   Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_;
 
+  // Leg Odometry Handling
+  static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};
+  std::array<bool, legNames_.size()> legInContact_ = { false, false, false, false };
+  std::array<long, legNames_.size()> legContactCounter_ = { 0, 0, 0, 0 };
+
   // Callback Members ----------------------------
   // GNSS
   Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};

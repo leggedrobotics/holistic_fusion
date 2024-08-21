@@ -13,16 +13,15 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 template <class MEASUREMENT_TYPE, int DIM>
-class UnaryMeasurementXD final : public UnaryMeasurement {
+class UnaryMeasurementXD : public virtual UnaryMeasurement {
  public:
   // Constructor
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                      const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
-                     const std::string& fixedFrameName, const double covarianceViolationThreshold,
-                     const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise, const MEASUREMENT_TYPE& unaryMeasurement,
+                     const double covarianceViolationThreshold, const MEASUREMENT_TYPE& unaryMeasurement,
                      const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
-      : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp, fixedFrameName,
-                         covarianceViolationThreshold, initialSe3AlignmentNoise),
+      : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
+                         covarianceViolationThreshold),
         unaryMeasurement_(unaryMeasurement),
         unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
         unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}

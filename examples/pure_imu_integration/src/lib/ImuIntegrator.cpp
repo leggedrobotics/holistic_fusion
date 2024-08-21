@@ -29,8 +29,8 @@ void ImuIntegrator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START
               << " Imu attitude is now initialized: " << graph_msf::GraphMsf::areRollAndPitchInited() << COLOR_END << std::endl;
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
-    graph_msf::GraphMsf::initYawAndPosition(0.0, Eigen::Vector3d::Zero(), staticTransformsPtr_->getWorldFrame(),
-                                            staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getImuFrame());
+    graph_msf::GraphMsf::initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), staticTransformsPtr_->getImuFrame(),
+                                                   staticTransformsPtr_->getImuFrame());
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START << " Set initial yaw and position to zero." << COLOR_END << std::endl;
   }
 }

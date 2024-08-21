@@ -53,11 +53,14 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 }
 
 // 2) GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
-template <class GTSAM_MEASUREMENT_TYPE>
-void GraphManager::addUnaryGmsfExpressionFactor(
-    const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr) {
+template <class GMSF_EXPRESSION_TYPE>
+void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr) {
   // Measurement
   const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr();
+
+  // Check at compile time whether unary measurement is absolute
+  constexpr bool isAbsoluteMeasurement =
+      std::is_base_of<GmsfUnaryExpressionAbsolut<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
 
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
@@ -68,9 +71,11 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
   // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
-    gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
-                                                                graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
+  if constexpr (isAbsoluteMeasurement) {
+    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
+      gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
+                                                                  graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
+    }
   }
 
   // C. Transform State to Sensor Frame -----------------------------------------------------
@@ -82,6 +87,9 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
     gmsfUnaryExpressionPtr->addExtrinsicCalibrationCorrection(gtsamExpressionTransformsKeys_);
   }
+
+  // Factor
+  std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> unaryExpressionFactorPtr;
 
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryExpressionPtr->getNoiseDensity());  // rad,rad,rad,x,y,z
@@ -101,15 +109,15 @@ void GraphManager::addUnaryGmsfExpressionFactor(
     case RobustNormEnum::Tukey:
       robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noiseModel);
       break;
+    case RobustNormEnum::None:
+      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+          noiseModel, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
+      break;
   }
 
   // Create Factor
-  std::shared_ptr<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>> unaryExpressionFactorPtr;
-  if (robustNormEnum == RobustNormEnum::None) {
-    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>>(
-        noiseModel, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
-  } else {
-    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>>(
+  if (robustNormEnum != RobustNormEnum::None) {
+    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
         robustErrorFunction, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
   }
 
@@ -117,7 +125,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     // Add to graph
-    const bool success = addFactorToGraph_<const gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>*>(
+    const bool success = addFactorToGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
         unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression");
 
     // If successful
@@ -147,7 +155,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   // Print summary --------------------------------------
   if (graphConfigPtr_->verboseLevel_ > 0) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
-                 << typeid(GTSAM_MEASUREMENT_TYPE).name() << " added to keys ";
+                 << typeid(GMSF_EXPRESSION_TYPE).name() << " added to keys ";
     for (const auto& key : unaryExpressionFactorPtr->keys()) {
       std::cout << gtsam::Symbol(key) << ", ";
     }

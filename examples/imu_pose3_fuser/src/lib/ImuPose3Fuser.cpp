@@ -91,9 +91,9 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   double odometryTimeK = odomPtr->header.stamp.toSec();
 
   // Measurement
-  graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK,
-      staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, T_W_Ik, pose3UnaryNoise_);
+  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK, 1.0,
+      T_W_Ik, pose3UnaryNoise_, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_);
 
   // Only add measurement once every second in beginning
   bool addMeasurementFlag = false;
@@ -114,7 +114,7 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
     REGULAR_COUT << GREEN_START << " Odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(unary6DMeasurement);
   } else if (addMeasurementFlag) {  // Already initialized --> unary factor
-    this->addUnaryPose3Measurement(unary6DMeasurement);
+    this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------

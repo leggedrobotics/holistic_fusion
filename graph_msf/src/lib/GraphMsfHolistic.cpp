@@ -13,9 +13,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/constants.h"
 
 // Unary Expression Factors
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPose3.h"
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPosition3.h"
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionVelocity3SensorFrame.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionVelocity3Local.h"
 
 // Binary Expression Factors
 // TODO: add binary factors
@@ -30,7 +30,7 @@ GraphMsfHolistic::GraphMsfHolistic() {
 // Unary Measurements ---------------------------------------------------------
 
 // Pose3
-void GraphMsfHolistic::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
+void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -49,12 +49,12 @@ void GraphMsfHolistic::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::
     }
 
     // Create GMSF expression
-    auto gmsfUnaryExpressionPose3Ptr = std::make_shared<GmsfUnaryExpressionPose3>(
-        std::make_shared<UnaryMeasurementXD<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getWorldFrame(),
+    auto gmsfUnaryExpressionPose3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePose3>(
+        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getWorldFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_fixedFrame_sensorFrame.sensorFrameName()));
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Pose3>(gmsfUnaryExpressionPose3Ptr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -66,7 +66,7 @@ void GraphMsfHolistic::addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::
 }
 
 // Position3
-void GraphMsfHolistic::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
+void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -85,14 +85,14 @@ void GraphMsfHolistic::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Ve
     }
 
     // Create GMSF expression
-    auto gmsfUnaryExpressionPosition3Ptr = std::make_shared<GmsfUnaryExpressionPosition3>(
-        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),
+    auto gmsfUnaryExpressionPosition3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePosition3>(
+        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),
         staticTransformsPtr_->getWorldFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
                                                  fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()));
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Vector3>(gmsfUnaryExpressionPosition3Ptr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -104,12 +104,12 @@ void GraphMsfHolistic::addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Ve
 }
 
 // Velocity3 in Fixed Frame
-void GraphMsfHolistic::addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) {
+void GraphMsfHolistic::addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) {
   throw std::runtime_error("Velocity measurements in fixed frame are not yet supported.");
 }
 
 // Velocity3 in Body Frame
-void GraphMsfHolistic::addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
+void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -127,12 +127,12 @@ void GraphMsfHolistic::addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementX
     }
 
     // Create GMSF expression
-    auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionVelocity3SensorFrame>(
+    auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionVelocity3Local>(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getWorldFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()), coreImuBufferPtr_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<gtsam::Vector3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionVelocity3Local>(gmsfUnaryExpressionVelocity3SensorFramePtr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -144,12 +144,12 @@ void GraphMsfHolistic::addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementX
 }
 
 // Roll
-void GraphMsfHolistic::addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_W_frame) {
+void GraphMsfHolistic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_W_frame) {
   throw std::runtime_error("Roll measurements are not yet supported for the holistic MSF.");
 }
 
 // Pitch
-void GraphMsfHolistic::addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_W_frame) {
+void GraphMsfHolistic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_W_frame) {
   throw std::runtime_error("Pitch measurements are not yet supported for the holistic MSF.");
 }
 

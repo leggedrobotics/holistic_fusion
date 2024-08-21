@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
 
@@ -38,8 +39,8 @@ class GraphMsf {
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Initialization Interface
-  bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
-                          const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
+  bool initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                                 const std::string& frame1, const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
 
   // Trigger offline smoother optimization
@@ -59,13 +60,16 @@ class GraphMsf {
 
   // Pure Virtual Methods
   /// Unary Measurements
-  virtual void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) = 0;
-  virtual void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_t_F_S) = 0;
-  virtual void addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) = 0;
-  virtual void addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
-  virtual void addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_F_S) = 0;
-  virtual void addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_F_S) = 0;
-  virtual void addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_F_S) = 0;
+  //// Absolute Measurements
+  virtual void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& F_T_F_S) = 0;
+  virtual void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_t_F_S) = 0;
+  virtual void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) = 0;
+  virtual void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) = 0;
+  virtual void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) = 0;
+  virtual void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) = 0;
+  //// Local Measurements
+  virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
+
   /// Binary Measurements
   virtual void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta) = 0;
 

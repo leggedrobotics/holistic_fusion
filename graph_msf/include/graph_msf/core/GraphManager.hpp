@@ -26,10 +26,13 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/Measurement.h"
+#include "graph_msf/measurements/UnaryMeasurement.h"
+#include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
 
 // General Binary Factor Interface
 // TODO: add binary factor interface
@@ -71,8 +74,8 @@ class GraphManager {
                                 double measurementTime);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
-  template <class GTSAM_MEASUREMENT_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
+  template <class GMSF_EXPRESSION_TYPE>
+  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,

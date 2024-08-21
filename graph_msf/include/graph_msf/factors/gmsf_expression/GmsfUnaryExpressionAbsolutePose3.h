@@ -14,23 +14,23 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/expressions.h>
 
 // Workspace
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
+#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> {
+class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut<gtsam::Pose3> {
  public:
   // Constructor
-  GmsfUnaryExpressionPose3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Isometry3d, 6>>& poseUnaryMeasurementPtr,
+  GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>> poseUnaryMeasurementPtr,
                            const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression(poseUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+      : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         poseUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
         exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity())  // Placeholder --> will be modified later
   {}
 
   // Destructor
-  ~GmsfUnaryExpressionPose3() override = default;
+  ~GmsfUnaryExpressionAbsolutePose3() override = default;
 
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
@@ -75,7 +75,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
       // Prior maybe not needed, but for safety (to keep well conditioned)
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(baseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
+                                        gtsam::noiseModel::Diagonal::Sigmas(poseUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 
@@ -107,6 +107,9 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
     }
   }
 
+  // Accessors
+  [[nodiscard]] const auto& getUnaryMeasurementPtr() const { return poseUnaryMeasurementPtr_; }
+
   // Noise as GTSAM Datatype
   [[nodiscard]] const gtsam::Vector getNoiseDensity() const override { return poseUnaryMeasurementPtr_->unaryMeasurementNoiseDensity(); }
 
@@ -120,7 +123,7 @@ class GmsfUnaryExpressionPose3 final : public GmsfUnaryExpression<gtsam::Pose3> 
 
  protected:
   // Full Measurement Type
-  std::shared_ptr<UnaryMeasurementXD<Eigen::Isometry3d, 6>> poseUnaryMeasurementPtr_;
+  std::shared_ptr<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>> poseUnaryMeasurementPtr_;
 
   // Expression
   gtsam::Expression<gtsam::Pose3> exp_T_fixedFrame_sensorFrame_;

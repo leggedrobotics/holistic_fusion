@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GMSFUNARYEXPRESSION_H
-#define GMSFUNARYEXPRESSION_H
+#ifndef GMSF_UNARY_EXPRESSION_H
+#define GMSF_UNARY_EXPRESSION_H
 
 // GTSAM
 #include <gtsam/base/types.h>
@@ -36,7 +36,11 @@ inline gtsam::Rot3_ inverseRot3(const gtsam::Rot3_& R) {
 
 template <class GTSAM_MEASUREMENT_TYPE>
 class GmsfUnaryExpression {
+
  public:
+  // Type of the Template
+  using template_type = GTSAM_MEASUREMENT_TYPE;
+
   // Constructor
   GmsfUnaryExpression(const std::shared_ptr<UnaryMeasurement>& baseUnaryMeasurementPtr, const std::string& worldFrameName,
                       const Eigen::Isometry3d& T_I_sensorFrame)
@@ -79,7 +83,7 @@ class GmsfUnaryExpression {
   const std::vector<gtsam::PriorFactor<gtsam::Pose3>>& getNewPriorPoseFactors() const { return newPriorPoseFactors_; }
 
   // Accessors
-  const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementPtr() const { return baseUnaryMeasurementPtr_; }
+  [[nodiscard]] const std::shared_ptr<UnaryMeasurement>& getUnaryMeasurementBasePtr() const { return baseUnaryMeasurementPtr_; }
 
   const Eigen::Isometry3d& getT_I_sensorFrameInit() const { return T_I_sensorFrameInit_; }
 
@@ -100,4 +104,4 @@ class GmsfUnaryExpression {
 
 }  // namespace graph_msf
 
-#endif  // GMSFUNARYEXPRESSION_H
+#endif  // GMSF_UNARY_EXPRESSION_H

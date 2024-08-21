@@ -14,6 +14,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
 
@@ -25,14 +26,17 @@ class GraphMsfHolistic : virtual public GraphMsf {
 
   // Adder Functions for Holistic Fusion
   /// Unary Measurements
-  void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;
-  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_t_F_S) override;
-  void addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S) override;
-  void addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) override;
-  void addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_F_S) override;
-  void addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_F_S) override;
+  //// Absolute Measurements
+  void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& F_T_F_S) override;
+  void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_t_F_S) override;
+  void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) override;
+  void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) override;
+  void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) override;
+  //// Local Measurements
+  void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) override;
 
   /// Binary Measurements
+  // TODO: add binary measurements
 };
 
 }  // namespace graph_msf

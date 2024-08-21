@@ -13,7 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
 
@@ -25,7 +25,7 @@ class GraphMsfClassic : virtual public GraphMsf {
 
   // Adder Functions for Holistic Fusion
   /// Unary Measurements
-  void addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_F_S) override;
+  void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) override;
 
   /// Binary Measurements
   void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;

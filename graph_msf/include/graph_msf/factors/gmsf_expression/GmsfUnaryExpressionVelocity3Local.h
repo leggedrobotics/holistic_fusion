@@ -19,10 +19,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression<gtsam::Point3> {
+class GmsfUnaryExpressionVelocity3Local final : public GmsfUnaryExpression<gtsam::Point3> {
+
  public:
   // Constructor
-  GmsfUnaryExpressionVelocity3SensorFrame(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
+  GmsfUnaryExpressionVelocity3Local(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
                                           const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
                                           const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
       : GmsfUnaryExpression(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
@@ -43,7 +44,7 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
   }
 
   // Destructor
-  ~GmsfUnaryExpressionVelocity3SensorFrame() override = default;
+  ~GmsfUnaryExpressionVelocity3Local() override = default;
 
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
@@ -95,6 +96,9 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
     REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
                  << std::endl;
   }
+
+  // Accessors
+  [[nodiscard]] const auto& getUnaryMeasurementPtr() const { return velocityUnaryMeasurementPtr_; }
 
   // Noise as GTSAM Datatype
   [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
