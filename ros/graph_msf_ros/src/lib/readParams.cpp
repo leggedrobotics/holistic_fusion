@@ -16,7 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
+void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Reading parameters." << COLOR_END << std::endl;
 
   if (!graphConfigPtr_) {
@@ -118,20 +118,20 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   staticTransformsPtr_->setBaseLinkFrame(tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode));
 
   // Name IDs
-  fixedFrameAlignedNameId_ = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
-  sensorFrameCorrectedNameId_ = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
+  fixedFrameAlignedNameId = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
+  sensorFrameCorrectedNameId = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
 
   // Logging path in case we run offline optimization
   if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
     // Get the path
-    optimizationResultLoggingPath_ = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
+    optimizationResultLoggingPath = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
     // Make sure the path ends with a slash
-    if (optimizationResultLoggingPath_.back() != '/') {
-      optimizationResultLoggingPath_ += "/";
+    if (optimizationResultLoggingPath.back() != '/') {
+      optimizationResultLoggingPath += "/";
     }
     // Create directory if it does not exist
-    if (!boost::filesystem::exists(optimizationResultLoggingPath_)) {
-      boost::filesystem::create_directories(optimizationResultLoggingPath_);
+    if (!boost::filesystem::exists(optimizationResultLoggingPath)) {
+      boost::filesystem::create_directories(optimizationResultLoggingPath);
     }
   }
 }

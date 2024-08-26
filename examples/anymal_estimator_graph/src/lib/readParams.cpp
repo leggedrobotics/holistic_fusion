@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");

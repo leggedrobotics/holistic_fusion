@@ -38,7 +38,7 @@ void AnymalEstimator::setup() {
   REGULAR_COUT << GREEN_START << " AnymalEstimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
-  AnymalEstimator::readParams_(privateNode_);
+  AnymalEstimator::readParams(privateNode);
 
   // Super class
   GraphMsfRos::setup(staticTransformsPtr_);
@@ -47,43 +47,46 @@ void AnymalEstimator::setup() {
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
-  AnymalEstimator::initializePublishers_(privateNode_);
+  AnymalEstimator::initializePublishers(privateNode);
 
   // Subscribers ----------------------------
-  AnymalEstimator::initializeSubscribers_(privateNode_);
+  AnymalEstimator::initializeSubscribers(privateNode);
 
   // Messages ----------------------------
-  AnymalEstimator::initializeMessages_(privateNode_);
+  AnymalEstimator::initializeMessages(privateNode);
 
   // Services ----------------------------
-  AnymalEstimator::initializeServices_(privateNode_);
+  AnymalEstimator::initializeServices_(privateNode);
 }
 
-void AnymalEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
+void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasMapLioPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
-  pubMeasWorldGnssPath_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
+  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
+
+  // Markers
+  pubFootContactMarkers_ = privateNode.advertise<visualization_msgs::MarkerArray>("/graph_msf/foot_contact_markers", ROS_QUEUE_SIZE);
 }
 
-void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
+void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // GNSS
   if (useGnssUnaryFlag_) {
-    subGnssUnary_ = privateNode_.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_,
-                                                                   this, ros::TransportHints().tcpNoDelay());
+    subGnssUnary_ = privateNode.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_, this,
+                                                                  ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnssUnary_.getTopic() << std::endl;
   }
 
   // LiDAR Odometry
   // Unary
   if (useLioUnaryFlag_) {
-    subLioUnary_ = privateNode_.subscribe<nav_msgs::Odometry>(
-        "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarUnaryCallback_, this, ros::TransportHints().tcpNoDelay());
+    subLioUnary_ = privateNode.subscribe<nav_msgs::Odometry>("/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarUnaryCallback_,
+                                                             this, ros::TransportHints().tcpNoDelay());
 
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Unary Factor Odometry subscriber with topic: " << subLioUnary_.getTopic() << std::endl;
   }
   // Between
   if (useLioBetweenFlag_) {
-    subLioBetween_ = privateNode_.subscribe<nav_msgs::Odometry>(
+    subLioBetween_ = privateNode.subscribe<nav_msgs::Odometry>(
         "/lidar_odometry_topic", ROS_QUEUE_SIZE, &AnymalEstimator::lidarBetweenCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: " << subLioBetween_.getTopic() << std::endl;
   }
@@ -91,28 +94,28 @@ void AnymalEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   // Legged Odometry
   // Between
   if (useLeggedBetweenFlag_) {
-    subLeggedBetween_ = privateNode_.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+    subLeggedBetween_ = privateNode.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
         "/legged_odometry_pose_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedBetweenCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Odometry subscriber with topic: " << subLeggedBetween_.getTopic() << std::endl;
   }
   // Unary
   if (useLeggedVelocityUnaryFlag_) {
-    subLeggedVelocityUnary_ = privateNode_.subscribe<nav_msgs::Odometry>("/legged_odometry_odom_topic", ROS_QUEUE_SIZE,
-                                                                         &AnymalEstimator::leggedVelocityUnaryCallback_, this,
-                                                                         ros::TransportHints().tcpNoDelay());
+    subLeggedVelocityUnary_ =
+        privateNode.subscribe<nav_msgs::Odometry>("/legged_odometry_odom_topic", ROS_QUEUE_SIZE,
+                                                  &AnymalEstimator::leggedVelocityUnaryCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END
                  << " Initialized Legged Velocity Unary Factor Odometry subscriber with topic: " << subLeggedVelocityUnary_.getTopic()
                  << std::endl;
   }
   // Kinematics
   if (useLeggedKinematicsFlag_) {
-    subLeggedKinematics_ = privateNode_.subscribe<anymal_msgs::AnymalState>(
+    subLeggedKinematics_ = privateNode.subscribe<anymal_msgs::AnymalState>(
         "/anymal_state_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedKinematicsCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Kinematics subscriber with topic: " << subLeggedKinematics_.getTopic() << std::endl;
   }
 }
 
-void AnymalEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
+void AnymalEstimator::initializeMessages(ros::NodeHandle& privateNode) {
   // Path
   measLio_mapLidarPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   measGnss_worldGnssPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
@@ -202,7 +205,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     const std::string& gnssFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame();  // Alias
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
-        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(),
+        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
         gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, initialSe3AlignmentNoise_);
     // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
@@ -210,7 +213,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
   // Add _gmsf to the frame
   if (fixedFrame != staticTransformsPtr_->getWorldFrame()) {
-    fixedFrame += fixedFrameAlignedNameId_;
+    fixedFrame += fixedFrameAlignedNameId;
   }
 
   /// Add GNSS to Path
@@ -237,7 +240,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Measurement
   const std::string& lioOdomFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId_,
+      "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
       graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
       initialSe3AlignmentNoise_);
 
@@ -254,7 +257,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measLio_mapLidarPathPtr_, odomLidarPtr->header.frame_id + fixedFrameAlignedNameId_, odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapLidarPathPtr_, odomLidarPtr->header.frame_id + fixedFrameAlignedNameId, odomLidarPtr->header.stamp,
                lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
@@ -297,7 +300,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_) {
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId_,
+          "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
           graph_msf::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
@@ -308,7 +311,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
     const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
     // Create measurement
     graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Lidar_between_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId_,
+        "Lidar_between_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
         graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
     // Add to graph
     this->addBinaryPose3Measurement(delta6DMeasurement);
@@ -356,9 +359,8 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_) {
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName,
-          leggedOdometryFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k,
-          legPoseBetweenNoise_);
+          "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
+          graph_msf::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry between callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
@@ -373,7 +375,7 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
       const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
       // Create measurement
       graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-          "Leg_odometry_6D", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
+          "Leg_odometry_6D", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
           graph_msf::RobustNorm::None(), legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
       // Add to graph
       this->addBinaryPose3Measurement(delta6DMeasurement);
@@ -400,7 +402,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryVelocityRate_),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
-          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId_,
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
           graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
           legPoseBetweenNoise_);
       // Add to graph
@@ -424,7 +426,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
 
       // Create the unary measurement
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
-          "LegVelocityUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
+          "LegVelocityUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
           graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, legVelocity, legVelocityUnaryNoise_);
 
       // Add to graph
@@ -442,56 +444,96 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
   ++leggedKinematicsCallbackCounter_;
 
   if (!areYawAndPositionInited()) {
-    // nothing
-  } else {
+    // nothing for now
+  }
+  // Normal Operation
+  else {
     // Only add every nth measurement
     int measurementRate = static_cast<int>(leggedKinematicsRate_) / leggedKinematicsDownsampleFactor_;
 
-    // Check
+    // Check whether it is time to add a measurement
     if ((leggedKinematicsCallbackCounter_ % leggedKinematicsDownsampleFactor_) == 0) {
       // Alias
       const std::string& leggedOdometryFrameName =
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();
 
-      // Create the unary measurement for each foot (loop unrolling with constexpr arrays)
+      // Pose of the base in odom frame
+      Eigen::Isometry3d T_O_B = Eigen::Isometry3d::Identity();
+      graph_msf::geometryPoseToEigen(anymalStatePtr->pose.pose, T_O_B.matrix());
+
+      // Create the unary measurement for each foot (loop unrolling with constexpr arrays) ----------------------------
+      visualization_msgs::MarkerArray footContactMarkers = visualization_msgs::MarkerArray();
+      // Loop
       for (int legIndex = 0; legIndex < legNames_.size(); ++legIndex) {
         // Get contact state
         bool footInContact = anymalStatePtr->contacts[legIndex].state;
-        // Alias to foot name
-        const std::string& legName = legNames_[legIndex];
+        // Foot name as specified in the message
+        const std::string legName = anymalStatePtr->contacts[legIndex].name;
 
-        // Check whether leg is in contact
+        // Check whether leg is in contact ----------------------------
         if (footInContact) {
-          // Check whether leg was not in contact before
-          if (!legInContact_[legIndex]) {
-            // Set flag
-            legInContact_[legIndex] = true;
-            // Increase contact counter
-            ++legContactCounter_[legIndex];
-            // Print
-            REGULAR_COUT << " Leg " << legName << " came back into contact for the " << legContactCounter_[legIndex] << ". time."
-                         << std::endl;
-          }
-          // Create the unary measurement with contact counter
-          std::string legIdentifier = legName + std::to_string(legContactCounter_[legIndex]);
-          graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
-              legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId_,
-              graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Vector3d::Zero(),
-              legKinematicsFootPositionUnaryNoise_);
+          // Increase debounce counter
+          ++legInContactForNSteps_[legIndex];
 
-          // Add to graph
-          //        this->addUnaryFootContactMeasurement(footContactUnaryMeasurement);
+          // Check whether leg was at least N times in contact to count it as in contact --> debouncing
+          if (legInContactForNSteps_[legIndex] >= legInContactDebounceThreshold_) {
 
-          // Visualize foot contact in RViz
+            // If it was not in contact before
+            if (legInContactForNSteps_[legIndex] == legInContactDebounceThreshold_) {
+              // Increase contact counter
+              ++legContactIndex_[legIndex];
+              // Print
+              if (graphConfigPtr_->verboseLevel_ > 1) {
+                REGULAR_COUT << " Leg " << legName << " came back into contact for the " << legContactIndex_[legIndex] << ". time."
+                             << std::endl;
+              }
+            }
 
-        } else if (legInContact_[legIndex]) {
-          // Set flag
-          legInContact_[legIndex] = false;
-          // Print
-          if (graphConfigPtr_->verboseLevel_ > 2) {
-            REGULAR_COUT << " Leg " << legName << " lost contact: " << footInContact << std::endl;
+            // Add measurement ----------------------------
+            // Position of foot in legged odometry frame
+            Eigen::Vector3d O_t_O_foot =
+                Eigen::Vector3d(anymalStatePtr->contacts[legIndex].position.x, anymalStatePtr->contacts[legIndex].position.y,
+                                anymalStatePtr->contacts[legIndex].position.z);
+            Eigen::Vector3d B_t_B_foot = T_O_B.inverse() * O_t_O_foot;
+
+            // Create the unary measurement with contact counter
+            std::string legIdentifier = legName + std::to_string(legContactIndex_[legIndex]);
+            graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
+                legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Vector3d::Zero(),
+                legKinematicsFootPositionUnaryNoise_);
+
+            // Add to graph
+            //        this->addUnaryFootContactMeasurement(footContactUnaryMeasurement);
+
+            // Visualize foot contact in RViz
+            visualization_msgs::Marker footContactMarker;
+            createContactMarker(leggedOdometryFrameName, anymalStatePtr->header.stamp, B_t_B_foot, "foot_contact", legIndex,
+                                footContactMarker);
+            footContactMarkers.markers.push_back(footContactMarker);
           }
         }
+        // Leg not in contact ----------------------------
+        else if (legInContactForNSteps_[legIndex] > 0) {
+          // Set to 0
+          legInContactForNSteps_[legIndex] = 0;
+          // Print
+          if (graphConfigPtr_->verboseLevel_ > 1) {
+            REGULAR_COUT << " Leg " << legName << " lost contact. " << std::endl;
+          }
+          // Remove marker if it lost contact
+          visualization_msgs::Marker deleteMarker;
+          deleteMarker.header.frame_id = leggedOdometryFrameName;
+          deleteMarker.header.stamp = anymalStatePtr->header.stamp;
+          deleteMarker.ns = "foot_contact";
+          deleteMarker.id = legIndex;
+          deleteMarker.action = visualization_msgs::Marker::DELETE;
+          footContactMarkers.markers.push_back(deleteMarker);
+        }
+      }
+      // Publish foot contact markers
+      if (!footContactMarkers.markers.empty() && pubFootContactMarkers_.getNumSubscribers() > 0) {
+        pubFootContactMarkers_.publish(footContactMarkers);
       }
     }
   }

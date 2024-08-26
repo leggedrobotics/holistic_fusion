@@ -23,6 +23,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/NavSatFix.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
+#include <visualization_msgs/MarkerArray.h>
 
 // Custom Messages
 #include "anymal_msgs/AnymalState.h"
@@ -40,6 +41,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace anymal_se {
 
 class AnymalEstimator : public graph_msf::GraphMsfRos {
+
  public:
   AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
@@ -48,13 +50,14 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Setup
   void setup();
 
- private:
+ protected:
   // Virtual Functions
-  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
-  virtual void readParams_(const ros::NodeHandle& privateNode);
+  void initializePublishers(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNodePtr) override;
+  void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
+  void readParams(const ros::NodeHandle& privateNode) override;
 
+ private:
   // Callbacks
   // LIO
   void lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
@@ -112,8 +115,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Leg Odometry Handling
   static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};
-  std::array<bool, legNames_.size()> legInContact_ = { false, false, false, false };
-  std::array<long, legNames_.size()> legContactCounter_ = { 0, 0, 0, 0 };
+  std::array<long, legNames_.size()> legInContactForNSteps_ = { 0, 0, 0, 0 };
+  std::array<long, legNames_.size()> legContactIndex_ = { 0, 0, 0, 0 };
+  static constexpr long legInContactDebounceThreshold_ = 3;
 
   // Callback Members ----------------------------
   // GNSS
@@ -149,6 +153,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Path
   ros::Publisher pubMeasMapLioPath_;
   ros::Publisher pubMeasWorldGnssPath_;
+  // Markers
+  ros::Publisher pubFootContactMarkers_;
 
   // Messages
   nav_msgs::PathPtr measLio_mapLidarPathPtr_;

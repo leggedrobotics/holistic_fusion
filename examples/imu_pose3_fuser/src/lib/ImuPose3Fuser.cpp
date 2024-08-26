@@ -32,7 +32,7 @@ void ImuPose3Fuser::setup() {
   REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Setup called." << COLOR_END << std::endl;
 
   // Read parameters
-  ImuPose3Fuser::readParams_(privateNode_);
+  ImuPose3Fuser::readParams(privateNode);
 
   // Super class
   GraphMsfRos::setup(staticTransformsPtr_);
@@ -41,39 +41,39 @@ void ImuPose3Fuser::setup() {
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
-  ImuPose3Fuser::initializePublishers_(privateNode_);
+  ImuPose3Fuser::initializePublishers(privateNode);
 
   // Subscribers ----------------------------
-  ImuPose3Fuser::initializeSubscribers_(privateNode_);
+  ImuPose3Fuser::initializeSubscribers(privateNode);
 
   // Messages ----------------------------
-  ImuPose3Fuser::initializeMessages_(privateNode_);
+  ImuPose3Fuser::initializeMessages(privateNode);
 
   // Server ----------------------------
-  ImuPose3Fuser::initializeServices_(privateNode_);
+  ImuPose3Fuser::initializeServices(privateNode);
 
   // Wrap up ----------------------------
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 
-void ImuPose3Fuser::initializePublishers_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasPose3Path_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measPose3_path_world_imu", ROS_QUEUE_SIZE);
+  pubMeasPose3Path_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPose3_path_world_imu", ROS_QUEUE_SIZE);
 }
 
-void ImuPose3Fuser::initializeSubscribers_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeSubscribers(ros::NodeHandle& privateNode) {
   // Pose3 Odometry
-  subPose3Odometry_ = privateNode_.subscribe<nav_msgs::Odometry>("/pose3_odometry_topic", ROS_QUEUE_SIZE, &ImuPose3Fuser::pose3Callback_,
+  subPose3Odometry_ = privateNode.subscribe<nav_msgs::Odometry>("/pose3_odometry_topic", ROS_QUEUE_SIZE, &ImuPose3Fuser::pose3Callback_,
                                                                  this, ros::TransportHints().tcpNoDelay());
   REGULAR_COUT << COLOR_END << " Initialized Pose3 Odometry subscriber with topic: " << subPose3Odometry_.getTopic() << std::endl;
 }
 
-void ImuPose3Fuser::initializeMessages_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeMessages(ros::NodeHandle& privateNode) {
   // Path
   measPose3_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
-void ImuPose3Fuser::initializeServices_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeServices(ros::NodeHandle& privateNode) {
   // Nothing
 }
 

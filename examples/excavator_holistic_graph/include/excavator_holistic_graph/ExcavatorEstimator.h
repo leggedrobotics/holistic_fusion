@@ -42,24 +42,26 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   // Setup
   void setup();
 
- private:
+ protected:
   // Methods ------------------------------------
-  void initializePublishers_(ros::NodeHandle& privateNode) override;
+  void initializePublishers(ros::NodeHandle& privateNode) override;
 
-  void initializeSubscribers_(ros::NodeHandle& privateNode) override;
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
 
-  void initializeMessages_(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNode) override;
 
-  void readParams_(const ros::NodeHandle& privateNode) override;
+  void readParams(const ros::NodeHandle& privateNode) override;
+
+  // Publish State
+  virtual void publishState(
+      const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
+
+ private:
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& leftGnssPtr, const sensor_msgs::NavSatFix::ConstPtr& rightGnssPtr);
-
-  // Publish State
-  virtual void publishState_(
-      const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
-      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
 
   // Members ----------------------------------
   // Publishers

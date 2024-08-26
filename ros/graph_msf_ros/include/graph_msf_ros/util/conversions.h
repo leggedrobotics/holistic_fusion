@@ -20,6 +20,8 @@ Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(cons
 
 void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T);
 
+void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Matrix4d& T);
+
 void geometryPoseToEigen(const geometry_msgs::PoseWithCovarianceStamped& odomLidar, Eigen::Matrix4d& T);
 
 void odomMsgToTf(const nav_msgs::Odometry& odomLidar, tf::Transform& T);

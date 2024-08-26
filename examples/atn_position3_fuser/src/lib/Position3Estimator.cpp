@@ -38,19 +38,19 @@ void Position3Estimator::setup() {
   REGULAR_COUT << GREEN_START << " Position3Estimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
-  Position3Estimator::readParams_(privateNode_);
+  Position3Estimator::readParams(privateNode);
 
   // Super class
   GraphMsfRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
-  Position3Estimator::initializePublishers_(privateNode_);
+  Position3Estimator::initializePublishers(privateNode);
 
   // Subscribers ----------------------------
-  Position3Estimator::initializeSubscribers_(privateNode_);
+  Position3Estimator::initializeSubscribers(privateNode);
 
   // Messages ----------------------------
-  Position3Estimator::initializeMessages_(privateNode_);
+  Position3Estimator::initializeMessages(privateNode);
 
   // Static Transforms
   staticTransformsPtr_->findTransformations();
@@ -60,7 +60,7 @@ void Position3Estimator::setup() {
 }
 
 //---------------------------------------------------------------
-void Position3Estimator::initializePublishers_(ros::NodeHandle& privateNode) {
+void Position3Estimator::initializePublishers(ros::NodeHandle& privateNode) {
   // Status
   REGULAR_COUT << GREEN_START << " Initializing Publishers..." << COLOR_END << std::endl;
 
@@ -68,7 +68,7 @@ void Position3Estimator::initializePublishers_(ros::NodeHandle& privateNode) {
   pubMeasWorldPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_prism", ROS_QUEUE_SIZE);
 }
 
-void Position3Estimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
+void Position3Estimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   subPosition_ = privateNode.subscribe<geometry_msgs::PointStamped>(
       "/position_topic", ROS_QUEUE_SIZE, &Position3Estimator::positionCallback_, this, ros::TransportHints().tcpNoDelay());
 
@@ -77,7 +77,7 @@ void Position3Estimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
 }
 
 //---------------------------------------------------------------
-void Position3Estimator::initializeMessages_(ros::NodeHandle& privateNode) {
+void Position3Estimator::initializeMessages(ros::NodeHandle& privateNode) {
   // Status
   REGULAR_COUT << GREEN_START << " Initializing Messages..." << COLOR_END << std::endl;
 
@@ -109,7 +109,7 @@ void Position3Estimator::positionCallback_(const geometry_msgs::PointStamped::Co
     const std::string& fixedFrame = staticTransformsPtr_->getWorldFrame();
     // Already initialized --> add position measurement to graph
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
-        "LeicaPosition", int(positionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId_,
+        "LeicaPosition", int(positionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
         graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
         positionCovarianceXYZ, fixedFrame, initialSe3AlignmentNoise_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);

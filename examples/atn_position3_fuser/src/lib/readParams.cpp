@@ -13,7 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace position3_se {
 
-void Position3Estimator::readParams_(const ros::NodeHandle& privateNode) {
+void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   // Set frames ----------------------------
   /// Position Measurment frame (Prism)
   std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/positionMeasFrame", privateNode);

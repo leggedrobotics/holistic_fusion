@@ -43,15 +43,17 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Setup
   void setup();
 
- private:
+ protected:
   // Methods ------------------------------------
-  void initializePublishers_(ros::NodeHandle& privateNode) override;
+  void initializePublishers(ros::NodeHandle& privateNode) override;
 
-  void initializeSubscribers_(ros::NodeHandle& privateNode) override;
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
 
-  void initializeMessages_(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNode) override;
 
-  void readParams_(const ros::NodeHandle& privateNode) override;
+  void readParams(const ros::NodeHandle& privateNode) override;
+
+ private:
 
   // Callbacks
   void positionCallback_(const geometry_msgs::PointStamped::ConstPtr& LeicaPositionPtr);

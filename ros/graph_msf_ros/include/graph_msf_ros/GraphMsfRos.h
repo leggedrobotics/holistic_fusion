@@ -43,10 +43,10 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
 
  protected:
   // Functions that need implementation
-  virtual void initializePublishers_(ros::NodeHandle& privateNode);
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNode);
-  virtual void initializeMessages_(ros::NodeHandle& privateNode);
-  virtual void initializeServices_(ros::NodeHandle& privateNode);
+  virtual void initializePublishers(ros::NodeHandle& privateNode);
+  virtual void initializeSubscribers(ros::NodeHandle& privateNode);
+  virtual void initializeMessages(ros::NodeHandle& privateNode);
+  virtual void initializeServices(ros::NodeHandle& privateNode);
 
   // Commodity Functions to be shared -----------------------------------
   // Static
@@ -68,59 +68,61 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Markers
   static void createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
                                    visualization_msgs::Marker& marker);
+  void createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
+                           const std::string& nameSpace, const int id, visualization_msgs::Marker& marker);
 
   // Parameter Loading -----------------------------------
-  virtual void readParams_(const ros::NodeHandle& privateNode);
+  virtual void readParams(const ros::NodeHandle& privateNode);
 
   // Callbacks
-  virtual void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr);
+  virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);
 
   // Services
-  bool srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
-                                           graph_msf_ros::OfflineOptimizationTrigger::Response& res);
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros::OfflineOptimizationTrigger::Response& res);
 
   // Publishing -----------------------------------
   // Higher Level Functions
-  virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
-                             const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
-  void publishNonTimeCriticalData_(
+  virtual void publishState(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                            const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  void publishNonTimeCriticalData(
       const Eigen::Matrix<double, 6, 6> poseCovarianceRos, const Eigen::Matrix<double, 6, 6> twistCovarianceRos,
       const Eigen::Vector3d positionVarianceRos, const Eigen::Vector3d orientationVarianceRos,
       const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr);
-  void publishOptimizedStateAndBias_(
+  void publishOptimizedStateAndBias(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
   // Lower Level Functions
-  void publishTfTreeTransform_(const std::string& frameName, const std::string& childFrameName, double timeStamp,
-                               const Eigen::Isometry3d& T_frame_childFrame);
-  void publishImuOdoms_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
-                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
-  void publishDiagVarianceVectors_(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
-                                   const double timeStamp) const;
-  void publishVelocityMarkers_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
-  void publishImuPaths_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
-  void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
+  void publishTfTreeTransform(const std::string& frameName, const std::string& childFrameName, double timeStamp,
+                              const Eigen::Isometry3d& T_frame_childFrame);
+  void publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+                       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
+  void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                  const double timeStamp) const;
+  void publishVelocityMarkers(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
+  void publishImuPaths(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
+  void publishAddedImuMeas(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
 
   // Measure time
-  long secondsSinceStart_();
+  long secondsSinceStart();
 
   // Node
-  ros::NodeHandle privateNode_;
+  ros::NodeHandle privateNode;
 
   // Time
-  std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
-  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+  std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
 
   // Publishers
   // TF
-  tf::TransformBroadcaster tfBroadcaster_;
+  tf::TransformBroadcaster tfBroadcaster;
 
   // Members
-  std::string fixedFrameAlignedNameId_ = "_graph_msf_aligned";
-  std::string sensorFrameCorrectedNameId_ = "_graph_msf_corrected";
-  std::string optimizationResultLoggingPath_ = "";
+  std::string fixedFrameAlignedNameId = "_graph_msf_aligned";
+  std::string sensorFrameCorrectedNameId = "_graph_msf_corrected";
+  std::string optimizationResultLoggingPath = "";
 
  private:
   // Publishers

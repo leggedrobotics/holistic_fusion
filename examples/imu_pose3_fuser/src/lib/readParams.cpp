@@ -13,7 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace imu_pose3_fuser {
 
-void ImuPose3Fuser::readParams_(const ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::readParams(const ros::NodeHandle& privateNode) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("SmbEstimator: graphConfigPtr must be initialized.");

@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-void SmbEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void SmbEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("SmbEstimator: graphConfigPtr must be initialized.");

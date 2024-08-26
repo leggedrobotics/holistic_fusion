@@ -17,13 +17,13 @@ ImuIntegrator::ImuIntegrator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : 
 }
 
 // Overridden imuCallback
-void ImuIntegrator::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
+void ImuIntegrator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   sensor_msgs::Imu::Ptr imuMsgPtrCopy = boost::make_shared<sensor_msgs::Imu>(*imuMsgPtr);
   imuMsgPtrCopy->angular_velocity.x = imuMsgPtr->angular_velocity.x * M_PI / 180.0;
   imuMsgPtrCopy->angular_velocity.y = imuMsgPtr->angular_velocity.y * M_PI / 180.0;
   imuMsgPtrCopy->angular_velocity.z = imuMsgPtr->angular_velocity.z * M_PI / 180.0;
 
-  graph_msf::GraphMsfRos::imuCallback_(imuMsgPtrCopy);
+  graph_msf::GraphMsfRos::imuCallback(imuMsgPtrCopy);
 
   if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited()) {
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START
