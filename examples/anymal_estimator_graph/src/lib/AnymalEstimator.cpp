@@ -481,11 +481,16 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
 
           // Add to graph
           //        this->addUnaryFootContactMeasurement(footContactUnaryMeasurement);
+
+          // Visualize foot contact in RViz
+
         } else if (legInContact_[legIndex]) {
           // Set flag
           legInContact_[legIndex] = false;
           // Print
-          REGULAR_COUT << " Leg " << legName << " lost contact: " << footInContact << std::endl;
+          if (graphConfigPtr_->verboseLevel_ > 2) {
+            REGULAR_COUT << " Leg " << legName << " lost contact: " << footInContact << std::endl;
+          }
         }
       }
     }

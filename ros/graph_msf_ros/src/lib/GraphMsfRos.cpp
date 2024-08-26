@@ -68,6 +68,8 @@ void GraphMsfRos::initializePublishers_(ros::NodeHandle& privateNode) {
   // Vector3 Variances
   pubEstWorldPosVariance_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/est_world_pos_variance", ROS_QUEUE_SIZE);
   pubEstWorldRotVariance_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/est_world_rot_variance", ROS_QUEUE_SIZE);
+  // Velocity Marker
+  pubVelocityMarker_ = privateNode.advertise<visualization_msgs::Marker>("/graph_msf/velocity_marker", ROS_QUEUE_SIZE);
   // Paths
   pubEstOdomImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
   pubEstWorldImuPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
@@ -111,35 +113,6 @@ void GraphMsfRos::initializeServices_(ros::NodeHandle& privateNode) {
   // Trigger offline smoother optimization
   srvSmootherOptimize_ =
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback_, this);
-}
-
-void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
-  // Convert to Eigen
-  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
-  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
-  Eigen::Matrix<double, 6, 1> addedImuMeasurements;  // accel, gyro
-
-  // Create pointer for carrying state
-  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr = nullptr;
-  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
-
-  // Add measurement and get state
-  if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
-                                                 optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
-    // Encountered Delay
-    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
-      REGULAR_COUT << RED_START << " Encountered delay of " << std::setprecision(14)
-                   << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << COLOR_END << std::endl;
-    }
-
-    // Publish Odometry
-    this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
-
-    // Publish Filtered Imu Measurements
-    //    this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
-  } else if (GraphMsf::isGraphInited()) {
-    REGULAR_COUT << RED_START << " Could not add IMU measurement." << COLOR_END << std::endl;
-  }
 }
 
 bool GraphMsfRos::srvOfflineSmootherOptimizeCallback_(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
@@ -224,9 +197,74 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
   }
 }
 
+// Markers
+void GraphMsfRos::createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
+                                       visualization_msgs::Marker& marker) {
+  // Arrow
+  marker.header.frame_id = referenceFrameName;
+  marker.header.stamp = stamp;
+  marker.id = 0;
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.action = visualization_msgs::Marker::ADD;
+  // Scale and Color
+  const double scale = velocity.norm();
+  marker.scale.x = 0.1;  // shaft diameter
+  marker.scale.y = 0.2;  // head diameter
+  marker.scale.z = 0.2;  // head length
+  marker.color.a = 1.0;
+  marker.color.r = 1.0;
+  marker.color.g = 0.0;
+  marker.color.b = 0.0;
+  // Define Arrow through start and end point
+  geometry_msgs::Point startPoint, endPoint;
+  startPoint = geometry_msgs::Point();
+  startPoint.x = 0.0;  // origin
+  startPoint.y = 0.0;  // origin
+  startPoint.z = 1.0;  // 1 meter above origin
+  endPoint = geometry_msgs::Point();
+  endPoint.x = startPoint.x + velocity(0);
+  endPoint.y = startPoint.y + velocity(1);
+  endPoint.z = startPoint.z + velocity(2);
+  marker.points.push_back(startPoint);
+  marker.points.push_back(endPoint);
+  // Quaternion
+  tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, 0);
+  tf::quaternionTFToMsg(q, marker.pose.orientation);
+}
+
 long GraphMsfRos::secondsSinceStart_() {
   currentTime_ = std::chrono::high_resolution_clock::now();
   return std::chrono::duration_cast<std::chrono::seconds>(currentTime_ - startTime_).count();
+}
+
+// Main IMU Callback
+void GraphMsfRos::imuCallback_(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
+  // Convert to Eigen
+  Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
+  Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
+  Eigen::Matrix<double, 6, 1> addedImuMeasurements;  // accel, gyro
+
+  // Create pointer for carrying state
+  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr = nullptr;
+  std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
+
+  // Add measurement and get state
+  if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel, imuMsgPtr->header.stamp.toSec(), preIntegratedNavStatePtr,
+                                                 optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
+    // Encountered Delay
+    if (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK()) > ros::Duration(0.5)) {
+      REGULAR_COUT << RED_START << " Encountered delay of " << std::setprecision(14)
+                   << (ros::Time::now() - ros::Time(preIntegratedNavStatePtr->getTimeK())).toSec() << " seconds." << COLOR_END << std::endl;
+    }
+
+    // Publish Odometry
+    this->publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+
+    // Publish Filtered Imu Measurements
+    //    this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
+  } else if (GraphMsf::isGraphInited()) {
+    REGULAR_COUT << RED_START << " Could not add IMU measurement." << COLOR_END << std::endl;
+  }
 }
 
 // Publish state ---------------------------------------------------------------
@@ -242,25 +280,24 @@ void GraphMsfRos::publishState_(
   Eigen::Vector3d positionVarianceRos = poseCovarianceRos.block<3, 3>(0, 0).diagonal();
   Eigen::Vector3d orientationVarianceRos = poseCovarianceRos.block<3, 3>(3, 3).diagonal();
 
-  // Alias
-  const Eigen::Isometry3d& T_O_Ik = integratedNavStatePtr->getT_O_Ik_gravityAligned();  // alias
-  const double& timeK = integratedNavStatePtr->getTimeK();                              // alias
-
   // Publish non-time critical data in a separate thread
-  std::thread publishNonTimeCriticalDataThread(&GraphMsfRos::publishNonTimeCriticalData_, this, T_O_Ik, timeK, poseCovarianceRos,
-                                               twistCovarianceRos, positionVarianceRos, orientationVarianceRos, integratedNavStatePtr,
+  std::thread publishNonTimeCriticalDataThread(&GraphMsfRos::publishNonTimeCriticalData_, this, poseCovarianceRos, twistCovarianceRos,
+                                               positionVarianceRos, orientationVarianceRos, integratedNavStatePtr,
                                                optimizedStateWithCovarianceAndBiasPtr);
   publishNonTimeCriticalDataThread.detach();
 }
 
 // Copy the arguments in order to be thread safe
 void GraphMsfRos::publishNonTimeCriticalData_(
-    const Eigen::Isometry3d T_O_Ik, const double timeK, const Eigen::Matrix<double, 6, 6> poseCovarianceRos,
-    const Eigen::Matrix<double, 6, 6> twistCovarianceRos, const Eigen::Vector3d positionVarianceRos,
-    const Eigen::Vector3d orientationVarianceRos, const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
+    const Eigen::Matrix<double, 6, 6> poseCovarianceRos, const Eigen::Matrix<double, 6, 6> twistCovarianceRos,
+    const Eigen::Vector3d positionVarianceRos, const Eigen::Vector3d orientationVarianceRos,
+    const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
     const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr) {
   // Mutex for not overloading ROS
   std::lock_guard<std::mutex> lock(rosPublisherMutex_);
+
+  // Time
+  const double& timeK = integratedNavStatePtr->getTimeK();  // Alias
 
   // Odometry messages
   publishImuOdoms_(integratedNavStatePtr, poseCovarianceRos, twistCovarianceRos);
@@ -269,14 +306,17 @@ void GraphMsfRos::publishNonTimeCriticalData_(
   // B_O
   Eigen::Isometry3d T_B_Ok =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
-      T_O_Ik.inverse();
+      integratedNavStatePtr->getT_O_Ik_gravityAligned().inverse();
   publishTfTreeTransform_(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
   publishTfTreeTransform_(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
 
   // Publish Variances
-  publishDiagVarianceVectors(positionVarianceRos, orientationVarianceRos, timeK);
+  publishDiagVarianceVectors_(positionVarianceRos, orientationVarianceRos, timeK);
+
+  // Publish Velocity Markers
+  publishVelocityMarkers_(integratedNavStatePtr);
 
   // Publish paths
   publishImuPaths_(integratedNavStatePtr);
@@ -433,8 +473,8 @@ void GraphMsfRos::publishImuOdoms_(const std::shared_ptr<const graph_msf::SafeIn
   }
 }
 
-void GraphMsfRos::publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
-                                             const double timeStamp) const {
+void GraphMsfRos::publishDiagVarianceVectors_(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                              const double timeStamp) const {
   // World Position Variance
   if (pubEstWorldPosVariance_.getNumSubscribers() > 0) {
     estWorldPosVarianceMsgPtr_->header.stamp = ros::Time(timeStamp);
@@ -452,6 +492,16 @@ void GraphMsfRos::publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceR
     estWorldRotVarianceMsgPtr_->vector.y = rotVarianceRos(1);
     estWorldRotVarianceMsgPtr_->vector.z = rotVarianceRos(2);
     pubEstWorldRotVariance_.publish(estWorldRotVarianceMsgPtr_);
+  }
+}
+
+void GraphMsfRos::publishVelocityMarkers_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const {
+  // Velocity in Odom Frame Marker
+  visualization_msgs::Marker velocityMarker;
+  createVelocityMarker(staticTransformsPtr_->getImuFrame(), ros::Time(navStatePtr->getTimeK()), navStatePtr->getI_v_W_I(), velocityMarker);
+  // Publish
+  if (pubVelocityMarker_.getNumSubscribers() > 0) {
+    pubVelocityMarker_.publish(velocityMarker);
   }
 }
 

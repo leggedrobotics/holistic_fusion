@@ -19,6 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/Imu.h>
 #include <std_srvs/Trigger.h>
 #include <tf/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
 
 // Workspace
 #include "graph_msf/interface/GraphMsf.h"
@@ -49,6 +50,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
 
   // Commodity Functions to be shared -----------------------------------
   // Static
+  // Add to Topics
   static void addToPathMsg(const nav_msgs::PathPtr& pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
                            int maxBufferLength);
   static void addToOdometryMsg(const nav_msgs::OdometryPtr& msgPtr, const std::string& fixedFrame, const std::string& movingFrame,
@@ -59,9 +61,13 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   static void addToPoseWithCovarianceStampedMsg(
       const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName, const ros::Time& stamp,
       const Eigen::Isometry3d& T, const Eigen::Matrix<double, 6, 6>& transformCovariance = Eigen::Matrix<double, 6, 6>::Zero());
+  // Extract from State
   static void extractCovariancesFromOptimizedState(
       Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  // Markers
+  static void createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
+                                   visualization_msgs::Marker& marker);
 
   // Parameter Loading -----------------------------------
   virtual void readParams_(const ros::NodeHandle& privateNode);
@@ -78,9 +84,9 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void publishState_(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                              const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   void publishNonTimeCriticalData_(
-      const Eigen::Isometry3d T_O_Ik, const double timeK, const Eigen::Matrix<double, 6, 6> poseCovarianceRos,
-      const Eigen::Matrix<double, 6, 6> twistCovarianceRos, const Eigen::Vector3d positionVarianceRos,
-      const Eigen::Vector3d orientationVarianceRos, const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
+      const Eigen::Matrix<double, 6, 6> poseCovarianceRos, const Eigen::Matrix<double, 6, 6> twistCovarianceRos,
+      const Eigen::Vector3d positionVarianceRos, const Eigen::Vector3d orientationVarianceRos,
+      const std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr,
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr);
   void publishOptimizedStateAndBias_(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
@@ -91,8 +97,9 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
                                const Eigen::Isometry3d& T_frame_childFrame);
   void publishImuOdoms_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                         const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
-  void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
-                                  const double timeStamp) const;
+  void publishDiagVarianceVectors_(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
+                                   const double timeStamp) const;
+  void publishVelocityMarkers_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
   void publishImuPaths_(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
   void publishAddedImuMeas_(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const ros::Time& stamp) const;
 
@@ -125,6 +132,8 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Vector3 Variances
   ros::Publisher pubEstWorldPosVariance_;
   ros::Publisher pubEstWorldRotVariance_;
+  // Velocity Markers
+  ros::Publisher pubVelocityMarker_;
   // Path
   ros::Publisher pubEstOdomImuPath_;
   ros::Publisher pubEstWorldImuPath_;
