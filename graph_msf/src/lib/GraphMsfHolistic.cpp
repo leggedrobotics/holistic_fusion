@@ -13,9 +13,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/constants.h"
 
 // Unary Expression Factors
+/// Absolute
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
+/// Local
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionVelocity3Local.h"
+
+// Landmark Expression Factors
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPosition3Landmark.h"
 
 // Binary Expression Factors
 // TODO: add binary factors
@@ -27,7 +32,7 @@ GraphMsfHolistic::GraphMsfHolistic() {
   REGULAR_COUT << GREEN_START << " GraphMsfHolistic-Constructor called." << COLOR_END << std::endl;
 }
 
-// Unary Measurements ---------------------------------------------------------
+// Unary Measurements: In reference frame --> systematic drift ---------------------------------------------------------
 
 // Pose3
 void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
@@ -66,7 +71,8 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
 }
 
 // Position3
-void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
+void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
+    UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& fixedFrame_t_fixedFrame_sensorFrame) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -108,6 +114,17 @@ void GraphMsfHolistic::addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAb
   throw std::runtime_error("Velocity measurements in fixed frame are not yet supported.");
 }
 
+// Roll
+void GraphMsfHolistic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_W_frame) {
+  throw std::runtime_error("Roll measurements are not yet supported for the holistic MSF.");
+}
+
+// Pitch
+void GraphMsfHolistic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_W_frame) {
+  throw std::runtime_error("Pitch measurements are not yet supported for the holistic MSF.");
+}
+
+// Local Measurements: Fully Local ---------------------------------------------------------
 // Velocity3 in Body Frame
 void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {
   // Valid measurement received
@@ -143,16 +160,47 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
   }
 }
 
-// Roll
-void GraphMsfHolistic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_W_frame) {
-  throw std::runtime_error("Roll measurements are not yet supported for the holistic MSF.");
+// Landmark Measurements: No systematic drift ------------------------------------------------------
+// Position3
+void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
+    return;
+  } else {  // Case 2: Graph Initialized
+    // Check for covariance violation
+    bool covarianceViolatedFlag = isCovarianceViolated_<3>(S_t_S_L.unaryMeasurementNoiseDensity(), S_t_S_L.covarianceViolationThreshold());
+    if (covarianceViolatedFlag) {
+      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      return;
+    }
+
+    // Create GMSF expression
+    auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionPosition3Landmark>(
+        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_t_S_L), staticTransformsPtr_->getWorldFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_t_S_L.sensorFrameName()));
+
+    // Add factor to graph
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionPosition3Landmark>(gmsfUnaryExpressionPosition3LandmarkPtr);
+
+    // Optimize ---------------------------------------------------------------
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
 }
 
-// Pitch
-void GraphMsfHolistic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_W_frame) {
-  throw std::runtime_error("Pitch measurements are not yet supported for the holistic MSF.");
+// Bearing3
+void GraphMsfHolistic::addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) {
+  throw std::runtime_error("Landmark measurements are not yet supported for the holistic MSF.");
 }
 
-// Binary Measurements --------------------------------------------------------
+// Binary Measurements: Purely relative --------------------------------------------------------
 
 }  // namespace graph_msf

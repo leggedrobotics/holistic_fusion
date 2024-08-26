@@ -504,7 +504,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
                 legKinematicsFootPositionUnaryNoise_);
 
             // Add to graph
-            //        this->addUnaryFootContactMeasurement(footContactUnaryMeasurement);
+            this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement);
 
             // Visualize foot contact in RViz
             visualization_msgs::Marker footContactMarker;

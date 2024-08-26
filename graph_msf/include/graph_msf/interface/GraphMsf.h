@@ -70,6 +70,10 @@ class GraphMsf {
   //// Local Measurements
   virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
 
+  /// Landmark Measurements
+  virtual void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L) = 0;
+  virtual void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) = 0;
+
   /// Binary Measurements
   virtual void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta) = 0;
 
