@@ -39,10 +39,9 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) override = 0;
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override final {
-    // Raise runtime error, as it is not a landmark measurement
-    std::runtime_error(
-        "GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement not implemented, as it is an absolute measurement.");
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) final {
+    // Raise logic error, as it is not a landmark measurement
+    throw std::logic_error("GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement() is not implemented.");
   }
 
   // Accessors

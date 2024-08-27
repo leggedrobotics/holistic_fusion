@@ -61,6 +61,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Check at compile time whether unary measurement is absolute
   constexpr bool isAbsoluteMeasurement =
       std::is_base_of<GmsfUnaryExpressionAbsolut<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
+  constexpr bool isLandmarkMeasurement =
+      std::is_base_of<GmsfUnaryExpressionLandmark<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
 
   // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
   gtsam::Key closestGeneralKey;
@@ -70,12 +72,17 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   }
   gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
-  // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
+  // B.A. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
   if constexpr (isAbsoluteMeasurement) {
     if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
       gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
                                                                   graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
     }
+  }
+
+  // B.B. Holistic Fusion: Create Landmark State in Dynamic Memory -------------------------------------
+  if constexpr (isLandmarkMeasurement) {
+    gmsfUnaryExpressionPtr->convertRobotAndLandmarkStatesToMeasurement(gtsamExpressionTransformsKeys_);
   }
 
   // C. Transform State to Sensor Frame -----------------------------------------------------

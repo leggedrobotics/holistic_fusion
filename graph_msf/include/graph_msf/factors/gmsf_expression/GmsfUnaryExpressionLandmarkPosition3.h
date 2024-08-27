@@ -40,10 +40,29 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override {}
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override {
+    // Create Expression for Landmark Position in World Frame
+    bool newGraphKeyAddedFlag = false;
+    // TODO: Add good initial guess (containing position)
+    gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::D>(
+        newGraphKeyAddedFlag, worldFrameName_, positionLandmarkMeasurementPtr_->measurementName(), positionLandmarkMeasurementPtr_->timeK(),
+        gtsam::Pose3(gtsam::Rot3::Identity(), sensorFrame_t_sensorFrame_correctSensorFrame_initial));
+    gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
+
+    // Convert to Imu frame
+    exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformFrom(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
+  }
 
   // iii) Transform state to sensor frame
-  void transformStateToSensorFrame() override {}
+  void transformStateToSensorFrame() override {
+    // Gtsam Data Type
+    gtsam::Pose3 T_sensorFrame_I(T_I_sensorFrameInit_.inverse().matrix());
+
+    // Transform to Sensor Frame
+    exp_sensorFrame_t_sensorFrame_landmark_ =
+        gtsam::transformFrom(gtsam::Pose3_(T_sensorFrame_I), exp_sensorFrame_t_sensorFrame_landmark_);  // S_t_S_L at this point
+  }
 
   // iv) Extrinsic Calibration
   void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {

@@ -35,10 +35,9 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   // ii.A) Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
-                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override final {
-    // Do nothing as this velocity measurement is expressed in the sensor frame
-    std::runtime_error(
-        "GmsfUnaryExpressionLandmark: transformStateFromWorldToFixedFrame not implemented, as it is a landmark measurement.");
+                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+    // Do nothing as this is a landmark measurement
+    throw std::logic_error("GmsfUnaryExpressionLandmark: transformStateFromWorldToFixedFrame not implemented for Landmark Measurements.");
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory

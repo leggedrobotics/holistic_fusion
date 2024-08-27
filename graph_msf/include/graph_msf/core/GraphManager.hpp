@@ -33,6 +33,7 @@ Please see the LICENSE file that has been included as part of this package.
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
 
 // General Binary Factor Interface
 // TODO: add binary factor interface
