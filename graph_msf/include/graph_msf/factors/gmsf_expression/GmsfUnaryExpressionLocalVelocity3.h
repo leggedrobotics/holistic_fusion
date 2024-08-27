@@ -14,18 +14,18 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/expressions.h>
 
 // Workspace
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocal.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionVelocity3Local final : public GmsfUnaryExpression<gtsam::Point3> {
+class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<gtsam::Point3> {
  public:
   // Constructor
-  GmsfUnaryExpressionVelocity3Local(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
+  GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
                                     const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
                                     const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
-      : GmsfUnaryExpression(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
@@ -43,7 +43,7 @@ class GmsfUnaryExpressionVelocity3Local final : public GmsfUnaryExpression<gtsam
   }
 
   // Destructor
-  ~GmsfUnaryExpressionVelocity3Local() override = default;
+  ~GmsfUnaryExpressionLocalVelocity3() override = default;
 
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
@@ -58,16 +58,6 @@ class GmsfUnaryExpressionVelocity3Local final : public GmsfUnaryExpression<gtsam
     // Express velocity in sensor frame
     exp_sensorFrame_v_fixedFrame_sensorFrame_ =
         gtsam::rotate(inverseRot3(exp_R_fixedFrame_I_), exp_fixedFrame_v_fixedFrame_sensorFrame_);  // I_v_W_I at this point
-  }
-
-  // Interface with three cases (non-exclusive):
-  // ii) Holistically Optimize over Fixed Frames
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState,
-                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
-    // Do nothing as this velocity measurement is expressed in the sensor frame
-    std::runtime_error(
-        "GmsfUnaryExpressionVelocity3Local: transformStateFromWorldToFixedFrame not implemented, as it is a local measurement.");
   }
 
   // iii) Transform Measurement to Core Imu Frame

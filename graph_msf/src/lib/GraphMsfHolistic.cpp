@@ -17,10 +17,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
 /// Local
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionVelocity3Local.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocalVelocity3.h"
 
 // Landmark Expression Factors
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionPosition3Landmark.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmarkPosition3.h"
 
 // Binary Expression Factors
 // TODO: add binary factors
@@ -144,12 +144,12 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
     }
 
     // Create GMSF expression
-    auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionVelocity3Local>(
+    auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionLocalVelocity3>(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getWorldFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()), coreImuBufferPtr_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionVelocity3Local>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -180,12 +180,12 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<E
     }
 
     // Create GMSF expression
-    auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionPosition3Landmark>(
+    auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionLandmarkPosition3>(
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_t_S_L), staticTransformsPtr_->getWorldFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_t_S_L.sensorFrameName()));
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionPosition3Landmark>(gmsfUnaryExpressionPosition3LandmarkPtr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLandmarkPosition3>(gmsfUnaryExpressionPosition3LandmarkPtr);
 
     // Optimize ---------------------------------------------------------------
     {

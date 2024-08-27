@@ -47,11 +47,11 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     const auto& T_W_I_est = W_currentPropagatedState.pose().matrix();
 
     // Search for the new graph key of T_fixedFrame_W
-    bool newGraphKeyAdded = false;
+    bool newGraphKeyAddedFlag = false;
     Eigen::Vector3d measurementOriginPosition = T_fixedFrame_sensorFrame_meas.translation();
     gtsam::Pose3 T_fixedFrame_W_initial(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
-        newGraphKeyAdded, measurementOriginPosition, poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_,
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::T>(
+        newGraphKeyAddedFlag, measurementOriginPosition, poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_,
         poseUnaryMeasurementPtr_->timeK(), T_fixedFrame_W_initial, centerMeasurementsAtRobotPositionBeforeAlignment);
 
     // Shift the measurement to the robot position and recompute initial guess
@@ -66,7 +66,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     // Transform state to fixed frame
     // Corresponding expression
     exp_T_fixedFrame_sensorFrame_ = gtsam::Pose3_(newGraphKey) * exp_T_fixedFrame_sensorFrame_;  // T_fixedFrame_imu at this point
-    if (newGraphKeyAdded) {
+    if (newGraphKeyAddedFlag) {
       // Compute Initial guess
       std::cout << "GmsfUnaryExpressionPose3: Initial Guess for T_" << poseUnaryMeasurementPtr_->fixedFrameName()
                 << "_W, RPY (deg): " << T_fixedFrame_W_initial.rotation().rpy().transpose() * (180.0 / M_PI)
@@ -92,7 +92,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
 
     // Search for the new graph key of T_sensorFrame_sensorFrameCorrected
     bool newGraphKeyAdded = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationExpression<gtsam::symbol_shorthand::T>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::T>(
         newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         poseUnaryMeasurementPtr_->timeK(), T_sensorFrame_sensorFrameCorrected_initial);
 

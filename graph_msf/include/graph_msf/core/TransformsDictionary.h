@@ -35,13 +35,19 @@ class TransformsDictionary {
     }
   }
 
-  bool removeTransform(const std::string& frame1, const std::string& frame2) {
+  // Cleanup
+  virtual bool removeTransform(const std::string& frame1, const std::string& frame2, TRANSFORM_TYPE& removedTransform) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
-    auto keyIterator = T_frame1_frame2_map_.find(framePair);
-    if (keyIterator == T_frame1_frame2_map_.end()) {
+    auto transformIterator = T_frame1_frame2_map_.find(framePair);
+    // Erase forward and backward (to avoid memory leaks)
+    // Case 1: not present --> do nothing
+    if (transformIterator == T_frame1_frame2_map_.end()) {
       return false;
-    } else {
-      T_frame1_frame2_map_.erase(keyIterator);
+    }
+    // Case 2: present --> remove
+    else {
+      removedTransform = transformIterator->second;
+      T_frame1_frame2_map_.erase(transformIterator);
       return true;
     }
   }
@@ -89,13 +95,14 @@ class TransformsDictionary {
   void set_T_frame1_frame2_andInverse(const std::string& frame1, const std::string& frame2, const TRANSFORM_TYPE& T_frame1_frame2) {
     // Check whether transformation pair is already there
     if (!isFramePairInDictionary(frame1, frame2)) {
-      lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
-      lv_T_frame1_frame2(frame2, frame1) = rv_T_frame1_frame2(frame1, frame2).inverse();
       ++numStoredTransforms_;
     } else {
       std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Transformation pair " << frame1 << " and " << frame2
-                << " already exists. Not adding it to the transforms." << std::endl;
+                << " already exists." << std::endl;
     }
+    // Set transformation
+    lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
+    lv_T_frame1_frame2(frame2, frame1) = rv_T_frame1_frame2(frame1, frame2).inverse();
   }
 
   // Without inverse

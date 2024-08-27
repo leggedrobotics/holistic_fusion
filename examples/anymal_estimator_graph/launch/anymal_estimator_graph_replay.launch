@@ -9,12 +9,12 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary" default="false"/>
+    <arg name="using_gnss_unary" default="true"/>
     <arg name="using_lio_unary" default="true"/>
     <arg name="using_lio_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
     <arg name="using_legged_velocity_unary" default="true"/>
-    <arg name="using_legged_kinematics" default="true"/>
+    <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>

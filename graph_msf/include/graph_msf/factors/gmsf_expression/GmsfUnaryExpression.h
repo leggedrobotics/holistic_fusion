@@ -36,7 +36,6 @@ inline gtsam::Rot3_ inverseRot3(const gtsam::Rot3_& R) {
 
 template <class GTSAM_MEASUREMENT_TYPE>
 class GmsfUnaryExpression {
-
  public:
   // Type of the Template
   using template_type = GTSAM_MEASUREMENT_TYPE;
@@ -53,10 +52,13 @@ class GmsfUnaryExpression {
   // i) Generate Expression for Basic IMU State in World Frame at Key
   virtual void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) = 0;
 
-  // ii) holistically optimize over fixed frames
+  // ii.A) holistically optimize over fixed frames
   virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
                                                    const gtsam::NavState& W_currentPropagatedState,
                                                    const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
+
+  // ii.B) adding landmark state in dynamic memory
+  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) = 0;
 
   // iii) transform measurement to core imu frame
   virtual void transformStateToSensorFrame() = 0;

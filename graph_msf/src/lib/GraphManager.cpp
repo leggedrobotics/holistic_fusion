@@ -460,7 +460,7 @@ void GraphManager::updateGraph() {
 
         // Write to Result Dictionaries
         Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-        T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairIterator.second.getMeasurementOriginPosition();
+        T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairIterator.second.getMeasurementKeyframePosition();
         // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
         resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
                                                              Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
@@ -619,7 +619,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Case 2: Frame Transform
     else if (stateCategory == 't' || stateCategory == 'c') {
       std::pair<std::string, std::string> framePair;
-      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+      if (gtsamExpressionTransformsKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
@@ -678,7 +678,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Case 2: Displacement
     else if (stateCategory == 'd') {
       std::pair<std::string, std::string> framePair;
-      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+      if (gtsamExpressionTransformsKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
