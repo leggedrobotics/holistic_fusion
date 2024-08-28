@@ -46,11 +46,11 @@ struct GraphConfig {
   bool enableDetailedResultsFlag_ = false;
   bool usingCholeskyFactorizationFlag_ = true;
   bool usingBiasForPreIntegrationFlag_ = true;
-  bool optimizeFixedFramePosesWrtWorld_ = true;
+  bool optimizeReferenceFramePosesWrtWorld_ = true;
   bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
   // Alignment Parameters
-  double fixedFramePosesResetThreshold_ = 0.5;
-  bool centerMeasurementsAtRobotPositionBeforeAlignment_ = false;
+  double referenceFramePosesResetThreshold_ = 0.5;
+  bool centerReferenceFramesAtRobotPositionBeforeAlignment_ = false;
 
   // Noise Params (Noise Amplitude Spectral Density)
   // Position
@@ -80,8 +80,10 @@ struct GraphConfig {
   double velocityReLinTh_ = 1e-3;
   double accBiasReLinTh_ = 1e-3;
   double gyroBiasReLinTh_ = 1e-3;
-  double fixedFrameReLinTh_ = 1e-3;
+  double referenceFrameReLinTh_ = 1e-3;
+  double calibrationReLinTh_ = 1e-3;
   double displacementReLinTh_ = 1e-3;
+  double landmarkReLinTh_ = 1e-3;
   // Flags
   int relinearizeSkip_ = 0;
   bool enableRelinearizationFlag_ = true;

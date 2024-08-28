@@ -71,6 +71,12 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
       graph_msf::tryGetParam<std::vector<double>>("noise_params/legVelocityUnaryNoise", privateNode);  // vx,vy,vz
   legVelocityUnaryNoise_ << legVelocityUnaryNoise[0], legVelocityUnaryNoise[1], legVelocityUnaryNoise[2];
 
+  /// Legged Kinematics Foot Position Unary
+  const auto legKinematicsFootPositionUnaryNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/legKinematicsFootPositionUnaryNoise", privateNode);  // x,y,z
+  legKinematicsFootPositionUnaryNoise_ << legKinematicsFootPositionUnaryNoise[0], legKinematicsFootPositionUnaryNoise[1],
+      legKinematicsFootPositionUnaryNoise[2];
+
   // Flags ---------------------------------------------------
   // GNSS Unary
   useGnssUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnssUnary", privateNode);

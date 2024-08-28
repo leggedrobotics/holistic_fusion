@@ -74,9 +74,9 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
   // B.A. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
   if constexpr (isAbsoluteMeasurement) {
-    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
+    if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
       gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
-                                                                  graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
+                                                                  graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_);
     }
   }
 
@@ -137,22 +137,24 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
     // If successful
     if (success) {
-      // Write to timestamp map for fixed lag smoother if newer than existing one
+      // A. Write to timestamp map for fixed lag smoother if newer than existing one
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
-        // Find timestamp in existing buffer: if i) not existent or ii) newer than existing one -> write
-        if (graphKeysTimestampsMapBufferPtr_->find(key) == graphKeysTimestampsMapBufferPtr_->end()) {
-          writeKeyToKeyTimeStampMap_(key, propagatedStateTime_, graphKeysTimestampsMapBufferPtr_);
+        // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+        auto keyTimestampMapIterator = graphKeysTimestampsMapBufferPtr_->find(key);
+        if (keyTimestampMapIterator == graphKeysTimestampsMapBufferPtr_->end()) {
+          // TODO: Check if it should not be propagatedStateTime_ instead of gmsfUnaryExpressionPtr->getTimestamp()
+          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
         }
         // If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-        //        else if (gmsfUnaryExpressionPtr->getTimestamp() > graphKeysTimestampsMapBufferPtr_->at(key)) {
-        //          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
-        //        }
+        else if (gmsfUnaryExpressionPtr->getTimestamp() > keyTimestampMapIterator->second) {
+          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
+        }
       }
-      // If one of the states was newly created, then add it to the values
+      // B. If one of the states was newly created, then add it to the values
       if (!gmsfUnaryExpressionPtr->getNewStateValues().empty()) {
         graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
       }
-      // If new factors are there (due to newly generated factor or for regularization), add it to the graph
+      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph
       if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
         factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
       }

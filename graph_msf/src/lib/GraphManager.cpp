@@ -146,6 +146,9 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
                                                                                             *imuBiasPriorPtr_,
                                                                                             priorBiasNoise);  // BIAS
 
+    // Add to Time Key Buffer
+    timeToKeyBufferPtr_->addToBuffer(timeStamp, propagatedStateKey_);
+
     // Copy over
     newGraphFactors = *factorGraphBufferPtr_;
     newGraphValues = *graphValuesBufferPtr_;
@@ -229,7 +232,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     const gtsam::Key oldKey = propagatedStateKey_;
     const gtsam::Key newKey = newPropagatedStateKey_();
 
-    // Add to key buffer
+    // Add to time key buffer
     timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
 
     // Add IMU Factor to graph
@@ -247,7 +250,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
 
     // After adding this factor we can again empty the step integrator
-    // Reset IMU Step Preintegration
+    // Reset IMU Step Pre-integration
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
     } else {
@@ -260,28 +263,36 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
+  // Case 1: Can't add immediately
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
                                                       graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
+    // Measurement coming from the future
     if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
-      // Not too far in the future
+      // Not too far in the future --> add to buffer and add later
       if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
-      } else {
+      }
+      // Too far in the future --> do not add it
+      else {
         REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
                      << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
                      << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
                      << " ms. Not adding to graph." << COLOR_END << std::endl;
-        // TODO: Still adding it for now, has to be tested on all systems
-        // Later on: return false;
+        return false;
       }
-    } else {  // Otherwise do not add it
+    }
+    // Measurement coming from the past, but could not find suitable key
+    else {  // Otherwise do not add it
       REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
                    << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
                    << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
     }
   }
-  return true;
+  // Case 2: Can add immediately
+  else {
+    return true;
+  }
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------
@@ -404,7 +415,9 @@ void GraphManager::updateGraph() {
 
   // if no factors are present, return
   if (newGraphFactors.size() == 0) {
-    REGULAR_COUT << " No factors present, not optimizing." << std::endl;
+    if (graphConfigPtr_->verboseLevel_ > 3) {
+      REGULAR_COUT << " No factors present, not optimizing." << std::endl;
+    }
     return;
   }
 
@@ -429,14 +442,14 @@ void GraphManager::updateGraph() {
   gtsam::Matrix66 resultPoseCovarianceWorldFrame = adjointMatrix * resultPoseCovarianceBodyFrame * adjointMatrix.transpose();
 
   // FixedFrame Transformations
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
 
     // Iterate through all dynamically allocated transforms (holistic and calibration) --------------------------------
-    for (auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
+    for (auto& framePairKeyMapIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
       // Get Transform
-      const gtsam::Key& key = framePairIterator.second.key();  // alias
+      const gtsam::Key& key = framePairKeyMapIterator.second.key();  // alias
 
       // Case 1: Try to compute results and uncertainties ------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
@@ -444,13 +457,13 @@ void GraphManager::updateGraph() {
         gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
 
         // 6D Transformation
-        if (gtsam::Symbol(key).string()[0] == 't') {
+        if (gtsam::Symbol(key).string()[0] == 'r' or gtsam::Symbol(key).string()[0] == 'c') {
           T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
           T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
         }
         // 3D Displacement
-        else if (gtsam::Symbol(key).string()[0] == 'd') {
-          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
+        else if (gtsam::Symbol(key).string()[0] == 'd' or gtsam::Symbol(key).string()[0] == 'l') {
+          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
           T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
         }
         // Only these two are supported for now
@@ -460,64 +473,67 @@ void GraphManager::updateGraph() {
 
         // Write to Result Dictionaries
         Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-        T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairIterator.second.getMeasurementKeyframePosition();
+        T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getMeasurementKeyframePosition();
         // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
-        resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
+        resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
                                                              Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
-        resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                                       T_frame1_frame2_covariance);
+        resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
+                                                                       framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
 
         // Mark that this key has at least been optimized once
-        if (framePairIterator.second.getNumberStepsOptimized() == 0) {
-          REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairIterator.first.first << " and "
-                       << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
+        if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0) {
+          REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairKeyMapIterator.first.first << " and "
+                       << framePairKeyMapIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
           REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
                        << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
         }
         // Increase Counter
-        framePairIterator.second.incrementNumberStepsOptimized();
+        framePairKeyMapIterator.second.incrementNumberStepsOptimized();
 
         // Check health status of transformation --> Delete if diverged too much --> only necessary for global fixed frames
-        if (framePairIterator.first.second == worldFrame_ &&
-            framePairIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
-          const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  // alias
+        if (framePairKeyMapIterator.first.second == worldFrame_ &&
+            framePairKeyMapIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
+          const gtsam::Pose3& T_frame1_frame2_initial =
+              framePairKeyMapIterator.second.getApproximateTransformationBeforeOptimization();  // alias
           const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
           // Check error in tangent space
           // std::cout << "Error in tangent space: " << errorTangentSpace << std::endl;
-          if (errorTangentSpace > graphConfigPtr_->fixedFramePosesResetThreshold_) {
+          if (errorTangentSpace > graphConfigPtr_->referenceFramePosesResetThreshold_) {
             REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
-            std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
-                      << framePairIterator.first.first << " and " << framePairIterator.first.second
-                      << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
-                      << std::endl;
+            REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
+                         << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
+                         << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
+                         << std::endl;
             // Remove state from state dictionary
-            gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
+            gtsamExpressionTransformsKeys_.removeTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
             break;
           }
         }
       }  // end: try statement
       // Case 2: Result computation failed -----------------------------------------
       catch (const std::out_of_range& exception) {
-        if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
-                                                                       // --> as querying was unsuccessful, we remove it from the graph
+        if (framePairKeyMapIterator.second.getNumberStepsOptimized() >
+            0) {  // Was optimized before, so should also be available now in the graph
+                  // --> as querying was unsuccessful, we remove it from the graph
           REGULAR_COUT
               << RED_START << " OutOfRange-exception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
-              << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
+              << ", for frame pair " << framePairKeyMapIterator.first.first << "," << framePairKeyMapIterator.first.second << std::endl
               << " This happens if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
                  "and remove it from the state dictionary. To fix this, increase the smoother window."
               << COLOR_END << std::endl;
           // Remove state from state dictionary
-          gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
+          gtsamExpressionTransformsKeys_.removeTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
           return;
         } else {
           REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
-                       << framePairIterator.first.first << " to " << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
+                       << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
+                       << ", at key: " << gtsam::Symbol(key)
                        << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
                           "Current state key: "
                        << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
-    }    // for loop over all transforms
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------

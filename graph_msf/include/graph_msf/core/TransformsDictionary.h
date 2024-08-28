@@ -38,16 +38,16 @@ class TransformsDictionary {
   // Cleanup
   virtual bool removeTransform(const std::string& frame1, const std::string& frame2, TRANSFORM_TYPE& removedTransform) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
-    auto transformIterator = T_frame1_frame2_map_.find(framePair);
+    auto framePairTransformMapIterator = T_frame1_frame2_map_.find(framePair);
     // Erase forward and backward (to avoid memory leaks)
     // Case 1: not present --> do nothing
-    if (transformIterator == T_frame1_frame2_map_.end()) {
+    if (framePairTransformMapIterator == T_frame1_frame2_map_.end()) {
       return false;
     }
     // Case 2: present --> remove
     else {
-      removedTransform = transformIterator->second;
-      T_frame1_frame2_map_.erase(transformIterator);
+      removedTransform = framePairTransformMapIterator->second;
+      T_frame1_frame2_map_.erase(framePairTransformMapIterator);
       return true;
     }
   }

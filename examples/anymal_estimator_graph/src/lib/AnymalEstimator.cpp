@@ -213,7 +213,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
   // Add _gmsf to the frame
   if (fixedFrame != staticTransformsPtr_->getWorldFrame()) {
-    fixedFrame += fixedFrameAlignedNameId;
+    fixedFrame += referenceFrameAlignedNameId;
   }
 
   /// Add GNSS to Path
@@ -257,7 +257,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measLio_mapLidarPathPtr_, odomLidarPtr->header.frame_id + fixedFrameAlignedNameId, odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapLidarPathPtr_, odomLidarPtr->header.frame_id + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
                lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
@@ -497,10 +497,10 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             Eigen::Vector3d B_t_B_foot = T_O_B.inverse() * O_t_O_foot;
 
             // Create the unary measurement with contact counter
-            std::string legIdentifier = legName + std::to_string(legContactIndex_[legIndex]);
+            std::string legIdentifier = legName + "_" + std::to_string(legContactIndex_[legIndex]);
             graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Vector3d::Zero(),
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,
                 legKinematicsFootPositionUnaryNoise_);
 
             // Add to graph

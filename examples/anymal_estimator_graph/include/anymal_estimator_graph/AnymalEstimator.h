@@ -107,11 +107,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
-  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
-  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
-  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
-  Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_;
-  Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
+  Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
 
   // Leg Odometry Handling
   static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};

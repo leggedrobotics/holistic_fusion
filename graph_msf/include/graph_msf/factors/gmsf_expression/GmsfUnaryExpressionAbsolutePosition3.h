@@ -57,7 +57,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAddedFlag = false;
     gtsam::Pose3 T_fixedFrame_W_initial(gtsam::Pose3::Identity());
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::T>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::R>(
         newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK(),
         T_fixedFrame_W_initial);
 
@@ -71,13 +71,14 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     // Transform rotation from world to fixed frame
     exp_R_fixedFrame_I_ = gtsam::rotation(exp_T_fixedFrame_W) * exp_R_fixedFrame_I_;  // R_fixedFrame_I at this point
 
+    // Initial values (and priors)
     if (newGraphKeyAddedFlag) {
-      std::cout << "GmsfUnaryExpressionPose3: Initial Guess for T_" << positionUnaryMeasurementPtr_->fixedFrameName()
+      REGULAR_COUT << " Initial Guess for T_" << positionUnaryMeasurementPtr_->fixedFrameName()
                 << "_W, RPY (deg): " << T_fixedFrame_W_initial.rotation().rpy().transpose() * (180.0 / M_PI)
                 << ", t (x, y, z): " << T_fixedFrame_W_initial.translation().transpose() << std::endl;
       // Insert Values
       newStateValues_.insert(newGraphKey, T_fixedFrame_W_initial);
-      // Insert Prior
+      // Insert Prior, might not be necessary (if long enough horizon)
       newPriorPoseFactors_.emplace_back(newGraphKey, T_fixedFrame_W_initial,
                                         gtsam::noiseModel::Diagonal::Sigmas(positionUnaryMeasurementPtr_->initialSe3AlignmentNoise()));
     }

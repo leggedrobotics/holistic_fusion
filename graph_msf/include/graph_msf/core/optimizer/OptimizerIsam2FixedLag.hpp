@@ -75,14 +75,22 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       for (auto factor : newGraphFactors) {
         bool factorOnlyContainsExistentKeys = true;
         for (auto key : factor->keys()) {
-          // Exists
+          // If Exists
           if (newGraphKeysTimeStampMap.find(key) != newGraphKeysTimeStampMap.end()) {
             double timestampAtKey = newGraphKeysTimeStampMap.at(key);
-            // Check if key is older than smoother lag
+            // Case 1: Check if key is older than smoother lag
             if (latestTimeStamp - timestampAtKey > graphConfigPtr_->realTimeSmootherLag_) {
               std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                         << " Factor contains key older than smoother lag: " << gtsam::Symbol(key) << ", which is "
                         << latestTimeStamp - timestampAtKey << "s old." << COLOR_END << std::endl;
+              factorOnlyContainsExistentKeys = false;
+              filteredOutAtLeastOneKey = true;
+            }
+            // Case 2: Check if key is from the future --> hence might not be optimized
+            else if (timestampAtKey > latestTimeStamp) {
+              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                        << " Factor contains key from the future: " << gtsam::Symbol(key) << ", which is " << timestampAtKey
+                        << "s in the future." << COLOR_END << std::endl;
               factorOnlyContainsExistentKeys = false;
               filteredOutAtLeastOneKey = true;
             }
@@ -98,7 +106,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       // Try again
       if (filteredOutAtLeastOneKey) {
         std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
-                  << " Filtered out factors that are older than the smoother lag. Trying to optimize again, which only helps in some cases."
+                  << " Filtered out factors that are either older than the smoother lag or coming from the future. Trying to optimize "
+                     "again."
                   << COLOR_END << std::endl;
         return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
       }
@@ -106,8 +115,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       else {
         // Show all values and corresponding timestamps that are not in timestamp map
         std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                  << " Could not filter out any factors that are older than the smoother lag. Aborting optimization." << COLOR_END
-                  << std::endl;
+                  << " Could not filter out any factors that are either older than the smoother lag or coming from the future. Aborting "
+                     "optimization."
+                  << COLOR_END << std::endl;
         return false;
       }
     }

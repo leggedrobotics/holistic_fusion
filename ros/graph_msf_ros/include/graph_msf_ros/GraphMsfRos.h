@@ -120,7 +120,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   tf::TransformBroadcaster tfBroadcaster;
 
   // Members
-  std::string fixedFrameAlignedNameId = "_graph_msf_aligned";
+  std::string referenceFrameAlignedNameId = "_graph_msf_aligned";
   std::string sensorFrameCorrectedNameId = "_graph_msf_corrected";
   std::string optimizationResultLoggingPath = "";
 
@@ -128,7 +128,6 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Publishers
   // Odometry
   ros::Publisher pubEstOdomImu_;
-  ros::Publisher pubEstMapImu_;
   ros::Publisher pubEstWorldImu_;
   ros::Publisher pubOptWorldImu_;
   // Vector3 Variances
@@ -158,7 +157,6 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Messages
   // Odometry
   nav_msgs::OdometryPtr estOdomImuMsgPtr_;
-  nav_msgs::OdometryPtr estMapImuMsgPtr_;
   nav_msgs::OdometryPtr estWorldImuMsgPtr_;
   nav_msgs::OdometryPtr optWorldImuMsgPtr_;
   // Vector3 Variances

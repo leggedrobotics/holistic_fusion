@@ -43,15 +43,23 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override {
     // Create Expression for Landmark Position in World Frame
     bool newGraphKeyAddedFlag = false;
-    // TODO: Add good initial guess (containing position)
-    gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::D>(
+    gtsam::Point3 W_t_W_L_initial = gtsam::Point3::Zero();
+    // TODO: Add proper initial guess using W_t_W_B_est and B_t_B_L_meas
+
+    // Create new graph key for landmark dynamically
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::L>(
         newGraphKeyAddedFlag, worldFrameName_, positionLandmarkMeasurementPtr_->measurementName(), positionLandmarkMeasurementPtr_->timeK(),
-        gtsam::Pose3(gtsam::Rot3::Identity(), sensorFrame_t_sensorFrame_correctSensorFrame_initial));
+        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
     gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
 
     // Convert to Imu frame
     exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformFrom(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
+
+    // Add values, if a new state was created
+    if (newGraphKeyAddedFlag) {
+      // Add initial guess
+      newStateValues_.insert(newGraphKey, W_t_W_L_initial);
+    }
   }
 
   // iii) Transform state to sensor frame

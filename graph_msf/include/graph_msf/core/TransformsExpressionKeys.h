@@ -70,31 +70,38 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     bool removedTransformFlag = TransformsDictionary<FactorGraphStateKey>::removeTransform(frame1, frame2, returnRemovedKey);
     // If found, we also remove the key from the key-to-frame pair map
     if (removedTransformFlag) {
-      transformKeyToFramePairMap_.erase(transformKeyToFramePairMap_.find(returnRemovedKey.key()));
+      auto keyFramePairMapIterator = transformKeyToFramePairMap_.find(returnRemovedKey.key());
+      if (keyFramePairMapIterator != transformKeyToFramePairMap_.end()) {
+        transformKeyToFramePairMap_.erase(keyFramePairMapIterator);
+      } else {
+        REGULAR_COUT << RED_START << " Key " << gtsam::Symbol(returnRemovedKey.key()) << " not found in map." << COLOR_END << std::endl;
+        throw std::runtime_error("Key not found in map.");
+      }
     }
     return removedTransformFlag;
   }
 
   // Same but with only two arguments
   bool removeTransform(const std::string& frame1, const std::string& frame2) {
-    FactorGraphStateKey removedKey;
-    return removeTransform(frame1, frame2, removedKey);
+    FactorGraphStateKey removedKeyPlaceholder;
+    return removeTransform(frame1, frame2, removedKeyPlaceholder);
   }
 
   // Getters ------------------------------------------------------------
   // Get transform to frame pair map
   bool getFramePairFromGtsamKey(std::pair<std::string, std::string>& framePairRef, const gtsam::Key& key) const {
     // Check if key is in map
-    if (transformKeyToFramePairMap_.find(key) == transformKeyToFramePairMap_.end()) {
+    auto keyFramePairMapIterator = transformKeyToFramePairMap_.find(key);
+    if (keyFramePairMapIterator == transformKeyToFramePairMap_.end()) {
       return false;
     }
     // Retrieve frame pair
-    framePairRef = transformKeyToFramePairMap_.at(key);
+    framePairRef = keyFramePairMapIterator->second;
     return true;
   }
 
   // Get transform to frame pair map
-  const std::map<gtsam::Key, std::pair<std::string, std::string>>& getTransformKeyToFramePairMap() const {
+  [[nodiscard]] const std::map<gtsam::Key, std::pair<std::string, std::string>>& getTransformKeyToFramePairMap() const {
     return transformKeyToFramePairMap_;
   }
 
@@ -123,7 +130,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
                                   const gtsam::Pose3& approximateTransformationBeforeOptimization) {
     Eigen::Vector3d keyframePositionPlaceholder = Eigen::Vector3d::Zero();  // Placeholder
     return getTransformationKey<SYMBOL_SHORTHAND>(newGraphKeyAdded, keyframePositionPlaceholder, frame1, frame2, timeK,
-                                                         approximateTransformationBeforeOptimization, false);
+                                                  approximateTransformationBeforeOptimization, false);
   }
 
   // Safe addition of new frame pair to dictionary --> checks whether already present
@@ -175,6 +182,9 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     // Add to main dictionary
     FactorGraphStateKey factorGraphStateKey(returnKey, timeK, 0, approximateTransformationBeforeOptimization, measurementKeyframePosition);
     set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
+
+    // Add to key-to-frame pair map
+    transformKeyToFramePairMap_[returnKey] = std::make_pair(frame1, frame2);
 
     // Return
     return returnKey;
