@@ -28,7 +28,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: O3DMap
+    SyncSource: AnymalPointCloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -99,6 +99,48 @@ Visualization Manager:
         All Enabled: false
         LF_FOOT:
           Value: true
+        LF_FOOT_10_graph_msf_aligned:
+          Value: true
+        LF_FOOT_11_graph_msf_aligned:
+          Value: true
+        LF_FOOT_12_graph_msf_aligned:
+          Value: true
+        LF_FOOT_13_graph_msf_aligned:
+          Value: true
+        LF_FOOT_14_graph_msf_aligned:
+          Value: true
+        LF_FOOT_15_graph_msf_aligned:
+          Value: true
+        LF_FOOT_16_graph_msf_aligned:
+          Value: true
+        LF_FOOT_17_graph_msf_aligned:
+          Value: true
+        LF_FOOT_18_graph_msf_aligned:
+          Value: true
+        LF_FOOT_19_graph_msf_aligned:
+          Value: true
+        LF_FOOT_1_graph_msf_aligned:
+          Value: true
+        LF_FOOT_20_graph_msf_aligned:
+          Value: true
+        LF_FOOT_21_graph_msf_aligned:
+          Value: true
+        LF_FOOT_2_graph_msf_aligned:
+          Value: true
+        LF_FOOT_3_graph_msf_aligned:
+          Value: true
+        LF_FOOT_4_graph_msf_aligned:
+          Value: true
+        LF_FOOT_5_graph_msf_aligned:
+          Value: true
+        LF_FOOT_6_graph_msf_aligned:
+          Value: true
+        LF_FOOT_7_graph_msf_aligned:
+          Value: true
+        LF_FOOT_8_graph_msf_aligned:
+          Value: true
+        LF_FOOT_9_graph_msf_aligned:
+          Value: true
         LF_HAA:
           Value: true
         LF_HFE:
@@ -118,6 +160,50 @@ Visualization Manager:
         LF_thigh_fixed:
           Value: true
         LH_FOOT:
+          Value: true
+        LH_FOOT_10_graph_msf_aligned:
+          Value: true
+        LH_FOOT_11_graph_msf_aligned:
+          Value: true
+        LH_FOOT_12_graph_msf_aligned:
+          Value: true
+        LH_FOOT_13_graph_msf_aligned:
+          Value: true
+        LH_FOOT_14_graph_msf_aligned:
+          Value: true
+        LH_FOOT_15_graph_msf_aligned:
+          Value: true
+        LH_FOOT_16_graph_msf_aligned:
+          Value: true
+        LH_FOOT_17_graph_msf_aligned:
+          Value: true
+        LH_FOOT_18_graph_msf_aligned:
+          Value: true
+        LH_FOOT_19_graph_msf_aligned:
+          Value: true
+        LH_FOOT_1_graph_msf_aligned:
+          Value: true
+        LH_FOOT_20_graph_msf_aligned:
+          Value: true
+        LH_FOOT_21_graph_msf_aligned:
+          Value: true
+        LH_FOOT_22_graph_msf_aligned:
+          Value: true
+        LH_FOOT_2_graph_msf_aligned:
+          Value: true
+        LH_FOOT_3_graph_msf_aligned:
+          Value: true
+        LH_FOOT_4_graph_msf_aligned:
+          Value: true
+        LH_FOOT_5_graph_msf_aligned:
+          Value: true
+        LH_FOOT_6_graph_msf_aligned:
+          Value: true
+        LH_FOOT_7_graph_msf_aligned:
+          Value: true
+        LH_FOOT_8_graph_msf_aligned:
+          Value: true
+        LH_FOOT_9_graph_msf_aligned:
           Value: true
         LH_HAA:
           Value: true
@@ -139,6 +225,50 @@ Visualization Manager:
           Value: true
         RF_FOOT:
           Value: true
+        RF_FOOT_10_graph_msf_aligned:
+          Value: true
+        RF_FOOT_11_graph_msf_aligned:
+          Value: true
+        RF_FOOT_12_graph_msf_aligned:
+          Value: true
+        RF_FOOT_13_graph_msf_aligned:
+          Value: true
+        RF_FOOT_14_graph_msf_aligned:
+          Value: true
+        RF_FOOT_15_graph_msf_aligned:
+          Value: true
+        RF_FOOT_16_graph_msf_aligned:
+          Value: true
+        RF_FOOT_17_graph_msf_aligned:
+          Value: true
+        RF_FOOT_18_graph_msf_aligned:
+          Value: true
+        RF_FOOT_19_graph_msf_aligned:
+          Value: true
+        RF_FOOT_1_graph_msf_aligned:
+          Value: true
+        RF_FOOT_20_graph_msf_aligned:
+          Value: true
+        RF_FOOT_21_graph_msf_aligned:
+          Value: true
+        RF_FOOT_22_graph_msf_aligned:
+          Value: true
+        RF_FOOT_2_graph_msf_aligned:
+          Value: true
+        RF_FOOT_3_graph_msf_aligned:
+          Value: true
+        RF_FOOT_4_graph_msf_aligned:
+          Value: true
+        RF_FOOT_5_graph_msf_aligned:
+          Value: true
+        RF_FOOT_6_graph_msf_aligned:
+          Value: true
+        RF_FOOT_7_graph_msf_aligned:
+          Value: true
+        RF_FOOT_8_graph_msf_aligned:
+          Value: true
+        RF_FOOT_9_graph_msf_aligned:
+          Value: true
         RF_HAA:
           Value: true
         RF_HFE:
@@ -158,6 +288,48 @@ Visualization Manager:
         RF_thigh_fixed:
           Value: true
         RH_FOOT:
+          Value: true
+        RH_FOOT_10_graph_msf_aligned:
+          Value: true
+        RH_FOOT_11_graph_msf_aligned:
+          Value: true
+        RH_FOOT_12_graph_msf_aligned:
+          Value: true
+        RH_FOOT_13_graph_msf_aligned:
+          Value: true
+        RH_FOOT_14_graph_msf_aligned:
+          Value: true
+        RH_FOOT_15_graph_msf_aligned:
+          Value: true
+        RH_FOOT_16_graph_msf_aligned:
+          Value: true
+        RH_FOOT_17_graph_msf_aligned:
+          Value: true
+        RH_FOOT_18_graph_msf_aligned:
+          Value: true
+        RH_FOOT_19_graph_msf_aligned:
+          Value: true
+        RH_FOOT_1_graph_msf_aligned:
+          Value: true
+        RH_FOOT_20_graph_msf_aligned:
+          Value: true
+        RH_FOOT_21_graph_msf_aligned:
+          Value: true
+        RH_FOOT_2_graph_msf_aligned:
+          Value: true
+        RH_FOOT_3_graph_msf_aligned:
+          Value: true
+        RH_FOOT_4_graph_msf_aligned:
+          Value: true
+        RH_FOOT_5_graph_msf_aligned:
+          Value: true
+        RH_FOOT_6_graph_msf_aligned:
+          Value: true
+        RH_FOOT_7_graph_msf_aligned:
+          Value: true
+        RH_FOOT_8_graph_msf_aligned:
+          Value: true
+        RH_FOOT_9_graph_msf_aligned:
           Value: true
         RH_HAA:
           Value: true
@@ -478,6 +650,178 @@ Visualization Manager:
               {}
             odom_graph_msf:
               world_graph_msf:
+                LF_FOOT_10_graph_msf_aligned:
+                  {}
+                LF_FOOT_11_graph_msf_aligned:
+                  {}
+                LF_FOOT_12_graph_msf_aligned:
+                  {}
+                LF_FOOT_13_graph_msf_aligned:
+                  {}
+                LF_FOOT_14_graph_msf_aligned:
+                  {}
+                LF_FOOT_15_graph_msf_aligned:
+                  {}
+                LF_FOOT_16_graph_msf_aligned:
+                  {}
+                LF_FOOT_17_graph_msf_aligned:
+                  {}
+                LF_FOOT_18_graph_msf_aligned:
+                  {}
+                LF_FOOT_19_graph_msf_aligned:
+                  {}
+                LF_FOOT_1_graph_msf_aligned:
+                  {}
+                LF_FOOT_20_graph_msf_aligned:
+                  {}
+                LF_FOOT_21_graph_msf_aligned:
+                  {}
+                LF_FOOT_2_graph_msf_aligned:
+                  {}
+                LF_FOOT_3_graph_msf_aligned:
+                  {}
+                LF_FOOT_4_graph_msf_aligned:
+                  {}
+                LF_FOOT_5_graph_msf_aligned:
+                  {}
+                LF_FOOT_6_graph_msf_aligned:
+                  {}
+                LF_FOOT_7_graph_msf_aligned:
+                  {}
+                LF_FOOT_8_graph_msf_aligned:
+                  {}
+                LF_FOOT_9_graph_msf_aligned:
+                  {}
+                LH_FOOT_10_graph_msf_aligned:
+                  {}
+                LH_FOOT_11_graph_msf_aligned:
+                  {}
+                LH_FOOT_12_graph_msf_aligned:
+                  {}
+                LH_FOOT_13_graph_msf_aligned:
+                  {}
+                LH_FOOT_14_graph_msf_aligned:
+                  {}
+                LH_FOOT_15_graph_msf_aligned:
+                  {}
+                LH_FOOT_16_graph_msf_aligned:
+                  {}
+                LH_FOOT_17_graph_msf_aligned:
+                  {}
+                LH_FOOT_18_graph_msf_aligned:
+                  {}
+                LH_FOOT_19_graph_msf_aligned:
+                  {}
+                LH_FOOT_1_graph_msf_aligned:
+                  {}
+                LH_FOOT_20_graph_msf_aligned:
+                  {}
+                LH_FOOT_21_graph_msf_aligned:
+                  {}
+                LH_FOOT_22_graph_msf_aligned:
+                  {}
+                LH_FOOT_2_graph_msf_aligned:
+                  {}
+                LH_FOOT_3_graph_msf_aligned:
+                  {}
+                LH_FOOT_4_graph_msf_aligned:
+                  {}
+                LH_FOOT_5_graph_msf_aligned:
+                  {}
+                LH_FOOT_6_graph_msf_aligned:
+                  {}
+                LH_FOOT_7_graph_msf_aligned:
+                  {}
+                LH_FOOT_8_graph_msf_aligned:
+                  {}
+                LH_FOOT_9_graph_msf_aligned:
+                  {}
+                RF_FOOT_10_graph_msf_aligned:
+                  {}
+                RF_FOOT_11_graph_msf_aligned:
+                  {}
+                RF_FOOT_12_graph_msf_aligned:
+                  {}
+                RF_FOOT_13_graph_msf_aligned:
+                  {}
+                RF_FOOT_14_graph_msf_aligned:
+                  {}
+                RF_FOOT_15_graph_msf_aligned:
+                  {}
+                RF_FOOT_16_graph_msf_aligned:
+                  {}
+                RF_FOOT_17_graph_msf_aligned:
+                  {}
+                RF_FOOT_18_graph_msf_aligned:
+                  {}
+                RF_FOOT_19_graph_msf_aligned:
+                  {}
+                RF_FOOT_1_graph_msf_aligned:
+                  {}
+                RF_FOOT_20_graph_msf_aligned:
+                  {}
+                RF_FOOT_21_graph_msf_aligned:
+                  {}
+                RF_FOOT_22_graph_msf_aligned:
+                  {}
+                RF_FOOT_2_graph_msf_aligned:
+                  {}
+                RF_FOOT_3_graph_msf_aligned:
+                  {}
+                RF_FOOT_4_graph_msf_aligned:
+                  {}
+                RF_FOOT_5_graph_msf_aligned:
+                  {}
+                RF_FOOT_6_graph_msf_aligned:
+                  {}
+                RF_FOOT_7_graph_msf_aligned:
+                  {}
+                RF_FOOT_8_graph_msf_aligned:
+                  {}
+                RF_FOOT_9_graph_msf_aligned:
+                  {}
+                RH_FOOT_10_graph_msf_aligned:
+                  {}
+                RH_FOOT_11_graph_msf_aligned:
+                  {}
+                RH_FOOT_12_graph_msf_aligned:
+                  {}
+                RH_FOOT_13_graph_msf_aligned:
+                  {}
+                RH_FOOT_14_graph_msf_aligned:
+                  {}
+                RH_FOOT_15_graph_msf_aligned:
+                  {}
+                RH_FOOT_16_graph_msf_aligned:
+                  {}
+                RH_FOOT_17_graph_msf_aligned:
+                  {}
+                RH_FOOT_18_graph_msf_aligned:
+                  {}
+                RH_FOOT_19_graph_msf_aligned:
+                  {}
+                RH_FOOT_1_graph_msf_aligned:
+                  {}
+                RH_FOOT_20_graph_msf_aligned:
+                  {}
+                RH_FOOT_21_graph_msf_aligned:
+                  {}
+                RH_FOOT_2_graph_msf_aligned:
+                  {}
+                RH_FOOT_3_graph_msf_aligned:
+                  {}
+                RH_FOOT_4_graph_msf_aligned:
+                  {}
+                RH_FOOT_5_graph_msf_aligned:
+                  {}
+                RH_FOOT_6_graph_msf_aligned:
+                  {}
+                RH_FOOT_7_graph_msf_aligned:
+                  {}
+                RH_FOOT_8_graph_msf_aligned:
+                  {}
+                RH_FOOT_9_graph_msf_aligned:
+                  {}
                 map_o3d_graph_msf_aligned:
                   {}
             perception_head_cage:
@@ -783,7 +1127,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 4
+      Size (Pixels): 1
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /open3d_slam/assembled_map
@@ -1293,7 +1637,7 @@ Visualization Manager:
       Marker Topic: /graph_msf/foot_contact_markers
       Name: MarkerArray
       Namespaces:
-        {}
+        foot_contact: true
       Queue Size: 100
       Value: true
   Enabled: true

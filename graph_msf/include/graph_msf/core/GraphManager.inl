@@ -82,7 +82,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
   // B.B. Holistic Fusion: Create Landmark State in Dynamic Memory -------------------------------------
   if constexpr (isLandmarkMeasurement) {
-    gmsfUnaryExpressionPtr->convertRobotAndLandmarkStatesToMeasurement(gtsamExpressionTransformsKeys_);
+    gmsfUnaryExpressionPtr->convertRobotAndLandmarkStatesToMeasurement(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
   }
 
   // C. Transform State to Sensor Frame -----------------------------------------------------

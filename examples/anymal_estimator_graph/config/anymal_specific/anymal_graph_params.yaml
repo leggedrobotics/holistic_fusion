@@ -28,4 +28,4 @@ noise_params:
   ## Velocity Unary Noise
   legVelocityUnaryNoise: [ 0.1, 0.1, 0.1 ] # StdDev, ORDER XYZ(meters/sec)
   ## LegKinematics Noise
-  legKinematicsFootPositionUnaryNoise: [ 0.05, 0.05, 0.05 ] # StdDev, XYZ(meters)
+  legKinematicsFootPositionUnaryNoise: [ 0.01, 0.01, 0.01 ] # StdDev, XYZ(meters)

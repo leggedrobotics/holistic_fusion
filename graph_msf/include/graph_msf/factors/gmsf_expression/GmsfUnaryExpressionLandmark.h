@@ -41,7 +41,8 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override = 0;
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+                                                  const gtsam::NavState& W_currentPropagatedState) override = 0;
 
   // Accessors
   [[nodiscard]] const auto& getBaseUnaryAbsoluteMeasurementPtr() const { return baseUnaryAbsoluteMeasurementPtr_; }

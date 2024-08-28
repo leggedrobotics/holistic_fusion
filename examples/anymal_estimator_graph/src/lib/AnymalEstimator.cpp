@@ -444,7 +444,19 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
   ++leggedKinematicsCallbackCounter_;
 
   if (!areYawAndPositionInited()) {
-    // nothing for now
+    if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_ && !useLeggedVelocityUnaryFlag_) {
+      // Measurement
+      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+          "Leg_odometry_6D", int(leggedKinematicsRate_),
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
+          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
+          graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
+          Eigen::Matrix<double, 6, 1>::Identity());
+      // Add to graph
+      REGULAR_COUT << GREEN_START << " Legged kinematics callback is setting global yaw, as it was not set so far." << COLOR_END
+                   << std::endl;
+      this->initYawAndPosition(unary6DMeasurement);
+    }
   }
   // Normal Operation
   else {

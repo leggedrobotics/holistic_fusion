@@ -140,19 +140,19 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
                                          const gtsam::Pose3& approximateTransformationBeforeOptimization,
                                          const bool centerMeasurementsAtRobotPositionBeforeAlignment) {
     // Check and modify content --> acquire lock
-    FactorGraphStateKey factorGraphStateKey;
     std::lock_guard<std::mutex> lock(internalDictionaryModifierMutex_);
 
     // Logic
     // CASE 1: Frame pair is already in dictionary, hence keyframe is not new
     if (isFramePairInDictionary(frame1, frame2)) {
-      factorGraphStateKey = rv_T_frame1_frame2(frame1, frame2);
+      FactorGraphStateKey& factorGraphStateKey = lv_T_frame1_frame2(frame1, frame2);
       // Update Timestamp and approximate transformation if newer
       if (timeK > factorGraphStateKey.getTime()) {
-        lv_T_frame1_frame2(frame1, frame2).setTimeStamp(timeK);
-        lv_T_frame1_frame2(frame1, frame2).setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
+        factorGraphStateKey.setTimeStamp(timeK);
+        factorGraphStateKey.setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
       }
       returnKey = factorGraphStateKey.key();
+      // Get Keyframe position from before (not changed here)
       modifiedMeasurementKeyframePosition = factorGraphStateKey.getMeasurementKeyframePosition();
       return false;
     }

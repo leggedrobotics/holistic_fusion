@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/base/types.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/expressions.h>
+#include "gtsam/navigation/NavState.h"
 
 // Workspace
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
@@ -40,20 +41,25 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) override {
-    // Create Expression for Landmark Position in World Frame
-    bool newGraphKeyAddedFlag = false;
-    gtsam::Point3 W_t_W_L_initial = gtsam::Point3::Zero();
-    // TODO: Add proper initial guess using W_t_W_B_est and B_t_B_L_meas
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+                                                  const gtsam::NavState& W_currentPropagatedState) override {
+    // Get initial guess (computed geometrically)
+    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();  // alias
+    const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement());  // alias
+    gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
+    gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
+    gtsam::Point3 W_t_S_L_meas = T_W_S_est.rotation().rotate(S_t_S_L_meas);
+    gtsam::Point3 W_t_W_L_initial = W_t_W_S_est + W_t_S_L_meas;
 
     // Create new graph key for landmark dynamically
+    bool newGraphKeyAddedFlag = false;
     gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::L>(
-        newGraphKeyAddedFlag, worldFrameName_, positionLandmarkMeasurementPtr_->measurementName(), positionLandmarkMeasurementPtr_->timeK(),
+        newGraphKeyAddedFlag, worldFrameName_, landmarkName_, positionLandmarkMeasurementPtr_->timeK(),
         gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
     gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
 
     // Convert to Imu frame
-    exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformFrom(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
+    exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformTo(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
 
     // Add values, if a new state was created
     if (newGraphKeyAddedFlag) {

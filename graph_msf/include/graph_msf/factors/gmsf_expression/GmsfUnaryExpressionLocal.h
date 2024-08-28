@@ -41,7 +41,8 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) final {
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+                                                  const gtsam::NavState& W_currentPropagatedState) final {
     // Raise runtime error, as it is not a landmark measurement
     throw std::logic_error(
         "GmsfUnaryExpressionLocal: convertRobotAndLandmarkStatesToMeasurement not implemented, as it is not a landmark "

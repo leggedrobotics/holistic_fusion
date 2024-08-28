@@ -58,7 +58,8 @@ class GmsfUnaryExpression {
                                                    const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
 
   // ii.B) adding landmark state in dynamic memory
-  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+                                                          const gtsam::NavState& W_currentPropagatedState) = 0;
 
   // iii) transform measurement to core imu frame
   virtual void transformStateToSensorFrame() = 0;
