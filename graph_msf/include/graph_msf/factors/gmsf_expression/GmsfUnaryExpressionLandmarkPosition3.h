@@ -53,7 +53,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::L>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
         newGraphKeyAddedFlag, worldFrameName_, landmarkName_, positionLandmarkMeasurementPtr_->timeK(),
         gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
     gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);

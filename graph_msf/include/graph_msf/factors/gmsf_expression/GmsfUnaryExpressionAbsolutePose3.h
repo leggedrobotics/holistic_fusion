@@ -50,7 +50,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     bool newGraphKeyAddedFlag = false;
     Eigen::Vector3d measurementOriginPosition = T_fixedFrame_sensorFrame_meas.translation();
     gtsam::Pose3 T_fixedFrame_W_initial(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::R>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'r'>(
         newGraphKeyAddedFlag, measurementOriginPosition, poseUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_,
         poseUnaryMeasurementPtr_->timeK(), T_fixedFrame_W_initial, centerMeasurementsAtRobotPositionBeforeAlignment);
 
@@ -92,7 +92,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
 
     // Search for the new graph key of T_sensorFrame_sensorFrameCorrected
     bool newGraphKeyAdded = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::C>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'c'>(
         newGraphKeyAdded, poseUnaryMeasurementPtr_->sensorFrameName(), poseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         poseUnaryMeasurementPtr_->timeK(), T_sensorFrame_sensorFrameCorrected_initial);
 

@@ -57,7 +57,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAddedFlag = false;
     gtsam::Pose3 T_fixedFrame_W_initial(gtsam::Pose3::Identity());
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::R>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'r'>(
         newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->fixedFrameName(), worldFrameName_, positionUnaryMeasurementPtr_->timeK(),
         T_fixedFrame_W_initial);
 
@@ -100,7 +100,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     // Get delta transformation from sensorFrame to correctSensorFrame
     bool newGraphKeyAddedFlag = false;
     gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<gtsam::symbol_shorthand::D>(
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'d'>(
         newGraphKeyAddedFlag, positionUnaryMeasurementPtr_->sensorFrameName(), positionUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         positionUnaryMeasurementPtr_->timeK(), gtsam::Pose3(gtsam::Rot3::Identity(), sensorFrame_t_sensorFrame_correctSensorFrame_initial));
     gtsam::Point3_ exp_sensorFrame_t_sensorFrame_correctSensorFrame = gtsam::Point3_(newGraphKey);

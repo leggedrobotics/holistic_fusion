@@ -123,7 +123,7 @@ class TransformsDictionary {
   TRANSFORM_TYPE identity_;
 
   // Number of stored transformations
-  size_t numStoredTransforms_ = 0;
+  unsigned long numStoredTransforms_ = 0;
 };
 
 }  // namespace graph_msf

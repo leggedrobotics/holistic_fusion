@@ -1,5 +1,5 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
 // Workspace
+#include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/TransformsDictionary.h"
 
 namespace graph_msf {
@@ -107,7 +108,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
 
   // Returns of key
   typedef gtsam::Key (*F)(std::uint64_t);
-  template <F SYMBOL_SHORTHAND>
+  template <char SYMBOL_CHAR>
   gtsam::Key getTransformationKey(bool& newGraphKeyAdded, Eigen::Vector3d& modifiedMeasurementKeyframePosition, const std::string& frame1,
                                   const std::string& frame2, const double timeK,
                                   const gtsam::Pose3& approximateTransformationBeforeOptimization,
@@ -116,25 +117,25 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     gtsam::Key T_key;
     std::lock_guard<std::mutex> modifyGraphKeysLock(this->mutex());
     // Case: The dynamically allocated key is not yet in the graph
-    newGraphKeyAdded = this->addNewFramePairSafelyToDictionary<SYMBOL_SHORTHAND>(T_key, modifiedMeasurementKeyframePosition, frame1, frame2,
-                                                                                 timeK, approximateTransformationBeforeOptimization,
-                                                                                 centerMeasurementsAtRobotPositionBeforeAlignment);
+    newGraphKeyAdded = this->addNewFramePairSafelyToDictionary<SYMBOL_CHAR>(T_key, modifiedMeasurementKeyframePosition, frame1, frame2,
+                                                                            timeK, approximateTransformationBeforeOptimization,
+                                                                            centerMeasurementsAtRobotPositionBeforeAlignment);
 
     // Return
     return T_key;
   }
 
   // Overloaded function (without keyframe centering), e.g. for extrinsic calibration
-  template <F SYMBOL_SHORTHAND>
+  template <char SYMBOL_CHAR>
   gtsam::Key getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1, const std::string& frame2, const double timeK,
                                   const gtsam::Pose3& approximateTransformationBeforeOptimization) {
     Eigen::Vector3d keyframePositionPlaceholder = Eigen::Vector3d::Zero();  // Placeholder
-    return getTransformationKey<SYMBOL_SHORTHAND>(newGraphKeyAdded, keyframePositionPlaceholder, frame1, frame2, timeK,
-                                                  approximateTransformationBeforeOptimization, false);
+    return getTransformationKey<SYMBOL_CHAR>(newGraphKeyAdded, keyframePositionPlaceholder, frame1, frame2, timeK,
+                                             approximateTransformationBeforeOptimization, false);
   }
 
   // Safe addition of new frame pair to dictionary --> checks whether already present
-  template <F SYMBOL_SHORTHAND>
+  template <char SYMBOL_CHAR>
   bool addNewFramePairSafelyToDictionary(gtsam::Key& returnKey, Eigen::Vector3d& modifiedMeasurementKeyframePosition,
                                          const std::string& frame1, const std::string& frame2, const double timeK,
                                          const gtsam::Pose3& approximateTransformationBeforeOptimization,
@@ -162,8 +163,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       if (!centerMeasurementsAtRobotPositionBeforeAlignment) {
         modifiedMeasurementKeyframePosition = Eigen::Vector3d::Zero();
       }  // else: updatedMeasurementOrigin is kept from the function that calls this function
-      returnKey = addNewFactorGraphStateKey<SYMBOL_SHORTHAND>(frame1, frame2, timeK, approximateTransformationBeforeOptimization,
-                                                              modifiedMeasurementKeyframePosition);
+      returnKey = addNewFactorGraphStateKey<SYMBOL_CHAR>(frame1, frame2, timeK, approximateTransformationBeforeOptimization,
+                                                         modifiedMeasurementKeyframePosition);
 
       // Return
       return true;
@@ -171,17 +172,25 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   }
 
   // Functionality ------------------------------------------------------------
-  template <F SYMBOL_SHORTHAND>
+  template <char SYMBOL_CHAR>
   gtsam::Key addNewFactorGraphStateKey(const std::string& frame1, const std::string& frame2, const double timeK,
                                        const gtsam::Pose3& approximateTransformationBeforeOptimization,
                                        const Eigen::Vector3d& measurementKeyframePosition) {
+    // Compile Time Checks and Variables
+    checkSymbol<SYMBOL_CHAR>();
+    constexpr int symbolIndex = getSymbolIndex<SYMBOL_CHAR>();
+    static_assert(symbolIndex >= 0, "Symbol not found in admissible symbols.");
+
     // Create new key
-    gtsam::Key returnKey = SYMBOL_SHORTHAND(getNumberStoredTransformationPairs());
+    gtsam::Key returnKey = gtsam::Symbol(SYMBOL_CHAR, numStoredTransformsPerLetter_[symbolIndex]);
     REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(returnKey) << " created for frame pair " << frame1 << " and " << frame2
                  << COLOR_END << std::endl;
     // Add to main dictionary
     FactorGraphStateKey factorGraphStateKey(returnKey, timeK, 0, approximateTransformationBeforeOptimization, measurementKeyframePosition);
     set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
+
+    // Increase the counter of specific symbol
+    ++numStoredTransformsPerLetter_[symbolIndex];
 
     // Add to key-to-frame pair map
     transformKeyToFramePairMap_[returnKey] = std::make_pair(frame1, frame2);
@@ -199,6 +208,10 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   // Mutex
   std::mutex internalDictionaryModifierMutex_;
   std::mutex externalModifierMutex_;
+
+  // Num Stored Transforms Per Letter --> compile time initialization, set all to zero
+  std::array<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)> numStoredTransformsPerLetter_ =
+      make_valued_array<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)>(0);
 };
 
 }  // namespace graph_msf
