@@ -41,7 +41,6 @@ Please see the LICENSE file that has been included as part of this package.
 namespace anymal_se {
 
 class AnymalEstimator : public graph_msf::GraphMsfRos {
-
  public:
   AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
@@ -115,8 +114,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Leg Odometry Handling
   static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};
-  std::array<long, legNames_.size()> legInContactForNSteps_ = { 0, 0, 0, 0 };
-  std::array<long, legNames_.size()> legContactIndex_ = { 0, 0, 0, 0 };
+  std::array<long, legNames_.size()> legInContactForNSteps_ = {0, 0, 0, 0};
+  std::array<long, legNames_.size()> legContactIndex_ = {0, 0, 0, 0};
   static constexpr long legInContactDebounceThreshold_ = 3;
 
   // Callback Members ----------------------------

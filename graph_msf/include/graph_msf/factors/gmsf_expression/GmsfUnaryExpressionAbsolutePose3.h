@@ -23,7 +23,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
  public:
   // Constructor
   GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>> poseUnaryMeasurementPtr,
-                           const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+                                   const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
       : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
         poseUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
         exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity())  // Placeholder --> will be modified later

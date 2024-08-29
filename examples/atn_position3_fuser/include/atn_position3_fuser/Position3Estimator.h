@@ -54,7 +54,6 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   void readParams(const ros::NodeHandle& privateNode) override;
 
  private:
-
   // Callbacks
   void positionCallback_(const geometry_msgs::PointStamped::ConstPtr& LeicaPositionPtr);
 

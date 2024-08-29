@@ -88,9 +88,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
             }
             // Case 2: Check if key is from the future --> hence might not be optimized
             else if (timestampAtKey > latestTimeStamp) {
-              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                        << " Factor contains key from the future: " << gtsam::Symbol(key) << ", which is " << timestampAtKey
-                        << "s in the future." << COLOR_END << std::endl;
+              std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Factor contains key from the future: " << gtsam::Symbol(key)
+                        << ", which is " << timestampAtKey << "s in the future." << COLOR_END << std::endl;
               factorOnlyContainsExistentKeys = false;
               filteredOutAtLeastOneKey = true;
             }

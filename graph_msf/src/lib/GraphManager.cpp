@@ -533,7 +533,7 @@ void GraphManager::updateGraph() {
                        << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
-    }  // for loop over all transforms
+    }    // for loop over all transforms
   }
 
   // Mutex block 2 ------------------

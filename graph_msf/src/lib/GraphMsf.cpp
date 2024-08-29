@@ -126,8 +126,8 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
 
 bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
   gtsam::Pose3 T_fixedFrame_frame1(unary6DMeasurement.unaryMeasurement().matrix());
-  return initYawAndPositionInWorld(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(), unary6DMeasurement.sensorFrameName(),
-                            unary6DMeasurement.sensorFrameName());
+  return initYawAndPositionInWorld(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(),
+                                   unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
 }
 
 // Adders --------------------------------

@@ -64,7 +64,7 @@ void ImuPose3Fuser::initializePublishers(ros::NodeHandle& privateNode) {
 void ImuPose3Fuser::initializeSubscribers(ros::NodeHandle& privateNode) {
   // Pose3 Odometry
   subPose3Odometry_ = privateNode.subscribe<nav_msgs::Odometry>("/pose3_odometry_topic", ROS_QUEUE_SIZE, &ImuPose3Fuser::pose3Callback_,
-                                                                 this, ros::TransportHints().tcpNoDelay());
+                                                                this, ros::TransportHints().tcpNoDelay());
   REGULAR_COUT << COLOR_END << " Initialized Pose3 Odometry subscriber with topic: " << subPose3Odometry_.getTopic() << std::endl;
 }
 

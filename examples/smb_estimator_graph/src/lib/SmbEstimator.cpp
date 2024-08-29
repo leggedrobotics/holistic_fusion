@@ -90,7 +90,7 @@ void SmbEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // VIO
   if (useVioOdometryFlag_) {
     subVioOdometry_ = privateNode.subscribe<nav_msgs::Odometry>("/vio_odometry_topic", ROS_QUEUE_SIZE, &SmbEstimator::vioOdometryCallback_,
-                                                                 this, ros::TransportHints().tcpNoDelay());
+                                                                this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized VIO Odometry subscriber with topic: " << subVioOdometry_.getTopic() << std::endl;
   }
 }
@@ -206,8 +206,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
                    << std::endl;
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(wheelOdometryBetweenRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), wheelOdometryTimeK, 1.0,
-          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
+          graph_msf::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
       REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
                    << std::endl;

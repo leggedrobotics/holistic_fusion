@@ -44,7 +44,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) override {
     // Get initial guess (computed geometrically)
-    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();  // alias
+    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
     const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement());  // alias
     gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
     gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
@@ -53,9 +53,9 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
-        newGraphKeyAddedFlag, worldFrameName_, landmarkName_, positionLandmarkMeasurementPtr_->timeK(),
-        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(newGraphKeyAddedFlag, worldFrameName_, landmarkName_,
+                                                                                positionLandmarkMeasurementPtr_->timeK(),
+                                                                                gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
     gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
 
     // Convert to Imu frame

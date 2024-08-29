@@ -489,7 +489,6 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
 
           // Check whether leg was at least N times in contact to count it as in contact --> debouncing
           if (legInContactForNSteps_[legIndex] >= legInContactDebounceThreshold_) {
-
             // If it was not in contact before
             if (legInContactForNSteps_[legIndex] == legInContactDebounceThreshold_) {
               // Increase contact counter
@@ -512,8 +511,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName + "_" + std::to_string(legContactIndex_[legIndex]);
             graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,
-                legKinematicsFootPositionUnaryNoise_);
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_);
 
             // Add to graph
             this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement);

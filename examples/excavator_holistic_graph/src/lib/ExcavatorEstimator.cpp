@@ -227,9 +227,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                                std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
-          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR,
-          rightGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
+          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+          rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR, rightGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
       this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssR);
     }
     // Visualizations ------------------------------------------------------------
