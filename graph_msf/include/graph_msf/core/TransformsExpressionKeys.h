@@ -128,10 +128,17 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
   // Overloaded function (without keyframe centering), e.g. for extrinsic calibration
   template <char SYMBOL_CHAR>
   gtsam::Key getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1, const std::string& frame2, const double timeK,
-                                  const gtsam::Pose3& approximateTransformationBeforeOptimization) {
+                                  const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                  std::optional<int> transformCreationCounter = std::nullopt) {
+    if (transformCreationCounter.has_value()) {
+      REGULAR_COUT << "Transform creation counter: " << transformCreationCounter.value() << std::endl;
+    }
+
+    // Get Key
     Eigen::Vector3d keyframePositionPlaceholder = Eigen::Vector3d::Zero();  // Placeholder
-    return getTransformationKey<SYMBOL_CHAR>(newGraphKeyAdded, keyframePositionPlaceholder, frame1, frame2, timeK,
-                                             approximateTransformationBeforeOptimization, false);
+    gtsam::Key newGraphKey = getTransformationKey<SYMBOL_CHAR>(newGraphKeyAdded, keyframePositionPlaceholder, frame1, frame2, timeK,
+                                                               approximateTransformationBeforeOptimization, false);
+    return newGraphKey;
   }
 
   // Safe addition of new frame pair to dictionary --> checks whether already present

@@ -24,12 +24,14 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
  public:
   // Constructor
   GmsfUnaryExpressionLandmarkPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& positionLandmarkMeasurementPtr,
-                                       const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+                                       const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                                       const int landmarkCreationCounter)
       : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, T_I_sensorFrame),
         positionLandmarkMeasurementPtr_(positionLandmarkMeasurementPtr),
         exp_sensorFrame_t_sensorFrame_landmark_(gtsam::Point3::Identity()),
         exp_T_W_I_(gtsam::Pose3::Identity()),
-        landmarkName_(positionLandmarkMeasurementPtr->measurementName()) {}
+        landmarkName_(positionLandmarkMeasurementPtr->measurementName()),
+        landmarkCreationCounter_(landmarkCreationCounter) {}
 
   // Destructor
   ~GmsfUnaryExpressionLandmarkPosition3() override = default;
@@ -53,9 +55,9 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(newGraphKeyAddedFlag, worldFrameName_, landmarkName_,
-                                                                                positionLandmarkMeasurementPtr_->timeK(),
-                                                                                gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial));
+    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
+        newGraphKeyAddedFlag, worldFrameName_, landmarkName_, positionLandmarkMeasurementPtr_->timeK(),
+        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), landmarkCreationCounter_);
     gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
 
     // Convert to Imu frame
@@ -107,6 +109,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
   // Landmark Identifier
   const std::string& landmarkName_;
+  const int landmarkCreationCounter_;
 
   // Expression
   gtsam::Point3_ exp_sensorFrame_t_sensorFrame_landmark_;  // Measurement --> this is what h(x) has to be
