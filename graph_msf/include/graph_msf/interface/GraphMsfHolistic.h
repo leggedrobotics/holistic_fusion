@@ -36,7 +36,7 @@ class GraphMsfHolistic : virtual public GraphMsf {
   void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) override;
 
   /// Landmark Measurements: No systematic drift
-  void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L) override;
+  void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L, const int landmarkCreationCounter) override;
   void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) override;
 
   /// Binary Measurements: Purely relative

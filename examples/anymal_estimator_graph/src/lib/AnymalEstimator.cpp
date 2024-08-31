@@ -492,10 +492,10 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             // If it was not in contact before
             if (legInContactForNSteps_[legIndex] == legInContactDebounceThreshold_) {
               // Increase contact counter
-              ++legContactIndex_[legIndex];
+              ++legTotalContactsCounter_[legIndex];
               // Print
               if (graphConfigPtr_->verboseLevel_ > 1) {
-                REGULAR_COUT << " Leg " << legName << " came back into contact for the " << legContactIndex_[legIndex] << ". time."
+                REGULAR_COUT << " Leg " << legName << " came back into contact for the " << legTotalContactsCounter_[legIndex] << ". time."
                              << std::endl;
               }
             }
@@ -508,13 +508,13 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             Eigen::Vector3d B_t_B_foot = T_O_B.inverse() * O_t_O_foot;
 
             // Create the unary measurement with contact counter
-            std::string legIdentifier = legName + "_" + std::to_string(legContactIndex_[legIndex]);
+            std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
                 graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_);
 
             // Add to graph
-            this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement);
+            this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement, legTotalContactsCounter_[legIndex]);
 
             // Visualize foot contact in RViz
             visualization_msgs::Marker footContactMarker;

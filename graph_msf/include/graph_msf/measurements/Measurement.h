@@ -66,6 +66,10 @@ class Measurement {
   [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNorm_.robustNormEnum_; }
   [[nodiscard]] const double& robustNormConstant() const { return robustNorm_.robustNormConstant_; }
 
+  // Setters
+  void setMeasurementName(std::string measurementName) { measurementName_ = measurementName; }
+  void setSensorFrameName(std::string sensorFrameName) { sensorFrameName_ = sensorFrameName; }
+
   // Pure Virtual Class
   virtual const MeasurementTypeEnum& measurementTypeEnum() = 0;
 

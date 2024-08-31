@@ -162,7 +162,8 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
 
 // Landmark Measurements: No systematic drift ------------------------------------------------------
 // Position3
-void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L) {
+void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L,
+                                                            const int landmarkCreationCounter) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -178,6 +179,9 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<E
       REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
       return;
     }
+
+    // TODO: Change this to more explicit handling of counter
+    S_t_S_L.setMeasurementName(S_t_S_L.measurementName() + "_" + std::to_string(landmarkCreationCounter));
 
     // Create GMSF expression
     auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionLandmarkPosition3>(
