@@ -78,25 +78,27 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
   // Get keyTimestampMap
   const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return batchSmootherKeyTimestampMap_; }
 
-  // Calculate States
-  gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) override { return batchSmootherPtr_->calculateEstimate<gtsam::Pose3>(key); }
-
-  gtsam::Vector3 calculateEstimatedVelocity(const gtsam::Key& key) override {
+  // Calculate States / Covariance --------------------------------------------------------------------------------------------
+  // Pose3
+  gtsam::Pose3 calculateEstimatedPose3(const gtsam::Key& key) override { return batchSmootherPtr_->calculateEstimate<gtsam::Pose3>(key); }
+  // Velocity3
+  gtsam::Vector3 calculateEstimatedVelocity3(const gtsam::Key& key) override {
     return batchSmootherPtr_->calculateEstimate<gtsam::Vector3>(key);
   }
-
+  // Bias
   gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) override {
     return batchSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(key);
   }
-
-  gtsam::Point3 calculateEstimatedDisplacement(const gtsam::Key& key) override {
+  // Point3
+  gtsam::Point3 calculateEstimatedPoint3(const gtsam::Key& key) override {
     return batchSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
-
-  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) override { return batchSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
-
+  // Vector
+  gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) override {
+    return batchSmootherPtr_->calculateEstimate<gtsam::Vector>(key);
+  }
   // Marginal Covariance
-  gtsam::Matrix marginalCovariance(const gtsam::Key& key) override { return batchSmootherPtr_->marginalCovariance(key); }
+  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override { return batchSmootherPtr_->marginalCovariance(key); }
 
  private:
   // Optimizer itself

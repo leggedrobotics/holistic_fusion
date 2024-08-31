@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 
 // Workspace
+#include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/GraphManager.hpp"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -360,11 +361,12 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
 gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag,
                                                      const std::shared_ptr<graph_msf::OptimizerBase> optimizerPtr, const gtsam::Key& key,
                                                      const char* callingFunctionName) {
+  // Nav State (pose and velocity)
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
   try {
-    resultPose = optimizerPtr->calculateEstimatedPose(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
-    resultVelocity = optimizerPtr->calculateEstimatedVelocity(gtsam::symbol_shorthand::V(key));
+    resultPose = optimizerPtr->calculateEstimatedPose3(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
+    resultVelocity = optimizerPtr->calculateEstimatedVelocity3(gtsam::symbol_shorthand::V(key));
     computeSuccessfulFlag = true;
   } catch (const std::out_of_range& outOfRangeExeception) {
     REGULAR_COUT << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
@@ -379,6 +381,12 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag
 }
 
 void GraphManager::updateGraph() {
+  // At compile time get the symbols for the 6D and 3D states
+  constexpr int numDynamic6DStates = countNDStates<6>();
+  constexpr int numDynamic3DStates = countNDStates<3>();
+  constexpr std::array<char, numDynamic6DStates> dim6StateSymbols = getSymbolArrayForNDStates<6, numDynamic6DStates>();
+  constexpr std::array<char, numDynamic3DStates> dim3StateSymbols = getSymbolArrayForNDStates<3, numDynamic3DStates>();
+
   // Method variables
   gtsam::NonlinearFactorGraph newGraphFactors;
   gtsam::Values newGraphValues;
@@ -429,44 +437,50 @@ void GraphManager::updateGraph() {
     return;
   }
 
-  // Compute entire result
-  // NavState
+  // Compute entire results ----------------------------------------------
+  // A. NavState ------------------------------
   gtsam::NavState resultNavState = calculateNavStateAtKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
-  // Bias
+  // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
-  // Compute Covariance
-  gtsam::Matrix66 resultPoseCovarianceBodyFrame = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
-  gtsam::Matrix33 resultVelocityCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  // C. Compute & Transform Covariances ------------------------------
+  gtsam::Matrix66 resultPoseCovarianceBodyFrame =
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::X(currentPropagatedKey));
+  gtsam::Matrix33 resultVelocityCovariance =
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::V(currentPropagatedKey));
   // Transform covariance from I_S_I in body frame, to W_S_W in world frame
   gtsam::Matrix66 adjointMatrix = resultNavState.pose().AdjointMap();
   gtsam::Matrix66 resultPoseCovarianceWorldFrame = adjointMatrix * resultPoseCovarianceBodyFrame * adjointMatrix.transpose();
 
-  // FixedFrame Transformations
+  // D. FixedFrame Transformations ------------------------------
   if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
 
-    // Iterate through all dynamically allocated transforms (holistic and calibration) --------------------------------
+    // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
     for (auto& framePairKeyMapIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
-      // Get Transform
+      // Get Variable Key
       const gtsam::Key& key = framePairKeyMapIterator.second.key();  // alias
 
-      // Case 1: Try to compute results and uncertainties ------------------------------------------
+      // State Category Character
+      const char stateCategory = gtsam::Symbol(key).chr();
+
+      // Try to compute results and uncertainties
+      // Case 1: All worked ------------------------------------------
       try {  // Obtain estimate and covariance from the extrinsic transformations
         gtsam::Pose3 T_frame1_frame2;
         gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
 
-        // 6D Transformation
-        if (gtsam::Symbol(key).string()[0] == 'r' or gtsam::Symbol(key).string()[0] == 'c') {
-          T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
-          T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
+        // 6D Transformations
+        if (isCharInCharArray<numDynamic6DStates>(stateCategory, dim6StateSymbols)) {
+          T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose3(key);
+          T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(key);
         }
-        // 3D Displacement
-        else if (gtsam::Symbol(key).string()[0] == 'd' or gtsam::Symbol(key).string()[0] == 'l') {
-          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
-          T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
+        // 3D Position3 Vectors
+        else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
+          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedPoint3(key));
+          T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(key);
         }
-        // Only these two are supported for now
+        // Only these two types are allowed for dynamic states for now
         else {
           throw std::runtime_error("Key is neither a pose nor a displacement key.");
         }
@@ -533,7 +547,7 @@ void GraphManager::updateGraph() {
                        << currentPropagatedKey << COLOR_END << std::endl;
         }
       }  // catch statement
-    }    // for loop over all transforms
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -598,6 +612,12 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath) {
+  // At compile time get the symbols for the 6D and 3D states
+  constexpr int num6DStates = countNDStates<6>();
+  constexpr int num3DStates = countNDStates<3>();
+  constexpr std::array<char, num6DStates> dim6StateSymbols = getSymbolArrayForNDStates<6, num6DStates>();
+  constexpr std::array<char, num3DStates> dim3StateSymbols = getSymbolArrayForNDStates<3, num3DStates>();
+
   // Map to hold file streams, keyed by category
   std::map<std::string, std::ofstream> fileStreams;
 
@@ -615,7 +635,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
   // Save optimized states
-  // SE(3) states
+  // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
     // Read out information
     const gtsam::Key& key = keyPosePair.first;
@@ -628,38 +648,39 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string stateCategoryString = "";
     std::string frameInformation = "";
 
-    // Case 1: Navigation State Position
+    // State Category Capital
+    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
+
+    // A.A Creation of the identifier for the file -----------------------------------
+    // Case 1: Navigation State Pose
     if (stateCategory == 'x') {
-      stateCategoryString = "X_state_transform";
+      stateCategoryString = stateCategoryCapital + "_state_6D_pose";
     }
     // Case 2: Frame Transform
-    else if (stateCategory == 't' || stateCategory == 'c') {
+    else if (isCharInCharArray<num6DStates>(stateCategory, dim6StateSymbols)) {
+      // Get Frame Pair
       std::pair<std::string, std::string> framePair;
       if (gtsamExpressionTransformsKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+        throw std::runtime_error("Could not find frame pair for key.");
       }
-      // Case 2.1: Holistic Transform
-      if (stateCategory == 't') {
-        stateCategoryString = "T_align_transform_";
-      }
-      // Case 2.2: Calibration Transform
-      else if (stateCategory == 'c') {
-        stateCategoryString = "C_calib_transform_";
-      }
-      // Otherwise: Undefined --> throw error
-      else {
-        throw std::runtime_error("Unknown state category.");
-      }
+      // State Category
+      stateCategoryString = stateCategoryCapital + "_6D_transform_";
+    }
+    // Otherwise: Undefined --> throw error
+    else {
+      throw std::runtime_error(stateCategoryString + " is an unknown 6D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      const std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -674,7 +695,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                      << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
   }  // end of for loop over all pose states
 
-  // R(3) states (e.g. Velocity, Displacement)
+  // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
   for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {
     // Read out information
     const gtsam::Key& key = keyVectorPair.first;
@@ -687,31 +708,38 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string stateCategoryString = "";
     std::string frameInformation = "";
 
+    // State Category Capital
+    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
+
+    // B.A Creation of the identifier for the file -----------------------------------
     // Case 1: Navigation State Velocity
     if (stateCategory == 'v') {
-      stateCategoryString = "V_state_velocity";
+      stateCategoryString = stateCategoryCapital + "_state_3D_velocity_";
     }
-    // Case 2: Displacement
-    else if (stateCategory == 'd') {
+    // Case 2: Point3 (e.g. calibration displacement, landmarks)
+    else if (isCharInCharArray<num3DStates>(stateCategory, dim3StateSymbols)) {
+      // Get Frame Pair
       std::pair<std::string, std::string> framePair;
       if (gtsamExpressionTransformsKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
       }
-      stateCategoryString = "D_displacement";
+      // State Category
+      stateCategoryString = stateCategoryCapital + "_3D_vector_";
     }
     // Otherwise: Undefined --> throw error
     else {
-      throw std::runtime_error("Unknown state category.");
+      throw std::runtime_error(stateCategoryString + " is an unknown 3D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // B.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -724,7 +752,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                      << "\n";
   }  // end of for loop over all vector states
 
-  // IMU Bias States
+  // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
   for (const auto& keyBiasPair : optimizedValues.extract<gtsam::imuBias::ConstantBias>()) {
     // Read out information
     const gtsam::Key& key = keyBiasPair.first;
@@ -736,13 +764,17 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Assert that the symbol is a bias
     assert(stateCategory == 'b');
 
-    // Additional strings
-    std::string stateCategoryString = "B_bias";
+    // Capitalized state category
+    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
 
+    // C.A Creation of the identifier for the file -----------------------------------
+    std::string stateCategoryString = stateCategoryCapital + "_imu_bias_";
+
+    // C.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + stateCategoryString + ".csv";
+      std::string fileName = savePath + timeString + "_" + stateCategoryString + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);

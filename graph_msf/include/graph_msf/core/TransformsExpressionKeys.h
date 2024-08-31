@@ -211,7 +211,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
 
   // Num Stored Transforms Per Letter --> compile time initialization, set all to zero
   std::array<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)> numStoredTransformsPerLetter_ =
-      make_valued_array<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)>(0);
+      makeValuedArray<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)>(0);
 };
 
 }  // namespace graph_msf
