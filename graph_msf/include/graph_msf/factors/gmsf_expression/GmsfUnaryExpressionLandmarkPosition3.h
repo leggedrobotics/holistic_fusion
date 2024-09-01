@@ -48,17 +48,26 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
     // Get initial guess (computed geometrically)
     const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
     const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement());  // alias
-    gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
-    gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
-    gtsam::Point3 W_t_S_L_meas = T_W_S_est.rotation().rotate(S_t_S_L_meas);
-    gtsam::Point3 W_t_W_L_initial = W_t_W_S_est + W_t_S_L_meas;
+    const gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
+    const gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
+    const gtsam::Point3 W_t_S_L_meas = T_W_S_est.rotation().rotate(S_t_S_L_meas);
+    const gtsam::Point3 W_t_W_L_initial = W_t_W_S_est + W_t_S_L_meas;
+
+    // Landmark names
+    const std::string newLandmarkName = landmarkName_ + "_" + std::to_string(landmarkCreationCounter_);
+    const std::string previousLandmarkName = landmarkName_ + "_" + std::to_string(landmarkCreationCounter_ - 1);
 
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
-    gtsam::Key newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
-        newGraphKeyAddedFlag, worldFrameName_, landmarkName_, positionLandmarkMeasurementPtr_->timeK(),
-        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), landmarkCreationCounter_);
-    gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey);
+    VariableType variableType = VariableType::Landmark();
+    const FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
+        newGraphKeyAddedFlag, worldFrameName_, newLandmarkName, positionLandmarkMeasurementPtr_->timeK(),
+        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
+    // Remove previous landmark with same landmark name;
+    std::ignore = transformsExpressionKeys.removeTransform(worldFrameName_, previousLandmarkName);
+
+    // Create expression for landmark
+    const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());
 
     // Convert to Imu frame
     exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformTo(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
@@ -66,14 +75,14 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
     // Add values, if a new state was created
     if (newGraphKeyAddedFlag) {
       // Add initial guess
-      newStateValues_.insert(newGraphKey, W_t_W_L_initial);
+      newStateValues_.insert(newGraphKey.key(), W_t_W_L_initial);
     }
   }
 
   // iii) Transform state to sensor frame
   void transformStateToSensorFrame() override {
     // Gtsam Data Type
-    gtsam::Pose3 T_sensorFrame_I(T_I_sensorFrameInit_.inverse().matrix());
+    const gtsam::Pose3 T_sensorFrame_I(T_I_sensorFrameInit_.inverse().matrix());
 
     // Transform to Sensor Frame
     exp_sensorFrame_t_sensorFrame_landmark_ =

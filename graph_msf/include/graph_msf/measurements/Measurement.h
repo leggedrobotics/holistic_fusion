@@ -34,6 +34,7 @@ struct RobustNorm {
   [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNormEnum_; }
   [[nodiscard]] const double& robustNormConstant() const { return robustNormConstant_; }
 
+ private:
   // Standard Members
   RobustNormEnum robustNormEnum_;
   double robustNormConstant_;
@@ -63,8 +64,8 @@ class Measurement {
   /// Rest
   [[nodiscard]] int measurementRate() const { return measurementRate_; }
   [[nodiscard]] const RobustNorm& robustNorm() const { return robustNorm_; }
-  [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNorm_.robustNormEnum_; }
-  [[nodiscard]] const double& robustNormConstant() const { return robustNorm_.robustNormConstant_; }
+  [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNorm_.robustNormEnum(); }
+  [[nodiscard]] const double& robustNormConstant() const { return robustNorm_.robustNormConstant(); }
 
   // Setters
   void setMeasurementName(std::string measurementName) { measurementName_ = measurementName; }

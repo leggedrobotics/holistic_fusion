@@ -181,7 +181,7 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<E
     }
 
     // TODO: Change this to more explicit handling of counter
-    S_t_S_L.setMeasurementName(S_t_S_L.measurementName() + "_" + std::to_string(landmarkCreationCounter));
+    // S_t_S_L.setMeasurementName(S_t_S_L.measurementName() + "_" + std::to_string(landmarkCreationCounter));
 
     // Create GMSF expression
     auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionLandmarkPosition3>(
