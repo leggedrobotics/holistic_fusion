@@ -52,7 +52,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     return T_fixedFrame_sensorFrame_meas_noOrientation * T_W_sensorFrame_est.inverse();
   }
 
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
     // Compute the initial guess for T_fixedFrame_W --> for orientation not possible for single measurement
@@ -118,7 +118,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
+  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
     // Initial Guess
     gtsam::Point3 sensorFrame_t_sensorFrame_correctSensorFrame_initial = gtsam::Point3::Zero();
 

@@ -82,7 +82,7 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
+  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
     // TODO: Implement
     REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
                  << std::endl;

@@ -28,11 +28,7 @@ class TransformsDictionary {
   bool isFramePairInDictionary(const std::string& frame1, const std::string& frame2) {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
-    if (keyIterator == T_frame1_frame2_map_.end()) {
-      return false;
-    } else {
-      return true;
-    }
+    return static_cast<bool>(keyIterator != T_frame1_frame2_map_.end());
   }
 
   // Cleanup

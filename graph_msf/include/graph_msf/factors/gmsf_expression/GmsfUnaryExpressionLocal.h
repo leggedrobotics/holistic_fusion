@@ -33,7 +33,7 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
 
   // Virtual Methods
   // ii.A) Holistically Optimize over Fixed Frames
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     // Do nothing as this velocity measurement is purely local
@@ -41,7 +41,7 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) final {
     // Raise runtime error, as it is not a landmark measurement
     throw std::logic_error(

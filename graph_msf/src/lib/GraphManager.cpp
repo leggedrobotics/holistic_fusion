@@ -474,11 +474,13 @@ void GraphManager::updateGraph() {
         if (isCharInCharArray<numDynamic6DStates>(stateCategory, dim6StateSymbols)) {
           T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose3(key);
           T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(key);
+          // TODO: add the belief back to the map
         }
         // 3D Position3 Vectors
         else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
           T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedPoint3(key));
           T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(key);
+          // TODO: add the belief back to the map
         }
         // Only these two types are allowed for dynamic states for now
         else {
@@ -495,7 +497,7 @@ void GraphManager::updateGraph() {
                                                                        framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
 
         // Mark that this key has at least been optimized once
-        if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0) {
+        if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0 && graphConfigPtr_->verboseLevel_ > 1) {
           REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairKeyMapIterator.first.first << " and "
                        << framePairKeyMapIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
           REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
@@ -510,8 +512,8 @@ void GraphManager::updateGraph() {
           const gtsam::Pose3& T_frame1_frame2_initial =
               framePairKeyMapIterator.second.getApproximateTransformationBeforeOptimization();  // alias
           const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
+
           // Check error in tangent space
-          // std::cout << "Error in tangent space: " << errorTangentSpace << std::endl;
           if (errorTangentSpace > graphConfigPtr_->referenceFramePosesResetThreshold_) {
             REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
             REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
@@ -519,26 +521,28 @@ void GraphManager::updateGraph() {
                          << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
                          << std::endl;
             // Remove state from state dictionary
-            gtsamExpressionTransformsKeys_.removeTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
+            gtsamExpressionTransformsKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
             break;
           }
         }
       }  // end: try statement
       // Case 2: Result computation failed -----------------------------------------
       catch (const std::out_of_range& exception) {
-        if (framePairKeyMapIterator.second.getNumberStepsOptimized() >
-            0) {  // Was optimized before, so should also be available now in the graph
-                  // --> as querying was unsuccessful, we remove it from the graph
-          REGULAR_COUT
-              << RED_START << " OutOfRange-exception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
-              << ", for frame pair " << framePairKeyMapIterator.first.first << "," << framePairKeyMapIterator.first.second << std::endl
-              << " This happens if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
-                 "and remove it from the state dictionary. To fix this, increase the smoother window."
-              << COLOR_END << std::endl;
+        // Only remove/deactivate measurements that are still active and have been optimized before
+        if (framePairKeyMapIterator.second.isVariableActive() && framePairKeyMapIterator.second.getNumberStepsOptimized() > 0) {
+          REGULAR_COUT << RED_START << " OutOfRange-exception while querying the active transformation and/or covariance at key "
+                       << gtsam::Symbol(key) << ", for frame pair " << framePairKeyMapIterator.first.first << ","
+                       << framePairKeyMapIterator.first.second << std::endl
+                       << " This happens if the requested variable is outside of the smoother window (e.g. because corresponding "
+                          "measurement stopped). Hence, we keep this estimate unchanged and remove/deactivate it from the state "
+                          "dictionary."
+                       << COLOR_END << std::endl;
           // Remove state from state dictionary
-          gtsamExpressionTransformsKeys_.removeTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
+          gtsamExpressionTransformsKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second);
           return;
-        } else {
+        }
+        // If active but added newly but never optimized
+        else if (framePairKeyMapIterator.second.isVariableActive()) {
           REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
                        << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
                        << ", at key: " << gtsam::Symbol(key)

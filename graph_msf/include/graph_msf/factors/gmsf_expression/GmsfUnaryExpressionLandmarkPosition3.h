@@ -43,7 +43,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) override {
     // Get initial guess (computed geometrically)
     const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
@@ -64,7 +64,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
         newGraphKeyAddedFlag, worldFrameName_, newLandmarkName, positionLandmarkMeasurementPtr_->timeK(),
         gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
     // Remove previous landmark with same landmark name;
-    std::ignore = transformsExpressionKeys.removeTransform(worldFrameName_, previousLandmarkName);
+    std::ignore = transformsExpressionKeys.removeOrDeactivateTransform(worldFrameName_, previousLandmarkName);
 
     // Create expression for landmark
     const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());
@@ -90,7 +90,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
+  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
     // TODO: Implement
     REGULAR_COUT << RED_START << "GmsfUnaryExpressionLandmarkPosition3: Extrinsic Calibration not implemented yet." << COLOR_END
                  << std::endl;

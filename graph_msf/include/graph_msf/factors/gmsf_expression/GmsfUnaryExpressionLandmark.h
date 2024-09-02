@@ -33,7 +33,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
 
   // Virtual Methods
   // ii.A) Holistically Optimize over Fixed Frames
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     // Do nothing as this is a landmark measurement
@@ -41,7 +41,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) override = 0;
 
   // Accessors

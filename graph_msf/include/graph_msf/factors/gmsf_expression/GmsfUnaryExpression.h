@@ -53,19 +53,19 @@ class GmsfUnaryExpression {
   virtual void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) = 0;
 
   // ii.A) holistically optimize over fixed frames
-  virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+  virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                    const gtsam::NavState& W_currentPropagatedState,
                                                    const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
 
   // ii.B) adding landmark state in dynamic memory
-  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys& transformsExpressionKeys,
+  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                           const gtsam::NavState& W_currentPropagatedState) = 0;
 
   // iii) transform measurement to core imu frame
   virtual void transformStateToSensorFrame() = 0;
 
   // iv) extrinsic calibration
-  virtual void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) = 0;
+  virtual void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) = 0;
 
   // Noise as GTSAM Datatype
   virtual const gtsam::Vector getNoiseDensity() const = 0;

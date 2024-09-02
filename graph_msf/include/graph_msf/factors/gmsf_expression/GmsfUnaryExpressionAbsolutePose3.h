@@ -44,7 +44,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     return gtsam::Pose3(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
   }
 
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
+  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
     // Get Measurement & Estimate Aliases;
@@ -101,7 +101,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
   }
 
   // iv) extrinsic calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
+  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
     // Initial Guess
     const gtsam::Pose3& T_sensorFrame_sensorFrameCorrected_initial = gtsam::Pose3::Identity();  // alias for readability
 
