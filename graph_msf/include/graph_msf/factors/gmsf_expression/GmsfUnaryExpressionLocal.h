@@ -17,14 +17,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-template <class GTSAM_MEASUREMENT_TYPE>
-class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative> {
-
+template <class GTSAM_MEASUREMENT_TYPE, char CALIBRATION_CHAR>
+class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative, CALIBRATION_CHAR> {
  public:
   // Constructor
   GmsfUnaryExpressionLocal(const std::shared_ptr<UnaryMeasurement>& baseUnaryAbsoluteMeasurementPtr, const std::string& worldFrameName,
                            const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame) {}
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative, CALIBRATION_CHAR>(
+            baseUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame) {}
 
   // Destructor
   ~GmsfUnaryExpressionLocal() = default;
@@ -32,15 +32,15 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
  protected:
   // Virtual Methods
   // ii.A) Holistically Optimize over Fixed Frames
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState,
-                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+  void transformImuStateFromWorldToReferenceFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+                                               const gtsam::NavState& W_currentPropagatedState,
+                                               const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     // Do nothing as this velocity measurement is purely local
     throw std::logic_error("GmsfUnaryExpressionLocal: transformStateFromWorldToFixedFrame not implemented, as it is a local measurement.");
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+  void transformLandmarkInWorldToImuFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) final {
     // Raise runtime error, as it is not a landmark measurement
     throw std::logic_error(

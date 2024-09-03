@@ -36,7 +36,7 @@ inline gtsam::Rot3_ inverseRot3(const gtsam::Rot3_& R) {
  * It optionally supports extrinsic calibration of the sensor
  **/
 
-template <class GTSAM_MEASUREMENT_TYPE, UnaryExpressionType TYPE>
+template <class GTSAM_MEASUREMENT_TYPE, UnaryExpressionType TYPE, char CALIBRATION_CHAR>
 class GmsfUnaryExpression {
  public:
   // Type of the Template
@@ -54,40 +54,39 @@ class GmsfUnaryExpression {
   ~GmsfUnaryExpression() = default;
 
   // Main method for creating the expression
-  gtsam::Expression<GTSAM_MEASUREMENT_TYPE> createAndReturnExpression(
-      const gtsam::Key& closestGeneralKey, TransformsExpressionKeys<gtsam::Pose3>& gtsamTransformsExpressionKeys,
-      const gtsam::NavState& W_imuPropagatedState, const bool optimizeReferenceFramePosesWrtWorldFlag,
-      const bool centerReferenceFramesAtRobotPositionBeforeAlignmentFlag, const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
-    // Assert that not both absolute and landmark measurement
-    //static_assert(!(IS_ABSOLUTE_MEASUREMENT && IS_LANDMARK_MEASUREMENT), "Both absolute and landmark measurement is not possible.");
-
+  gtsam::Expression<GTSAM_MEASUREMENT_TYPE> createAndReturnExpression(const gtsam::Key& closestGeneralKey,
+                                                                      TransformsExpressionKeys<gtsam::Pose3>& gtsamTransformsExpressionKeys,
+                                                                      const gtsam::NavState& W_imuPropagatedState,
+                                                                      const bool optimizeReferenceFramePosesWrtWorldFlag,
+                                                                      const bool centerReferenceFramesAtRobotPositionBeforeAlignmentFlag,
+                                                                      const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
     // Measurement Pointer
     const auto& gmsfUnaryMeasurement = *getGmsfBaseUnaryMeasurementPtr();
 
     // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
-    generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
+    generateImuStateInWorldFrameAtKey(closestGeneralKey);
 
     // B.A. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
     if constexpr (TYPE == UnaryExpressionType::Absolute) {
       if (optimizeReferenceFramePosesWrtWorldFlag) {
-        transformStateFromWorldToFixedFrame(gtsamTransformsExpressionKeys, W_imuPropagatedState,
-                                            centerReferenceFramesAtRobotPositionBeforeAlignmentFlag);
+        transformImuStateFromWorldToReferenceFrame(gtsamTransformsExpressionKeys, W_imuPropagatedState,
+                                                centerReferenceFramesAtRobotPositionBeforeAlignmentFlag);
       }
     }
 
     // B.B. Holistic Fusion: Create Landmark State in Dynamic Memory -------------------------------------
     if constexpr (TYPE == UnaryExpressionType::Landmark) {
-      convertRobotAndLandmarkStatesToMeasurement(gtsamTransformsExpressionKeys, W_imuPropagatedState);
+      transformLandmarkInWorldToImuFrame(gtsamTransformsExpressionKeys, W_imuPropagatedState);
     }
 
     // C. Transform State to Sensor Frame -----------------------------------------------------
     if (gmsfUnaryMeasurement.sensorFrameName() != imuFrame_) {
-      transformStateToSensorFrame();
+      transformImuStateToSensorFrameState();
     }
 
     // D. Extrinsic Calibration: Add correction to sensor pose -----------------------------------------
     if (optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
-      addExtrinsicCalibrationCorrection(gtsamTransformsExpressionKeys);
+      transformSensorFrameStateToSensorFrameCorrectedState(gtsamTransformsExpressionKeys);
     }
 
     // Return
@@ -117,22 +116,48 @@ class GmsfUnaryExpression {
   // Methods ---------------------------------------------------------------------
   // Four cases (non-exclusive, but has to be correct order!):
   // i) Generate Expression for Basic IMU State in World Frame at Key
-  virtual void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) = 0;
+  virtual void generateImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) = 0;
 
   // ii).A holistically optimize over fixed frames
-  virtual void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
-                                                   const gtsam::NavState& W_currentPropagatedState,
-                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
+  virtual void transformImuStateFromWorldToReferenceFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+                                                       const gtsam::NavState& W_currentPropagatedState,
+                                                       const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
 
   // ii).B adding landmark state in dynamic memory
-  virtual void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+  virtual void transformLandmarkInWorldToImuFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                           const gtsam::NavState& W_currentPropagatedState) = 0;
 
   // iii) transform measurement to core imu frame
-  virtual void transformStateToSensorFrame() = 0;
+  virtual void transformImuStateToSensorFrameState() = 0;
 
   // iv) extrinsic calibration
-  virtual void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) = 0;
+  virtual void transformSensorFrameStateToSensorFrameCorrectedState(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) {
+    // Initial Guess
+    GTSAM_MEASUREMENT_TYPE initialGuess = GTSAM_MEASUREMENT_TYPE::Identity();
+
+    // Search for new graph key
+    bool newGraphKeyAddedFlag = false;
+    VariableType variableType = VariableType::Global();
+    FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<CALIBRATION_CHAR>(
+        newGraphKeyAddedFlag, gmsfBaseUnaryMeasurementPtr_->sensorFrameName(), gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
+        gmsfBaseUnaryMeasurementPtr_->timeK(), convertToPose3(initialGuess), variableType);
+
+    // Define expression
+    gtsam::Expression<GTSAM_MEASUREMENT_TYPE> exp_C_sensorFrame_sensorFrameCorrected(newGraphKey.key());
+
+    // Apply calibration correction
+    applyExtrinsicCalibrationCorrection(exp_C_sensorFrame_sensorFrameCorrected);
+
+    // Initial Values
+    if (newGraphKeyAddedFlag) {
+      newStateValues_.insert(newGraphKey.key(), initialGuess);
+    }
+  }
+
+  virtual void applyExtrinsicCalibrationCorrection(
+      const gtsam::Expression<GTSAM_MEASUREMENT_TYPE>& exp_C_sensorFrame_sensorFrameCorrected) = 0;
+
+  virtual gtsam::Pose3 convertToPose3(const GTSAM_MEASUREMENT_TYPE& measurement) = 0;
 
   // Return Expression
   virtual const gtsam::Expression<GTSAM_MEASUREMENT_TYPE> getGtsamExpression() const = 0;

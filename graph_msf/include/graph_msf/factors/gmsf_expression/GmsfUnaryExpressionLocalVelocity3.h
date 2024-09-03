@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<gtsam::Point3> {
+class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<gtsam::Point3, 'd'> {
  public:
   // Constructor
   GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
@@ -57,7 +57,7 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
 
  protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key
-  void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
+  void generateImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Translation (core part)
     gtsam::Point3_ exp_fixedFrame_v_fixedFrame_sensorFrame_ =
         gtsam::Expression<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestGeneralKey));  // W_v_W_I at this point
@@ -72,7 +72,7 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
   }
 
   // iii) Transform Measurement to Core Imu Frame
-  void transformStateToSensorFrame() override {
+  void transformImuStateToSensorFrameState() final {
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 
@@ -93,11 +93,13 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
+  void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& exp_correction) final {
     // TODO: Implement
     REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
                  << std::endl;
   }
+
+  gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }
 
   // Return Expression
   [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {

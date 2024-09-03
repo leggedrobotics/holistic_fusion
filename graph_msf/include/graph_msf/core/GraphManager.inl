@@ -58,12 +58,6 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Measurement
   const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
 
-  // Check at compile time whether unary measurement is absolute
-  constexpr bool isAbsoluteMeasurement =
-      std::is_base_of<GmsfUnaryExpressionAbsolut<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
-  constexpr bool isLandmarkMeasurement =
-      std::is_base_of<GmsfUnaryExpressionLandmark<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
-
   // Get corresponding key of robot state in graph
   gtsam::Key closestGeneralKey;
   double closestGeneralKeyTime;

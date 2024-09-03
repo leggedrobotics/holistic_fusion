@@ -20,18 +20,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLandmark<gtsam::Point3> {
+class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLandmark<gtsam::Point3, 'd'> {
  public:
   // Constructor
   GmsfUnaryExpressionLandmarkPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& positionLandmarkMeasurementPtr,
                                        const std::string& worldFrameName, const std::string& imuFrameName,
                                        const Eigen::Isometry3d& T_I_sensorFrame, const int landmarkCreationCounter)
-      : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
-        positionLandmarkMeasurementPtr_(positionLandmarkMeasurementPtr),
-        exp_sensorFrame_t_sensorFrame_landmark_(gtsam::Point3::Identity()),
-        exp_T_W_I_(gtsam::Pose3::Identity()),
-        landmarkName_(positionLandmarkMeasurementPtr->measurementName()),
-        landmarkCreationCounter_(landmarkCreationCounter) {}
+      : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame, landmarkCreationCounter),
+        positionLandmarkMeasurementPtr_(positionLandmarkMeasurementPtr) {}
 
   // Destructor
   ~GmsfUnaryExpressionLandmarkPosition3() = default;
@@ -47,53 +43,20 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
  protected:
-  // i) Generate Expression for Basic IMU State in World Frame at Key
-  void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
-    // Get robot state
-    exp_T_W_I_ = gtsam::Expression<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestGeneralKey));
-  }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
-                                                  const gtsam::NavState& W_currentPropagatedState) override {
+  virtual gtsam::Point3 computeW_t_W_L_initial(const gtsam::NavState& W_currentPropagatedState) final {
     // Get initial guess (computed geometrically)
     const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
     const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement());  // alias
     const gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
     const gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
     const gtsam::Point3 W_t_S_L_meas = T_W_S_est.rotation().rotate(S_t_S_L_meas);
-    const gtsam::Point3 W_t_W_L_initial = W_t_W_S_est + W_t_S_L_meas;
-
-    // Landmark names
-    const std::string newLandmarkName = landmarkName_ + "_" + std::to_string(landmarkCreationCounter_);
-    const std::string previousLandmarkName = landmarkName_ + "_" + std::to_string(landmarkCreationCounter_ - 1);
-
-    // Create new graph key for landmark dynamically
-    bool newGraphKeyAddedFlag = false;
-    VariableType variableType = VariableType::Landmark();
-    const FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
-        newGraphKeyAddedFlag, worldFrameName_, newLandmarkName, positionLandmarkMeasurementPtr_->timeK(),
-        gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
-    // Make sure that the variable at the key is active (landmarks always have to be active or removed)
-    assert(newGraphKey.isVariableActive());
-    // Remove previous landmark with same landmark name;
-    std::ignore = transformsExpressionKeys.removeOrDeactivateTransform(worldFrameName_, previousLandmarkName);
-
-    // Create expression for landmark
-    const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());
-
-    // Convert to Imu frame
-    exp_sensorFrame_t_sensorFrame_landmark_ = gtsam::transformTo(exp_T_W_I_, exp_W_t_W_L);  // I_t_I_L at this point
-
-    // Add values, if a new state was created
-    if (newGraphKeyAddedFlag) {
-      // Add initial guess
-      newStateValues_.insert(newGraphKey.key(), W_t_W_L_initial);
-    }
+    return W_t_W_S_est + W_t_S_L_meas;
   }
 
   // iii) Transform state to sensor frame
-  void transformStateToSensorFrame() override {
+  void transformImuStateToSensorFrameState() final {
     // Gtsam Data Type
     const gtsam::Pose3 T_sensorFrame_I(T_I_sensorFrameInit_.inverse().matrix());
 
@@ -103,11 +66,13 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys) override {
+  void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& ) final {
     // TODO: Implement
     REGULAR_COUT << RED_START << "GmsfUnaryExpressionLandmarkPosition3: Extrinsic Calibration not implemented yet." << COLOR_END
                  << std::endl;
   }
+
+  gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }
 
   // Return Expression
   [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
@@ -118,13 +83,6 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   // Full Measurement Type
   std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>> positionLandmarkMeasurementPtr_;
 
-  // Landmark Identifier
-  const std::string& landmarkName_;
-  const int landmarkCreationCounter_;
-
-  // Expression
-  gtsam::Point3_ exp_sensorFrame_t_sensorFrame_landmark_;  // Measurement --> this is what h(x) has to be
-  gtsam::Pose3_ exp_T_W_I_;                                // Robot Pose
 };
 }  // namespace graph_msf
 
