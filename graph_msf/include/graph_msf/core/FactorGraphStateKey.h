@@ -48,7 +48,7 @@ class FactorGraphStateKey {
  public:
   // Constructor
   FactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
-                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, VariableType variableType)
+                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, const VariableType variableType)
       : key_(key),
         time_(time),
         numberStepsOptimized_(numberStepsOptimized),
@@ -74,11 +74,10 @@ class FactorGraphStateKey {
   [[nodiscard]] bool isVariableActive() const { return isVariableActive_; }
 
   // Setters
+  /// Members
   void setTimeStamp(const double time) { time_ = time; }
-  void incrementNumberStepsOptimized() { ++numberStepsOptimized_; }
-  void setApproximateTransformationBeforeOptimization(const gtsam::Pose3& approximateTransformationBeforeOptimization) {
-    approximateTransformationBeforeOptimization_ = approximateTransformationBeforeOptimization;
-  }
+
+  /// Status
   void activateVariable() {
     isVariableActive_ = true;
     REGULAR_COUT << " Activated Variable at Key " << gtsam::Symbol(key_) << std::endl;
@@ -88,14 +87,33 @@ class FactorGraphStateKey {
     REGULAR_COUT << " Deactivated Variable at Key " << gtsam::Symbol(key_) << std::endl;
   }
 
+  /// Optimization
+  void incrementNumberStepsOptimized() { ++numberStepsOptimized_; }
+
+  void setApproximateTransformationBeforeOptimization(const gtsam::Pose3& approximateTransformationBeforeOptimization) {
+    approximateTransformationBeforeOptimization_ = approximateTransformationBeforeOptimization;
+  }
+
+  void updateLatestEstimate(const GTSAM_TRANSFORM_TYPE& transformationAfterOptimization,
+                            const gtsam::Matrix66& covarianceAfterOptimization) {
+    transformationAfterOptimization_ = transformationAfterOptimization;
+    covarianceAfterOptimization_ = covarianceAfterOptimization;
+  }
+
  private:
   // Members
   gtsam::Key key_ = -1;
   double time_ = 0.0;
-  int numberStepsOptimized_ = 0;
-  GTSAM_TRANSFORM_TYPE approximateTransformationBeforeOptimization_;
+
+  // Variable Type and status
   VariableType variableType_ = VariableType::Global();
   bool isVariableActive_ = true;  // Always active in the beginning when added
+
+  // Optimization
+  int numberStepsOptimized_ = 0;
+  GTSAM_TRANSFORM_TYPE approximateTransformationBeforeOptimization_;
+  GTSAM_TRANSFORM_TYPE transformationAfterOptimization_;
+  gtsam::Matrix66 covarianceAfterOptimization_;
 };
 
 }  // namespace graph_msf

@@ -18,18 +18,16 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 template <class GTSAM_MEASUREMENT_TYPE>
-class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE> {
-  using Base = GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>;
+class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Landmark> {
 
  public:
   // Constructor
   GmsfUnaryExpressionLandmark(const std::shared_ptr<UnaryMeasurement>& baseUnaryAbsoluteMeasurementPtr, const std::string& worldFrameName,
-                              const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, T_I_sensorFrame),
-        baseUnaryAbsoluteMeasurementPtr_(baseUnaryAbsoluteMeasurementPtr) {}
+                              const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Landmark>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame) {}
 
   // Destructor
-  virtual ~GmsfUnaryExpressionLandmark() = default;
+  ~GmsfUnaryExpressionLandmark() = default;
 
   // Virtual Methods
   // ii.A) Holistically Optimize over Fixed Frames
@@ -43,13 +41,6 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   // ii.B) Adding Landmark State in Dynamic Memory
   void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) override = 0;
-
-  // Accessors
-  [[nodiscard]] const auto& getBaseUnaryAbsoluteMeasurementPtr() const { return baseUnaryAbsoluteMeasurementPtr_; }
-
- protected:
-  // Main Measurement Pointer
-  const std::shared_ptr<UnaryMeasurement> baseUnaryAbsoluteMeasurementPtr_;
 };
 
 }  // namespace graph_msf

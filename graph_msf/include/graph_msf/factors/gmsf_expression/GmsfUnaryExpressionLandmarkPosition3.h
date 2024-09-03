@@ -24,9 +24,9 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
  public:
   // Constructor
   GmsfUnaryExpressionLandmarkPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& positionLandmarkMeasurementPtr,
-                                       const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
-                                       const int landmarkCreationCounter)
-      : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, T_I_sensorFrame),
+                                       const std::string& worldFrameName, const std::string& imuFrameName,
+                                       const Eigen::Isometry3d& T_I_sensorFrame, const int landmarkCreationCounter)
+      : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
         positionLandmarkMeasurementPtr_(positionLandmarkMeasurementPtr),
         exp_sensorFrame_t_sensorFrame_landmark_(gtsam::Point3::Identity()),
         exp_T_W_I_(gtsam::Pose3::Identity()),
@@ -34,8 +34,19 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
         landmarkCreationCounter_(landmarkCreationCounter) {}
 
   // Destructor
-  ~GmsfUnaryExpressionLandmarkPosition3() override = default;
+  ~GmsfUnaryExpressionLandmarkPosition3() = default;
 
+  // Noise as GTSAM Datatype
+  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
+    return positionLandmarkMeasurementPtr_->unaryMeasurementNoiseDensity();
+  }
+
+  // Return Measurement as GTSAM Datatype
+  [[nodiscard]] const gtsam::Point3 getGtsamMeasurementValue() const override {
+    return gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement().matrix());
+  }
+
+ protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Get robot state
@@ -63,6 +74,8 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
     const FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
         newGraphKeyAddedFlag, worldFrameName_, newLandmarkName, positionLandmarkMeasurementPtr_->timeK(),
         gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
+    // Make sure that the variable at the key is active (landmarks always have to be active or removed)
+    assert(newGraphKey.isVariableActive());
     // Remove previous landmark with same landmark name;
     std::ignore = transformsExpressionKeys.removeOrDeactivateTransform(worldFrameName_, previousLandmarkName);
 
@@ -96,21 +109,10 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
                  << std::endl;
   }
 
-  // Accessors
-  [[nodiscard]] const auto& getUnaryMeasurementPtr() const { return positionLandmarkMeasurementPtr_; }
-
-  // Noise as GTSAM Datatype
-  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
-    return positionLandmarkMeasurementPtr_->unaryMeasurementNoiseDensity();
-  }
-
-  // Return Measurement as GTSAM Datatype
-  [[nodiscard]] const gtsam::Point3 getMeasurement() const override {
-    return gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement().matrix());
-  }
-
   // Return Expression
-  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getExpression() const override { return exp_sensorFrame_t_sensorFrame_landmark_; }
+  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
+    return exp_sensorFrame_t_sensorFrame_landmark_;
+  }
 
  private:
   // Full Measurement Type

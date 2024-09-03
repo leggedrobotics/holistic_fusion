@@ -149,7 +149,7 @@ class GraphManager {
   // Optimization Transformations
   std::string imuFrame_;
   std::string worldFrame_;
-  TransformsExpressionKeys<gtsam::Pose3> gtsamExpressionTransformsKeys_;
+  TransformsExpressionKeys<gtsam::Pose3> gtsamTransformsExpressionKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 

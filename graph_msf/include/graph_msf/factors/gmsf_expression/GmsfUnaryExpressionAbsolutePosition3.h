@@ -23,15 +23,27 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
  public:
   // Constructor
   GmsfUnaryExpressionAbsolutePosition3(const std::shared_ptr<UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>>& positionUnaryMeasurementPtr,
-                                       const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpressionAbsolut(positionUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+                                       const std::string& worldFrameName, const std::string& imuFrameName,
+                                       const Eigen::Isometry3d& T_I_sensorFrame)
+      : GmsfUnaryExpressionAbsolut(positionUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
         positionUnaryMeasurementPtr_(positionUnaryMeasurementPtr),
         exp_fixedFrame_t_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {}
 
   // Destructor
-  ~GmsfUnaryExpressionAbsolutePosition3() override = default;
+  ~GmsfUnaryExpressionAbsolutePosition3() = default;
 
+  // Noise as GTSAM Datatype
+  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
+    return positionUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
+  }
+
+  // Return Measurement as GTSAM Datatype
+  [[nodiscard]] const gtsam::Point3 getGtsamMeasurementValue() const override {
+    return gtsam::Point3(positionUnaryMeasurementPtr_->unaryMeasurement().matrix());
+  }
+
+ protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Translation (core part)
@@ -146,21 +158,10 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     }
   }
 
-  // Accessors
-  [[nodiscard]] const auto& getUnaryMeasurementPtr() const { return positionUnaryMeasurementPtr_; }
-
-  // Noise as GTSAM Datatype
-  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
-    return positionUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
-  }
-
-  // Return Measurement as GTSAM Datatype
-  [[nodiscard]] const gtsam::Point3 getMeasurement() const override {
-    return gtsam::Point3(positionUnaryMeasurementPtr_->unaryMeasurement().matrix());
-  }
-
   // Return Expression
-  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getExpression() const override { return exp_fixedFrame_t_fixedFrame_sensorFrame_; }
+  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
+    return exp_fixedFrame_t_fixedFrame_sensorFrame_;
+  }
 
  private:
   // Full Measurement Type

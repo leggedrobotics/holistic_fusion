@@ -53,10 +53,10 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 }
 
 // 2) GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
-template <class GMSF_EXPRESSION_TYPE>
+template <class GMSF_EXPRESSION_TYPE>  // e.g. GmsfUnaryExpressionAbsolutePose3
 void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr) {
   // Measurement
-  const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr();
+  const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
 
   // Check at compile time whether unary measurement is absolute
   constexpr bool isAbsoluteMeasurement =
@@ -64,36 +64,19 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   constexpr bool isLandmarkMeasurement =
       std::is_base_of<GmsfUnaryExpressionLandmark<typename GMSF_EXPRESSION_TYPE::template_type>, GMSF_EXPRESSION_TYPE>::value;
 
-  // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
+  // Get corresponding key of robot state in graph
   gtsam::Key closestGeneralKey;
   double closestGeneralKeyTime;
   if (!getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement)) {
     return;
   }
-  gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
-  // B.A. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if constexpr (isAbsoluteMeasurement) {
-    if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
-      gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
-                                                                  graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_);
-    }
-  }
-
-  // B.B. Holistic Fusion: Create Landmark State in Dynamic Memory -------------------------------------
-  if constexpr (isLandmarkMeasurement) {
-    gmsfUnaryExpressionPtr->convertRobotAndLandmarkStatesToMeasurement(gtsamExpressionTransformsKeys_, W_imuPropagatedState_);
-  }
-
-  // C. Transform State to Sensor Frame -----------------------------------------------------
-  if (gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->sensorFrameName() != imuFrame_) {
-    gmsfUnaryExpressionPtr->transformStateToSensorFrame();
-  }
-
-  // D. Extrinsic Calibration: Add correction to sensor pose -----------------------------------------
-  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
-    gmsfUnaryExpressionPtr->addExtrinsicCalibrationCorrection(gtsamExpressionTransformsKeys_);
-  }
+  // Create Expression --> exact type of expression is determined by the template
+  const auto gmsfGtsamExpression =
+      gmsfUnaryExpressionPtr->createAndReturnExpression(
+          closestGeneralKey, gtsamTransformsExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_,
+          graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_,
+          graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_);
 
   // Factor
   std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> unaryExpressionFactorPtr;
@@ -101,8 +84,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryExpressionPtr->getNoiseDensity());  // rad,rad,rad,x,y,z
   // Robust Error Function?
-  const RobustNormEnum robustNormEnum(gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->robustNormEnum());
-  const double robustNormConstant = gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->robustNormConstant();
+  const RobustNormEnum robustNormEnum(gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormEnum());
+  const double robustNormConstant = gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormConstant();
   boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
@@ -118,14 +101,14 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
       break;
     case RobustNormEnum::None:
       unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
-          noiseModel, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
+          noiseModel, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
       break;
   }
 
   // Create Factor
   if (robustNormEnum != RobustNormEnum::None) {
     unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
-        robustErrorFunction, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
+        robustErrorFunction, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
   }
 
   // Operating on graph data

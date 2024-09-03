@@ -23,9 +23,9 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
  public:
   // Constructor
   GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
-                                    const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
-                                    const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
-      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+                                    const std::string& worldFrameName, const std::string& imuFrameName,
+                                    const Eigen::Isometry3d& T_I_sensorFrame, const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
+      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
@@ -43,8 +43,19 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
   }
 
   // Destructor
-  ~GmsfUnaryExpressionLocalVelocity3() override = default;
+  ~GmsfUnaryExpressionLocalVelocity3() = default;
 
+  // Noise as GTSAM Datatype
+  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
+    return velocityUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
+  }
+
+  // Return Measurement as GTSAM Datatype
+  [[nodiscard]] const gtsam::Point3 getGtsamMeasurementValue() const override {
+    return gtsam::Point3(velocityUnaryMeasurementPtr_->unaryMeasurement().matrix());
+  }
+
+ protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key
   void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Translation (core part)
@@ -88,21 +99,10 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
                  << std::endl;
   }
 
-  // Accessors
-  [[nodiscard]] const auto& getUnaryMeasurementPtr() const { return velocityUnaryMeasurementPtr_; }
-
-  // Noise as GTSAM Datatype
-  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
-    return velocityUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
-  }
-
-  // Return Measurement as GTSAM Datatype
-  [[nodiscard]] const gtsam::Point3 getMeasurement() const override {
-    return gtsam::Point3(velocityUnaryMeasurementPtr_->unaryMeasurement().matrix());
-  }
-
   // Return Expression
-  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getExpression() const override { return exp_sensorFrame_v_fixedFrame_sensorFrame_; }
+  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
+    return exp_sensorFrame_v_fixedFrame_sensorFrame_;
+  }
 
  private:
   // Full Measurement Type

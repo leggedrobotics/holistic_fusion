@@ -19,38 +19,30 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 template <class GTSAM_MEASUREMENT_TYPE>
-class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE> {
-  using Base = GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>;
+class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute> {
 
  public:
   // Constructor
-  GmsfUnaryExpressionAbsolut(const std::shared_ptr<UnaryMeasurementAbsolute>& baseUnaryAbsoluteMeasurementPtr,
-                             const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, T_I_sensorFrame),
-        baseUnaryAbsoluteMeasurementPtr_(baseUnaryAbsoluteMeasurementPtr) {}
+  GmsfUnaryExpressionAbsolut(const std::shared_ptr<UnaryMeasurementAbsolute>& gmsfUnaryAbsoluteMeasurementPtr,
+                             const std::string& worldFrameName, const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute>(gmsfUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame) {}
 
   // Destructor
-  virtual ~GmsfUnaryExpressionAbsolut() = default;
+  ~GmsfUnaryExpressionAbsolut() = default;
 
+ protected:
   // Virtual Methods
-  // ii.A) Holistically Optimize over Fixed Frames
+  // ii).A Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                            const gtsam::NavState& W_currentPropagatedState,
                                            const bool centerMeasurementsAtRobotPositionBeforeAlignment) override = 0;
 
-  // ii.B) Adding Landmark State in Dynamic Memory
+  // ii).B Adding Landmark State in Dynamic Memory
   void convertRobotAndLandmarkStatesToMeasurement(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState) final {
     // Raise logic error, as it is not a landmark measurement
     throw std::logic_error("GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement() is not implemented.");
   }
-
-  // Accessors
-  [[nodiscard]] const auto& getBaseUnaryAbsoluteMeasurementPtr() const { return baseUnaryAbsoluteMeasurementPtr_; }
-
- protected:
-  // Main Measurement Pointer
-  const std::shared_ptr<UnaryMeasurement> baseUnaryAbsoluteMeasurementPtr_;
 };
 
 }  // namespace graph_msf

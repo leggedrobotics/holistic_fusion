@@ -3,10 +3,10 @@ Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
- */
+*/
 
-#ifndef GTSAMEXPRESSIONTRANSFORMS_H
-#define GTSAMEXPRESSIONTRANSFORMS_H
+#ifndef TRANSFORMS_EXPRESSION_KEYS_H
+#define TRANSFORMS_EXPRESSION_KEYS_H
 
 // Output
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
@@ -155,7 +155,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     std::lock_guard<std::mutex> lock(internalDictionaryModifierMutex_);
 
     // Logic
-    // CASE 1: Frame pair is already in dictionary, hence keyframe is not new
+    // CASE 1: Frame pair is already in dictionary, hence keyframe is not new (measurement either active or not)
     if (TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::isFramePairInDictionary(frame1, frame2)) {
       FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& factorGraphStateKey =
           TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
@@ -163,10 +163,6 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
       if (timeK > factorGraphStateKey.getTime()) {
         factorGraphStateKey.setTimeStamp(timeK);
         factorGraphStateKey.setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
-      }
-      // If not active, activate: mostly relevant for global variables (when they return)
-      if (!factorGraphStateKey.isVariableActive()) {
-        factorGraphStateKey.activateVariable();
       }
       returnStateKey = factorGraphStateKey;
       return false;
@@ -225,4 +221,4 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
 
 }  // namespace graph_msf
 
-#endif  // STATIC_TRANSFORMS_H
+#endif  // TRANSFORMS_EXPRESSION_KEYS_H

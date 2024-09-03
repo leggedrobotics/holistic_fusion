@@ -18,19 +18,18 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 template <class GTSAM_MEASUREMENT_TYPE>
-class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE> {
-  using Base = GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>;
+class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative> {
 
  public:
   // Constructor
   GmsfUnaryExpressionLocal(const std::shared_ptr<UnaryMeasurement>& baseUnaryAbsoluteMeasurementPtr, const std::string& worldFrameName,
-                           const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, T_I_sensorFrame),
-        baseUnaryAbsoluteMeasurementPtr_(baseUnaryAbsoluteMeasurementPtr) {}
+                           const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Relative>(baseUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame) {}
 
   // Destructor
-  virtual ~GmsfUnaryExpressionLocal() = default;
+  ~GmsfUnaryExpressionLocal() = default;
 
+ protected:
   // Virtual Methods
   // ii.A) Holistically Optimize over Fixed Frames
   void transformStateFromWorldToFixedFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
@@ -48,13 +47,6 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
         "GmsfUnaryExpressionLocal: convertRobotAndLandmarkStatesToMeasurement not implemented, as it is not a landmark "
         "measurement.");
   }
-
-  // Accessors
-  [[nodiscard]] const auto& getBaseUnaryAbsoluteMeasurementPtr() const { return baseUnaryAbsoluteMeasurementPtr_; }
-
- protected:
-  // Main Measurement Pointer
-  const std::shared_ptr<UnaryMeasurement> baseUnaryAbsoluteMeasurementPtr_;
 };
 
 }  // namespace graph_msf
