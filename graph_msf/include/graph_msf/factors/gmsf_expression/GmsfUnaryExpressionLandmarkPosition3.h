@@ -74,6 +74,8 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
   gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }
 
+  gtsam::Point3 convertFromPose3(const gtsam::Pose3& pose) final { return pose.translation(); }
+
   // Return Expression
   [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
     return exp_sensorFrame_t_sensorFrame_landmark_;

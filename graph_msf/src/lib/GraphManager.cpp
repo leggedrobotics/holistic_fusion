@@ -42,9 +42,12 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
       resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
       resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
   // Buffer
-  factorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
-  graphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
-  graphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
+  rtFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
+  batchFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
+  rtGraphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
+  batchGraphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
+  rtGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
+  batchGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
 
   // Keys
   timeToKeyBufferPtr_ = std::make_shared<TimeGraphKeyBuffer>(graphConfigPtr_->imuBufferLength_, graphConfigPtr_->verboseLevel_);
@@ -114,8 +117,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
                                                                 .finished());  // acc, acc, acc, gyro, gyro, gyro
 
   // Pre-allocate
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::Values newGraphValues;
+  gtsam::NonlinearFactorGraph newRtGraphFactors, newBatchGraphFactors;
+  gtsam::Values newRtGraphValues, newBatchGraphValues;
   std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
 
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
@@ -131,34 +134,52 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
     REGULAR_COUT << " Initial bias set to: " << *imuBiasPriorPtr_ << std::endl;
     valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
     /// Timestamp mapping for incremental fixed lag smoother
-    graphValuesBufferPtr_->insert(valuesEstimate);
+    rtGraphValuesBufferPtr_->insert(valuesEstimate);
+    batchGraphValuesBufferPtr_->insert(valuesEstimate);  // TODO: Check whether velocity can be removed from batch
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStamp, priorKeyTimestampMapPtr);
 
     // Initialize graph -------------------------------------------------
-    factorGraphBufferPtr_->resize(0);
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+    rtFactorGraphBufferPtr_->resize(0);
+    batchFactorGraphBufferPtr_->resize(0);
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+        gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0,
+        priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
         gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0,
         priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
     // is same type as type of PriorFactor
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
-                                                                              gtsam::Vector3(0, 0, 0),
-                                                                              priorVelocityNoise);  // VELOCITY
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(propagatedStateKey_),
-                                                                                            *imuBiasPriorPtr_,
-                                                                                            priorBiasNoise);  // BIAS
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
+                                                                                gtsam::Vector3(0, 0, 0),
+                                                                                priorVelocityNoise);  // VELOCITY
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
+                                                                                   gtsam::Vector3(0, 0, 0),
+                                                                                   priorVelocityNoise);  // VELOCITY
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(
+        gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_,
+        priorBiasNoise);  // BIAS
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(
+        gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_,
+        priorBiasNoise);  // BIAS
 
     // Add to Time Key Buffer
     timeToKeyBufferPtr_->addToBuffer(timeStamp, propagatedStateKey_);
 
     // Copy over
-    newGraphFactors = *factorGraphBufferPtr_;
-    newGraphValues = *graphValuesBufferPtr_;
-    factorGraphBufferPtr_->resize(0);
-    graphValuesBufferPtr_->clear();
+    // Rt
+    newRtGraphFactors = *rtFactorGraphBufferPtr_;
+    newRtGraphValues = *rtGraphValuesBufferPtr_;
+    rtFactorGraphBufferPtr_->resize(0);
+    rtGraphValuesBufferPtr_->clear();
+    // Batch
+    newBatchGraphFactors = *batchFactorGraphBufferPtr_;
+    newBatchGraphValues = *batchGraphValuesBufferPtr_;
+    batchFactorGraphBufferPtr_->resize(0);
+    batchGraphValuesBufferPtr_->clear();
   }
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
+  addFactorsToSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, *priorKeyTimestampMapPtr, newBatchGraphFactors, newBatchGraphValues,
+                                  *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -240,15 +261,23 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
+    addFactorToRtAndBatchGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
 
     // Add IMU values
     gtsam::Values valuesEstimate;
     valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
-    graphValuesBufferPtr_->insert(valuesEstimate);
-    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
+    rtGraphValuesBufferPtr_->insert(valuesEstimate);
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      batchGraphValuesBufferPtr_->insert(valuesEstimate);
+    }
+
+    // Add timestamps
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, rtGraphKeysTimestampsMapBufferPtr_);
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, batchGraphKeysTimestampsMapBufferPtr_);
+    }
 
     // After adding this factor we can again empty the step integrator
     // Reset IMU Step Pre-integration
@@ -347,7 +376,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   }
 
   // Write to graph
-  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, timeKm1);
+  addFactorSafelyToRtAndBatchGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, timeKm1);
 
   // Print summary
   if (graphConfigPtr_->verboseLevel_ > 3) {
@@ -388,9 +417,9 @@ void GraphManager::updateGraph() {
   constexpr std::array<char, numDynamic3DStates> dim3StateSymbols = getSymbolArrayForNDStates<3, numDynamic3DStates>();
 
   // Method variables
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::Values newGraphValues;
-  std::map<gtsam::Key, double> newGraphKeysTimestampsMap;
+  gtsam::NonlinearFactorGraph newRtGraphFactors, newBatchGraphFactors;
+  gtsam::Values newRtGraphValues, newBatchGraphValues;
+  std::map<gtsam::Key, double> newRtGraphKeysTimestampsMap, newBatchGraphKeysTimestampsMap;
   gtsam::Key currentPropagatedKey;
   gtsam::Vector3 currentAngularVelocity;
   double currentPropagatedTime;
@@ -403,14 +432,21 @@ void GraphManager::updateGraph() {
     currentPropagatedKey = propagatedStateKey_;
     currentPropagatedTime = propagatedStateTime_;
     currentAngularVelocity = currentAngularVelocity_;
-    // Get copy of factors and values
-    newGraphFactors = *factorGraphBufferPtr_;
-    newGraphValues = *graphValuesBufferPtr_;
-    newGraphKeysTimestampsMap = *graphKeysTimestampsMapBufferPtr_;
-    // Empty buffers
-    factorGraphBufferPtr_->resize(0);
-    graphValuesBufferPtr_->clear();
-    graphKeysTimestampsMapBufferPtr_->clear();
+    // Get copy of factors and values and empty buffers
+    newRtGraphFactors = *rtFactorGraphBufferPtr_;
+    newRtGraphValues = *rtGraphValuesBufferPtr_;
+    newRtGraphKeysTimestampsMap = *rtGraphKeysTimestampsMapBufferPtr_;
+    rtFactorGraphBufferPtr_->resize(0);
+    rtGraphValuesBufferPtr_->clear();
+    rtGraphKeysTimestampsMapBufferPtr_->clear();
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      newBatchGraphFactors = *batchFactorGraphBufferPtr_;
+      newBatchGraphValues = *batchGraphValuesBufferPtr_;
+      newBatchGraphKeysTimestampsMap = *batchGraphKeysTimestampsMapBufferPtr_;
+      batchFactorGraphBufferPtr_->resize(0);
+      batchGraphValuesBufferPtr_->clear();
+      batchGraphKeysTimestampsMapBufferPtr_->clear();
+    }
 
     // Empty Buffer Pre-integrator --> everything missed during the update will
     // be in here
@@ -422,7 +458,7 @@ void GraphManager::updateGraph() {
   }  // end of locking
 
   // if no factors are present, return
-  if (newGraphFactors.size() == 0) {
+  if (newRtGraphFactors.size() == 0) {
     if (graphConfigPtr_->verboseLevel_ > 3) {
       REGULAR_COUT << " No factors present, not optimizing." << std::endl;
     }
@@ -430,8 +466,9 @@ void GraphManager::updateGraph() {
   }
 
   // Graph Update (time consuming) -------------------
-  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap,
-                                                                    graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
+  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(
+      newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, newBatchGraphFactors, newBatchGraphValues,
+      newBatchGraphKeysTimestampsMap, graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
   if (!successfulOptimizationFlag) {
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
@@ -492,7 +529,7 @@ void GraphManager::updateGraph() {
 
           // Write to Result Dictionaries
           Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-          T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getMeasurementKeyframePosition();
+          T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getReferenceFrameKeyframePosition();
           // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
           resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
                                                                Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
@@ -674,7 +711,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
       if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
-        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol << COLOR_END << std::endl;
         throw std::runtime_error("Could not find frame pair for key.");
       }
       // State Category
@@ -848,8 +885,12 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
 
 // Returns true if the factors/values were added without any problems
 // Otherwise returns false (e.g. if exception occurs while adding
-bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                                   const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
+bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors,
+                                                   const gtsam::Values& newRtGraphValues,
+                                                   const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                                   const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                                   const gtsam::Values& newBatchGraphValues,
+                                                   const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
                                                    const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
@@ -859,7 +900,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
 
   // Perform update of the real-time smoother, including optimization
-  bool successFlag = rtOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+  bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
   // Additional iterations
   for (size_t itr = 0; itr < additionalIterations; ++itr) {
     successFlag = successFlag && rtOptimizerPtr_->update();
@@ -867,7 +908,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
 
   // Add Factors and States to Batch Optimization (if desired) without running optimization
   if (graphConfigPtr->useAdditionalSlowBatchSmoother_) {
-    batchOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+    batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
   }
 
   // Logging

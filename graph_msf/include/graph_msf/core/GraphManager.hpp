@@ -118,19 +118,21 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
-                         const std::string& measurementName);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
+                                   const std::string& measurementName);
   template <class CHILDPTR>
-  bool addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
+  bool addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
-  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                       const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, int additionalIterations);
+  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
+                                       const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                       const gtsam::NonlinearFactorGraph& newBatchGraphFactors, const gtsam::Values& newBatchGraphValues,
+                                       const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
                       double timeKm1, double timeK, const std::string& name);
@@ -170,11 +172,14 @@ class GraphManager {
   std::shared_ptr<OptimizerBase> rtOptimizerPtr_;
   std::shared_ptr<OptimizerBase> batchOptimizerPtr_;
   /// Data buffer
-  std::shared_ptr<gtsam::NonlinearFactorGraph> factorGraphBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> rtFactorGraphBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> batchFactorGraphBufferPtr_;
   // Values map
-  std::shared_ptr<gtsam::Values> graphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> rtGraphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> batchGraphValuesBufferPtr_;
   // Keys timestamp map
-  std::shared_ptr<std::map<gtsam::Key, double>> graphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> rtGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> batchGraphKeysTimestampsMapBufferPtr_;
 
   // Preintegration
   /// Step Preintegrator

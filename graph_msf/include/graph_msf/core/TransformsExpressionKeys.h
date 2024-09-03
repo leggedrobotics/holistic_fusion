@@ -138,7 +138,6 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
                                                                  const VariableType& variableType) {
     // Retrieve key and insert information to map
     FactorGraphStateKey<GTSAM_TRANSFORM_TYPE> stateKey;
-    std::lock_guard<std::mutex> modifyGraphKeysLock(this->mutex());
     // Case: The dynamically allocated key is not yet in the graph
     newGraphKeyAdded = this->addNewFramePairSafelyToDictionary<SYMBOL_CHAR>(stateKey, frame1, frame2, timeK,
                                                                             approximateTransformationBeforeOptimization, variableType);

@@ -24,8 +24,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
   // Constructor
   GmsfUnaryExpressionAbsolut(const std::shared_ptr<UnaryMeasurementAbsolute>& gmsfUnaryAbsoluteMeasurementPtr,
                              const std::string& worldFrameName, const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute, CALIBRATION_CHAR>(gmsfUnaryAbsoluteMeasurementPtr, worldFrameName,
-                                                                                   imuFrameName, T_I_sensorFrame),
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute, CALIBRATION_CHAR>(
+            gmsfUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
         gmsfUnaryAbsoluteMeasurementPtr_(gmsfUnaryAbsoluteMeasurementPtr) {}
 
   // Destructor
@@ -35,12 +35,15 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
   // Virtual Methods --------------------------------------------------------------
   // ii).A Holistically Optimize over Fixed Frames
   void transformImuStateFromWorldToReferenceFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
-                                               const gtsam::NavState& W_currentPropagatedState,
-                                               const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+                                                  const gtsam::NavState& W_currentPropagatedState,
+                                                  const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == this->worldFrameName_) {
       // Do nothing as this is a world frame measurement
       return;
     }
+
+    // Mutex because we are changing the dynamically allocated graphKeys
+    std::lock_guard<std::mutex> modifyGraphKeysLock(transformsExpressionKeys.mutex());
 
     // Run through steps needed for absolute measurements
     // If it should be centered --> create keyframe for measurement
@@ -54,16 +57,20 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAddedFlag = false;
-    VariableType dynamicVariableType = VariableType::RefFrame(measurementOriginPosition);
+    VariableType dynamicVariableType = VariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
     FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'r'>(
         newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
+
+    const double keyframeAge = gmsfUnaryAbsoluteMeasurementPtr_->timeK() - newGraphKey.getReferenceFrameKeyframeCreationTime();
+    std::cout << "Keyframe age: " << keyframeAge << std::endl;
+    // TODO: If keyframe is too old, we should remove the old one and create a new one with a random walk between the old and the new one
 
     // Shift the measurement to the robot position and recompute initial guess if we create keyframes
     // Has to be done here, as we did not know the keyframe position before
     if (centerMeasurementsAtRobotPositionBeforeAlignment) {
       // Shift the measurement to the robot position
-      setMeasurementPosition(getMeasurementPosition() - newGraphKey.getMeasurementKeyframePosition());
+      setMeasurementPosition(getMeasurementPosition() - newGraphKey.getReferenceFrameKeyframePosition());
       // Recompute initial guess
       T_fixedFrame_W_initial = computeT_fixedFrame_W_initial(W_currentPropagatedState);
       // Update the initial guess
@@ -83,16 +90,18 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                    << "_W, RPY (deg): " << T_fixedFrame_W_initial.rotation().rpy().transpose() * (180.0 / M_PI)
                    << ", t (x, y, z): " << T_fixedFrame_W_initial.translation().transpose() << std::endl;
       // Insert Values
-      this->newStateValues_.insert(newGraphKey.key(), T_fixedFrame_W_initial);
-      // Insert Prior, might not be necessary (if long enough horizon)
-      this->newPriorPoseFactors_.emplace_back(newGraphKey.key(), T_fixedFrame_W_initial,
-                                        gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise()));
+      this->newOnlineStateValues_.insert(newGraphKey.key(), T_fixedFrame_W_initial);
+      this->newOfflineStateValues_.insert(newGraphKey.key(), T_fixedFrame_W_initial);
+      // Insert Prior ONLY for online graph (offline is observable regardless)
+      this->newOnlinePosePriorFactors_.emplace_back(
+          newGraphKey.key(), T_fixedFrame_W_initial,
+          gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }
 
   // ii).B Adding Landmark State in Dynamic Memory
   void transformLandmarkInWorldToImuFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
-                                                  const gtsam::NavState& W_currentPropagatedState) final {
+                                          const gtsam::NavState& W_currentPropagatedState) final {
     // Raise logic error, as it is not a landmark measurement
     throw std::logic_error("GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement() is not implemented.");
   }

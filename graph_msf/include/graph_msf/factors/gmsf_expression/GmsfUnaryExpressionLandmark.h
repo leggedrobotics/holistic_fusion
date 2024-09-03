@@ -52,6 +52,9 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   // ii.B) Adding Landmark State in Dynamic Memory
   void transformLandmarkInWorldToImuFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
                                           const gtsam::NavState& W_currentPropagatedState) final {
+    // Mutex because we are changing the dynamically allocated graphKeys
+    std::lock_guard<std::mutex> modifyGraphKeysLock(transformsExpressionKeys.mutex());
+
     // Get initial guess (computed geometrically)
     gtsam::Point3 W_t_W_L_initial = computeW_t_W_L_initial(W_currentPropagatedState);
 
@@ -79,7 +82,8 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
     // Add values, if a new state was created
     if (newGraphKeyAddedFlag) {
       // Add initial guess
-      this->newStateValues_.insert(newGraphKey.key(), W_t_W_L_initial);
+      this->newOnlineStateValues_.insert(newGraphKey.key(), W_t_W_L_initial);
+      this->newOfflineStateValues_.insert(newGraphKey.key(), W_t_W_L_initial);
     }
   }
 

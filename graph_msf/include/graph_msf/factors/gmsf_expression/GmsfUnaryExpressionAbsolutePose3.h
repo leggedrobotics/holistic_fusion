@@ -85,6 +85,8 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
 
   gtsam::Pose3 convertToPose3(const gtsam::Pose3& measurement) final { return measurement; }
 
+  gtsam::Pose3 convertFromPose3(const gtsam::Pose3& measurement) final { return measurement; }
+
   // Return Expression
   [[nodiscard]] const gtsam::Expression<gtsam::Pose3> getGtsamExpression() const final { return exp_T_fixedFrame_sensorFrame_; }
 

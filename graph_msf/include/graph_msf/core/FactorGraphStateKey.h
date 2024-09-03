@@ -23,24 +23,29 @@ enum class VariableTypeEnum { Global, RefFrame, Landmark };
 
 // Robust Norm Container
 struct VariableType {
-  VariableType(const VariableTypeEnum& variableTypeEnum, const Eigen::Vector3d& measurementKeyframePosition)
-      : variableTypeEnum_(variableTypeEnum), measurementKeyframePosition_(measurementKeyframePosition) {}
+  VariableType(const VariableTypeEnum& variableTypeEnum, const Eigen::Vector3d& referenceFrameKeyframePosition,
+               const double referenceFrameKeyframeCreationTime)
+      : variableTypeEnum_(variableTypeEnum),
+        referenceFrameKeyframePosition_(referenceFrameKeyframePosition),
+        referenceFrameKeyframeCreationTime_(referenceFrameKeyframeCreationTime) {}
 
   // Syntactic Sugar for Constructor
-  static VariableType Global() { return VariableType(VariableTypeEnum::Global, Eigen::Vector3d::Zero()); }
-  static VariableType RefFrame(const Eigen::Vector3d& measurementKeyframePosition) {
-    return VariableType(VariableTypeEnum::RefFrame, measurementKeyframePosition);
+  static VariableType Global() { return VariableType(VariableTypeEnum::Global, Eigen::Vector3d::Zero(), 0.0); }
+  static VariableType RefFrame(const Eigen::Vector3d& referenceFrameKeyframePosition, const double referenceFrameKeyframeCreationTime) {
+    return VariableType(VariableTypeEnum::RefFrame, referenceFrameKeyframePosition, referenceFrameKeyframeCreationTime);
   }
-  static VariableType Landmark() { return VariableType(VariableTypeEnum::Landmark, Eigen::Vector3d::Zero()); }
+  static VariableType Landmark() { return VariableType(VariableTypeEnum::Landmark, Eigen::Vector3d::Zero(), 0.0); }
 
   // Getters
   [[nodiscard]] const VariableTypeEnum& variableTypeEnum() const { return variableTypeEnum_; }
-  [[nodiscard]] const Eigen::Vector3d& measurementKeyframePosition() const { return measurementKeyframePosition_; }
+  [[nodiscard]] const Eigen::Vector3d& referenceFrameKeyframePosition() const { return referenceFrameKeyframePosition_; }
+  [[nodiscard]] double referenceFrameKeyframeCreationTime() const { return referenceFrameKeyframeCreationTime_; }
 
  private:
   // Standard Members
   VariableTypeEnum variableTypeEnum_;
-  Eigen::Vector3d measurementKeyframePosition_;
+  Eigen::Vector3d referenceFrameKeyframePosition_;
+  double referenceFrameKeyframeCreationTime_;
 };
 
 template <class GTSAM_TRANSFORM_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
@@ -48,7 +53,7 @@ class FactorGraphStateKey {
  public:
   // Constructor
   FactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
-                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, const VariableType variableType)
+                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, VariableType variableType)
       : key_(key),
         time_(time),
         numberStepsOptimized_(numberStepsOptimized),
@@ -69,13 +74,17 @@ class FactorGraphStateKey {
   [[nodiscard]] GTSAM_TRANSFORM_TYPE getApproximateTransformationBeforeOptimization() const {
     return approximateTransformationBeforeOptimization_;
   }
-  [[nodiscard]] Eigen::Vector3d getMeasurementKeyframePosition() const { return variableType_.measurementKeyframePosition(); }
+  [[nodiscard]] Eigen::Vector3d getReferenceFrameKeyframePosition() const { return variableType_.referenceFrameKeyframePosition(); }
+  [[nodiscard]] double getReferenceFrameKeyframeCreationTime() const { return variableType_.referenceFrameKeyframeCreationTime(); }
   [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableType_.variableTypeEnum(); }
   [[nodiscard]] bool isVariableActive() const { return isVariableActive_; }
+  [[nodiscard]] const GTSAM_TRANSFORM_TYPE& getTransformationAfterOptimization() const { return transformationAfterOptimization_; }
+  [[nodiscard]] const gtsam::Matrix66& getCovarianceAfterOptimization() const { return covarianceAfterOptimization_; }
 
   // Setters
   /// Members
   void setTimeStamp(const double time) { time_ = time; }
+  void resetNumberStepsOptimized() { numberStepsOptimized_ = 0; }
 
   /// Status
   void activateVariable() {
