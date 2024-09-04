@@ -697,7 +697,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string frameInformation = "";
 
     // State Category Capital
-    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
+    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));
 
     // A.A Creation of the identifier for the file -----------------------------------
     // Case 1: Navigation State Pose
@@ -756,16 +756,21 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string stateCategoryString = "";
     std::string frameInformation = "";
 
-    // State Category Capital
-    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
+    // State Category Non-Capital (as it is a vector instead of a matrix)
+    const std::string stateCategoryNonCapital(1, stateCategory);
 
     // B.A Creation of the identifier for the file -----------------------------------
     // Case 1: Navigation State Velocity
     if (stateCategory == 'v') {
-      stateCategoryString = stateCategoryCapital + "_state_3D_velocity_";
+      stateCategoryString = stateCategoryNonCapital + "_state_3D_velocity_";
     }
-    // Case 2: Point3 (e.g. calibration displacement, landmarks)
+    // Case 2: Point3 (e.g. calibration displacement, landmarks), TODO: no landmarks are saved for now
     else if (isCharInCharArray<num3DStates>(stateCategory, dim3StateSymbols)) {
+      // Skip landmarks for now
+      if (stateCategory == 'l') {
+        continue;
+      }
+
       // Get Frame Pair
       std::pair<std::string, std::string> framePair;
       if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
@@ -774,7 +779,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
       }
       // State Category
-      stateCategoryString = stateCategoryCapital + "_3D_vector_";
+      stateCategoryString = stateCategoryNonCapital + "_3D_vector_";
     }
     // Otherwise: Undefined --> throw error
     else {
@@ -813,7 +818,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     assert(stateCategory == 'b');
 
     // Capitalized state category
-    const std::string stateCategoryCapital = std::to_string(std::toupper(stateCategory));
+    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));;
 
     // C.A Creation of the identifier for the file -----------------------------------
     std::string stateCategoryString = stateCategoryCapital + "_imu_bias_";

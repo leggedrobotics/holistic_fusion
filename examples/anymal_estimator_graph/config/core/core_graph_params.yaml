@@ -51,11 +51,18 @@ noise_params:
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
   ## Initial State
-  initialPositionNoiseDensity: 1.0e-01    # Prior/starting value of position
-  initialOrientationNoiseDensity: 1.0 # Prior/starting value of orientation
+  ### With GNSS
+  initialPositionNoiseDensity: 10.0    # Prior/starting value of position
+  initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
   initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
-  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
-  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
+  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
+  ### No GNSS
+#  initialPositionNoiseDensity: 1.0e-04    # Prior/starting value of position
+#  initialOrientationNoiseDensity: 1.0e-03 # Prior/starting value of orientation
+#  initialVelocityNoiseDensity: 1.0e-02 # Prior/starting value of velocity
+#  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
+#  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:

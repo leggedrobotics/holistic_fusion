@@ -6,7 +6,7 @@
 
     <!-- Compslam Config -->
     <arg name="launch_o3d_slam" default="true"/>
-    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/>
+    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">

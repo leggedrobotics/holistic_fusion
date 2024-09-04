@@ -13,5 +13,5 @@ def get_latest_time_string_in_folder(folder_path: str) -> str:
     files.sort()
     latest_filename = files[-1]
     # Get first part of string before "_optimized"
-    time_string = latest_filename.split("_optimized")[0]
+    time_string = latest_filename.split("_v")[0]
     return time_string

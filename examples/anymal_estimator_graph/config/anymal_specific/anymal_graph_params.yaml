@@ -11,7 +11,7 @@ sensor_params:
 
 # Alignment Parameters
 alignment_params:
-  initialSe3AlignmentNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
 noise_params:

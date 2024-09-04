@@ -57,20 +57,32 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAddedFlag = false;
-    VariableType dynamicVariableType = VariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
-    FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'r'>(
+    const VariableType dynamicVariableType = VariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
+    FactorGraphStateKey graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
         newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
 
-    const double keyframeAge = gmsfUnaryAbsoluteMeasurementPtr_->timeK() - newGraphKey.getReferenceFrameKeyframeCreationTime();
-    std::cout << "Keyframe age: " << keyframeAge << std::endl;
-    // TODO: If keyframe is too old, we should remove the old one and create a new one with a random walk between the old and the new one
+    const double keyframeAge = gmsfUnaryAbsoluteMeasurementPtr_->timeK() - graphKey.getReferenceFrameKeyframeCreationTime();
+    // std::cout << "Keyframe age: " << keyframeAge << std::endl;
+    //  TODO: If keyframe is too old, we should remove the old one and create a new one with a random walk between the old and the new one
+
+    // If deactivated or too old, we should remove the old keyframe and create a new one
+    if (!graphKey.isVariableActive() || keyframeAge > 100000) {
+      // Remove the old keyframe
+      transformsExpressionKeys.removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_, graphKey);
+      // Create a new keyframe
+      graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
+          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
+          gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
+      // Assert that new keyframe was added and that it is active
+      assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
+    }
 
     // Shift the measurement to the robot position and recompute initial guess if we create keyframes
     // Has to be done here, as we did not know the keyframe position before
     if (centerMeasurementsAtRobotPositionBeforeAlignment) {
       // Shift the measurement to the robot position
-      setMeasurementPosition(getMeasurementPosition() - newGraphKey.getReferenceFrameKeyframePosition());
+      setMeasurementPosition(getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
       // Recompute initial guess
       T_fixedFrame_W_initial = computeT_fixedFrame_W_initial(W_currentPropagatedState);
       // Update the initial guess
@@ -79,7 +91,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     // Define expression for T_fixedFrame_W
-    gtsam::Pose3_ exp_T_fixedFrame_W(newGraphKey.key());  // T_fixedFrame_W
+    gtsam::Pose3_ exp_T_fixedFrame_W(graphKey.key());  // T_fixedFrame_W
 
     // Call main child function
     transformStateToReferenceFrameMeasurement(exp_T_fixedFrame_W);
@@ -90,11 +102,11 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                    << "_W, RPY (deg): " << T_fixedFrame_W_initial.rotation().rpy().transpose() * (180.0 / M_PI)
                    << ", t (x, y, z): " << T_fixedFrame_W_initial.translation().transpose() << std::endl;
       // Insert Values
-      this->newOnlineStateValues_.insert(newGraphKey.key(), T_fixedFrame_W_initial);
-      this->newOfflineStateValues_.insert(newGraphKey.key(), T_fixedFrame_W_initial);
+      this->newOnlineStateValues_.insert(graphKey.key(), T_fixedFrame_W_initial);
+      this->newOfflineStateValues_.insert(graphKey.key(), T_fixedFrame_W_initial);
       // Insert Prior ONLY for online graph (offline is observable regardless)
       this->newOnlinePosePriorFactors_.emplace_back(
-          newGraphKey.key(), T_fixedFrame_W_initial,
+          graphKey.key(), T_fixedFrame_W_initial,
           gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise()));
     }
   }

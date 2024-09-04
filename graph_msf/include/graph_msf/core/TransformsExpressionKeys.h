@@ -65,8 +65,8 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
     // Case: Frame pair is in dictionary
     if (isFramePairInDictionary) {
       // Retrieve key and variable type
-      FactorGraphStateKey<GTSAM_TRANSFORM_TYPE> keyToRemoveOrDeactivate =
-          TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::rv_T_frame1_frame2(frame1, frame2);
+      FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& keyToRemoveOrDeactivate =
+          TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
       const VariableTypeEnum& variableTypeEnum = keyToRemoveOrDeactivate.getVariableTypeEnum();
 
       // Three different cases
@@ -88,9 +88,10 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
         case VariableTypeEnum::RefFrame:
           // Currently active, so we can deactivate
           if (keyToRemoveOrDeactivate.isVariableActive()) {
-            std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Deactivating reference frame " << frame2 << "."
-                      << std::endl;
+            std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Deactivating transform from " << frame1 << " to " << frame2
+                      << "." << std::endl;
             keyToRemoveOrDeactivate.deactivateVariable();
+            assert(!keyToRemoveOrDeactivate.isVariableActive());
             return true;
           }
           // Already deactivated, so we do not need to do anything
@@ -99,7 +100,7 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
           }
         // Case 3: Landmark --> Remove, as the landmark is not needed anymore
         case VariableTypeEnum::Landmark:
-          std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Removing landmark " << frame2 << "." << std::endl;
+          // std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Removing landmark " << frame2 << "." << std::endl;
           return removeTransform(frame1, frame2, keyToRemoveOrDeactivate);
         // Has to be one of the three cases
         default:
@@ -187,8 +188,13 @@ class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey
 
     // Create new key
     gtsam::Key gtsamKey = gtsam::Symbol(SYMBOL_CHAR, numStoredTransformsPerLetter_[symbolIndex]);
-    REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(gtsamKey) << " created for frame pair " << frame1 << " and " << frame2
-                 << COLOR_END << std::endl;
+
+    // Print out for calibrations and reference frames
+    if (variableType.variableTypeEnum() != VariableTypeEnum::Landmark) {
+      REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(gtsamKey) << " created for frame pair " << frame1 << " and " << frame2
+                   << COLOR_END << std::endl;
+    }
+
     // Add to main dictionary
     FactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType);
     TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
