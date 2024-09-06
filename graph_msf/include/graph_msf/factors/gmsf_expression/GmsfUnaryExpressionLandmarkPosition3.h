@@ -43,7 +43,6 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
  protected:
-
   // ii.B) Adding Landmark State in Dynamic Memory
   virtual gtsam::Point3 computeW_t_W_L_initial(const gtsam::NavState& W_currentPropagatedState) final {
     // Get initial guess (computed geometrically)
@@ -66,10 +65,10 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   }
 
   // iv) Extrinsic Calibration
-  void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& ) final {
+  void applyExtrinsicCalibrationCorrection(const gtsam::Point3_&) final {
     // TODO: Implement
-    REGULAR_COUT << RED_START << "GmsfUnaryExpressionLandmarkPosition3: Extrinsic Calibration not implemented yet." << COLOR_END
-                 << std::endl;
+    //    REGULAR_COUT << RED_START << "GmsfUnaryExpressionLandmarkPosition3: Extrinsic Calibration not implemented yet." << COLOR_END
+    //                 << std::endl;
   }
 
   gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }
@@ -84,7 +83,6 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
  private:
   // Full Measurement Type
   std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>> positionLandmarkMeasurementPtr_;
-
 };
 }  // namespace graph_msf
 

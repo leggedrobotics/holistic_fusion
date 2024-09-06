@@ -64,7 +64,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
 
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
-    VariableType variableType = VariableType::Landmark();
+    VariableType variableType = VariableType::Landmark(this->gmsfBaseUnaryMeasurementPtr_->timeK());
     const FactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
         newGraphKeyAddedFlag, this->worldFrameName_, newLandmarkName, this->gmsfBaseUnaryMeasurementPtr_->timeK(),
         gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);

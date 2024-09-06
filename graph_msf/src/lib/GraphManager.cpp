@@ -585,13 +585,27 @@ void GraphManager::updateGraph() {
           }
           // If active but added newly but never optimized
           else {
-            REGULAR_COUT
-                << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
-                << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
-                << ", at key: " << gtsam::Symbol(gtsamKey)
-                << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
-                   "Current state key: "
-                << currentPropagatedKey << COLOR_END << std::endl;
+            // If too old but was never optimized --> remove or deactivate
+            if (framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime) > graphConfigPtr_->realTimeSmootherLag_) {
+              REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
+                           << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
+                           << " is too old and was never optimized. Removing from optimization and adding again freshly at next "
+                              "possibility."
+                           << COLOR_END << std::endl;
+              // Remove state from state dictionary
+              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                         framePairKeyMapIterator.first.second);
+            }
+            // Otherwise keep for now and potentially print out
+            else if (graphConfigPtr_->verboseLevel_ > 1) {
+              REGULAR_COUT
+                  << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
+                  << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
+                  << ", at key: " << gtsam::Symbol(gtsamKey)
+                  << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
+                     "Current state key: "
+                  << currentPropagatedKey << COLOR_END << std::endl;
+            }
           }
         }  // catch statement
       }  // end: if active statement

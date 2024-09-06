@@ -62,7 +62,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
 
-    const double keyframeAge = gmsfUnaryAbsoluteMeasurementPtr_->timeK() - graphKey.getReferenceFrameKeyframeCreationTime();
+    const double keyframeAge =  - graphKey.computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
     // std::cout << "Keyframe age: " << keyframeAge << std::endl;
     //  TODO: If keyframe is too old, we should remove the old one and create a new one with a random walk between the old and the new one
 

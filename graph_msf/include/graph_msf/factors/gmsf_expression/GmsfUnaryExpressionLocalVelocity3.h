@@ -95,8 +95,8 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
   // iv) Extrinsic Calibration
   void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& exp_correction) final {
     // TODO: Implement
-    REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
-                 << std::endl;
+    //    REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
+    //                 << std::endl;
   }
 
   gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }

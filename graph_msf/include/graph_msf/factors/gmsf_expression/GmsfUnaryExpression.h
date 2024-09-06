@@ -153,7 +153,7 @@ class GmsfUnaryExpression {
 
     // Search for new graph key
     bool newGraphKeyAddedFlag = false;
-    VariableType variableType = VariableType::Global();
+    VariableType variableType = VariableType::Global(gmsfBaseUnaryMeasurementPtr_->timeK());
     FactorGraphStateKey graphKey = transformsExpressionKeys.getTransformationKey<CALIBRATION_CHAR>(
         newGraphKeyAddedFlag, gmsfBaseUnaryMeasurementPtr_->sensorFrameName(), gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
         gmsfBaseUnaryMeasurementPtr_->timeK(), convertToPose3(initialGuess), variableType);
@@ -166,16 +166,22 @@ class GmsfUnaryExpression {
 
     // If key was newly added, just add a value to the new state values to online and offline graph (as completely new)
     if (newGraphKeyAddedFlag) {
+      // Add value to new state values of online and offline graph
       newOnlineStateValues_.insert(graphKey.key(), initialGuess);
       newOfflineStateValues_.insert(graphKey.key(), initialGuess);
+      // Add prior factor to online graph --> make sure it is not fully unconstrained
+      //      newOnlineDynamicPriorFactors_.emplace_back(
+      //          graphKey.key(), initialGuess,
+      //          gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix::Identity(GTSAM_MEASUREMENT_TYPE::dimension,
+      //          GTSAM_MEASUREMENT_TYPE::dimension)));
       // New key has to be active
       assert(graphKey.isVariableActive());
     }
     // If the key is inactive(), we have to activate it again and add a prior with the previous belief ONLY to the online graph
     // TODO: Finish up
-    else if (!graphKey.isVariableActive()) {
+    else if (!graphKey.isVariableActive() && graphKey.getNumberStepsOptimized() > 0) {
       assert(graphKey.getNumberStepsOptimized() > 0);
-      REGULAR_COUT << "GmsfUnaryExpression: Transformation between " << gmsfBaseUnaryMeasurementPtr_->sensorFrameName() << " and "
+      REGULAR_COUT << " GmsfUnaryExpression: Transformation between " << gmsfBaseUnaryMeasurementPtr_->sensorFrameName() << " and "
                    << gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName()
                    << " was inactive. Activating it again and adding a prior to the online graph." << std::endl;
       // Add prior factor
@@ -192,6 +198,17 @@ class GmsfUnaryExpression {
       // Activate key and set number of steps optimized to 0
       graphKey.activateVariable();
       graphKey.resetNumberStepsOptimized();
+    }
+    // If it was never optimized, we can also remove it as we will not be able to reactivate it
+    else if (!graphKey.isVariableActive() && graphKey.getNumberStepsOptimized() == 0) {
+      REGULAR_COUT << " GmsfUnaryExpression: Transformation between " << gmsfBaseUnaryMeasurementPtr_->sensorFrameName() << " and "
+                   << gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName()
+                   << " is deactivated but was never optimized. Hence, Removing it from the graph." << std::endl;
+      // Remove key
+      FactorGraphStateKey<gtsam::Pose3> keyToRemoveOrDeactivate;
+      std::ignore =
+          transformsExpressionKeys.removeTransform(gmsfBaseUnaryMeasurementPtr_->sensorFrameName(),
+                                                   gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(), keyToRemoveOrDeactivate);
     }
   }
 

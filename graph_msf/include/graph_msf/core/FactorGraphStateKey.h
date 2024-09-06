@@ -24,28 +24,32 @@ enum class VariableTypeEnum { Global, RefFrame, Landmark };
 // Robust Norm Container
 struct VariableType {
   VariableType(const VariableTypeEnum& variableTypeEnum, const Eigen::Vector3d& referenceFrameKeyframePosition,
-               const double referenceFrameKeyframeCreationTime)
+               const double variableCreationTime)
       : variableTypeEnum_(variableTypeEnum),
         referenceFrameKeyframePosition_(referenceFrameKeyframePosition),
-        referenceFrameKeyframeCreationTime_(referenceFrameKeyframeCreationTime) {}
+        variableCreationTime_(variableCreationTime) {}
 
   // Syntactic Sugar for Constructor
-  static VariableType Global() { return VariableType(VariableTypeEnum::Global, Eigen::Vector3d::Zero(), 0.0); }
-  static VariableType RefFrame(const Eigen::Vector3d& referenceFrameKeyframePosition, const double referenceFrameKeyframeCreationTime) {
-    return VariableType(VariableTypeEnum::RefFrame, referenceFrameKeyframePosition, referenceFrameKeyframeCreationTime);
+  static VariableType Global(const double variableCreationTime) {
+    return VariableType(VariableTypeEnum::Global, Eigen::Vector3d::Zero(), variableCreationTime);
   }
-  static VariableType Landmark() { return VariableType(VariableTypeEnum::Landmark, Eigen::Vector3d::Zero(), 0.0); }
+  static VariableType RefFrame(const Eigen::Vector3d& referenceFrameKeyframePosition, const double variableCreationTime) {
+    return VariableType(VariableTypeEnum::RefFrame, referenceFrameKeyframePosition, variableCreationTime);
+  }
+  static VariableType Landmark(const double variableCreationTime) {
+    return VariableType(VariableTypeEnum::Landmark, Eigen::Vector3d::Zero(), variableCreationTime);
+  }
 
   // Getters
-  [[nodiscard]] const VariableTypeEnum& variableTypeEnum() const { return variableTypeEnum_; }
-  [[nodiscard]] const Eigen::Vector3d& referenceFrameKeyframePosition() const { return referenceFrameKeyframePosition_; }
-  [[nodiscard]] double referenceFrameKeyframeCreationTime() const { return referenceFrameKeyframeCreationTime_; }
+  [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableTypeEnum_; }
+  [[nodiscard]] const Eigen::Vector3d& getReferenceFrameKeyframePosition() const { return referenceFrameKeyframePosition_; }
+  [[nodiscard]] double getVariableCreationTime() const { return variableCreationTime_; }
 
  private:
   // Standard Members
   VariableTypeEnum variableTypeEnum_;
   Eigen::Vector3d referenceFrameKeyframePosition_;
-  double referenceFrameKeyframeCreationTime_;
+  double variableCreationTime_;
 };
 
 template <class GTSAM_TRANSFORM_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
@@ -53,13 +57,16 @@ class FactorGraphStateKey {
  public:
   // Constructor
   FactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
-                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, VariableType variableType)
+                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, VariableType variableType,
+                      const std::string& frame1, const std::string& frame2)
       : key_(key),
         time_(time),
         numberStepsOptimized_(numberStepsOptimized),
         approximateTransformationBeforeOptimization_(approximateTransformationBeforeOptimization),
         variableType_(std::move(variableType)),
-        isVariableActive_(true) {}
+        isVariableActive_(true),
+        frame1_(frame1),
+        frame2_(frame2) {}
 
   // Default constructor for creating identity object
   FactorGraphStateKey() = default;
@@ -74,9 +81,10 @@ class FactorGraphStateKey {
   [[nodiscard]] GTSAM_TRANSFORM_TYPE getApproximateTransformationBeforeOptimization() const {
     return approximateTransformationBeforeOptimization_;
   }
-  [[nodiscard]] Eigen::Vector3d getReferenceFrameKeyframePosition() const { return variableType_.referenceFrameKeyframePosition(); }
-  [[nodiscard]] double getReferenceFrameKeyframeCreationTime() const { return variableType_.referenceFrameKeyframeCreationTime(); }
-  [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableType_.variableTypeEnum(); }
+  [[nodiscard]] Eigen::Vector3d getReferenceFrameKeyframePosition() const { return variableType_.getReferenceFrameKeyframePosition(); }
+  [[nodiscard]] double getVariableCreationTime() const { return variableType_.getVariableCreationTime(); }
+  double computeVariableAge(const double currentTime) const { return currentTime - variableType_.getVariableCreationTime(); }
+  [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableType_.getVariableTypeEnum(); }
   [[nodiscard]] bool isVariableActive() const { return isVariableActive_; }
   [[nodiscard]] const GTSAM_TRANSFORM_TYPE& getTransformationAfterOptimization() const { return transformationAfterOptimization_; }
   [[nodiscard]] const gtsam::Matrix66& getCovarianceAfterOptimization() const { return covarianceAfterOptimization_; }
@@ -93,7 +101,7 @@ class FactorGraphStateKey {
   }
   void deactivateVariable() {
     isVariableActive_ = false;
-    REGULAR_COUT << " Deactivated Variable at Key " << gtsam::Symbol(key_) << std::endl;
+    REGULAR_COUT << " Deactivated Variable at Key " << gtsam::Symbol(key_) << " between " << frame1_ << " and " << frame2_ << std::endl;
   }
 
   /// Optimization
@@ -115,7 +123,7 @@ class FactorGraphStateKey {
   double time_ = 0.0;
 
   // Variable Type and status
-  VariableType variableType_ = VariableType::Global();
+  VariableType variableType_ = VariableType::Global(0.0);
   bool isVariableActive_ = true;  // Always active in the beginning when added
 
   // Optimization
@@ -123,6 +131,10 @@ class FactorGraphStateKey {
   GTSAM_TRANSFORM_TYPE approximateTransformationBeforeOptimization_;
   GTSAM_TRANSFORM_TYPE transformationAfterOptimization_;
   gtsam::Matrix66 covarianceAfterOptimization_;
+
+  // Frames
+  std::string frame1_ = "";
+  std::string frame2_ = "";
 };
 
 }  // namespace graph_msf
