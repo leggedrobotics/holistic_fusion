@@ -1,38 +1,43 @@
-<?xml version="1.0" encoding="UTF-8"?> 
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
-    <param name="use_sim_time"            value="true"/>
+    <param name="use_sim_time" value="true"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name"            default="/default/imu" />
-    <arg name="position_topic_name"      default="/default/position" />
+    <arg name="imu_topic_name" default="/default/imu"/>
+    <arg name="prism_position_topic_name" default="/default/position"/>
+    <arg name="gnss_position_topic_name" default="/default/gnss"/>
 
     <!-- Config Files -->
-    <arg name="core_graph_config_file"         default="$(find atn_position3_fuser)/config/core/core_graph_config.yaml"/>
-    <arg name="core_graph_parameter_file"      default="$(find atn_position3_fuser)/config/core/core_graph_params.yaml"/>
-    <arg name="core_extrinsic_file"            default="$(find atn_position3_fuser)/config/core/core_extrinsic_params.yaml"/>
-    <arg name="position_graph_parameter_file" default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_graph_params.yaml"/>
-    <arg name="position_extrinsic_file"       default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_extrinsic_params.yaml"/>
+    <arg name="core_graph_config_file" default="$(find atn_position3_fuser)/config/core/core_graph_config.yaml"/>
+    <arg name="core_graph_parameter_file" default="$(find atn_position3_fuser)/config/core/core_graph_params.yaml"/>
+    <arg name="core_extrinsic_file" default="$(find atn_position3_fuser)/config/core/core_extrinsic_params.yaml"/>
+    <arg name="position_graph_parameter_file"
+         default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_graph_params.yaml"/>
+    <arg name="position_extrinsic_file"
+         default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_extrinsic_params.yaml"/>
 
     <!-- Logging Location -->
-    <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging" />
+    <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging"/>
 
     <!-- Node -->
-    <node pkg="atn_position3_fuser" type="atn_position3_fuser_node" name="atn_position3_fuser_node" output="screen" > <!-- launch-prefix="gdb -args"-->
+    <node pkg="atn_position3_fuser" type="atn_position3_fuser_node" name="atn_position3_fuser_node"
+          output="screen"> <!-- launch-prefix="gdb -args"-->
         <!-- Launch Parameters -->
-        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)" />
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
         <!-- Parameter files -->
-        <rosparam command="load" file="$(arg core_graph_config_file)" />
-        <rosparam command="load" file="$(arg core_graph_parameter_file)" />
-        <rosparam command="load" file="$(arg core_extrinsic_file)" />
-        <rosparam command="load" file="$(arg position_graph_parameter_file)" />
-        <rosparam command="load" file="$(arg position_extrinsic_file)" />
+        <rosparam command="load" file="$(arg core_graph_config_file)"/>
+        <rosparam command="load" file="$(arg core_graph_parameter_file)"/>
+        <rosparam command="load" file="$(arg core_extrinsic_file)"/>
+        <rosparam command="load" file="$(arg position_graph_parameter_file)"/>
+        <rosparam command="load" file="$(arg position_extrinsic_file)"/>
         <!-- Remapping of topics -->
-        <remap from="/imu_topic"      to="$(arg imu_topic_name)" />
-        <remap from="/position_topic" to="$(arg position_topic_name)" />
+        <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
+        <remap from="/prism_position_topic" to="$(arg prism_position_topic_name)"/>
+        <remap from="/gnss_position_topic" to="$(arg gnss_position_topic_name)"/>
     </node>
 
     <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz" />
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
 
 </launch>
