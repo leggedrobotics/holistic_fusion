@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
-    <arg name="imu_topic_name"             default="/sensors/imu" />
-    <arg name="lidar_odometry_topic_name"  default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+    <arg name="imu_topic_name" default="/sensors/imu"/>
+    <arg name="lidar_odometry_topic_name"
+         default="/compslam_lio/odom_aft_mapped_to_init_CORRECTED"/>  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
     <!-- Compslam Config -->
     <arg name="launch_compslam" default="true"/>
-    <arg name="pointcloud_topic_name" default="/lidar/point_cloud"/> <!-- /point_cloud_filter/lidar/point_cloud_filtered -->
+    <arg name="pointcloud_topic_name"
+         default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
     <arg name="compslam_config_file" default="$(find compslam_lio)/config/compslam_lio_VLP16_params.yaml"/>
 
     <!-- Launch Stack -->
@@ -25,6 +27,6 @@
 
     <!-- TF Tree Connection During Replay -->
     <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"
-          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>
+          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_graph_msf_aligned compslam_lio/camera_init_CORRECTED 100"/>
 
 </launch>
