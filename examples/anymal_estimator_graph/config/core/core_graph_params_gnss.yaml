@@ -16,7 +16,7 @@ initialization_params:
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
-  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  useAdditionalSlowBatchSmoother: false   # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
@@ -57,12 +57,6 @@ noise_params:
   initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
   initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
   initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
-  ### No GNSS
-#  initialPositionNoiseDensity: 1.0e-04    # Prior/starting value of position
-#  initialOrientationNoiseDensity: 1.0e-03 # Prior/starting value of orientation
-#  initialVelocityNoiseDensity: 1.0e-02 # Prior/starting value of velocity
-#  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
-#  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:

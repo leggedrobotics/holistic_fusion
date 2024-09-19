@@ -608,8 +608,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }  // end: if active statement
-    }  // for loop over all transforms
+      }    // end: if active statement
+    }      // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -832,7 +832,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     assert(stateCategory == 'b');
 
     // Capitalized state category
-    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));;
+    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));
+    ;
 
     // C.A Creation of the identifier for the file -----------------------------------
     std::string stateCategoryString = stateCategoryCapital + "_imu_bias_";

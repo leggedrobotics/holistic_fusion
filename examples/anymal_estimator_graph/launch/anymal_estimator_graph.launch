@@ -22,16 +22,24 @@
     <arg name="using_lio_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
     <arg name="using_legged_velocity_unary" default="true"/>
-    <arg name="using_legged_kinematics" default="true"/>
+    <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Config Files -->
+    <!-- GNSS Available -->
+    <arg if="$(arg using_gnss_unary)" name="core_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/core/core_graph_params_gnss.yaml"/>
+    <arg if="$(arg using_gnss_unary)" name="anymal_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_gnss.yaml"/>
+    <!-- GNSS Unavailable -->
+    <arg unless="$(arg using_gnss_unary)" name="core_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/core/core_graph_params_no_gnss.yaml"/>
+    <arg unless="$(arg using_gnss_unary)" name="anymal_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_no_gnss.yaml"/>
+    <!-- GNSS Independent -->
     <arg name="core_graph_config_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
-    <arg name="core_graph_param_file" default="$(find anymal_estimator_graph)/config/core/core_graph_params.yaml"/>
     <arg name="core_extrinsic_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_extrinsic_params.yaml"/>
-    <arg name="anymal_graph_param_file"
-         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params.yaml"/>
     <arg name="anymal_extrinsic_param_file"
          default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_extrinsic_params.yaml"/>
     <arg name="anymal_gnss_param_file"

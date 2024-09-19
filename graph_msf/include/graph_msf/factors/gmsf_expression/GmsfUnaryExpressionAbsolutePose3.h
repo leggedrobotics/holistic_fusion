@@ -80,7 +80,8 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
   // iv) extrinsic calibration correction --------------------------------------------------------------
   void applyExtrinsicCalibrationCorrection(const gtsam::Pose3_& expt_T_sensorFrame_sensorFrameCorrect) final {
     // Apply calibration correction
-    exp_T_fixedFrame_sensorFrame_ = exp_T_fixedFrame_sensorFrame_ * expt_T_sensorFrame_sensorFrameCorrect;  // T_fixedFrame_sensorFrameCorrected
+    exp_T_fixedFrame_sensorFrame_ =
+        exp_T_fixedFrame_sensorFrame_ * expt_T_sensorFrame_sensorFrameCorrect;  // T_fixedFrame_sensorFrameCorrected
   }
 
   gtsam::Pose3 convertToPose3(const gtsam::Pose3& measurement) final { return measurement; }
