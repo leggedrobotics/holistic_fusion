@@ -1,9 +1,14 @@
 # Sensor Params
 sensor_params:
-  positionRate: 20 # Rate of the Position input (Hz)
+  prismPositionRate: 20 # Rate of the Position input (Hz)
+  gnssPositionRate: 20 # Rate of the GNSS input (Hz)
+
+# Alignment Parameters
+alignment_params:
+  initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
 noise_params:
   ## Position measurement
-  PositionMeasUnaryNoise: 0.04 # x, y, z of global position
-  RealsenseOdomPoseUnaryNoise: [ 0.5, 0.5, 0.5, 0.1, 0.1, 0.1 ] # ORDER RPY(rad) - XYZ(meters)
+  prismPositionMeasUnaryNoise: 0.04 # x, y, z of global position
+  gnssPositionMeasUnaryNoise: 0.04 # x, y, z of global position

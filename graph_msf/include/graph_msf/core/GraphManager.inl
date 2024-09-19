@@ -42,7 +42,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   } else {  // Case 2: No expression factor
     unaryFactorPtr = std::make_shared<FACTOR_TYPE>(SYMBOL_SHORTHAND(closestKey), unaryMeasurement, noise);
     // Write to graph
-    addFactorSafelyToGraph_<const FACTOR_TYPE*>(unaryFactorPtr.get(), measurementTime);
+    addFactorSafelyToRtAndBatchGraph_<const FACTOR_TYPE*>(unaryFactorPtr.get(), measurementTime);
   }
 
   // Print summary
@@ -53,41 +53,32 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
 }
 
 // 2) GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
-template <class GTSAM_MEASUREMENT_TYPE>
-void GraphManager::addUnaryGmsfExpressionFactor(
-    const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr) {
+template <class GMSF_EXPRESSION_TYPE>  // e.g. GmsfUnaryExpressionAbsolutePose3
+void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr) {
   // Measurement
-  const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getUnaryMeasurementPtr();
+  const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
 
-  // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
+  // Get corresponding key of robot state in graph
   gtsam::Key closestGeneralKey;
   double closestGeneralKeyTime;
   if (!getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement)) {
     return;
   }
-  gmsfUnaryExpressionPtr->generateExpressionForBasicImuStateInWorldFrameAtKey(closestGeneralKey);
 
-  // B. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ && unaryMeasurement.fixedFrameName() != worldFrame_) {
-    gmsfUnaryExpressionPtr->transformStateFromWorldToFixedFrame(gtsamExpressionTransformsKeys_, W_imuPropagatedState_,
-                                                                graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_);
-  }
+  // Create Expression --> exact type of expression is determined by the template
+  const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
+      closestGeneralKey, gtsamTransformsExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_,
+      graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_,
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_);
 
-  // C. Transform State to Sensor Frame -----------------------------------------------------
-  if (gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->sensorFrameName() != imuFrame_) {
-    gmsfUnaryExpressionPtr->transformStateToSensorFrame();
-  }
-
-  // D. Extrinsic Calibration: Add correction to sensor pose -----------------------------------------
-  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
-    gmsfUnaryExpressionPtr->addExtrinsicCalibrationCorrection(gtsamExpressionTransformsKeys_);
-  }
+  // Factor
+  std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> unaryExpressionFactorPtr;
 
   // Noise & Error Function
   auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryExpressionPtr->getNoiseDensity());  // rad,rad,rad,x,y,z
   // Robust Error Function?
-  const RobustNormEnum robustNormEnum(gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->robustNormEnum());
-  const double robustNormConstant = gmsfUnaryExpressionPtr->getUnaryMeasurementPtr()->robustNormConstant();
+  const RobustNormEnum robustNormEnum(gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormEnum());
+  const double robustNormConstant = gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormConstant();
   boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
@@ -101,45 +92,75 @@ void GraphManager::addUnaryGmsfExpressionFactor(
     case RobustNormEnum::Tukey:
       robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noiseModel);
       break;
+    case RobustNormEnum::None:
+      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+          noiseModel, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
+      break;
   }
 
   // Create Factor
-  std::shared_ptr<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>> unaryExpressionFactorPtr;
-  if (robustNormEnum == RobustNormEnum::None) {
-    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>>(
-        noiseModel, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
-  } else {
-    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>>(
-        robustErrorFunction, gmsfUnaryExpressionPtr->getMeasurement(), gmsfUnaryExpressionPtr->getExpression());
+  if (robustNormEnum != RobustNormEnum::None) {
+    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+        robustErrorFunction, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
   }
 
   // Operating on graph data
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    // Add to graph
-    const bool success = addFactorToGraph_<const gtsam::ExpressionFactor<GTSAM_MEASUREMENT_TYPE>*>(
+    // Main expression factor: add to graph
+    const bool success = addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
         unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression");
 
     // If successful
     if (success) {
-      // Write to timestamp map for fixed lag smoother if newer than existing one
+      // A. Write to timestamp map for fixed lag smoother if newer than existing one for all keys that are in expression factor
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
-        // Find timestamp in existing buffer: if i) not existent or ii) newer than existing one -> write
-        if (graphKeysTimestampsMapBufferPtr_->find(key) == graphKeysTimestampsMapBufferPtr_->end()) {
-          writeKeyToKeyTimeStampMap_(key, propagatedStateTime_, graphKeysTimestampsMapBufferPtr_);
+        // a) Rt Graph
+        // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+        auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
+        // i) Not existent
+        if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end()) {
+          // TODO: Check if it should not be propagatedStateTime_ instead of gmsfUnaryExpressionPtr->getTimestamp()
+          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
         }
-        // If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-        //        else if (gmsfUnaryExpressionPtr->getTimestamp() > graphKeysTimestampsMapBufferPtr_->at(key)) {
-        //          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), graphKeysTimestampsMapBufferPtr_);
-        //        }
+        // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
+        else if (gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
+          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
+        }
+        // b) Batch Graph
+        if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+          // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+          auto batchKeyTimestampMapIterator = batchGraphKeysTimestampsMapBufferPtr_->find(key);
+          // i) Not existent
+          if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end()) {
+            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
+          }
+          // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
+          else if (gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
+            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
+          }
+        }
       }
-      // If one of the states was newly created, then add it to the values
-      if (!gmsfUnaryExpressionPtr->getNewStateValues().empty()) {
-        graphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewStateValues());
+      // B. If one of the states was newly created, then add it to the values
+      if (!gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().empty()) {
+        rtGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues());
       }
-      // If new factors are there (due to newly generated factor or for regularization), add it to the graph
-      if (!gmsfUnaryExpressionPtr->getNewPriorPoseFactors().empty()) {
-        factorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewPriorPoseFactors());
+      if (!gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues().empty()) {
+        batchGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues());
+      }
+      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph
+      if (!gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors().empty()) {
+        // Prior factors --> only needed for online graph, as observable for offline graph
+        rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors());
+      }
+      if (!gmsfUnaryExpressionPtr->getNewOnlineDynamicPriorFactors().empty()) {
+        // Dynamic prior factors --> only needed for online graph, as observable for offline graph
+        rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineDynamicPriorFactors());
+      }
+      if (!gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors().empty()) {
+        // Between factors --> needed for both online and offline graph to model random walk
+        rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
+        batchFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
       }
     }
   }
@@ -147,7 +168,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(
   // Print summary --------------------------------------
   if (graphConfigPtr_->verboseLevel_ > 0) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
-                 << typeid(GTSAM_MEASUREMENT_TYPE).name() << " added to keys ";
+                 << typeid(GMSF_EXPRESSION_TYPE).name() << " added to keys ";
     for (const auto& key : unaryExpressionFactorPtr->keys()) {
       std::cout << gtsam::Symbol(key) << ", ";
     }
@@ -157,14 +178,17 @@ void GraphManager::addUnaryGmsfExpressionFactor(
 
 // Private -----------------------------------------------------------------------------------------
 template <class CHILDPTR>
-bool GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
-  factorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
+  rtFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    batchFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  }
   return true;
 }
 
 template <class CHILDPTR>
-bool GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp,
-                                     const std::string& measurementName) {
+bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp,
+                                               const std::string& measurementName) {
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
       (graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME)) {
@@ -177,15 +201,16 @@ bool GraphManager::addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFa
     return false;
   }
   // Add measurements
-  return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr);
+  return addFactorToRtAndBatchGraph_<CHILDPTR>(noiseModelFactorPtr);
 }
 
 template <class CHILDPTR>
-bool GraphManager::addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp) {
+bool GraphManager::addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr,
+                                                     const double measurementTimestamp) {
   // Operating on graph data --> acquire mutex
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   // Add measurements
-  return addFactorToGraph_<CHILDPTR>(noiseModelFactorPtr, measurementTimestamp, "safe");
+  return addFactorToRtAndBatchGraph_<CHILDPTR>(noiseModelFactorPtr, measurementTimestamp, "safe");
 }
 
 void GraphManager::writeKeyToKeyTimeStampMap_(const gtsam::Key& key, const double measurementTime,

@@ -6,8 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-        - /WorldOdometry1/Covariance1
-      Splitter Ratio: 0.5235294103622437
+        - /WorldImuOdometry1/Shape1
+        - /WorldImuOdometry1/Covariance1/Position1
+        - /WorldImuOdometry1/Covariance1/Orientation1
+      Splitter Ratio: 0.6906187534332275
     Tree Height: 1039
   - Class: rviz/Selection
     Name: Selection
@@ -97,6 +99,48 @@ Visualization Manager:
         All Enabled: false
         LF_FOOT:
           Value: true
+        LF_FOOT_10_graph_msf_aligned:
+          Value: true
+        LF_FOOT_11_graph_msf_aligned:
+          Value: true
+        LF_FOOT_12_graph_msf_aligned:
+          Value: true
+        LF_FOOT_13_graph_msf_aligned:
+          Value: true
+        LF_FOOT_14_graph_msf_aligned:
+          Value: true
+        LF_FOOT_15_graph_msf_aligned:
+          Value: true
+        LF_FOOT_16_graph_msf_aligned:
+          Value: true
+        LF_FOOT_17_graph_msf_aligned:
+          Value: true
+        LF_FOOT_18_graph_msf_aligned:
+          Value: true
+        LF_FOOT_19_graph_msf_aligned:
+          Value: true
+        LF_FOOT_1_graph_msf_aligned:
+          Value: true
+        LF_FOOT_20_graph_msf_aligned:
+          Value: true
+        LF_FOOT_21_graph_msf_aligned:
+          Value: true
+        LF_FOOT_2_graph_msf_aligned:
+          Value: true
+        LF_FOOT_3_graph_msf_aligned:
+          Value: true
+        LF_FOOT_4_graph_msf_aligned:
+          Value: true
+        LF_FOOT_5_graph_msf_aligned:
+          Value: true
+        LF_FOOT_6_graph_msf_aligned:
+          Value: true
+        LF_FOOT_7_graph_msf_aligned:
+          Value: true
+        LF_FOOT_8_graph_msf_aligned:
+          Value: true
+        LF_FOOT_9_graph_msf_aligned:
+          Value: true
         LF_HAA:
           Value: true
         LF_HFE:
@@ -116,6 +160,50 @@ Visualization Manager:
         LF_thigh_fixed:
           Value: true
         LH_FOOT:
+          Value: true
+        LH_FOOT_10_graph_msf_aligned:
+          Value: true
+        LH_FOOT_11_graph_msf_aligned:
+          Value: true
+        LH_FOOT_12_graph_msf_aligned:
+          Value: true
+        LH_FOOT_13_graph_msf_aligned:
+          Value: true
+        LH_FOOT_14_graph_msf_aligned:
+          Value: true
+        LH_FOOT_15_graph_msf_aligned:
+          Value: true
+        LH_FOOT_16_graph_msf_aligned:
+          Value: true
+        LH_FOOT_17_graph_msf_aligned:
+          Value: true
+        LH_FOOT_18_graph_msf_aligned:
+          Value: true
+        LH_FOOT_19_graph_msf_aligned:
+          Value: true
+        LH_FOOT_1_graph_msf_aligned:
+          Value: true
+        LH_FOOT_20_graph_msf_aligned:
+          Value: true
+        LH_FOOT_21_graph_msf_aligned:
+          Value: true
+        LH_FOOT_22_graph_msf_aligned:
+          Value: true
+        LH_FOOT_2_graph_msf_aligned:
+          Value: true
+        LH_FOOT_3_graph_msf_aligned:
+          Value: true
+        LH_FOOT_4_graph_msf_aligned:
+          Value: true
+        LH_FOOT_5_graph_msf_aligned:
+          Value: true
+        LH_FOOT_6_graph_msf_aligned:
+          Value: true
+        LH_FOOT_7_graph_msf_aligned:
+          Value: true
+        LH_FOOT_8_graph_msf_aligned:
+          Value: true
+        LH_FOOT_9_graph_msf_aligned:
           Value: true
         LH_HAA:
           Value: true
@@ -137,6 +225,50 @@ Visualization Manager:
           Value: true
         RF_FOOT:
           Value: true
+        RF_FOOT_10_graph_msf_aligned:
+          Value: true
+        RF_FOOT_11_graph_msf_aligned:
+          Value: true
+        RF_FOOT_12_graph_msf_aligned:
+          Value: true
+        RF_FOOT_13_graph_msf_aligned:
+          Value: true
+        RF_FOOT_14_graph_msf_aligned:
+          Value: true
+        RF_FOOT_15_graph_msf_aligned:
+          Value: true
+        RF_FOOT_16_graph_msf_aligned:
+          Value: true
+        RF_FOOT_17_graph_msf_aligned:
+          Value: true
+        RF_FOOT_18_graph_msf_aligned:
+          Value: true
+        RF_FOOT_19_graph_msf_aligned:
+          Value: true
+        RF_FOOT_1_graph_msf_aligned:
+          Value: true
+        RF_FOOT_20_graph_msf_aligned:
+          Value: true
+        RF_FOOT_21_graph_msf_aligned:
+          Value: true
+        RF_FOOT_22_graph_msf_aligned:
+          Value: true
+        RF_FOOT_2_graph_msf_aligned:
+          Value: true
+        RF_FOOT_3_graph_msf_aligned:
+          Value: true
+        RF_FOOT_4_graph_msf_aligned:
+          Value: true
+        RF_FOOT_5_graph_msf_aligned:
+          Value: true
+        RF_FOOT_6_graph_msf_aligned:
+          Value: true
+        RF_FOOT_7_graph_msf_aligned:
+          Value: true
+        RF_FOOT_8_graph_msf_aligned:
+          Value: true
+        RF_FOOT_9_graph_msf_aligned:
+          Value: true
         RF_HAA:
           Value: true
         RF_HFE:
@@ -156,6 +288,48 @@ Visualization Manager:
         RF_thigh_fixed:
           Value: true
         RH_FOOT:
+          Value: true
+        RH_FOOT_10_graph_msf_aligned:
+          Value: true
+        RH_FOOT_11_graph_msf_aligned:
+          Value: true
+        RH_FOOT_12_graph_msf_aligned:
+          Value: true
+        RH_FOOT_13_graph_msf_aligned:
+          Value: true
+        RH_FOOT_14_graph_msf_aligned:
+          Value: true
+        RH_FOOT_15_graph_msf_aligned:
+          Value: true
+        RH_FOOT_16_graph_msf_aligned:
+          Value: true
+        RH_FOOT_17_graph_msf_aligned:
+          Value: true
+        RH_FOOT_18_graph_msf_aligned:
+          Value: true
+        RH_FOOT_19_graph_msf_aligned:
+          Value: true
+        RH_FOOT_1_graph_msf_aligned:
+          Value: true
+        RH_FOOT_20_graph_msf_aligned:
+          Value: true
+        RH_FOOT_21_graph_msf_aligned:
+          Value: true
+        RH_FOOT_2_graph_msf_aligned:
+          Value: true
+        RH_FOOT_3_graph_msf_aligned:
+          Value: true
+        RH_FOOT_4_graph_msf_aligned:
+          Value: true
+        RH_FOOT_5_graph_msf_aligned:
+          Value: true
+        RH_FOOT_6_graph_msf_aligned:
+          Value: true
+        RH_FOOT_7_graph_msf_aligned:
+          Value: true
+        RH_FOOT_8_graph_msf_aligned:
+          Value: true
+        RH_FOOT_9_graph_msf_aligned:
           Value: true
         RH_HAA:
           Value: true
@@ -323,6 +497,8 @@ Visualization Manager:
           Value: true
         map_o3d:
           Value: true
+        map_o3d_graph_msf_aligned:
+          Value: true
         odom:
           Value: true
         odom_graph_msf:
@@ -474,7 +650,180 @@ Visualization Manager:
               {}
             odom_graph_msf:
               world_graph_msf:
-                {}
+                LF_FOOT_10_graph_msf_aligned:
+                  {}
+                LF_FOOT_11_graph_msf_aligned:
+                  {}
+                LF_FOOT_12_graph_msf_aligned:
+                  {}
+                LF_FOOT_13_graph_msf_aligned:
+                  {}
+                LF_FOOT_14_graph_msf_aligned:
+                  {}
+                LF_FOOT_15_graph_msf_aligned:
+                  {}
+                LF_FOOT_16_graph_msf_aligned:
+                  {}
+                LF_FOOT_17_graph_msf_aligned:
+                  {}
+                LF_FOOT_18_graph_msf_aligned:
+                  {}
+                LF_FOOT_19_graph_msf_aligned:
+                  {}
+                LF_FOOT_1_graph_msf_aligned:
+                  {}
+                LF_FOOT_20_graph_msf_aligned:
+                  {}
+                LF_FOOT_21_graph_msf_aligned:
+                  {}
+                LF_FOOT_2_graph_msf_aligned:
+                  {}
+                LF_FOOT_3_graph_msf_aligned:
+                  {}
+                LF_FOOT_4_graph_msf_aligned:
+                  {}
+                LF_FOOT_5_graph_msf_aligned:
+                  {}
+                LF_FOOT_6_graph_msf_aligned:
+                  {}
+                LF_FOOT_7_graph_msf_aligned:
+                  {}
+                LF_FOOT_8_graph_msf_aligned:
+                  {}
+                LF_FOOT_9_graph_msf_aligned:
+                  {}
+                LH_FOOT_10_graph_msf_aligned:
+                  {}
+                LH_FOOT_11_graph_msf_aligned:
+                  {}
+                LH_FOOT_12_graph_msf_aligned:
+                  {}
+                LH_FOOT_13_graph_msf_aligned:
+                  {}
+                LH_FOOT_14_graph_msf_aligned:
+                  {}
+                LH_FOOT_15_graph_msf_aligned:
+                  {}
+                LH_FOOT_16_graph_msf_aligned:
+                  {}
+                LH_FOOT_17_graph_msf_aligned:
+                  {}
+                LH_FOOT_18_graph_msf_aligned:
+                  {}
+                LH_FOOT_19_graph_msf_aligned:
+                  {}
+                LH_FOOT_1_graph_msf_aligned:
+                  {}
+                LH_FOOT_20_graph_msf_aligned:
+                  {}
+                LH_FOOT_21_graph_msf_aligned:
+                  {}
+                LH_FOOT_22_graph_msf_aligned:
+                  {}
+                LH_FOOT_2_graph_msf_aligned:
+                  {}
+                LH_FOOT_3_graph_msf_aligned:
+                  {}
+                LH_FOOT_4_graph_msf_aligned:
+                  {}
+                LH_FOOT_5_graph_msf_aligned:
+                  {}
+                LH_FOOT_6_graph_msf_aligned:
+                  {}
+                LH_FOOT_7_graph_msf_aligned:
+                  {}
+                LH_FOOT_8_graph_msf_aligned:
+                  {}
+                LH_FOOT_9_graph_msf_aligned:
+                  {}
+                RF_FOOT_10_graph_msf_aligned:
+                  {}
+                RF_FOOT_11_graph_msf_aligned:
+                  {}
+                RF_FOOT_12_graph_msf_aligned:
+                  {}
+                RF_FOOT_13_graph_msf_aligned:
+                  {}
+                RF_FOOT_14_graph_msf_aligned:
+                  {}
+                RF_FOOT_15_graph_msf_aligned:
+                  {}
+                RF_FOOT_16_graph_msf_aligned:
+                  {}
+                RF_FOOT_17_graph_msf_aligned:
+                  {}
+                RF_FOOT_18_graph_msf_aligned:
+                  {}
+                RF_FOOT_19_graph_msf_aligned:
+                  {}
+                RF_FOOT_1_graph_msf_aligned:
+                  {}
+                RF_FOOT_20_graph_msf_aligned:
+                  {}
+                RF_FOOT_21_graph_msf_aligned:
+                  {}
+                RF_FOOT_22_graph_msf_aligned:
+                  {}
+                RF_FOOT_2_graph_msf_aligned:
+                  {}
+                RF_FOOT_3_graph_msf_aligned:
+                  {}
+                RF_FOOT_4_graph_msf_aligned:
+                  {}
+                RF_FOOT_5_graph_msf_aligned:
+                  {}
+                RF_FOOT_6_graph_msf_aligned:
+                  {}
+                RF_FOOT_7_graph_msf_aligned:
+                  {}
+                RF_FOOT_8_graph_msf_aligned:
+                  {}
+                RF_FOOT_9_graph_msf_aligned:
+                  {}
+                RH_FOOT_10_graph_msf_aligned:
+                  {}
+                RH_FOOT_11_graph_msf_aligned:
+                  {}
+                RH_FOOT_12_graph_msf_aligned:
+                  {}
+                RH_FOOT_13_graph_msf_aligned:
+                  {}
+                RH_FOOT_14_graph_msf_aligned:
+                  {}
+                RH_FOOT_15_graph_msf_aligned:
+                  {}
+                RH_FOOT_16_graph_msf_aligned:
+                  {}
+                RH_FOOT_17_graph_msf_aligned:
+                  {}
+                RH_FOOT_18_graph_msf_aligned:
+                  {}
+                RH_FOOT_19_graph_msf_aligned:
+                  {}
+                RH_FOOT_1_graph_msf_aligned:
+                  {}
+                RH_FOOT_20_graph_msf_aligned:
+                  {}
+                RH_FOOT_21_graph_msf_aligned:
+                  {}
+                RH_FOOT_2_graph_msf_aligned:
+                  {}
+                RH_FOOT_3_graph_msf_aligned:
+                  {}
+                RH_FOOT_4_graph_msf_aligned:
+                  {}
+                RH_FOOT_5_graph_msf_aligned:
+                  {}
+                RH_FOOT_6_graph_msf_aligned:
+                  {}
+                RH_FOOT_7_graph_msf_aligned:
+                  {}
+                RH_FOOT_8_graph_msf_aligned:
+                  {}
+                RH_FOOT_9_graph_msf_aligned:
+                  {}
+                map_o3d_graph_msf_aligned:
+                  {}
             perception_head_cage:
               lidar:
                 map_o3d:
@@ -530,36 +879,6 @@ Visualization Manager:
               laser_odom_CORRECTED:
                 {}
       Update Interval: 0
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: false
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: z
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 16.27729034423828
-      Min Color: 0; 0; 0
-      Min Intensity: -3.2934958934783936
-      Name: FilteredPointCloud
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 2
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /lidar/point_cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -718,6 +1037,64 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
+      Name: AnymalPointCloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.029999999329447746
+      Style: Flat Squares
+      Topic: /point_cloud_filter/lidar/point_cloud_filtered
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: false
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: z
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 16.27729034423828
+      Min Color: 0; 0; 0
+      Min Intensity: -3.2934958934783936
+      Name: FilteredPointCloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 2
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic: /lidar/point_cloud
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
       Name: CompslamMap
       Position Transformer: XYZ
       Queue Size: 10
@@ -750,7 +1127,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 4
+      Size (Pixels): 1
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /open3d_slam/assembled_map
@@ -1134,7 +1511,7 @@ Visualization Manager:
         Value: true
       Enabled: true
       Keep: 1
-      Name: Qualisys
+      Name: QualisysOdometry
       Position Tolerance: 0
       Queue Size: 10
       Shape:
@@ -1154,22 +1531,22 @@ Visualization Manager:
       Class: rviz/Odometry
       Covariance:
         Orientation:
-          Alpha: 0.5
+          Alpha: 1
           Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
+          Color Style: RGB
+          Frame: Fixed
           Offset: 1
-          Scale: 1
+          Scale: 3
           Value: true
         Position:
-          Alpha: 0.30000001192092896
+          Alpha: 0.5
           Color: 204; 51; 204
           Scale: 1
           Value: true
         Value: true
       Enabled: true
       Keep: 1
-      Name: WorldOdometry
+      Name: WorldImuOdometry
       Position Tolerance: 0
       Queue Size: 10
       Shape:
@@ -1184,34 +1561,6 @@ Visualization Manager:
         Value: Arrow
       Topic: /graph_msf/est_odometry_odom_imu
       Unreliable: false
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: AnymalPointCloud
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.029999999329447746
-      Style: Flat Squares
-      Topic: /point_cloud_filter/lidar/point_cloud_filtered
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
       Value: true
     - Alpha: 1
       Axes Length: 1
@@ -1236,7 +1585,7 @@ Visualization Manager:
       Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: WorldToMap
+      Name: WorldToCompslamMapTransform
       Queue Size: 10
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
@@ -1245,10 +1594,10 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Alpha: 1
-      Axes Length: 1
+      Axes Length: 2
       Axes Radius: 0.10000000149011612
       Class: rviz/PoseWithCovariance
-      Color: 255; 85; 255
+      Color: 25; 255; 240
       Covariance:
         Orientation:
           Alpha: 0.5
@@ -1267,13 +1616,29 @@ Visualization Manager:
       Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: PoseWithCovariance
+      Name: WorldToO3DMapTransform
       Queue Size: 10
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
-      Shape: Arrow
-      Topic: /graph_msf/transform_world_graph_msf_to_east_north_up_graph_msf_aligned
+      Shape: Axes
+      Topic: /graph_msf/transform_world_graph_msf_to_map_o3d_graph_msf_aligned
       Unreliable: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /graph_msf/velocity_marker
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /graph_msf/foot_contact_markers
+      Name: MarkerArray
+      Namespaces:
+        foot_contact: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -1303,7 +1668,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 8.034207344055176
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1319,9 +1684,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3753988742828369
+      Pitch: 0.7853981852531433
       Target Frame: lidar
-      Yaw: 3.670403242111206
+      Yaw: 0.7853981852531433
     Saved: ~
 Window Geometry:
   Displays:
@@ -1329,7 +1694,7 @@ Window Geometry:
   Height: 1328
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f7000004d6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000073c000004f000000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000004d6000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000521fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000521000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000041800fffffffb0000000800540069006d0065010000000000000450000000000000000000000803000004d600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001f7000004d6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000073c000004f000000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000004d6000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f000004d6fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000004d6000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064f0000003efc0100000002fb0000000800540069006d006500000000000000064f0000041800fffffffb0000000800540069006d0065010000000000000450000000000000000000000803000004d600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

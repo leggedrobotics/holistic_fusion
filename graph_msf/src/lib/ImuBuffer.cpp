@@ -12,7 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <iomanip>
 
 // Workspace
-#include "graph_msf/core/Datatypes.hpp"
+#include "graph_msf/core/ImuMeasurement.hpp"
 #include "graph_msf/interface/Terminal.h"
 
 namespace graph_msf {

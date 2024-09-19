@@ -33,7 +33,7 @@ class ImuIntegrator : public graph_msf::GraphMsfRos {
   ImuIntegrator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
  private:
-  virtual void imuCallback_(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
+  void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
 };
 }  // namespace imu_integrator
 #endif  // end ImuIntegrator_H

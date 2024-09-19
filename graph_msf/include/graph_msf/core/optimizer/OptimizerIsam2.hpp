@@ -31,12 +31,12 @@ class OptimizerIsam2 : public OptimizerBase {
     // Set graph re-linearization thresholds - must be lower-case letters,
     // check:gtsam::symbol_shorthand
     gtsam::FastMap<char, gtsam::Vector> relinTh;
-    /// Pose
+    /// Robot Pose
     relinTh['x'] =
         (gtsam::Vector(6) << graphConfigPtr_->rotationReLinTh_, graphConfigPtr_->rotationReLinTh_, graphConfigPtr_->rotationReLinTh_,
          graphConfigPtr_->positionReLinTh_, graphConfigPtr_->positionReLinTh_, graphConfigPtr_->positionReLinTh_)
             .finished();
-    /// Velocity
+    /// Robot Velocity
     relinTh['v'] =
         (gtsam::Vector(3) << graphConfigPtr_->velocityReLinTh_, graphConfigPtr_->velocityReLinTh_, graphConfigPtr_->velocityReLinTh_)
             .finished();
@@ -45,17 +45,30 @@ class OptimizerIsam2 : public OptimizerBase {
         (gtsam::Vector(6) << graphConfigPtr_->accBiasReLinTh_, graphConfigPtr_->accBiasReLinTh_, graphConfigPtr_->accBiasReLinTh_,
          graphConfigPtr_->gyroBiasReLinTh_, graphConfigPtr_->gyroBiasReLinTh_, graphConfigPtr_->gyroBiasReLinTh_)
             .finished();
-    if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
-      relinTh['t'] = (gtsam::Vector(6) << graphConfigPtr_->fixedFrameReLinTh_, graphConfigPtr_->fixedFrameReLinTh_,
-                      graphConfigPtr_->fixedFrameReLinTh_, graphConfigPtr_->fixedFrameReLinTh_, graphConfigPtr_->fixedFrameReLinTh_,
-                      graphConfigPtr_->fixedFrameReLinTh_)
+    /// Reference Frames
+    if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
+      relinTh['r'] = (gtsam::Vector(6) << graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_,
+                      graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_,
+                      graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_)
                          .finished();
     }
+    /// Calibration
     if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
+      /// 6 DoF (Position and Rotation)
+      relinTh['c'] = (gtsam::Vector(6) << graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_,
+                      graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_,
+                      graphConfigPtr_->calibrationReLinTh_)
+                         .finished();
+      /// 3 DoF (Position Displacement)
       relinTh['d'] = (gtsam::Vector(3) << graphConfigPtr_->displacementReLinTh_, graphConfigPtr_->displacementReLinTh_,
                       graphConfigPtr_->displacementReLinTh_)
                          .finished();
     }
+    /// Landmarks
+    relinTh['l'] =
+        (gtsam::Vector(3) << graphConfigPtr_->landmarkReLinTh_, graphConfigPtr_->landmarkReLinTh_, graphConfigPtr_->landmarkReLinTh_)
+            .finished();
+    /// Set relinearization thresholds
     isam2Params_.relinearizeThreshold = relinTh;
 
     // Factorization

@@ -7,14 +7,6 @@
     <arg name="run_estimator" default="true"/>
     <arg name="rviz_file_path" default="$(find anymal_estimator_graph)/rviz/gnss_lidar.rviz"/>
 
-    <!-- Config -->
-    <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary" default="true"/>
-    <arg name="using_lio_unary" default="true"/>
-    <arg name="using_lio_between" default="false"/>
-    <arg name="using_legged_between" default="false"/>
-    <arg name="using_legged_velocity_unary" default="true"/>
-
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
     <arg name="lidar_odometry_topic_name"
@@ -25,13 +17,6 @@
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch" if="$(arg run_estimator)">
-        <!-- Config  -->
-        <arg name="extrinsics_from_urdf" value="$(arg extrinsics_from_urdf)"/>
-        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
-        <arg name="using_lio_unary" value="$(arg using_lio_unary)"/>
-        <arg name="using_lio_between" value="$(arg using_lio_between)"/>
-        <arg name="using_legged_between" value="$(arg using_legged_between)"/>
-        <arg name="using_legged_velocity_unary" value="$(arg using_legged_velocity_unary)"/>
         <!-- Input Topics -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>

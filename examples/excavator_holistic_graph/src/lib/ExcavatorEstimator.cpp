@@ -20,7 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace excavator_se {
 
 ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
+  REGULAR_COUT << " ExcavatorEstimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static Transforms
@@ -30,44 +30,32 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
   // Setup
-  if (not ExcavatorEstimator::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    throw std::runtime_error("ExcavatorEstimator could not be initialized");
-  }
-
-  std::cout << YELLOW_START << "ExcavatorEstimator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  ExcavatorEstimator::setup();
 }
 
-bool ExcavatorEstimator::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void ExcavatorEstimator::setup() {
+  REGULAR_COUT << GREEN_START << " ExcavatorEstimator-Setup called." << COLOR_END << std::endl;
 
   // Read parameters ----------------------------
-  ExcavatorEstimator::readParams_(privateNode_);
+  ExcavatorEstimator::readParams(privateNode);
 
   // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  graph_msf::GraphMsfRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
-  ExcavatorEstimator::initializePublishers_(privateNode_);
+  ExcavatorEstimator::initializePublishers(privateNode);
 
   // Subscribers ----------------------------
-  ExcavatorEstimator::initializeSubscribers_(privateNode_);
+  ExcavatorEstimator::initializeSubscribers(privateNode);
 
   // Messages ----------------------------
-  ExcavatorEstimator::initializeMessages_(privateNode_);
+  ExcavatorEstimator::initializeMessages(privateNode);
 
   // Static Transforms
   staticTransformsPtr_->findTransformations();
-
-  // Wrap up ----------------------------
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
-void ExcavatorEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
+void ExcavatorEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   // Status
   REGULAR_COUT << GREEN_START << " Initializing Publishers..." << COLOR_END << std::endl;
 
@@ -77,7 +65,7 @@ void ExcavatorEstimator::initializePublishers_(ros::NodeHandle& privateNode) {
   pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
 }
 
-void ExcavatorEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
+void ExcavatorEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // LiDAR Odometry
   if (useLioOdometryFlag_) {
     subLidarOdometry_ = privateNode.subscribe<nav_msgs::Odometry>(
@@ -96,7 +84,7 @@ void ExcavatorEstimator::initializeSubscribers_(ros::NodeHandle& privateNode) {
   }
 }
 
-void ExcavatorEstimator::initializeMessages_(ros::NodeHandle& privateNode) {
+void ExcavatorEstimator::initializeMessages(ros::NodeHandle& privateNode) {
   // Status
   REGULAR_COUT << GREEN_START << " Initializing Messages..." << COLOR_END << std::endl;
 
@@ -126,15 +114,15 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();
   const std::string& fixedFrameName = odomLidarPtr->header.frame_id;
   // Measurement
-  graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(),
-      lidarOdometryTimeK, fixedFrameName, 1.0, initialSe3AlignmentNoise_, lio_T_M_Lk, lioPoseUnaryNoise_);
+  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+      lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, initialSe3AlignmentNoise_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
   } else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-    this->addUnaryPose3Measurement(unary6DMeasurement);
-  } else if (!(useLeftGnssFlag_ || useRightGnssFlag_) || secondsSinceStart_() > 15) {  // Initializing
+    this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
+  } else if (!(useLeftGnssFlag_ || useRightGnssFlag_) || secondsSinceStart() > 15) {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(unary6DMeasurement);
   }
@@ -200,9 +188,9 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // State Machine
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {  // Try to initialize yaw and position if not done already
-    if (this->initYawAndPosition(yaw_W_C, W_t_W_GnssL, staticTransformsPtr_->getWorldFrame(),
-                                 dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
-                                 dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
+    if (this->initYawAndPositionInWorld(yaw_W_C, W_t_W_GnssL,
+                                        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
+                                        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
       REGULAR_COUT << " Set yaw and position successfully." << std::endl;
     }
   } else {  // Already initialized --> add to graph
@@ -212,10 +200,10 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame();
       // Create yaw measurement and add it
       Eigen::Matrix<double, 1, 1> gnssHeadingUnaryNoise(std::max(5.0 * leftGnssCovarianceXYZ.maxCoeff(), gnssHeadingUnaryNoise_));
-      graph_msf::UnaryMeasurementXD<double, 1> meas_yaw_W_C(
-          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(),
-          leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_, yaw_W_C, gnssHeadingUnaryNoise);
-      this->addUnaryYawMeasurement(meas_yaw_W_C);
+      graph_msf::UnaryMeasurementXDAbsolute<double, 1> meas_yaw_W_C(
+          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+          leftGnssMsgPtr->header.stamp.toSec(), 1.0, yaw_W_C, gnssHeadingUnaryNoise, fixedFrameName, initialSe3AlignmentNoise_);
+      this->addUnaryYawAbsoluteMeasurement(meas_yaw_W_C);
     }
     // Measurement type 2: GNSS Left Position ----------------------------------------------------
     if (useLeftGnssFlag_) {
@@ -225,10 +213,10 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       leftGnssCovarianceXYZ = Eigen::Vector3d(std::max(leftGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-      graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
-          "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_, graph_msf::RobustNorm::None(),
-          leftGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_, W_t_W_GnssL, leftGnssCovarianceXYZ);
-      this->addUnaryPosition3Measurement(meas_W_t_W_GnssL);
+      graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
+          "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+          leftGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssL, leftGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
+      this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssL);
     }
     // Measurement type 3: GNSS Right Position ----------------------------------------------------
     if (useRightGnssFlag_) {
@@ -238,11 +226,10 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       rightGnssCovarianceXYZ = Eigen::Vector3d(std::max(rightGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-      graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
-          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId_,
-          graph_msf::RobustNorm::None(), rightGnssMsgPtr->header.stamp.toSec(), fixedFrameName, 1.0, initialSe3AlignmentNoise_, W_t_W_GnssR,
-          rightGnssCovarianceXYZ);
-      this->addUnaryPosition3Measurement(meas_W_t_W_GnssR);
+      graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
+          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+          rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR, rightGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
+      this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssR);
     }
     // Visualizations ------------------------------------------------------------
     // Left GNSS
@@ -260,7 +247,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
   }
 }
 
-void ExcavatorEstimator::publishState_(
+void ExcavatorEstimator::publishState(
     const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
   // Lookup I->B, also influenced by rotation of cabin
@@ -279,7 +266,7 @@ void ExcavatorEstimator::publishState_(
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getBaseLinkFrame()).inverse();
 
   // Publish state
-  graph_msf::GraphMsfRos::publishState_(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  graph_msf::GraphMsfRos::publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
 }
 
 }  // namespace excavator_se

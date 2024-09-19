@@ -5,7 +5,7 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/interface/DualGraphMsf.h"
+#include "graph_msf/interface/GraphMsfDualGraph.h"
 #include "graph_msf/core/GraphManager.hpp"
 
 namespace graph_msf {

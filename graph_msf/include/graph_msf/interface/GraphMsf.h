@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
 
@@ -33,12 +34,13 @@ class GraphMsf {
   GraphMsf();
   // Destructor
   virtual ~GraphMsf() = default;
+
   // Setup
-  virtual bool setup();
+  void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Initialization Interface
-  bool initYawAndPosition(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
-                          const std::string& fixedFrame, const std::string& frame1, const std::string& frame2);
+  bool initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
+                                 const std::string& frame1, const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
 
   // Trigger offline smoother optimization
@@ -50,46 +52,49 @@ class GraphMsf {
   bool isGraphInited() const;
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
-  // Adder functions
-  /// Main: IMU
-  bool addImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
-                                    std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
-                                    std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
-                                    Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
+  // Main: IMU
+  bool addCoreImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+                                        std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
+                                        std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
+                                        Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements);
+
+  // Pure Virtual Methods
   /// Unary Measurements
-  void addUnaryPose3Measurement(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S);
-  void addUnaryPosition3Measurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_t_F_S);
-  void addUnaryVelocity3FixedFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& F_v_F_S);
-  void addUnaryVelocity3SensorFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S);
-  bool addUnaryRollMeasurement(const UnaryMeasurementXD<double, 1>& roll_F_S);
-  bool addUnaryPitchMeasurement(const UnaryMeasurementXD<double, 1>& pitch_F_S);
-  bool addUnaryYawMeasurement(const UnaryMeasurementXD<double, 1>& yaw_F_S);
+  //// Absolute Measurements
+  virtual void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& F_T_F_S) = 0;
+  virtual void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_t_F_S) = 0;
+  virtual void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) = 0;
+  virtual void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) = 0;
+  virtual void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) = 0;
+  virtual void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) = 0;
+  //// Local Measurements
+  virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
+
+  /// Landmark Measurements
+  virtual void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L, const int landmarkCreationCounter) = 0;
+  virtual void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) = 0;
 
   /// Binary Measurements
-  void addBinaryPoseMeasurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta);
+  virtual void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta) = 0;
 
-  /// Ambiguous Measurements
+  // Ambiguous Measurements
   bool addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity);
   bool addZeroVelocityFactor(double timeK, double noiseDensity);
 
  protected:
   // Methods -------------
-  /// Worker functions
-  //// Set Imu Attitude
-  bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
-  //// Initialize the graph
-  void initGraph_(const double timeStamp_k);
-  //// Updating the factor graph
-  void optimizeGraph_();
-
   /// Convenience functions
   template <int DIM>
-  bool isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& gnssCovarianceXYZ, const double covarianceViolationThreshold);
-
-  /// Utility functions
-  //// Geometric transformation to IMU in world frame
-  Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
-                                                const Eigen::Matrix3d& R_W_frame2);
+  bool isCovarianceViolated_(const Eigen::Matrix<double, DIM, 1>& covariance, const double covarianceViolationThreshold) {
+    if (covarianceViolationThreshold > 0.0) {
+      for (int i = 0; i < DIM; i++) {
+        if (covariance(i) > covarianceViolationThreshold) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   // Initialization
   void pretendFirstMeasurementReceived();
@@ -100,19 +105,13 @@ class GraphMsf {
   // Extrinsics
   std::shared_ptr<StaticTransforms> staticTransformsPtr_ = nullptr;
 
- private:  // Variables -------------
-  // Threads
-  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
-                                     /// new lidar measurement has arrived
-
-  // Mutex
-  std::mutex initYawAndPositionMutex_;
-  std::mutex optimizeGraphMutex_;
-
   // Factor graph
   std::shared_ptr<GraphManager> graphMgrPtr_ = nullptr;
   // Imu Buffer
-  std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr_;
+  std::shared_ptr<graph_msf::ImuBuffer> coreImuBufferPtr_;
+
+  // Mutex
+  std::mutex optimizeGraphMutex_;
 
   /// Flags
   //// Initialization
@@ -124,12 +123,32 @@ class GraphMsf {
   bool optimizeGraphFlag_ = false;
   bool normalOperationFlag_ = false;
 
-  /// State Containers
-  // Preintegrated NavState
-  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
-
   // Counter
   long imuCallbackCounter_ = 0;
+
+ private:
+  /// Worker functions
+  //// Set Imu Attitude
+  bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
+  //// Initialize the graph
+  void initGraph_(const double timeStamp_k);
+  //// Updating the factor graph
+  void optimizeGraph_();
+
+  /// Utility functions
+  //// Geometric transformation to IMU in world frame
+  Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
+                                                const Eigen::Matrix3d& R_W_frame2);
+
+  // Threads
+  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
+                                     /// new lidar measurement has arrived
+
+  // Mutex
+  std::mutex initYawAndPositionMutex_;
+
+  /// State Containers
+  std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
 };
 
 }  // namespace graph_msf

@@ -26,10 +26,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/Measurement.h"
+#include "graph_msf/measurements/UnaryMeasurement.h"
+#include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
 
 // General Binary Factor Interface
 // TODO: add binary factor interface
@@ -71,8 +75,8 @@ class GraphManager {
                                 double measurementTime);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
-  template <class GTSAM_MEASUREMENT_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE>>& gmsfUnaryExpressionPtr);
+  template <class GMSF_EXPRESSION_TYPE>
+  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -114,19 +118,21 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
   template <class CHILDPTR>
-  bool addFactorToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
-                         const std::string& measurementName);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
+                                   const std::string& measurementName);
   template <class CHILDPTR>
-  bool addFactorSafelyToGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
+  bool addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
   // Add Factors for a smoother
-  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                       const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
-                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, int additionalIterations);
+  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
+                                       const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                       const gtsam::NonlinearFactorGraph& newBatchGraphFactors, const gtsam::Values& newBatchGraphValues,
+                                       const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
   /// Find graph keys for timestamps
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
                       double timeKm1, double timeK, const std::string& name);
@@ -145,7 +151,7 @@ class GraphManager {
   // Optimization Transformations
   std::string imuFrame_;
   std::string worldFrame_;
-  TransformsExpressionKeys gtsamExpressionTransformsKeys_;
+  TransformsExpressionKeys<gtsam::Pose3> gtsamTransformsExpressionKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 
@@ -157,7 +163,7 @@ class GraphManager {
   gtsam::NavState W_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
   gtsam::NavState O_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
-  gtsam::Key propagatedStateKey_ = 0;                        // Current state key
+  gtsam::Key propagatedStateKey_ = 0;                        // Current state key, always start with 0
   double propagatedStateTime_ = 0.0;                         // Current state time
   double lastOptimizedStateTime_ = 0.0;                      // Last optimized state time
   gtsam::Vector3 currentAngularVelocity_ = gtsam::Vector3(0, 0, 0);
@@ -166,11 +172,14 @@ class GraphManager {
   std::shared_ptr<OptimizerBase> rtOptimizerPtr_;
   std::shared_ptr<OptimizerBase> batchOptimizerPtr_;
   /// Data buffer
-  std::shared_ptr<gtsam::NonlinearFactorGraph> factorGraphBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> rtFactorGraphBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> batchFactorGraphBufferPtr_;
   // Values map
-  std::shared_ptr<gtsam::Values> graphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> rtGraphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> batchGraphValuesBufferPtr_;
   // Keys timestamp map
-  std::shared_ptr<std::map<gtsam::Key, double>> graphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> rtGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> batchGraphKeysTimestampsMapBufferPtr_;
 
   // Preintegration
   /// Step Preintegrator

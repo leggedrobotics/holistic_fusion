@@ -32,16 +32,17 @@ class ImuPose3Fuser : public graph_msf::GraphMsfRos {
   // Destructor
   ~ImuPose3Fuser() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
+
+ protected:
+  // Virtual Functions
+  void initializePublishers(ros::NodeHandle& privateNode) override;
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNode) override;
+  void initializeServices(ros::NodeHandle& privateNode) override;
+  void readParams(const ros::NodeHandle& privateNode) override;
 
  private:
-  // Virtual Functions
-  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNode) override;
-  virtual void initializeServices_(ros::NodeHandle& privateNode) override;
-  virtual void readParams_(const ros::NodeHandle& privateNode) override;
-
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;

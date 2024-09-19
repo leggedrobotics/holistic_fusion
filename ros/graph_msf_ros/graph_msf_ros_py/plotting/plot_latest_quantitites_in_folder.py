@@ -1,9 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # General Packages
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
 # Path to the folder containing the files
 HOME_DIR = str(os.path.expanduser("~"))
@@ -12,8 +13,11 @@ dir_path = os.path.join(
     "workspaces/rsl_workspaces/graph_msf_ws/src/graph_msf_dev/examples/anymal_estimator_graph/logging",
 )
 
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Workspace
-import graph_msf_ros_py.utils.get_latest_time_string_in_folder as get_latest_time_string_in_folder
+import utils.get_latest_time_string_in_folder as get_latest_time_string_in_folder
 
 
 def plot_quantities_in_file(
@@ -23,7 +27,7 @@ def plot_quantities_in_file(
     fields = []
     if "bias" in type:
         fields = ["t", "a_x", "a_y", "a_z", "w_x", "w_y", "w_z"]
-    elif "transform" in type:
+    elif "transform" in type or "pose" in type:
         fields = ["t", "x", "y", "z", "qw", "qx", "qy", "qz", "roll", "pitch", "yaw"]
     elif "velocity" in type:
         fields = ["t", "v_x", "v_y", "v_z"]
@@ -67,7 +71,7 @@ def plot_quantities_in_file(
             plt.plot(data[:, 0], data[:, i], label=field)
 
         # Create plot
-        if "transform" in type and field == "z":
+        if ("transform" in type or "pose" in type) and field == "z":
             plt.xlabel("Time [s]")
             plt.ylabel("Position [m]")
             plt.title(f"{type} Position Over Time")
@@ -77,7 +81,7 @@ def plot_quantities_in_file(
             plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_position.png")
             plt.savefig(plot_path)
             plt.figure()
-        elif "transform" in type and field == "yaw":
+        elif ("transform" in type or "pose" in type) and field == "yaw":
             plt.xlabel("Time [s]")
             plt.ylabel("Orientation [rad]")
             plt.title(f"{type} Orientation Over Time")
@@ -121,7 +125,7 @@ def plot_quantities_in_file(
         print(f"Plot saved to: {plot_path}")
 
     # Now get the x, y plot
-    if "transform" in type:
+    if "transform" in type or "pose" in type:
         plt.plot(data[:, 1], data[:, 2], label="x-y")
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
@@ -143,10 +147,10 @@ def main():
     print("Latest file string: ", latest_file_string)
     # Plot following files:
     file_types = [
-        "B_bias",
-        "T_align_transform",
-        "V_state_velocity",
-        "X_state_transform",
+        "B_imu_bias",
+        "R_6D_transform",
+        "v_state_3D_velocity",
+        "X_state_6D_pose",
     ]
     # Get all files in the folder that contain the latest file string
     files = os.listdir(dir_path)

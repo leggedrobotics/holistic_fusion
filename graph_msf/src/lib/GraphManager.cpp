@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 
 // Workspace
+#include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/GraphManager.hpp"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -41,9 +42,12 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
       resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
       resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
   // Buffer
-  factorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
-  graphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
-  graphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
+  rtFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
+  batchFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
+  rtGraphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
+  batchGraphValuesBufferPtr_ = std::make_shared<gtsam::Values>();
+  rtGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
+  batchGraphKeysTimestampsMapBufferPtr_ = std::make_shared<std::map<gtsam::Key, double>>();
 
   // Keys
   timeToKeyBufferPtr_ = std::make_shared<TimeGraphKeyBuffer>(graphConfigPtr_->imuBufferLength_, graphConfigPtr_->verboseLevel_);
@@ -113,8 +117,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
                                                                 .finished());  // acc, acc, acc, gyro, gyro, gyro
 
   // Pre-allocate
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::Values newGraphValues;
+  gtsam::NonlinearFactorGraph newRtGraphFactors, newBatchGraphFactors;
+  gtsam::Values newRtGraphValues, newBatchGraphValues;
   std::shared_ptr<std::map<gtsam::Key, double>> priorKeyTimestampMapPtr = std::make_shared<std::map<gtsam::Key, double>>();
 
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
@@ -130,31 +134,52 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
     REGULAR_COUT << " Initial bias set to: " << *imuBiasPriorPtr_ << std::endl;
     valuesEstimate.insert(gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_);
     /// Timestamp mapping for incremental fixed lag smoother
-    graphValuesBufferPtr_->insert(valuesEstimate);
+    rtGraphValuesBufferPtr_->insert(valuesEstimate);
+    batchGraphValuesBufferPtr_->insert(valuesEstimate);  // TODO: Check whether velocity can be removed from batch
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, timeStamp, priorKeyTimestampMapPtr);
 
     // Initialize graph -------------------------------------------------
-    factorGraphBufferPtr_->resize(0);
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+    rtFactorGraphBufferPtr_->resize(0);
+    batchFactorGraphBufferPtr_->resize(0);
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+        gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0,
+        priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
         gtsam::symbol_shorthand::X(propagatedStateKey_), T_W_I0,
         priorPoseNoise);  // POSE - PriorFactor format is (key,value,matrix) value
     // is same type as type of PriorFactor
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
-                                                                              gtsam::Vector3(0, 0, 0),
-                                                                              priorVelocityNoise);  // VELOCITY
-    factorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::symbol_shorthand::B(propagatedStateKey_),
-                                                                                            *imuBiasPriorPtr_,
-                                                                                            priorBiasNoise);  // BIAS
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
+                                                                                gtsam::Vector3(0, 0, 0),
+                                                                                priorVelocityNoise);  // VELOCITY
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::symbol_shorthand::V(propagatedStateKey_),
+                                                                                   gtsam::Vector3(0, 0, 0),
+                                                                                   priorVelocityNoise);  // VELOCITY
+    rtFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(
+        gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_,
+        priorBiasNoise);  // BIAS
+    batchFactorGraphBufferPtr_->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(
+        gtsam::symbol_shorthand::B(propagatedStateKey_), *imuBiasPriorPtr_,
+        priorBiasNoise);  // BIAS
+
+    // Add to Time Key Buffer
+    timeToKeyBufferPtr_->addToBuffer(timeStamp, propagatedStateKey_);
 
     // Copy over
-    newGraphFactors = *factorGraphBufferPtr_;
-    newGraphValues = *graphValuesBufferPtr_;
-    factorGraphBufferPtr_->resize(0);
-    graphValuesBufferPtr_->clear();
+    // Rt
+    newRtGraphFactors = *rtFactorGraphBufferPtr_;
+    newRtGraphValues = *rtGraphValuesBufferPtr_;
+    rtFactorGraphBufferPtr_->resize(0);
+    rtGraphValuesBufferPtr_->clear();
+    // Batch
+    newBatchGraphFactors = *batchFactorGraphBufferPtr_;
+    newBatchGraphValues = *batchGraphValuesBufferPtr_;
+    batchFactorGraphBufferPtr_->resize(0);
+    batchGraphValuesBufferPtr_->clear();
   }
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
+  addFactorsToSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, *priorKeyTimestampMapPtr, newBatchGraphFactors, newBatchGraphValues,
+                                  *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -229,25 +254,33 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     const gtsam::Key oldKey = propagatedStateKey_;
     const gtsam::Key newKey = newPropagatedStateKey_();
 
-    // Add to key buffer
+    // Add to time key buffer
     timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
 
     // Add IMU Factor to graph
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    addFactorToGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
+    addFactorToRtAndBatchGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
 
     // Add IMU values
     gtsam::Values valuesEstimate;
     valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
-    graphValuesBufferPtr_->insert(valuesEstimate);
-    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, graphKeysTimestampsMapBufferPtr_);
+    rtGraphValuesBufferPtr_->insert(valuesEstimate);
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      batchGraphValuesBufferPtr_->insert(valuesEstimate);
+    }
+
+    // Add timestamps
+    writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, rtGraphKeysTimestampsMapBufferPtr_);
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, batchGraphKeysTimestampsMapBufferPtr_);
+    }
 
     // After adding this factor we can again empty the step integrator
-    // Reset IMU Step Preintegration
+    // Reset IMU Step Pre-integration
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
     } else {
@@ -260,28 +293,36 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
+  // Case 1: Can't add immediately
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
                                                       graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
+    // Measurement coming from the future
     if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
-      // Not too far in the future
+      // Not too far in the future --> add to buffer and add later
       if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
-      } else {
+      }
+      // Too far in the future --> do not add it
+      else {
         REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
                      << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
                      << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
                      << " ms. Not adding to graph." << COLOR_END << std::endl;
-        // TODO: Still adding it for now, has to be tested on all systems
-        // Later on: return false;
+        return false;
       }
-    } else {  // Otherwise do not add it
+    }
+    // Measurement coming from the past, but could not find suitable key
+    else {  // Otherwise do not add it
       REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
                    << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
                    << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
     }
   }
-  return true;
+  // Case 2: Can add immediately
+  else {
+    return true;
+  }
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------
@@ -335,7 +376,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   }
 
   // Write to graph
-  addFactorSafelyToGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, timeKm1);
+  addFactorSafelyToRtAndBatchGraph_<const gtsam::BetweenFactor<gtsam::Pose3>*>(&poseBetweenFactor, timeKm1);
 
   // Print summary
   if (graphConfigPtr_->verboseLevel_ > 3) {
@@ -349,11 +390,12 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
 gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag,
                                                      const std::shared_ptr<graph_msf::OptimizerBase> optimizerPtr, const gtsam::Key& key,
                                                      const char* callingFunctionName) {
+  // Nav State (pose and velocity)
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
   try {
-    resultPose = optimizerPtr->calculateEstimatedPose(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
-    resultVelocity = optimizerPtr->calculateEstimatedVelocity(gtsam::symbol_shorthand::V(key));
+    resultPose = optimizerPtr->calculateEstimatedPose3(gtsam::symbol_shorthand::X(key));  // auto result = mainGraphPtr_->estimate();
+    resultVelocity = optimizerPtr->calculateEstimatedVelocity3(gtsam::symbol_shorthand::V(key));
     computeSuccessfulFlag = true;
   } catch (const std::out_of_range& outOfRangeExeception) {
     REGULAR_COUT << "Out of Range exeception while optimizing graph: " << outOfRangeExeception.what() << '\n';
@@ -368,10 +410,16 @@ gtsam::NavState GraphManager::calculateNavStateAtKey(bool& computeSuccessfulFlag
 }
 
 void GraphManager::updateGraph() {
+  // At compile time get the symbols for the 6D and 3D states
+  constexpr int numDynamic6DStates = countNDStates<6>();
+  constexpr int numDynamic3DStates = countNDStates<3>();
+  constexpr std::array<char, numDynamic6DStates> dim6StateSymbols = getSymbolArrayForNDStates<6, numDynamic6DStates>();
+  constexpr std::array<char, numDynamic3DStates> dim3StateSymbols = getSymbolArrayForNDStates<3, numDynamic3DStates>();
+
   // Method variables
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::Values newGraphValues;
-  std::map<gtsam::Key, double> newGraphKeysTimestampsMap;
+  gtsam::NonlinearFactorGraph newRtGraphFactors, newBatchGraphFactors;
+  gtsam::Values newRtGraphValues, newBatchGraphValues;
+  std::map<gtsam::Key, double> newRtGraphKeysTimestampsMap, newBatchGraphKeysTimestampsMap;
   gtsam::Key currentPropagatedKey;
   gtsam::Vector3 currentAngularVelocity;
   double currentPropagatedTime;
@@ -384,14 +432,21 @@ void GraphManager::updateGraph() {
     currentPropagatedKey = propagatedStateKey_;
     currentPropagatedTime = propagatedStateTime_;
     currentAngularVelocity = currentAngularVelocity_;
-    // Get copy of factors and values
-    newGraphFactors = *factorGraphBufferPtr_;
-    newGraphValues = *graphValuesBufferPtr_;
-    newGraphKeysTimestampsMap = *graphKeysTimestampsMapBufferPtr_;
-    // Empty buffers
-    factorGraphBufferPtr_->resize(0);
-    graphValuesBufferPtr_->clear();
-    graphKeysTimestampsMapBufferPtr_->clear();
+    // Get copy of factors and values and empty buffers
+    newRtGraphFactors = *rtFactorGraphBufferPtr_;
+    newRtGraphValues = *rtGraphValuesBufferPtr_;
+    newRtGraphKeysTimestampsMap = *rtGraphKeysTimestampsMapBufferPtr_;
+    rtFactorGraphBufferPtr_->resize(0);
+    rtGraphValuesBufferPtr_->clear();
+    rtGraphKeysTimestampsMapBufferPtr_->clear();
+    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+      newBatchGraphFactors = *batchFactorGraphBufferPtr_;
+      newBatchGraphValues = *batchGraphValuesBufferPtr_;
+      newBatchGraphKeysTimestampsMap = *batchGraphKeysTimestampsMapBufferPtr_;
+      batchFactorGraphBufferPtr_->resize(0);
+      batchGraphValuesBufferPtr_->clear();
+      batchGraphKeysTimestampsMapBufferPtr_->clear();
+    }
 
     // Empty Buffer Pre-integrator --> everything missed during the update will
     // be in here
@@ -403,121 +458,158 @@ void GraphManager::updateGraph() {
   }  // end of locking
 
   // if no factors are present, return
-  if (newGraphFactors.size() == 0) {
-    REGULAR_COUT << " No factors present, not optimizing." << std::endl;
+  if (newRtGraphFactors.size() == 0) {
+    if (graphConfigPtr_->verboseLevel_ > 3) {
+      REGULAR_COUT << " No factors present, not optimizing." << std::endl;
+    }
     return;
   }
 
   // Graph Update (time consuming) -------------------
-  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap,
-                                                                    graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
+  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(
+      newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, newBatchGraphFactors, newBatchGraphValues,
+      newBatchGraphKeysTimestampsMap, graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
   if (!successfulOptimizationFlag) {
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
   }
 
-  // Compute entire result
-  // NavState
+  // Compute entire results ----------------------------------------------
+  // A. NavState ------------------------------
   gtsam::NavState resultNavState = calculateNavStateAtKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
-  // Bias
+  // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
-  // Compute Covariance
-  gtsam::Matrix66 resultPoseCovarianceBodyFrame = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::X(currentPropagatedKey));
-  gtsam::Matrix33 resultVelocityCovariance = rtOptimizerPtr_->marginalCovariance(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  // C. Compute & Transform Covariances ------------------------------
+  gtsam::Matrix66 resultPoseCovarianceBodyFrame =
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::X(currentPropagatedKey));
+  gtsam::Matrix33 resultVelocityCovariance =
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::V(currentPropagatedKey));
   // Transform covariance from I_S_I in body frame, to W_S_W in world frame
   gtsam::Matrix66 adjointMatrix = resultNavState.pose().AdjointMap();
   gtsam::Matrix66 resultPoseCovarianceWorldFrame = adjointMatrix * resultPoseCovarianceBodyFrame * adjointMatrix.transpose();
 
-  // FixedFrame Transformations
-  if (graphConfigPtr_->optimizeFixedFramePosesWrtWorld_) {
+  // D. FixedFrame Transformations ------------------------------
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
     // Mutex because we are changing the dynamically allocated graphKeys
-    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamExpressionTransformsKeys_.mutex());
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamTransformsExpressionKeys_.mutex());
 
-    // Iterate through all dynamically allocated transforms (holistic and calibration) --------------------------------
-    for (auto& framePairIterator : gtsamExpressionTransformsKeys_.getTransformsMap()) {
-      // Get Transform
-      const gtsam::Key& key = framePairIterator.second.key();  // alias
+    // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
+    for (auto& framePairKeyMapIterator : gtsamTransformsExpressionKeys_.getTransformsMap()) {
+      // Get Variable Key
+      const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
 
-      // Case 1: Try to compute results and uncertainties ------------------------------------------
-      try {  // Obtain estimate and covariance from the extrinsic transformations
-        gtsam::Pose3 T_frame1_frame2;
-        gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
+      // State Category Character
+      const char stateCategory = gtsam::Symbol(gtsamKey).chr();
 
-        // 6D Transformation
-        if (gtsam::Symbol(key).string()[0] == 't') {
-          T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose(key);
-          T_frame1_frame2_covariance = rtOptimizerPtr_->marginalCovariance(key);
-        }
-        // 3D Displacement
-        else if (gtsam::Symbol(key).string()[0] == 'd') {
-          T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3(), rtOptimizerPtr_->calculateEstimatedDisplacement(key));
-          T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->marginalCovariance(key);
-        }
-        // Only these two are supported for now
-        else {
-          throw std::runtime_error("Key is neither a pose nor a displacement key.");
-        }
+      // Try to compute results and uncertainties (if variable is still active)
+      if (framePairKeyMapIterator.second.isVariableActive()) {
+        // Case 1: All worked ------------------------------------------
+        try {  // Obtain estimate and covariance from the extrinsic transformations
+          gtsam::Pose3 T_frame1_frame2;
+          gtsam::Matrix66 T_frame1_frame2_covariance = gtsam::Z_6x6;
 
-        // Write to Result Dictionaries
-        Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-        T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairIterator.second.getMeasurementOriginPosition();
-        // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
-        resultFixedFrameTransformations_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                             Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
-        resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairIterator.first.first, framePairIterator.first.second,
-                                                                       T_frame1_frame2_covariance);
-
-        // Mark that this key has at least been optimized once
-        if (framePairIterator.second.getNumberStepsOptimized() == 0) {
-          REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairIterator.first.first << " and "
-                       << framePairIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
-          REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
-                       << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
-        }
-        // Increase Counter
-        framePairIterator.second.incrementNumberStepsOptimized();
-
-        // Check health status of transformation --> Delete if diverged too much --> only necessary for global fixed frames
-        if (framePairIterator.first.second == worldFrame_ &&
-            framePairIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
-          const gtsam::Pose3& T_frame1_frame2_initial = framePairIterator.second.getApproximateTransformationBeforeOptimization();  // alias
-          const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
-          // Check error in tangent space
-          // std::cout << "Error in tangent space: " << errorTangentSpace << std::endl;
-          if (errorTangentSpace > graphConfigPtr_->fixedFramePosesResetThreshold_) {
-            REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
-            std::cout << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
-                      << framePairIterator.first.first << " and " << framePairIterator.first.second
-                      << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
-                      << std::endl;
-            // Remove state from state dictionary
-            gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
-            break;
+          // 6D Transformations
+          if (isCharInCharArray<numDynamic6DStates>(stateCategory, dim6StateSymbols)) {
+            T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose3(gtsamKey);
+            T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsamKey);
+            // Add current belief back to the map
+            framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
           }
-        }
-      }  // end: try statement
-      // Case 2: Result computation failed -----------------------------------------
-      catch (const std::out_of_range& exception) {
-        if (framePairIterator.second.getNumberStepsOptimized() > 0) {  // Was optimized before, so should also be available now in the graph
-                                                                       // --> as querying was unsuccessful, we remove it from the graph
-          REGULAR_COUT
-              << RED_START << " OutOfRange-exception while querying the transformation and/or covariance at key " << gtsam::Symbol(key)
-              << ", for frame pair " << framePairIterator.first.first << "," << framePairIterator.first.second << std::endl
-              << " This happens if the requested variable is outside of the smoother window. Hence, we keep this estimate unchanged "
-                 "and remove it from the state dictionary. To fix this, increase the smoother window."
-              << COLOR_END << std::endl;
-          // Remove state from state dictionary
-          gtsamExpressionTransformsKeys_.removeTransform(framePairIterator.first.first, framePairIterator.first.second);
-          return;
-        } else {
-          REGULAR_COUT << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
-                       << framePairIterator.first.first << " to " << framePairIterator.first.second << ", at key: " << gtsam::Symbol(key)
-                       << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
-                          "Current state key: "
-                       << currentPropagatedKey << COLOR_END << std::endl;
-        }
-      }  // catch statement
-    }    // for loop over all transforms
+          // 3D Position3 Vectors
+          else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
+            T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedPoint3(gtsamKey));
+            T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsamKey);
+            // Add current belief back to the map
+            framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
+          }
+          // Only these two types are allowed for dynamic states for now
+          else {
+            throw std::runtime_error("Key is neither a pose nor a displacement key.");
+          }
+
+          // Write to Result Dictionaries
+          Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
+          T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getReferenceFrameKeyframePosition();
+          // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
+          resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
+                                                               Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
+          resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
+                                                                         framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
+
+          // Mark that this key has at least been optimized once
+          if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0 && graphConfigPtr_->verboseLevel_ > 1) {
+            REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairKeyMapIterator.first.first << " and "
+                         << framePairKeyMapIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
+            REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
+                         << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
+          }
+          // Increase Counter
+          framePairKeyMapIterator.second.incrementNumberStepsOptimized();
+
+          // Check health status of transformation --> Delete if diverged too much --> only necessary for global fixed frames
+          if (framePairKeyMapIterator.first.second == worldFrame_ &&
+              framePairKeyMapIterator.second.getNumberStepsOptimized() > MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM) {
+            const gtsam::Pose3& T_frame1_frame2_initial =
+                framePairKeyMapIterator.second.getApproximateTransformationBeforeOptimization();  // alias
+            const double errorTangentSpace = gtsam::Pose3::Logmap(T_frame1_frame2_initial.between(T_frame1_frame2)).norm();
+
+            // Check error in tangent space
+            if (errorTangentSpace > graphConfigPtr_->referenceFramePosesResetThreshold_) {
+              REGULAR_COUT << RED_START << "Error in tangent space: " << errorTangentSpace << std::endl;
+              REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
+                           << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
+                           << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
+                           << std::endl;
+              // Remove state from state dictionary
+              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                         framePairKeyMapIterator.first.second);
+              break;
+            }
+          }
+        }  // end: try statement
+        // Case 2: Result computation failed -----------------------------------------
+        catch (const std::out_of_range& exception) {
+          // Only remove/deactivate measurements that are still active and have been optimized before
+          if (framePairKeyMapIterator.second.getNumberStepsOptimized() > 0) {
+            REGULAR_COUT << RED_START << " OutOfRange-exception while querying the active transformation and/or covariance at key "
+                         << gtsam::Symbol(gtsamKey) << ", for frame pair " << framePairKeyMapIterator.first.first << ","
+                         << framePairKeyMapIterator.first.second << std::endl
+                         << " This happens if the requested variable is outside of the smoother window (e.g. because corresponding "
+                            "measurement stopped). Hence, we keep this estimate unchanged and remove/deactivate it from the state "
+                            "dictionary."
+                         << COLOR_END << std::endl;
+            // Remove state from state dictionary
+            gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                       framePairKeyMapIterator.first.second);
+            return;
+          }
+          // If active but added newly but never optimized
+          else {
+            // If too old but was never optimized --> remove or deactivate
+            if (framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime) > graphConfigPtr_->realTimeSmootherLag_) {
+              REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
+                           << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
+                           << " is too old and was never optimized. Removing from optimization and adding again freshly at next "
+                              "possibility."
+                           << COLOR_END << std::endl;
+              // Remove state from state dictionary
+              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                         framePairKeyMapIterator.first.second);
+            }
+            // Otherwise keep for now and potentially print out
+            else if (graphConfigPtr_->verboseLevel_ > 1) {
+              REGULAR_COUT
+                  << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
+                  << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
+                  << ", at key: " << gtsam::Symbol(gtsamKey)
+                  << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
+                     "Current state key: "
+                  << currentPropagatedKey << COLOR_END << std::endl;
+            }
+          }
+        }  // catch statement
+      }    // end: if active statement
+    }      // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -582,6 +674,12 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath) {
+  // At compile time get the symbols for the 6D and 3D states
+  constexpr int num6DStates = countNDStates<6>();
+  constexpr int num3DStates = countNDStates<3>();
+  constexpr std::array<char, num6DStates> dim6StateSymbols = getSymbolArrayForNDStates<6, num6DStates>();
+  constexpr std::array<char, num3DStates> dim3StateSymbols = getSymbolArrayForNDStates<3, num3DStates>();
+
   // Map to hold file streams, keyed by category
   std::map<std::string, std::ofstream> fileStreams;
 
@@ -599,7 +697,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
   // Save optimized states
-  // SE(3) states
+  // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
     // Read out information
     const gtsam::Key& key = keyPosePair.first;
@@ -612,38 +710,39 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string stateCategoryString = "";
     std::string frameInformation = "";
 
-    // Case 1: Navigation State Position
+    // State Category Capital
+    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));
+
+    // A.A Creation of the identifier for the file -----------------------------------
+    // Case 1: Navigation State Pose
     if (stateCategory == 'x') {
-      stateCategoryString = "X_state_transform";
+      stateCategoryString = stateCategoryCapital + "_state_6D_pose";
     }
     // Case 2: Frame Transform
-    else if (stateCategory == 't' || stateCategory == 'c') {
+    else if (isCharInCharArray<num6DStates>(stateCategory, dim6StateSymbols)) {
+      // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
-        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
+        REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol << COLOR_END << std::endl;
+        throw std::runtime_error("Could not find frame pair for key.");
       }
-      // Case 2.1: Holistic Transform
-      if (stateCategory == 't') {
-        stateCategoryString = "T_align_transform_";
-      }
-      // Case 2.2: Calibration Transform
-      else if (stateCategory == 'c') {
-        stateCategoryString = "C_calib_transform_";
-      }
-      // Otherwise: Undefined --> throw error
-      else {
-        throw std::runtime_error("Unknown state category.");
-      }
+      // State Category
+      stateCategoryString = stateCategoryCapital + "_6D_transform_";
+    }
+    // Otherwise: Undefined --> throw error
+    else {
+      throw std::runtime_error(stateCategoryString + " is an unknown 6D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      const std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -658,7 +757,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                      << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
   }  // end of for loop over all pose states
 
-  // R(3) states (e.g. Velocity, Displacement)
+  // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
   for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {
     // Read out information
     const gtsam::Key& key = keyVectorPair.first;
@@ -671,31 +770,43 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::string stateCategoryString = "";
     std::string frameInformation = "";
 
+    // State Category Non-Capital (as it is a vector instead of a matrix)
+    const std::string stateCategoryNonCapital(1, stateCategory);
+
+    // B.A Creation of the identifier for the file -----------------------------------
     // Case 1: Navigation State Velocity
     if (stateCategory == 'v') {
-      stateCategoryString = "V_state_velocity";
+      stateCategoryString = stateCategoryNonCapital + "_state_3D_velocity_";
     }
-    // Case 2: Displacement
-    else if (stateCategory == 'd') {
+    // Case 2: Point3 (e.g. calibration displacement, landmarks), TODO: no landmarks are saved for now
+    else if (isCharInCharArray<num3DStates>(stateCategory, dim3StateSymbols)) {
+      // Skip landmarks for now
+      if (stateCategory == 'l') {
+        continue;
+      }
+
+      // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamExpressionTransformsKeys_.getFramePairFromKey(framePair, key)) {
+      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
       }
-      stateCategoryString = "D_displacement";
+      // State Category
+      stateCategoryString = stateCategoryNonCapital + "_3D_vector_";
     }
     // Otherwise: Undefined --> throw error
     else {
-      throw std::runtime_error("Unknown state category.");
+      throw std::runtime_error(stateCategoryString + " is an unknown 3D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // B.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + transformIdentifier + ".csv";
+      std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -708,7 +819,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                      << "\n";
   }  // end of for loop over all vector states
 
-  // IMU Bias States
+  // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
   for (const auto& keyBiasPair : optimizedValues.extract<gtsam::imuBias::ConstantBias>()) {
     // Read out information
     const gtsam::Key& key = keyBiasPair.first;
@@ -720,13 +831,18 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Assert that the symbol is a bias
     assert(stateCategory == 'b');
 
-    // Additional strings
-    std::string stateCategoryString = "B_bias";
+    // Capitalized state category
+    const std::string stateCategoryCapital(1, static_cast<char>(std::toupper(stateCategory)));
+    ;
 
+    // C.A Creation of the identifier for the file -----------------------------------
+    std::string stateCategoryString = stateCategoryCapital + "_imu_bias_";
+
+    // C.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_optimized_" + stateCategoryString + ".csv";
+      std::string fileName = savePath + timeString + "_" + stateCategoryString + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -789,8 +905,12 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
 
 // Returns true if the factors/values were added without any problems
 // Otherwise returns false (e.g. if exception occurs while adding
-bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                                                   const std::map<gtsam::Key, double>& newGraphKeysTimestampsMap,
+bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors,
+                                                   const gtsam::Values& newRtGraphValues,
+                                                   const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                                   const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                                   const gtsam::Values& newBatchGraphValues,
+                                                   const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
                                                    const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
@@ -800,7 +920,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
 
   // Perform update of the real-time smoother, including optimization
-  bool successFlag = rtOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+  bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
   // Additional iterations
   for (size_t itr = 0; itr < additionalIterations; ++itr) {
     successFlag = successFlag && rtOptimizerPtr_->update();
@@ -808,7 +928,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
 
   // Add Factors and States to Batch Optimization (if desired) without running optimization
   if (graphConfigPtr->useAdditionalSlowBatchSmoother_) {
-    batchOptimizerPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimestampsMap);
+    batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
   }
 
   // Logging

@@ -23,7 +23,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/config/GraphConfig.h"
-#include "graph_msf/core/Datatypes.hpp"
+#include "graph_msf/core/ImuMeasurement.hpp"
 #include "graph_msf/imu/ImuSignalLowPassFilter.hpp"
 
 namespace graph_msf {

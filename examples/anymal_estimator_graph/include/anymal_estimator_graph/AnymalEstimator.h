@@ -23,6 +23,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/NavSatFix.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
+#include <visualization_msgs/MarkerArray.h>
+
+// Custom Messages
+#include "anymal_msgs/AnymalState.h"
 
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
@@ -41,16 +45,18 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
   ~AnymalEstimator() = default;
+
   // Setup
-  virtual bool setup() override;
+  void setup();
+
+ protected:
+  // Virtual Functions
+  void initializePublishers(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNodePtr) override;
+  void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
+  void readParams(const ros::NodeHandle& privateNode) override;
 
  private:
-  // Virtual Functions
-  virtual void initializePublishers_(ros::NodeHandle& privateNode) override;
-  virtual void initializeMessages_(ros::NodeHandle& privateNodePtr) override;
-  virtual void initializeSubscribers_(ros::NodeHandle& privateNodePtr) override;
-  virtual void readParams_(const ros::NodeHandle& privateNode);
-
   // Callbacks
   // LIO
   void lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
@@ -59,7 +65,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
   // Legged
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
-  void leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::ConstPtr& leggedOdometryKPtr);
+  void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
+  void leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
 
   // Other
   void initializeServices_(ros::NodeHandle& privateNode);
@@ -82,6 +89,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   int leggedOdometryPoseDownsampleFactor_ = 40;
   double leggedOdometryVelocityRate_ = 20.0;
   int leggedOdometryVelocityDownsampleFactor_ = 4;
+  double leggedKinematicsRate_ = 400.0;
+  int leggedKinematicsDownsampleFactor_ = 10;
   double gnssRate_ = 10.0;
 
   // Flags
@@ -90,16 +99,24 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   bool useLioBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
+  bool useLeggedKinematicsFlag_ = false;
 
   // Alignment Parameters
-  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
-  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;
-  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_;
-  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_;
-  Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_;
+  Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
+  Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
+
+  // Leg Odometry Handling
+  static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};
+  std::array<long, legNames_.size()> legInContactForNSteps_ = {0, 0, 0, 0};
+  std::array<long, legNames_.size()> legTotalContactsCounter_ = {0, 0, 0, 0};
+  static constexpr long legInContactDebounceThreshold_ = 3;
 
   // Callback Members ----------------------------
   // GNSS
@@ -115,6 +132,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Legged
   int leggedOdometryPoseCallbackCounter_{-1};
   int leggedOdometryOdomCallbackCounter_{-1};
+  int leggedKinematicsCallbackCounter_{-1};
   Eigen::Isometry3d T_O_Bl_km1_ = Eigen::Isometry3d::Identity();  // Odometry is in body frame
   double legOdometryTimeKm1_{0.0};
 
@@ -127,12 +145,15 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subLioBetween_;
   ros::Subscriber subLeggedBetween_;
   ros::Subscriber subLeggedVelocityUnary_;
+  ros::Subscriber subLeggedKinematics_;
   tf::TransformListener tfListener_;
 
   // Publishers
   // Path
   ros::Publisher pubMeasMapLioPath_;
   ros::Publisher pubMeasWorldGnssPath_;
+  // Markers
+  ros::Publisher pubFootContactMarkers_;
 
   // Messages
   nav_msgs::PathPtr measLio_mapLidarPathPtr_;

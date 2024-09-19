@@ -1,173 +1,225 @@
 /*
-Copyright 2023 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
- */
+*/
 
-#ifndef GTSAMEXPRESSIONTRANSFORMS_H
-#define GTSAMEXPRESSIONTRANSFORMS_H
+#ifndef TRANSFORMS_EXPRESSION_KEYS_H
+#define TRANSFORMS_EXPRESSION_KEYS_H
 
 // Output
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
 // Workspace
+#include "graph_msf/config/AdmissibleGtsamSymbols.h"
+#include "graph_msf/core/FactorGraphStateKey.h"
 #include "graph_msf/core/TransformsDictionary.h"
 
 namespace graph_msf {
 
-class FactorGraphStateKey {
+// Explanation:
+// 1) global variables are constant along the entire operation, hence they are not removed and will get the same gtsam key upon return
+// 2) reference frames can change, but are modelled according to random walk, hence they are only removed once a successor is initialized
+// 3) landmarks are initialized and removed as needed, hence they are removed once they are not needed anymore
+// Frames that are not needed but also not removed are set to be "inactive"
+
+// Class Definition
+template <class GTSAM_TRANSFORM_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
+class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>> {
  public:
   // Constructor
-  FactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
-                      const gtsam::Pose3& approximateTransformationBeforeOptimization, const Eigen::Vector3d& measurementOriginPosition)
-      : key_(key),
-        time_(time),
-        numberStepsOptimized_(numberStepsOptimized),
-        approximateTransformationBeforeOptimization_(approximateTransformationBeforeOptimization),
-        measurementOriginPosition_(measurementOriginPosition) {}
-  FactorGraphStateKey() {}
-
-  // Accessors
-  const gtsam::Key key() const { return key_; }
-  int getNumberStepsOptimized() const { return numberStepsOptimized_; }
-  double getTime() const { return time_; }
-  [[nodiscard]] gtsam::Pose3 getApproximateTransformationBeforeOptimization() const { return approximateTransformationBeforeOptimization_; }
-  [[nodiscard]] Eigen::Vector3d getMeasurementOriginPosition() const { return measurementOriginPosition_; }
-
-  // Setters
-  void setTimeStamp(const double time) { time_ = time; }
-  void incrementNumberStepsOptimized() { ++numberStepsOptimized_; }
-  void setApproximateTransformationBeforeOptimization(const gtsam::Pose3& approximateTransformationBeforeOptimization) {
-    approximateTransformationBeforeOptimization_ = approximateTransformationBeforeOptimization;
-  }
-  void setMeasurementOriginPosition(const Eigen::Vector3d& measurementOriginPosition) {
-    measurementOriginPosition_ = measurementOriginPosition;
-  }
-
- private:
-  // Members
-  gtsam::Key key_ = -1;
-  double time_ = 0.0;
-  int numberStepsOptimized_ = 0;
-  gtsam::Pose3 approximateTransformationBeforeOptimization_ = gtsam::Pose3();
-  Eigen::Vector3d measurementOriginPosition_ = Eigen::Vector3d::Zero();
-};
-
-class TransformsExpressionKeys : public TransformsDictionary<FactorGraphStateKey> {
- public:
-  // Constructor
-  TransformsExpressionKeys() : TransformsDictionary<FactorGraphStateKey>(FactorGraphStateKey()) {
+  TransformsExpressionKeys()
+      : TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>(FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>()) {
     REGULAR_COUT << " Instance created." << std::endl;
   }
 
-  // Safe Modifiers
-  // Get key to frame pair map
-  const std::map<gtsam::Key, std::pair<std::string, std::string>>& getKeyToFramePairMap() const { return keyToFramePairMap_; }
-  bool getFramePairFromKey(std::pair<std::string, std::string>& framePairRef, const gtsam::Key& key) const {
+  // Destructor
+  ~TransformsExpressionKeys() = default;
+
+  // Cleanup
+  bool removeTransform(const std::string& frame1, const std::string& frame2,
+                       FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& returnRemovedKey) override {
+    // Removed main element
+    bool removedTransformFlag =
+        TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::removeTransform(frame1, frame2, returnRemovedKey);
+    // If found, we also remove the key from the key-to-frame pair map
+    if (removedTransformFlag) {
+      auto keyFramePairMapIterator = transformGtsamKeyToFramePairMap_.find(returnRemovedKey.key());
+      if (keyFramePairMapIterator != transformGtsamKeyToFramePairMap_.end()) {
+        transformGtsamKeyToFramePairMap_.erase(keyFramePairMapIterator);
+      } else {
+        REGULAR_COUT << RED_START << " Key " << gtsam::Symbol(returnRemovedKey.key()) << " not found in map." << COLOR_END << std::endl;
+        throw std::runtime_error("Key not found in map.");
+      }
+    }
+    return removedTransformFlag;
+  }
+
+  // Same but with only two arguments
+  bool removeOrDeactivateTransform(const std::string& frame1, const std::string& frame2) {
     // Check if key is in map
-    if (keyToFramePairMap_.find(key) == keyToFramePairMap_.end()) {
+    const bool isFramePairInDictionary =
+        TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::isFramePairInDictionary(frame1, frame2);
+
+    // Case: Frame pair is in dictionary
+    if (isFramePairInDictionary) {
+      // Retrieve key and variable type
+      FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& keyToRemoveOrDeactivate =
+          TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
+      const VariableTypeEnum& variableTypeEnum = keyToRemoveOrDeactivate.getVariableTypeEnum();
+
+      // Three different cases
+      switch (variableTypeEnum) {
+        // Case 1: Global Measurement --> Never remove, only deactivate, as it might come back
+        case VariableTypeEnum::Global:
+          // Currently active, so we can deactivate
+          if (keyToRemoveOrDeactivate.isVariableActive()) {
+            keyToRemoveOrDeactivate.deactivateVariable();
+            return true;
+          }
+          // Already deactivated, so we do not need to do anything
+          else {
+            return false;
+          }
+        // Case 2: Reference Frame --> Do not remove for now, as we will need it for creating the random walk
+        case VariableTypeEnum::RefFrame:
+          // Currently active, so we can deactivate
+          if (keyToRemoveOrDeactivate.isVariableActive()) {
+            keyToRemoveOrDeactivate.deactivateVariable();
+            assert(!keyToRemoveOrDeactivate.isVariableActive());
+            return true;
+          }
+          // Already deactivated, so we do not need to do anything
+          else {
+            return false;
+          }
+        // Case 3: Landmark --> Remove, as the landmark is not needed anymore
+        case VariableTypeEnum::Landmark:
+          // std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Removing landmark " << frame2 << "." << std::endl;
+          return removeTransform(frame1, frame2, keyToRemoveOrDeactivate);
+        // Has to be one of the three cases
+        default:
+          throw std::runtime_error("Variable Type not found.");
+      }
+    }
+    // Case: Frame pair is not in dictionary
+    else {
+      return false;
+    }
+  }
+
+  // Getters ------------------------------------------------------------
+  // Get transform to frame pair map
+  bool getFramePairFromGtsamKey(std::pair<std::string, std::string>& framePairRef, const gtsam::Key& gtsamKey) const {
+    // Check if key is in map
+    auto keyFramePairMapIterator = transformGtsamKeyToFramePairMap_.find(gtsamKey);
+    if (keyFramePairMapIterator == transformGtsamKeyToFramePairMap_.end()) {
       return false;
     }
     // Retrieve frame pair
-    framePairRef = keyToFramePairMap_.at(key);
+    framePairRef = keyFramePairMapIterator->second;
     return true;
   }
 
-  // Returns
-  typedef gtsam::Key (*F)(std::uint64_t);
-  template <F SYMBOL_SHORTHAND>
-  gtsam::Key getTransformationExpression(bool& newGraphKeyAdded, Eigen::Vector3d& modifiedMeasurementOriginPosition,
-                                         const std::string& frame1, const std::string& frame2, const double timeK,
-                                         const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                         const bool centerMeasurementsAtRobotPositionBeforeAlignment) {
+  // Get transform to frame pair map
+  [[nodiscard]] const std::map<gtsam::Key, std::pair<std::string, std::string>>& getTransformGtsamKeyToFramePairMap() const {
+    return transformGtsamKeyToFramePairMap_;
+  }
+
+  // Returns of key
+  template <char SYMBOL_CHAR>
+  FactorGraphStateKey<GTSAM_TRANSFORM_TYPE> getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1,
+                                                                 const std::string& frame2, const double timeK,
+                                                                 const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                                                 const VariableType& variableType) {
     // Retrieve key and insert information to map
-    gtsam::Key T_key;
-    std::lock_guard<std::mutex> modifyGraphKeysLock(this->mutex());
+    FactorGraphStateKey<GTSAM_TRANSFORM_TYPE> stateKey;
     // Case: The dynamically allocated key is not yet in the graph
-    newGraphKeyAdded = this->newFramePairSafelyAddedToDictionary<SYMBOL_SHORTHAND>(T_key, modifiedMeasurementOriginPosition, frame1, frame2,
-                                                                                   timeK, approximateTransformationBeforeOptimization,
-                                                                                   centerMeasurementsAtRobotPositionBeforeAlignment);
-    modifiedMeasurementOriginPosition = this->rv_T_frame1_frame2(frame1, frame2).getMeasurementOriginPosition();
-
-    // Return
-    return T_key;
+    newGraphKeyAdded = this->addNewFramePairSafelyToDictionary<SYMBOL_CHAR>(stateKey, frame1, frame2, timeK,
+                                                                            approximateTransformationBeforeOptimization, variableType);
+    return stateKey;
   }
 
-  // Overloaded function (without centering)
-  template <F SYMBOL_SHORTHAND>
-  gtsam::Key getTransformationExpression(bool& newGraphKeyAdded, const std::string& frame1, const std::string& frame2, const double timeK,
-                                         const gtsam::Pose3& approximateTransformationBeforeOptimization) {
-    Eigen::Vector3d _;  // Placeholder
-    return getTransformationExpression<SYMBOL_SHORTHAND>(newGraphKeyAdded, _, frame1, frame2, timeK,
-                                                         approximateTransformationBeforeOptimization, false);
-  }
-
-  template <F SYMBOL_SHORTHAND>
-  bool newFramePairSafelyAddedToDictionary(gtsam::Key& returnKey, Eigen::Vector3d& modifiedMeasurementOriginPosition,
-                                           const std::string& frame1, const std::string& frame2, const double timeK,
-                                           const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) {
+  // Safe addition of new frame pair to dictionary --> checks whether already present
+  template <char SYMBOL_CHAR>
+  bool addNewFramePairSafelyToDictionary(FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& returnStateKey, const std::string& frame1,
+                                         const std::string& frame2, const double timeK,
+                                         const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                         const VariableType& variableType) {
     // Check and modify content --> acquire lock
-    FactorGraphStateKey factorGraphStateKey;
     std::lock_guard<std::mutex> lock(internalDictionaryModifierMutex_);
 
     // Logic
-    // CASE 1: Frame pair is already in dictionary
-    if (isFramePairInDictionary(frame1, frame2)) {
-      factorGraphStateKey = rv_T_frame1_frame2(frame1, frame2);
-      // Update Timestamp if newer
+    // CASE 1: Frame pair is already in dictionary, hence keyframe is not new (measurement either active or not)
+    if (TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::isFramePairInDictionary(frame1, frame2)) {
+      FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& factorGraphStateKey =
+          TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
+      // Update Timestamp and approximate transformation if newer
       if (timeK > factorGraphStateKey.getTime()) {
-        lv_T_frame1_frame2(frame1, frame2).setTimeStamp(timeK);
-        lv_T_frame1_frame2(frame1, frame2).setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
+        factorGraphStateKey.setTimeStamp(timeK);
+        factorGraphStateKey.setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
       }
-      returnKey = factorGraphStateKey.key();
+      returnStateKey = factorGraphStateKey;
       return false;
     }
     // CASE 2: Frame pair is not in dictionary --> Newly added
     else {
-      // If we do not want to move origin --> set to zero
-      if (!centerMeasurementsAtRobotPositionBeforeAlignment) {
-        modifiedMeasurementOriginPosition = Eigen::Vector3d::Zero();
-      }  // else: updatedMeasurementOrigin is set in the function that calls this function
-      returnKey = addNewFactorGraphStateKey<SYMBOL_SHORTHAND>(frame1, frame2, timeK, approximateTransformationBeforeOptimization,
-                                                              modifiedMeasurementOriginPosition);
-      // Add to key to frame pair map
-      keyToFramePairMap_[returnKey] = std::make_pair(frame1, frame2);
-
-      // Return
+      returnStateKey =
+          addNewFactorGraphStateKey<SYMBOL_CHAR>(frame1, frame2, timeK, approximateTransformationBeforeOptimization, variableType);
       return true;
     }
   }
 
   // Functionality ------------------------------------------------------------
-  template <F SYMBOL_SHORTHAND>
-  gtsam::Key addNewFactorGraphStateKey(const std::string& frame1, const std::string& frame2, const double timeK,
-                                       const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                       const Eigen::Vector3d& measurementOriginPosition) {
+  template <char SYMBOL_CHAR>
+  FactorGraphStateKey<GTSAM_TRANSFORM_TYPE> addNewFactorGraphStateKey(const std::string& frame1, const std::string& frame2,
+                                                                      const double timeK,
+                                                                      const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                                                      const VariableType& variableType) {
+    // Compile Time Checks and Variables
+    checkSymbol<SYMBOL_CHAR>();
+    constexpr int symbolIndex = getSymbolIndex<SYMBOL_CHAR>();
+    static_assert(symbolIndex >= 0, "Symbol not found in admissible symbols.");
+
     // Create new key
-    gtsam::Key returnKey = SYMBOL_SHORTHAND(getNumberStoredTransformationPairs());
-    REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(returnKey) << " created for frame pair " << frame1 << " and " << frame2
-                 << COLOR_END << std::endl;
-    // Add to dictionary
-    FactorGraphStateKey factorGraphStateKey(returnKey, timeK, 0, approximateTransformationBeforeOptimization, measurementOriginPosition);
-    set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
+    gtsam::Key gtsamKey = gtsam::Symbol(SYMBOL_CHAR, numStoredTransformsPerLetter_[symbolIndex]);
+
+    // Print out for calibrations and reference frames
+    if (variableType.getVariableTypeEnum() != VariableTypeEnum::Landmark) {
+      REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(gtsamKey) << " created for frame pair " << frame1 << " and " << frame2
+                   << "." << COLOR_END << std::endl;
+    }
+
+    // Add to main dictionary
+    FactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType, frame1, frame2);
+    TransformsDictionary<FactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
+
+    // Increase the counter of specific symbol
+    ++numStoredTransformsPerLetter_[symbolIndex];
+
+    // Add to key-to-frame pair map
+    transformGtsamKeyToFramePairMap_[gtsamKey] = std::make_pair(frame1, frame2);
 
     // Return
-    return returnKey;
+    return factorGraphStateKey;
   }
 
   std::mutex& mutex() { return externalModifierMutex_; }
 
  private:
+  // Mapping in other direction --> from key to frame pair
+  std::map<gtsam::Key, std::pair<std::string, std::string>> transformGtsamKeyToFramePairMap_;
+
   // Mutex
   std::mutex internalDictionaryModifierMutex_;
   std::mutex externalModifierMutex_;
 
-  // Mapping in other direction --> from key to frame pair
-  std::map<gtsam::Key, std::pair<std::string, std::string>> keyToFramePairMap_;
+  // Num Stored Transforms Per Letter --> compile time initialization, set all to zero
+  std::array<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)> numStoredTransformsPerLetter_ =
+      makeValuedArray<unsigned long, sizeof(ADMISSIBLE_DYNAMIC_SYMBOL_CHARS)>(0);
 };
 
 }  // namespace graph_msf
 
-#endif  // STATIC_TRANSFORMS_H
+#endif  // TRANSFORMS_EXPRESSION_KEYS_H

@@ -13,15 +13,12 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace excavator_se {
 
-void ExcavatorEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void ExcavatorEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Variables for parameter fetching
   double dParam;
   int iParam;
   bool bParam;
   std::string sParam;
-
-  // Call super method
-  graph_msf::GraphMsfRos::readParams_(privateNode);
 
   // Set frames ----------------------------
   /// LiDAR frame

@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GMSF_UNARY_EXPRESSION_VELOCITY3_SENSORFRAME_H
-#define GMSF_UNARY_EXPRESSION_VELOCITY3_SENSORFRAME_H
+#ifndef GMSF_UNARY_EXPRESSION_VELOCITY3_LOCAL_H
+#define GMSF_UNARY_EXPRESSION_VELOCITY3_LOCAL_H
 
 // GTSAM
 #include <gtsam/base/types.h>
@@ -14,22 +14,21 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/expressions.h>
 
 // Workspace
-#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocal.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 namespace graph_msf {
 
-class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression<gtsam::Point3> {
+class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<gtsam::Point3, 'd'> {
  public:
   // Constructor
-  GmsfUnaryExpressionVelocity3SensorFrame(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
-                                          const std::string& worldFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
-                                          const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
-      : GmsfUnaryExpression(velocityUnaryMeasurementPtr, worldFrameName, T_I_sensorFrame),
+  GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
+                                    const std::string& worldFrameName, const std::string& imuFrameName,
+                                    const Eigen::Isometry3d& T_I_sensorFrame, const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
+      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
-
     // Find Angular Velocity in IMU Buffer which is closest to the measurement time
     // Check whether we can find an IMU measurement corresponding to the velocity measurement
     double imuTimestamp;
@@ -44,10 +43,21 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
   }
 
   // Destructor
-  ~GmsfUnaryExpressionVelocity3SensorFrame() override = default;
+  ~GmsfUnaryExpressionLocalVelocity3() = default;
 
+  // Noise as GTSAM Datatype
+  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
+    return velocityUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
+  }
+
+  // Return Measurement as GTSAM Datatype
+  [[nodiscard]] const gtsam::Point3 getGtsamMeasurementValue() const override {
+    return gtsam::Point3(velocityUnaryMeasurementPtr_->unaryMeasurement().matrix());
+  }
+
+ protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key
-  void generateExpressionForBasicImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
+  void generateImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) override {
     // Translation (core part)
     gtsam::Point3_ exp_fixedFrame_v_fixedFrame_sensorFrame_ =
         gtsam::Expression<gtsam::Vector3>(gtsam::symbol_shorthand::V(closestGeneralKey));  // W_v_W_I at this point
@@ -61,16 +71,8 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
         gtsam::rotate(inverseRot3(exp_R_fixedFrame_I_), exp_fixedFrame_v_fixedFrame_sensorFrame_);  // I_v_W_I at this point
   }
 
-  // Interface with three cases (non-exclusive):
-  // ii) Holistically Optimize over Fixed Frames
-  void transformStateFromWorldToFixedFrame(TransformsExpressionKeys& transformsExpressionKeys,
-                                           const gtsam::NavState& W_currentPropagatedState,
-                                           const bool centerMeasurementsAtRobotPositionBeforeAlignment) override {
-    // Do nothing as this velocity measurement is expressed in the sensor frame
-  }
-
   // iii) Transform Measurement to Core Imu Frame
-  void transformStateToSensorFrame() override {
+  void transformImuStateToSensorFrameState() final {
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 
@@ -91,24 +93,20 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
   }
 
   // iv) Extrinsic Calibration
-  void addExtrinsicCalibrationCorrection(TransformsExpressionKeys& transformsExpressionKeys) override {
+  void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& exp_correction) final {
     // TODO: Implement
-    REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
-                 << std::endl;
+    //    REGULAR_COUT << RED_START << "GmsfUnaryExpressionVelocity3SensorFrame: Extrinsic Calibration not implemented yet." << COLOR_END
+    //                 << std::endl;
   }
 
-  // Noise as GTSAM Datatype
-  [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
-    return velocityUnaryMeasurementPtr_->unaryMeasurementNoiseDensity();
-  }
+  gtsam::Pose3 convertToPose3(const gtsam::Point3& measurement) final { return gtsam::Pose3(gtsam::Rot3::Identity(), measurement); }
 
-  // Return Measurement as GTSAM Datatype
-  [[nodiscard]] const gtsam::Point3 getMeasurement() const override {
-    return gtsam::Point3(velocityUnaryMeasurementPtr_->unaryMeasurement().matrix());
-  }
+  gtsam::Point3 convertFromPose3(const gtsam::Pose3& pose) final { return pose.translation(); }
 
   // Return Expression
-  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getExpression() const override { return exp_sensorFrame_v_fixedFrame_sensorFrame_; }
+  [[nodiscard]] const gtsam::Expression<gtsam::Point3> getGtsamExpression() const override {
+    return exp_sensorFrame_v_fixedFrame_sensorFrame_;
+  }
 
  private:
   // Full Measurement Type
@@ -123,4 +121,4 @@ class GmsfUnaryExpressionVelocity3SensorFrame final : public GmsfUnaryExpression
 };
 }  // namespace graph_msf
 
-#endif  // GMSF_UNARY_EXPRESSION_VELOCITY3_SENSORFRAME_H
+#endif  // GMSF_UNARY_EXPRESSION_VELOCITY3_LOCAL_H

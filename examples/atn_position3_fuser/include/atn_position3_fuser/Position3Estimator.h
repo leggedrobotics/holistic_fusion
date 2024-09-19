@@ -41,34 +41,38 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Destructor
   ~Position3Estimator() = default;
   // Setup
-  virtual bool setup() override;
+  void setup();
+
+ protected:
+  // Methods ------------------------------------
+  void initializePublishers(ros::NodeHandle& privateNode) override;
+
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
+
+  void initializeMessages(ros::NodeHandle& privateNode) override;
+
+  void readParams(const ros::NodeHandle& privateNode) override;
 
  private:
-  // Methods ------------------------------------
-  void initializePublishers_(ros::NodeHandle& privateNode) override;
-
-  void initializeSubscribers_(ros::NodeHandle& privateNode) override;
-
-  void initializeMessages_(ros::NodeHandle& privateNode) override;
-
-  void readParams_(const ros::NodeHandle& privateNode) override;
-
   // Callbacks
-  void positionCallback_(const geometry_msgs::PointStamped::ConstPtr& LeicaPositionPtr);
+  void prismPositionCallback_(const geometry_msgs::PointStamped::ConstPtr& leicaPositionPtr);
+  void gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr);
 
   // Members ----------------------------------
   // Publishers
   // Path
-  ros::Publisher pubMeasWorldPositionPath_;
+  ros::Publisher pubMeasWorldPrismPositionPath_;
+  ros::Publisher pubMeasWorldGnssPositionPath_;
 
   // Messages
   // Paths
-  nav_msgs::PathPtr measPosition_worldPositionPathPtr_;
+  nav_msgs::PathPtr measPosition_worldPrismPositionPathPtr_;
+  nav_msgs::PathPtr measPosition_worldGnssPositionPathPtr_;
 
   // Subscribers
-  ros::Subscriber subImu_;
-  ros::Subscriber subPosition_;
-
+  ros::Subscriber subPrismPosition_;
+  ros::Subscriber subGnssPosition_;
+  // TF
   tf::TransformListener tfListener_;
 
   // Time
@@ -82,14 +86,16 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Rates
-  double positionRate_ = 20.0;
+  double prismPositionRate_ = 20.0;
+  double gnssPositionRate_ = 1.0;
 
   // Noise
-  double positionMeasUnaryNoise_ = 1.0;  // in [m]
+  double prismPositionMeasUnaryNoise_ = 1.0;  // in [m]
+  double gnssPositionMeasUnaryNoise_ = 1.0;   // in [m]
 
   // Variables
-  int positionCallbackCounter_ = 0;
-  bool measuredPositionHealthyFlag_ = true;
+  int prismPositionCallbackCounter_ = 0;
+  int gnssPositionCallbackCounter_ = 0;
 };
 
 }  // namespace position3_se

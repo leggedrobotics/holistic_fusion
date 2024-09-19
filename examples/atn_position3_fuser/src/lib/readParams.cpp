@@ -13,18 +13,24 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace position3_se {
 
-void Position3Estimator::readParams_(const ros::NodeHandle& privateNode) {
+void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   // Set frames ----------------------------
   /// Position Measurment frame (Prism)
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/positionMeasFrame", privateNode);
-  dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->setPositionMeasFrame(frame);
+  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/prismPositionMeasFrame", privateNode);
+  dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->setPrismPositionMeasFrame(frame);
+
+  /// Position Measurment frame (GNSS)
+  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssPositionMeasFrame", privateNode);
+  dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->setGnssPositionMeasFrame(frame);
 
   // Sensor Parameters ----------------------------
-  positionRate_ = graph_msf::tryGetParam<double>("sensor_params/positionRate", privateNode);
+  prismPositionRate_ = graph_msf::tryGetParam<double>("sensor_params/prismPositionRate", privateNode);
+  gnssPositionRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssPositionRate", privateNode);
 
   /// Noise Parameters ----
   /// Position measurement unary noise
-  positionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/PositionMeasUnaryNoise", privateNode);
+  prismPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/prismPositionMeasUnaryNoise", privateNode);
+  gnssPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionMeasUnaryNoise", privateNode);
 }
 
 }  // namespace position3_se

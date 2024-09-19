@@ -18,69 +18,62 @@ Please see the LICENSE file that has been included as part of this package.
 namespace imu_pose3_fuser {
 
 ImuPose3Fuser::ImuPose3Fuser(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
-  REGULAR_COUT << GREEN_START << " Initializing..." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static transforms
   staticTransformsPtr_ = std::make_shared<graph_msf::StaticTransforms>();
 
   // Set up
-  if (!ImuPose3Fuser::setup()) {
-    REGULAR_COUT << RED_START << " Failed to set up." << COLOR_END << std::endl;
-    std::runtime_error("SmbEstimator failed to set up.");
-  }
-
-  REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
+  ImuPose3Fuser::setup();
 }
 
-bool ImuPose3Fuser::setup() {
-  REGULAR_COUT << GREEN_START << " Setting up." << COLOR_END << std::endl;
+void ImuPose3Fuser::setup() {
+  REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Setup called." << COLOR_END << std::endl;
+
+  // Read parameters
+  ImuPose3Fuser::readParams(privateNode);
 
   // Super class
-  if (not graph_msf::GraphMsfRos::setup()) {
-    throw std::runtime_error("GraphMsfRos could not be initialized");
-  }
+  GraphMsfRos::setup(staticTransformsPtr_);
 
-  // Read parameters ----------------------------
-  ImuPose3Fuser::readParams_(privateNode_);
+  // Find transformations
   staticTransformsPtr_->findTransformations();
 
   // Publishers ----------------------------
-  ImuPose3Fuser::initializePublishers_(privateNode_);
+  ImuPose3Fuser::initializePublishers(privateNode);
 
   // Subscribers ----------------------------
-  ImuPose3Fuser::initializeSubscribers_(privateNode_);
+  ImuPose3Fuser::initializeSubscribers(privateNode);
 
   // Messages ----------------------------
-  ImuPose3Fuser::initializeMessages_(privateNode_);
+  ImuPose3Fuser::initializeMessages(privateNode);
 
   // Server ----------------------------
-  ImuPose3Fuser::initializeServices_(privateNode_);
+  ImuPose3Fuser::initializeServices(privateNode);
 
   // Wrap up ----------------------------
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
-
-  return true;
 }
 
-void ImuPose3Fuser::initializePublishers_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasPose3Path_ = privateNode_.advertise<nav_msgs::Path>("/graph_msf/measPose3_path_world_imu", ROS_QUEUE_SIZE);
+  pubMeasPose3Path_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPose3_path_world_imu", ROS_QUEUE_SIZE);
 }
 
-void ImuPose3Fuser::initializeSubscribers_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeSubscribers(ros::NodeHandle& privateNode) {
   // Pose3 Odometry
-  subPose3Odometry_ = privateNode_.subscribe<nav_msgs::Odometry>("/pose3_odometry_topic", ROS_QUEUE_SIZE, &ImuPose3Fuser::pose3Callback_,
-                                                                 this, ros::TransportHints().tcpNoDelay());
+  subPose3Odometry_ = privateNode.subscribe<nav_msgs::Odometry>("/pose3_odometry_topic", ROS_QUEUE_SIZE, &ImuPose3Fuser::pose3Callback_,
+                                                                this, ros::TransportHints().tcpNoDelay());
   REGULAR_COUT << COLOR_END << " Initialized Pose3 Odometry subscriber with topic: " << subPose3Odometry_.getTopic() << std::endl;
 }
 
-void ImuPose3Fuser::initializeMessages_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeMessages(ros::NodeHandle& privateNode) {
   // Path
   measPose3_worldImuPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
 }
 
-void ImuPose3Fuser::initializeServices_(ros::NodeHandle& privateNode) {
+void ImuPose3Fuser::initializeServices(ros::NodeHandle& privateNode) {
   // Nothing
 }
 
@@ -98,9 +91,9 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   double odometryTimeK = odomPtr->header.stamp.toSec();
 
   // Measurement
-  graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK,
-      staticTransformsPtr_->getWorldFrame(), 1.0, initialSe3AlignmentNoise_, T_W_Ik, pose3UnaryNoise_);
+  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK, 1.0,
+      T_W_Ik, pose3UnaryNoise_, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_);
 
   // Only add measurement once every second in beginning
   bool addMeasurementFlag = false;
@@ -121,7 +114,7 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
     REGULAR_COUT << GREEN_START << " Odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
     this->initYawAndPosition(unary6DMeasurement);
   } else if (addMeasurementFlag) {  // Already initialized --> unary factor
-    this->addUnaryPose3Measurement(unary6DMeasurement);
+    this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }
 
   // Visualization ----------------------------

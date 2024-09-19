@@ -87,36 +87,37 @@ class OptimizerLMBatch : public OptimizerLM {
   // Get keyTimestampMap
   const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return batchSmootherKeyTimestampMap_; }
 
-  // Calculate States
-  gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) override {
+  // Calculate State / Covariance --------------------------------------------------------------
+  // Pose3
+  gtsam::Pose3 calculateEstimatedPose3(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedPose: No optimization has been performed yet.");
     }
     return batchSmootherOptimizedResult_.at<gtsam::Pose3>(key);
   }
-
-  gtsam::Vector3 calculateEstimatedVelocity(const gtsam::Key& key) override {
+  // Velocity3
+  gtsam::Vector3 calculateEstimatedVelocity3(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedVelocity: No optimization has been performed yet.");
     }
     return batchSmootherOptimizedResult_.at<gtsam::Vector3>(key);
   }
-
+  // Bias
   gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedBias: No optimization has been performed yet.");
     }
     return batchSmootherOptimizedResult_.at<gtsam::imuBias::ConstantBias>(key);
   }
-
-  gtsam::Point3 calculateEstimatedDisplacement(const gtsam::Key& key) override {
+  // Point3
+  gtsam::Point3 calculateEstimatedPoint3(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedDisplacement: No optimization has been performed yet.");
     }
     return batchSmootherOptimizedResult_.at<gtsam::Point3>(key);
   }
-
-  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) override {
+  // Vector
+  gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateStateAtKey: No optimization has been performed yet.");
     }
@@ -124,7 +125,7 @@ class OptimizerLMBatch : public OptimizerLM {
   }
 
   // Marginal Covariance
-  gtsam::Matrix marginalCovariance(const gtsam::Key& key) override {
+  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }

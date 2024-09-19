@@ -17,13 +17,10 @@ class UnaryMeasurement : public Measurement {
   // Constructor
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                    const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
-                   const std::string& fixedFrameName, const double covarianceViolationThreshold,
-                   const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise)
+                   const double covarianceViolationThreshold)
       : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Unary),
         timeK_(timeStamp),
-        fixedFrameName_(fixedFrameName),
-        covarianceViolationThreshold_(covarianceViolationThreshold),
-        initialSe3AlignmentNoise_(initialSe3AlignmentNoise) {}
+        covarianceViolationThreshold_(covarianceViolationThreshold) {}
 
   // Destructor
   ~UnaryMeasurement() override = default;
@@ -34,7 +31,6 @@ class UnaryMeasurement : public Measurement {
     ss << std::endl;
     ss << "Measurement Name: " << this->measurementName() << std::endl;
     ss << std::setprecision(14) << "Timestamp: " << this->timeK_ << std::endl;
-    ss << "Fixed Frame: " << this->fixedFrameName() << std::endl;
     ss << "Sensor Frame: " << this->sensorFrameName() << std::endl;
     return ss.str();
   }
@@ -46,19 +42,15 @@ class UnaryMeasurement : public Measurement {
   }
 
   // Getters
-  [[nodiscard]] const std::string& fixedFrameName() const { return fixedFrameName_; }
   std::string& lv_sensorFrameName() { return sensorFrameName_; }
   [[nodiscard]] double timeK() const { return timeK_; }
   [[nodiscard]] double covarianceViolationThreshold() const { return covarianceViolationThreshold_; }
-  [[nodiscard]] const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise() const { return initialSe3AlignmentNoise_; }
   const MeasurementTypeEnum& measurementTypeEnum() override { return measurementTypeEnum_; }
 
  protected:
   // Standard members
-  std::string fixedFrameName_;
   double timeK_;
   double covarianceViolationThreshold_;
-  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_;
 };
 
 }  // namespace graph_msf

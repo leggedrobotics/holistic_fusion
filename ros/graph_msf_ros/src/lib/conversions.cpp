@@ -13,14 +13,18 @@ Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(cons
   return covRos;
 }
 
-void geometryPoseToEigen(const geometry_msgs::PoseWithCovarianceStamped& odomLidar, Eigen::Matrix4d& T) {
+void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Matrix4d& T) {
   tf::Quaternion tf_q;
-  tf::quaternionMsgToTF(odomLidar.pose.pose.orientation, tf_q);
-  Eigen::Vector3d t(odomLidar.pose.pose.position.x, odomLidar.pose.pose.position.y, odomLidar.pose.pose.position.z);
+  tf::quaternionMsgToTF(pose.orientation, tf_q);
+  Eigen::Vector3d t(pose.position.x, pose.position.y, pose.position.z);
   Eigen::Quaternion<double> q(tf_q.getW(), tf_q.getX(), tf_q.getY(), tf_q.getZ());
   T.setIdentity();
   T.block<3, 3>(0, 0) = q.matrix();
   T.block<3, 1>(0, 3) = t;
+}
+
+void geometryPoseToEigen(const geometry_msgs::PoseWithCovarianceStamped& pose, Eigen::Matrix4d& T) {
+  geometryPoseToEigen(pose.pose.pose, T);
 }
 
 void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T) {

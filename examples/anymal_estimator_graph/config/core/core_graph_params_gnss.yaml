@@ -16,7 +16,7 @@ initialization_params:
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
-  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  useAdditionalSlowBatchSmoother: false   # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
@@ -28,9 +28,9 @@ graph_params:
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
   # Alignment Parameters
-  optimizeFixedFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
-  fixedFramePosesResetThreshold: 8.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
-  centerMeasurementsAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
+  referenceFramePosesResetThreshold: 8.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
+  centerReferenceFramesAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
   # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
 
@@ -51,21 +51,24 @@ noise_params:
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
   ## Initial State
+  ### With GNSS
   initialPositionNoiseDensity: 10.0    # Prior/starting value of position
   initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
   initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
-  initialAccBiasNoiseDensity: 1.0e-01  # Prior/starting value of accelerometer bias
-  initialGyroBiasNoiseDensity: 1.0e-01 # Prior/starting value of gyroscope bias
+  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
+  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
 
 # Relinearization
 relinearization_params:
-  positionReLinTh: 1.0e-03                 # Position linearization threshold
-  rotationReLinTh: 1.0e-03                 # Rotation linearization threshold
-  velocityReLinTh: 1.0e-03                 # Linear Velocity linearization threshold
-  accBiasReLinTh: 1.0e-03                  # Accelerometer bias linearization threshold
-  gyrBiasReLinTh: 1.0e-03                  # Gyroscope bias linearization threshold
-  fixedFrameReLinTh: 1.0e-03               # Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
-  displacementReLinTh: 1.0e-03             # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
+  positionReLinTh: 1.0e-03                 # Letter "x" in GTSAM variables, Position linearization threshold
+  rotationReLinTh: 1.0e-03                 # Letter "x" in GTSAM variables, Rotation linearization threshold
+  velocityReLinTh: 1.0e-03                 # Letter "v" in GTSAM variables, Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Gyroscope bias linearization threshold
+  referenceFrameReLinTh: 1.0e-03           # Letter "r" in GTSAM variables, Reference frame linearization threshold, ONLY IF optimizeReferenceFramePosesWrtWorld
+  calibrationReLinTh: 1.0e-03              # Letter "c" in GTSAM variables, Calibration linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
+  displacementReLinTh: 1.0e-03             # Letter "d" in GTSAM variables, Displacement linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
+  landmarkReLinTh: 1.0e-03                 # Letter "l" in GTSAM variables, Landmark linearization threshold
   relinearizeSkip: 1                       # Re-linearization is skipped every n-th step, default: 10
   enableRelinearization: true              # Whether to use relinearization, default: true
   evaluateNonlinearError: true             # Whether to evaluate the nonlinear error before and after the update, default: false

@@ -17,20 +17,33 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace anymal_se {
 
-void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
+void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
   }
 
   // Sensor Params
+  // GNSS
+  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  // LIO
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
+  // Legged Between
   leggedOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryBetweenRate", privateNode);
   leggedOdometryPoseDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedOdometryPoseDownsampleFactor", privateNode);
+  // Legged Velocity
   leggedOdometryVelocityRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryVelocityRate", privateNode);
   leggedOdometryVelocityDownsampleFactor_ =
       graph_msf::tryGetParam<int>("sensor_params/leggedOdometryVelocityDownsampleFactor", privateNode);
-  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  // Legged Kinematics
+  leggedKinematicsRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedKinematicsRate", privateNode);
+  leggedKinematicsDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedKinematicsDownsampleFactor", privateNode);
+
+  // Alignment Parameters
+  const auto poseAlignmentNoise =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
+      poseAlignmentNoise[4], poseAlignmentNoise[5];
 
   // Noise Parameters ---------------------------------------------------
   /// Gnss
@@ -58,6 +71,12 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
       graph_msf::tryGetParam<std::vector<double>>("noise_params/legVelocityUnaryNoise", privateNode);  // vx,vy,vz
   legVelocityUnaryNoise_ << legVelocityUnaryNoise[0], legVelocityUnaryNoise[1], legVelocityUnaryNoise[2];
 
+  /// Legged Kinematics Foot Position Unary
+  const auto legKinematicsFootPositionUnaryNoise =
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/legKinematicsFootPositionUnaryNoise", privateNode);  // x,y,z
+  legKinematicsFootPositionUnaryNoise_ << legKinematicsFootPositionUnaryNoise[0], legKinematicsFootPositionUnaryNoise[1],
+      legKinematicsFootPositionUnaryNoise[2];
+
   // Flags ---------------------------------------------------
   // GNSS Unary
   useGnssUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnssUnary", privateNode);
@@ -69,6 +88,8 @@ void AnymalEstimator::readParams_(const ros::NodeHandle& privateNode) {
   useLeggedBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedBetween", privateNode);
   // Legged Velocity Unary
   useLeggedVelocityUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedVelocityUnary", privateNode);
+  // Legged Kinematics
+  useLeggedKinematicsFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedKinematics", privateNode);
 
   // Gnss parameters ---------------------------------------------------
   if (useGnssUnaryFlag_) {

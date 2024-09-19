@@ -112,26 +112,30 @@ class OptimizerLMFixedLag : public OptimizerLM {
   // Get keyTimestampMap
   const std::map<gtsam::Key, double>& getFullKeyTimestampMap() override { return fixedLagSmootherPtr_->timestamps(); }
 
-  // Calculate State at Key
-  template <class ESTIMATE_TYPE>
-  ESTIMATE_TYPE calculateEstimate(const gtsam::Key& key) {
-    return fixedLagSmootherPtr_->calculateEstimate<ESTIMATE_TYPE>(key);
+  // Calculate State / Covariance
+  // Pose3
+  gtsam::Pose3 calculateEstimatedPose3(const gtsam::Key& key) override {
+    return fixedLagSmootherPtr_->calculateEstimate<gtsam::Pose3>(key);
   }
-  gtsam::Pose3 calculateEstimatedPose(const gtsam::Key& key) override { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Pose3>(key); }
-  gtsam::Vector3 calculateEstimatedVelocity(const gtsam::Key& key) override {
+  // Velocity3
+  gtsam::Vector3 calculateEstimatedVelocity3(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector3>(key);
   }
+  // Bias
   gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::imuBias::ConstantBias>(key);
   }
-  gtsam::Point3 calculateEstimatedDisplacement(const gtsam::Key& key) override {
+  // Point3
+  gtsam::Point3 calculateEstimatedPoint3(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Point3>(key);
   }
-
-  gtsam::Vector calculateStateAtKey(const gtsam::Key& key) { return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key); }
+  // Vector
+  gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) override {
+    return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key);
+  }
 
   // Marginal Covariance
-  gtsam::Matrix marginalCovariance(const gtsam::Key& key) override {
+  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override {
     // Not implemented
     std::cout << "FixedLagSmoother: Marginal Covariance not implemented yet. Returning Identity of correct size for key type: "
               << gtsam::symbolChr(key) << std::endl;

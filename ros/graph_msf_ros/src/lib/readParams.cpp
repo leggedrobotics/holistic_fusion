@@ -16,7 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
+void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   std::cout << YELLOW_START << "GraphMsfRos" << GREEN_START << " Reading parameters." << COLOR_END << std::endl;
 
   if (!graphConfigPtr_) {
@@ -51,13 +51,14 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingCholeskyFactorizationFlag_ = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
-  graphConfigPtr_->optimizeFixedFramePosesWrtWorld_ = tryGetParam<bool>("graph_params/optimizeFixedFramePosesWrtWorld", privateNode);
+  graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_ =
+      tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
   // Alignment Parameters
-  graphConfigPtr_->fixedFramePosesResetThreshold_ = tryGetParam<double>("graph_params/fixedFramePosesResetThreshold", privateNode);
-  graphConfigPtr_->centerMeasurementsAtRobotPositionBeforeAlignment_ =
-      tryGetParam<bool>("graph_params/centerMeasurementsAtRobotPositionBeforeAlignment", privateNode);
+  graphConfigPtr_->referenceFramePosesResetThreshold_ = tryGetParam<double>("graph_params/referenceFramePosesResetThreshold", privateNode);
+  graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_ =
+      tryGetParam<bool>("graph_params/centerReferenceFramesAtRobotPositionBeforeAlignment", privateNode);
 
   // Noise Parameters
   /// IMU
@@ -85,13 +86,15 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
 
   // Re-linearization
   /// Thresholds
-  graphConfigPtr_->positionReLinTh_ = tryGetParam<double>("relinearization_params/positionReLinTh", privateNode);
-  graphConfigPtr_->rotationReLinTh_ = tryGetParam<double>("relinearization_params/rotationReLinTh", privateNode);
-  graphConfigPtr_->velocityReLinTh_ = tryGetParam<double>("relinearization_params/velocityReLinTh", privateNode);
-  graphConfigPtr_->accBiasReLinTh_ = tryGetParam<double>("relinearization_params/accBiasReLinTh", privateNode);
-  graphConfigPtr_->gyroBiasReLinTh_ = tryGetParam<double>("relinearization_params/gyrBiasReLinTh", privateNode);
-  graphConfigPtr_->fixedFrameReLinTh_ = tryGetParam<double>("relinearization_params/fixedFrameReLinTh", privateNode);
-  graphConfigPtr_->displacementReLinTh_ = tryGetParam<double>("relinearization_params/displacementReLinTh", privateNode);
+  graphConfigPtr_->positionReLinTh_ = tryGetParam<double>("relinearization_params/positionReLinTh", privateNode);              // Var. "x"
+  graphConfigPtr_->rotationReLinTh_ = tryGetParam<double>("relinearization_params/rotationReLinTh", privateNode);              // Var. "x"
+  graphConfigPtr_->velocityReLinTh_ = tryGetParam<double>("relinearization_params/velocityReLinTh", privateNode);              // Var. "v"
+  graphConfigPtr_->accBiasReLinTh_ = tryGetParam<double>("relinearization_params/accBiasReLinTh", privateNode);                // Var. "b"
+  graphConfigPtr_->gyroBiasReLinTh_ = tryGetParam<double>("relinearization_params/gyrBiasReLinTh", privateNode);               // Var. "b"
+  graphConfigPtr_->referenceFrameReLinTh_ = tryGetParam<double>("relinearization_params/referenceFrameReLinTh", privateNode);  // Var. "r"
+  graphConfigPtr_->calibrationReLinTh_ = tryGetParam<double>("relinearization_params/calibrationReLinTh", privateNode);        // Var. "c"
+  graphConfigPtr_->displacementReLinTh_ = tryGetParam<double>("relinearization_params/displacementReLinTh", privateNode);      // Var. "d"
+  graphConfigPtr_->landmarkReLinTh_ = tryGetParam<double>("relinearization_params/landmarkReLinTh", privateNode);              // Var. "l"
   /// Others
   graphConfigPtr_->relinearizeSkip_ = tryGetParam<int>("relinearization_params/relinearizeSkip", privateNode);
   graphConfigPtr_->enableRelinearizationFlag_ = tryGetParam<bool>("relinearization_params/enableRelinearization", privateNode);
@@ -118,20 +121,20 @@ void GraphMsfRos::readParams_(const ros::NodeHandle& privateNode) {
   staticTransformsPtr_->setBaseLinkFrame(tryGetParam<std::string>("extrinsics/baseLinkFrame", privateNode));
 
   // Name IDs
-  fixedFrameAlignedNameId_ = tryGetParam<std::string>("name_ids/fixedFrameAligned", privateNode);
-  sensorFrameCorrectedNameId_ = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
+  referenceFrameAlignedNameId = tryGetParam<std::string>("name_ids/referenceFrameAligned", privateNode);
+  sensorFrameCorrectedNameId = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
 
   // Logging path in case we run offline optimization
   if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
     // Get the path
-    optimizationResultLoggingPath_ = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
+    optimizationResultLoggingPath = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
     // Make sure the path ends with a slash
-    if (optimizationResultLoggingPath_.back() != '/') {
-      optimizationResultLoggingPath_ += "/";
+    if (optimizationResultLoggingPath.back() != '/') {
+      optimizationResultLoggingPath += "/";
     }
     // Create directory if it does not exist
-    if (!boost::filesystem::exists(optimizationResultLoggingPath_)) {
-      boost::filesystem::create_directories(optimizationResultLoggingPath_);
+    if (!boost::filesystem::exists(optimizationResultLoggingPath)) {
+      boost::filesystem::create_directories(optimizationResultLoggingPath);
     }
   }
 }

@@ -10,26 +10,36 @@
     <arg name="lidar_odometry_topic_name" default="/open3d_slam/scan2map_odometry"/>
     <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom"/>
     <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry"/>
+    <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state"/>
 
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name" default="/dual_graph_node/get_path_in_enu"/>
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary" default="false"/>
+    <arg name="using_gnss_unary" default="true"/>
     <arg name="using_lio_unary" default="true"/>
     <arg name="using_lio_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
-    <arg name="using_legged_velocity_unary" default="false"/>
+    <arg name="using_legged_velocity_unary" default="true"/>
+    <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Config Files -->
+    <!-- GNSS Available -->
+    <arg if="$(arg using_gnss_unary)" name="core_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/core/core_graph_params_gnss.yaml"/>
+    <arg if="$(arg using_gnss_unary)" name="anymal_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_gnss.yaml"/>
+    <!-- GNSS Unavailable -->
+    <arg unless="$(arg using_gnss_unary)" name="core_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/core/core_graph_params_no_gnss.yaml"/>
+    <arg unless="$(arg using_gnss_unary)" name="anymal_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_no_gnss.yaml"/>
+    <!-- GNSS Independent -->
     <arg name="core_graph_config_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
-    <arg name="core_graph_param_file" default="$(find anymal_estimator_graph)/config/core/core_graph_params.yaml"/>
     <arg name="core_extrinsic_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_extrinsic_params.yaml"/>
-    <arg name="anymal_graph_param_file"
-         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params.yaml"/>
     <arg name="anymal_extrinsic_param_file"
          default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_extrinsic_params.yaml"/>
     <arg name="anymal_gnss_param_file"
@@ -49,6 +59,7 @@
         <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)"/>
         <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)"/>
         <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)"/>
+        <param name="launch/usingLeggedKinematics" type="bool" value="$(arg using_legged_kinematics)"/>
         <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)"/>
@@ -64,6 +75,7 @@
         <remap from="/gnss_topic" to="$(arg gnss_topic_name)"/>
         <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)"/>
         <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)"/>
+        <remap from="/anymal_state_topic" to="$(arg legged_kinematics_topic_name)"/>
         <!-- Remapping of services -->
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)"/>
     </node>
