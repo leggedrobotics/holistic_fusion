@@ -207,6 +207,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
     }
+    if (!optimizedAtLeastOnceFlag_) {
+      optimizedAtLeastOnceFlag_ = true;
+    }
     return true;
   }
 
@@ -261,7 +264,13 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
   // Marginal Covariance
-  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override { return fixedLagSmootherPtr_->marginalCovariance(key); }
+  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
+    // Check
+    if (!optimizedAtLeastOnceFlag_) {
+      REGULAR_COUT << RED_START << "GraphMSF: OptimizerIsam2FixedLag: No optimization has been performed yet." << COLOR_END << std::endl;
+    }
+    return fixedLagSmootherPtr_->marginalCovariance(key);
+  }
 
  private:
   // Optimizer itself

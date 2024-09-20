@@ -32,6 +32,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Defined Macros
 #define POS_COVARIANCE_VIOLATION_THRESHOLD 0.2
+#define NUM_GNSS_CALLBACKS_UNTIL_START 20
 
 namespace position3_se {
 
@@ -94,8 +95,13 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   double gnssPositionMeasUnaryNoise_ = 1.0;   // in [m]
 
   // Variables
+  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int prismPositionCallbackCounter_ = 0;
   int gnssPositionCallbackCounter_ = 0;
+
+  // Flags
+  static constexpr bool usePrismUnaryFlag_ = true;
+  static constexpr bool useGnssUnaryFlag_ = false;
 };
 
 }  // namespace position3_se

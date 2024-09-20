@@ -44,7 +44,7 @@ class OptimizerBase {
   virtual gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) = 0;
 
   // Marginal Covariance
-  virtual gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) = 0;
+  virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
 
  protected:
   // Config

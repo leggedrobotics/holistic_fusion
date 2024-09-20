@@ -135,7 +135,7 @@ class OptimizerLMFixedLag : public OptimizerLM {
   }
 
   // Marginal Covariance
-  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override {
+  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
     // Not implemented
     std::cout << "FixedLagSmoother: Marginal Covariance not implemented yet. Returning Identity of correct size for key type: "
               << gtsam::symbolChr(key) << std::endl;

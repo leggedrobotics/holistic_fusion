@@ -35,8 +35,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
-#define ROS_QUEUE_SIZE 100
-#define NUM_GNSS_CALLBACKS_UNTIL_START 20  // 0
+#define NUM_GNSS_CALLBACKS_UNTIL_START 20
 
 namespace anymal_se {
 

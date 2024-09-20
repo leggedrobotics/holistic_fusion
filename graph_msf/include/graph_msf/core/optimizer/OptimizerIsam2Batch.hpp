@@ -98,7 +98,12 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
     return batchSmootherPtr_->calculateEstimate<gtsam::Vector>(key);
   }
   // Marginal Covariance
-  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override { return batchSmootherPtr_->marginalCovariance(key); }
+  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
+    if (!optimizedAtLeastOnceFlag_) {
+      throw std::runtime_error("GraphMSF: OptimizerIsam2Batch: No optimization has been performed yet.");
+    }
+    return batchSmootherPtr_->marginalCovariance(key);
+  }
 
  private:
   // Optimizer itself

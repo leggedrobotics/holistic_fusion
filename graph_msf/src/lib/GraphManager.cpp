@@ -481,9 +481,9 @@ void GraphManager::updateGraph() {
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // C. Compute & Transform Covariances ------------------------------
   gtsam::Matrix66 resultPoseCovarianceBodyFrame =
-      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::X(currentPropagatedKey));
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::X(currentPropagatedKey));
   gtsam::Matrix33 resultVelocityCovariance =
-      rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsam::symbol_shorthand::V(currentPropagatedKey));
+      rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
   // Transform covariance from I_S_I in body frame, to W_S_W in world frame
   gtsam::Matrix66 adjointMatrix = resultNavState.pose().AdjointMap();
   gtsam::Matrix66 resultPoseCovarianceWorldFrame = adjointMatrix * resultPoseCovarianceBodyFrame * adjointMatrix.transpose();
@@ -511,14 +511,14 @@ void GraphManager::updateGraph() {
           // 6D Transformations
           if (isCharInCharArray<numDynamic6DStates>(stateCategory, dim6StateSymbols)) {
             T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose3(gtsamKey);
-            T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsamKey);
+            T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
           }
           // 3D Position3 Vectors
           else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
             T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedPoint3(gtsamKey));
-            T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrix(gtsamKey);
+            T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
           }
@@ -652,7 +652,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
     // Optimization
     batchOptimizerPtr_->optimize(maxIterations);
-    const gtsam::Values& isam2OptimizedStates = batchOptimizerPtr_->getAllOptimizedStates();
+    const gtsam::Values& optimizedStateValues = batchOptimizerPtr_->getAllOptimizedStates();
     // Key to timestamp map
     const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
     // Calculate Duration
@@ -662,7 +662,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
 
     // Save Optimized Result
-    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, savePath);
+    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath);
 
     // Return
     return true;

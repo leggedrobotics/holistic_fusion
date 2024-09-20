@@ -65,21 +65,28 @@ void Position3Estimator::initializePublishers(ros::NodeHandle& privateNode) {
   REGULAR_COUT << GREEN_START << " Initializing Publishers..." << COLOR_END << std::endl;
 
   // Paths
-  pubMeasWorldPrismPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_prism", ROS_QUEUE_SIZE);
-  pubMeasWorldGnssPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_gnss", ROS_QUEUE_SIZE);
+  if constexpr (usePrismUnaryFlag_) {
+    pubMeasWorldPrismPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_prism", ROS_QUEUE_SIZE);
+  }
+  if constexpr (useGnssUnaryFlag_) {
+    pubMeasWorldGnssPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_gnss", ROS_QUEUE_SIZE);
+  }
 }
 
 void Position3Estimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // Prism Position
-  subPrismPosition_ = privateNode.subscribe<geometry_msgs::PointStamped>(
-      "/prism_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::prismPositionCallback_, this, ros::TransportHints().tcpNoDelay());
+  if constexpr (usePrismUnaryFlag_) {
+    subPrismPosition_ = privateNode.subscribe<geometry_msgs::PointStamped>(
+        "/prism_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::prismPositionCallback_, this, ros::TransportHints().tcpNoDelay());
+  }
   // GNSS
-  subGnssPosition_ = privateNode.subscribe<sensor_msgs::NavSatFix>(
-      "/gnss_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::gnssPositionCallback_, this, ros::TransportHints().tcpNoDelay());
+  if constexpr (useGnssUnaryFlag_) {
+    subGnssPosition_ = privateNode.subscribe<sensor_msgs::NavSatFix>(
+        "/gnss_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::gnssPositionCallback_, this, ros::TransportHints().tcpNoDelay());
+  }
 
   // Log
   std::cout << YELLOW_START << "FactorGraphFiltering" << COLOR_END << " Initialized Position subscriber (on position_topic)." << std::endl;
-  return;
 }
 
 //---------------------------------------------------------------
@@ -128,19 +135,70 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   addToPathMsg(measPosition_worldPrismPositionPathPtr_, staticTransformsPtr_->getWorldFrame(), leicaPositionPtr->header.stamp, positionMeas,
                graphConfigPtr_->imuBufferLength_ * 4);
   pubMeasWorldPrismPositionPath_.publish(measPosition_worldPrismPositionPathPtr_);
-
-  // Log
-  std::cout << YELLOW_START << "Position3Estimator" << COLOR_END << " Prism Position Callback." << std::endl;
 }
 
 //---------------------------------------------------------------
 void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr) {
-  // Log
-  // std::cout << YELLOW_START << "Position3Estimator" << COLOR_END << " GNSS Position Callback." << std::endl;
-  std::cout << YELLOW_START << "Position3Estimator" << COLOR_END << " GNSS Position Callback, Uncertainty: " << std::endl;
-  std::cout << gnssPositionPtr->position_covariance[0] << std::endl;
-  std::cout << gnssPositionPtr->position_covariance[4] << std::endl;
-  std::cout << gnssPositionPtr->position_covariance[8] << std::endl;
+  // Counter
+  gnssPositionCallbackCounter_++;
+
+  // Translate to Eigen
+  Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssPositionPtr->latitude, gnssPositionPtr->longitude, gnssPositionPtr->altitude);
+  Eigen::Vector3d estStdDevXYZ(sqrt(gnssPositionPtr->position_covariance[0]), sqrt(gnssPositionPtr->position_covariance[4]),
+                               sqrt(gnssPositionPtr->position_covariance[8]));
+
+  // Initialize GNSS Handler
+  if (gnssPositionCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
+    // Wait until measurements got accumulated
+    accumulatedGnssCoordinates_ += gnssCoord;
+    if ((gnssPositionCallbackCounter_ % 10) == 0) {
+      REGULAR_COUT << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+    }
+    return;
+  } else if (gnssPositionCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
+    gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+    REGULAR_COUT << " GNSS Handler initialized." << std::endl;
+    return;
+  }
+
+  // Convert to Cartesian Coordinates
+  Eigen::Vector3d W_t_W_Gnss;
+  gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+
+  // Regular Operation
+  if (!areYawAndPositionInited() && areRollAndPitchInited()) {
+    // Set yaw (only if no prism is used)
+    if constexpr (!usePrismUnaryFlag_) {
+      // Try to initialize yaw and position if not done already
+      if (this->initYawAndPositionInWorld(
+              0.0, W_t_W_Gnss, staticTransformsPtr_->getBaseLinkFrame(),
+              dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame())) {
+        REGULAR_COUT << " GNSS set yaw and position successfully, as there is no prism." << std::endl;
+      } else {
+        REGULAR_COUT << " Could not set yaw and position." << std::endl;
+      }
+    }
+  } else if (areRollAndPitchInited()) {
+    const std::string& positionMeasFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame();
+    // Already initialized --> add position measurement to graph
+    graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
+        "GnssPosition", int(gnssPositionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
+        graph_msf::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
+        fixedFrame, initialSe3AlignmentNoise_);
+    this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
+  }
+
+  // Adjust frame name
+  if (fixedFrame != staticTransformsPtr_->getWorldFrame()) {
+    fixedFrame += referenceFrameAlignedNameId;
+  }
+
+  // Visualizations
+  addToPathMsg(measPosition_worldGnssPositionPathPtr_, fixedFrame, gnssPositionPtr->header.stamp, W_t_W_Gnss,
+               graphConfigPtr_->imuBufferLength_ * 4);
+  // Publish Path
+  pubMeasWorldGnssPositionPath_.publish(measPosition_worldGnssPositionPathPtr_);
 }
 
 }  // namespace position3_se

@@ -125,7 +125,7 @@ class OptimizerLMBatch : public OptimizerLM {
   }
 
   // Marginal Covariance
-  gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) override {
+  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }
@@ -133,6 +133,7 @@ class OptimizerLMBatch : public OptimizerLM {
     // Have to compute all marginals (if not done already for this result
     if (!marginalsComputedForLastOptimizedResultFlag_) {
       marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, batchSmootherOptimizedResult_);
+      marginalsComputedForLastOptimizedResultFlag_ = true;
     }
 
     // Return marginal covariance for key
