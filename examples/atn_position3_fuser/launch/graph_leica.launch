@@ -1,25 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
-    <param name="use_sim_time" value="true"/>
-
-    <!-- Arguments -->
-    <arg name="publish_static_tf" value="false"/>
+    <arg name="use_sim_time" default="false"/>
+    <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <!-- Input Topics -->
-    <!--    <arg name="imu_topic_name"            default="/gt_box/ap20/imu" />-->
-    <arg name="imu_topic_name" default="/gt_box/ap20/imu" />  # /gt_box/cpt7/imu/data_raw"/>
+    <arg name="imu_topic_name" default="/gt_box/ap20/imu"/>
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
 
-    <!-- Graph -->
-    <include file="$(find atn_position3_fuser)/launch/graph_no_urdf.launch" pass_all_args="true"/>
+    <!-- Config Files -->
+    <arg name="core_graph_config_file" default="$(find atn_position3_fuser)/config/core/core_graph_config.yaml"/>
+    <arg name="core_graph_parameter_file" default="$(find atn_position3_fuser)/config/core/core_graph_params.yaml"/>
+    <arg name="core_extrinsic_file" default="$(find atn_position3_fuser)/config/core/core_extrinsic_params.yaml"/>
+    <arg name="position_graph_parameter_file"
+         default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_graph_params.yaml"/>
+    <arg name="position_extrinsic_file"
+         default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_extrinsic_params.yaml"/>
 
-    <!-- Static TF Publisher -->
-    <group if="$(arg publish_static_tf)">
-        <node pkg="tf2_ros" type="static_transform_publisher" name="cpt_to_prism_tf_publisher"
-              args="0.303 -0.036 -0.296 3.142 0.0 -1.571 imu Prism"/>
-        <node pkg="tf2_ros" type="static_transform_publisher" name="cpt_to_body_tf_publisher"
-              args="0.0 0.0 0.0 0 0 0 body imu"/>
-    </group>
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging"/>
+
+    <!-- Node -->
+    <node pkg="atn_position3_fuser" type="atn_position3_fuser_node" name="atn_position3_fuser_node"
+          output="screen"> <!-- launch-prefix="gdb -args"-->
+        <!-- Launch Parameters -->
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
+        <!-- Parameter files -->
+        <rosparam command="load" file="$(arg core_graph_config_file)"/>
+        <rosparam command="load" file="$(arg core_graph_parameter_file)"/>
+        <rosparam command="load" file="$(arg core_extrinsic_file)"/>
+        <rosparam command="load" file="$(arg position_graph_parameter_file)"/>
+        <rosparam command="load" file="$(arg position_extrinsic_file)"/>
+        <!-- Remapping of topics -->
+        <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
+        <remap from="/prism_position_topic" to="$(arg prism_position_topic_name)"/>
+        <remap from="/gnss_position_topic" to="$(arg gnss_position_topic_name)"/>
+    </node>
+
 </launch>

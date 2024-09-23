@@ -27,6 +27,11 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   // Sensor Parameters
   graphConfigPtr_->imuRate_ = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->createStateEveryNthImuMeasurement_ = tryGetParam<int>("sensor_params/createStateEveryNthImuMeasurement", privateNode);
+  // Make sure that it is larger than 0
+  if (graphConfigPtr_->createStateEveryNthImuMeasurement_ <= 0) {
+    throw std::runtime_error("GraphMsfRos: createStateEveryNthImuMeasurement must be larger than 0.");
+  }
+  // Continue reading
   graphConfigPtr_->useImuSignalLowPassFilter_ = tryGetParam<bool>("sensor_params/useImuSignalLowPassFilter", privateNode);
   graphConfigPtr_->imuLowPassFilterCutoffFreqHz_ = tryGetParam<double>("sensor_params/imuLowPassFilterCutoffFreq", privateNode);
   graphConfigPtr_->maxSearchDeviation_ = 1.0 / (graphConfigPtr_->imuRate_ / graphConfigPtr_->createStateEveryNthImuMeasurement_);

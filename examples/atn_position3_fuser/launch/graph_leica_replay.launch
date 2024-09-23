@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" default="true"/>
+
+    <!-- Arguments -->
+    <arg name="publish_static_tf" value="false"/>
+    <arg name="run_elevation_mapping" value="true"/>
+    <arg name="box_description" default="$(find box_model)/urdf/box/box.urdf.xacro" />
+
+    <!-- Input Topics -->
+    <arg name="imu_topic_name" default="/gt_box/ap20/imu"/> <!--    /gt_box/cpt7/imu/data_raw"/>-->
+    <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
+    <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
+
+    <!-- Graph -->
+    <include file="$(find atn_position3_fuser)/launch/graph_leica.launch" pass_all_args="true"/>
+
+    <!-- Static TF Publisher -->
+    <group if="$(arg publish_static_tf)">
+        <node pkg="tf2_ros" type="static_transform_publisher" name="cpt_to_prism_tf_publisher"
+              args="0.303 -0.036 -0.296 3.142 0.0 -1.571 imu Prism"/>
+        <node pkg="tf2_ros" type="static_transform_publisher" name="cpt_to_body_tf_publisher"
+              args="0.0 0.0 0.0 0 0 0 body imu"/>
+    </group>
+
+    <!-- Elevation Mapping -->
+    <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
+    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/online_vlp16.yaml"/>
+
+    <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log"
+          if="$(arg run_elevation_mapping)">
+        <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
+        <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
+    </node>
+
+    <!-- RVIZ for Visualization -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
+
+    <!-- Model of the Box -->
+    <param name="box_description" command="$(find xacro)/xacro --inorder $(arg box_description)"/>
+
+</launch>

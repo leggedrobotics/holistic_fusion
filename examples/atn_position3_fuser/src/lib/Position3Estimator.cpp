@@ -52,6 +52,9 @@ void Position3Estimator::setup() {
   // Messages ----------------------------
   Position3Estimator::initializeMessages(privateNode);
 
+  // Services ----------------------------
+  Position3Estimator::initializeServices(privateNode);
+
   // Static Transforms
   staticTransformsPtr_->findTransformations();
 
@@ -65,22 +68,22 @@ void Position3Estimator::initializePublishers(ros::NodeHandle& privateNode) {
   REGULAR_COUT << GREEN_START << " Initializing Publishers..." << COLOR_END << std::endl;
 
   // Paths
-  if constexpr (usePrismUnaryFlag_) {
+  if constexpr (constexprUsePrismUnaryFlag_) {
     pubMeasWorldPrismPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_prism", ROS_QUEUE_SIZE);
   }
-  if constexpr (useGnssUnaryFlag_) {
+  if constexpr (constexprUseGnssUnaryFlag_) {
     pubMeasWorldGnssPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_gnss", ROS_QUEUE_SIZE);
   }
 }
 
 void Position3Estimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // Prism Position
-  if constexpr (usePrismUnaryFlag_) {
+  if constexpr (constexprUsePrismUnaryFlag_) {
     subPrismPosition_ = privateNode.subscribe<geometry_msgs::PointStamped>(
         "/prism_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::prismPositionCallback_, this, ros::TransportHints().tcpNoDelay());
   }
   // GNSS
-  if constexpr (useGnssUnaryFlag_) {
+  if constexpr (constexprUseGnssUnaryFlag_) {
     subGnssPosition_ = privateNode.subscribe<sensor_msgs::NavSatFix>(
         "/gnss_position_topic", ROS_QUEUE_SIZE, &Position3Estimator::gnssPositionCallback_, this, ros::TransportHints().tcpNoDelay());
   }
@@ -97,6 +100,20 @@ void Position3Estimator::initializeMessages(ros::NodeHandle& privateNode) {
   // Paths
   measPosition_worldPrismPositionPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
   measPosition_worldGnssPositionPathPtr_ = nav_msgs::PathPtr(new nav_msgs::Path);
+}
+
+// --------------------------------------------------------------
+void Position3Estimator::initializeServices(ros::NodeHandle& privateNode) {
+  // Trigger Prism Unary
+  if constexpr (constexprUsePrismUnaryFlag_) {
+    srvTogglePrismUnary_ =
+        privateNode.advertiseService("/atn_position3_fuser_node/togglePrismUnary", &Position3Estimator::srvTogglePrismUnaryCallback_, this);
+  }
+  // Trigger GNSS Unary
+  if constexpr (constexprUseGnssUnaryFlag_) {
+    srvToggleGnssUnary_ =
+        privateNode.advertiseService("/atn_position3_fuser_node/toggleGnssUnary", &Position3Estimator::srvToggleGnssUnaryCallback_, this);
+  }
 }
 
 //---------------------------------------------------------------
@@ -119,7 +136,9 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     } else {
       REGULAR_COUT << " Could not set yaw and position." << std::endl;
     }
-  } else {
+  }
+  // Else if active
+  else if (usePrismUnaryFlag_) {
     const std::string& positionMeasFrame =
         dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPrismPositionMeasFrame();
     const std::string& fixedFrame = staticTransformsPtr_->getWorldFrame();
@@ -129,6 +148,10 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
         graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
         positionCovarianceXYZ, fixedFrame, initialSe3AlignmentNoise_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
+  }
+  // Else if not active
+  else if ((prismPositionCallbackCounter_ % 10) == 0) {
+    REGULAR_COUT << " Prism unary measurement is turned off." << std::endl;
   }
 
   // Visualizations
@@ -169,7 +192,7 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   // Regular Operation
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {
     // Set yaw (only if no prism is used)
-    if constexpr (!usePrismUnaryFlag_) {
+    if constexpr (!constexprUsePrismUnaryFlag_) {
       // Try to initialize yaw and position if not done already
       if (this->initYawAndPositionInWorld(
               0.0, W_t_W_Gnss, staticTransformsPtr_->getBaseLinkFrame(),
@@ -179,7 +202,9 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
         REGULAR_COUT << " Could not set yaw and position." << std::endl;
       }
     }
-  } else if (areRollAndPitchInited()) {
+  }
+  // Else if active
+  else if (areRollAndPitchInited() && useGnssUnaryFlag_) {
     const std::string& positionMeasFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame();
     // Already initialized --> add position measurement to graph
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
@@ -187,6 +212,8 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
         graph_msf::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, initialSe3AlignmentNoise_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
+  } else if ((gnssPositionCallbackCounter_ % 10) == 0) {
+    REGULAR_COUT << " GNSS unary measurement is turned off." << std::endl;
   }
 
   // Adjust frame name
@@ -199,6 +226,30 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
                graphConfigPtr_->imuBufferLength_ * 4);
   // Publish Path
   pubMeasWorldGnssPositionPath_.publish(measPosition_worldGnssPositionPathPtr_);
+}
+
+//---------------------------------------------------------------
+bool Position3Estimator::srvTogglePrismUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+  // Toggle Flag
+  usePrismUnaryFlag_ = !usePrismUnaryFlag_;
+
+  // Response
+  res.success = true;
+  res.message = "Prism unary measurement toggled " + std::string(usePrismUnaryFlag_ ? "on" : "off") + ".";
+
+  return true;
+}
+
+//---------------------------------------------------------------
+bool Position3Estimator::srvToggleGnssUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+  // Toggle Flag
+  useGnssUnaryFlag_ = !useGnssUnaryFlag_;
+
+  // Response
+  res.success = true;
+  res.message = "GNSS unary measurement toggled " + std::string(useGnssUnaryFlag_ ? "on" : "off") + ".";
+
+  return true;
 }
 
 }  // namespace position3_se

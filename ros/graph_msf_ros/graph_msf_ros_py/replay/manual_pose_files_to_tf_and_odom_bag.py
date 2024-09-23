@@ -2,35 +2,42 @@
 
 # Imports
 import os.path
-from pathlib import Path
+import sys
 
-HOME_DIR = str(Path.home())
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Workspace
-from graph_msf_ros_py.replay.transform_helpers import write_bag
-from graph_msf_ros_py.utils.get_latest_time_string_in_folder import get_latest_time_string_in_folder
-
-# Input and output files
-dir_path = os.path.join(
-    HOME_DIR,
-    "workspaces/rsl_workspaces/graph_msf_ws/src/graph_msf_dev/examples/anymal_estimator_graph/logging",
-)
-latest_time_string = get_latest_time_string_in_folder(folder_path=dir_path)
-input_file_path = os.path.join(
-    dir_path, latest_time_string + "_optimized_X_state_transform.csv"
-)
-output_bag_path = os.path.join(
-    dir_path, latest_time_string + "_bag_X_state_transform.bag"
-)
-fixed_frame_id = "offline_world_graph_msf"
-child_frame_id = "imu_link"
-
-
-def main():
-    # Go through the input file and write the data to the output bag
-    write_bag(input_file_path, output_bag_path, fixed_frame_id, child_frame_id)
-
+from replay.transform_helpers import write_bag
+from utils.get_latest_time_string_in_folder import get_latest_time_string_in_folder
 
 
 if __name__ == "__main__":
-    main()
+    # Get Directory Path as argument
+    if len(sys.argv) > 1:
+        ros_package_name = sys.argv[1]
+        print(f"ROS package name: {ros_package_name}")
+    else:
+        print(f"ROS package name not provided. Exiting...")
+        exit()
+
+    # Find the directory path
+    import roslib
+
+    dir_path = os.path.join(roslib.packages.get_pkg_dir(ros_package_name), "logging")
+    print(f"Directory path: {dir_path}")
+
+    # Process data
+    latest_time_string = get_latest_time_string_in_folder(folder_path=dir_path)
+    input_file_path = os.path.join(
+        dir_path, latest_time_string + "_X_state_6D_pose.csv"
+    )
+    output_bag_path = os.path.join(
+        dir_path, latest_time_string + "_bag_X_state_6D_pose.bag"
+    )
+    fixed_frame_id = "offline_world"
+    child_frame_id = "imu_link"
+
+    # Call main function
+    write_bag(input_file_path=input_file_path, output_bag_path=output_bag_path, fixed_frame_id=fixed_frame_id,
+              child_frame_id=child_frame_id)

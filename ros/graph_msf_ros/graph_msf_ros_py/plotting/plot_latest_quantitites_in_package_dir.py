@@ -7,11 +7,11 @@ import numpy as np
 import sys
 
 # Path to the folder containing the files
-HOME_DIR = str(os.path.expanduser("~"))
-dir_path = os.path.join(
-    HOME_DIR,
-    "workspaces/rsl_workspaces/graph_msf_ws/src/graph_msf_dev/examples/anymal_estimator_graph/logging",
-)
+# HOME_DIR = str(os.path.expanduser("~"))
+# dir_path = os.path.join(
+#     HOME_DIR,
+#     "workspaces/rsl_workspaces/graph_msf_ws/src/graph_msf_dev/examples/anymal_estimator_graph/logging",
+# )
 
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -140,6 +140,19 @@ def plot_quantities_in_file(
 
 
 def main():
+    # Get Directory Path as argument
+    if len(sys.argv) > 1:
+        ros_package_name = sys.argv[1]
+        print(f"ROS package name: {ros_package_name}")
+    else:
+        print(f"ROS package name not provided. Exiting...")
+        exit()
+
+    # Find the directory path
+    import roslib
+    dir_path = os.path.join(roslib.packages.get_pkg_dir(ros_package_name), "logging")
+    print(f"Directory path: {dir_path}")
+
     # We want to only get the latest files
     latest_file_string = (
         get_latest_time_string_in_folder.get_latest_time_string_in_folder(dir_path)

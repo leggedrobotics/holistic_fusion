@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Package Name -->
+    <arg name="ros_package_name" default="anymal_estimator_graph"/>
+
+    <!-- Run Python Script -->
+    <node pkg="graph_msf_ros" type="graph_msf_ros_py/plotting/plot_latest_quantities_in_package_dir.py"
+          name="plot_latest_quantities_in_package_dir"
+          output="screen" args="$(arg ros_package_name)"/>
+
+</launch>

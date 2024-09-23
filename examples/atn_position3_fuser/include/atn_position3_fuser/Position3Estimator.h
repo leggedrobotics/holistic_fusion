@@ -52,12 +52,18 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
 
   void initializeMessages(ros::NodeHandle& privateNode) override;
 
+  void initializeServices(ros::NodeHandle& privateNode) override;
+
   void readParams(const ros::NodeHandle& privateNode) override;
 
  private:
   // Callbacks
   void prismPositionCallback_(const geometry_msgs::PointStamped::ConstPtr& leicaPositionPtr);
   void gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr);
+
+  // Services
+  bool srvTogglePrismUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+  bool srvToggleGnssUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
   // Members ----------------------------------
   // Publishers
@@ -69,6 +75,11 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Paths
   nav_msgs::PathPtr measPosition_worldPrismPositionPathPtr_;
   nav_msgs::PathPtr measPosition_worldGnssPositionPathPtr_;
+
+  // Services
+  // Trigger offline smoother optimization
+  ros::ServiceServer srvTogglePrismUnary_;
+  ros::ServiceServer srvToggleGnssUnary_;
 
   // Subscribers
   ros::Subscriber subPrismPosition_;
@@ -100,8 +111,10 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   int gnssPositionCallbackCounter_ = 0;
 
   // Flags
-  static constexpr bool usePrismUnaryFlag_ = true;
-  static constexpr bool useGnssUnaryFlag_ = false;
+  static constexpr bool constexprUsePrismUnaryFlag_ = true;
+  static constexpr bool constexprUseGnssUnaryFlag_ = false;
+  bool usePrismUnaryFlag_ = constexprUsePrismUnaryFlag_;
+  bool useGnssUnaryFlag_ = constexprUseGnssUnaryFlag_;
 };
 
 }  // namespace position3_se

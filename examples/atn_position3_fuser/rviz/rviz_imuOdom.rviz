@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
+        - /RobotModel1
       Splitter Ratio: 0.6027944087982178
     Tree Height: 939
   - Class: rviz/Selection
@@ -383,6 +384,207 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Class: grid_map_rviz_plugin/GridMap
+      Color: 200; 200; 200
+      Color Layer: elevation
+      Color Transformer: GridMapLayer
+      Enabled: false
+      Height Layer: elevation
+      Height Transformer: GridMapLayer
+      History Length: 1
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 10
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: GridMap
+      Show Grid Lines: true
+      Topic: /elevation_mapping/elevation_map
+      Unreliable: false
+      Use Rainbow: true
+      Value: false
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        adis16475_imu:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_front_center:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_front_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_front_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        alphasense_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ap20_imu:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        box_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        box_base_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        cam1_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cam2_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cam3_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cam4_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cam5_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cpt7_antenna_back:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cpt7_antenna_front:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        cpt7_imu:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hdr_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hdr_front:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hdr_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hdr_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hesai_lidar:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hesai_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        imu_sensor_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        livox_imu:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        livox_lidar:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        livox_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        prism:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        prism_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        stim320_imu:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_camera_center:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_left_camera_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_left_camera_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_right_camera_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed2i_right_camera_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        zed_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: RobotModel
+      Robot Description: box_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
