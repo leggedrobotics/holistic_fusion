@@ -6,7 +6,9 @@
     <!-- Arguments -->
     <arg name="publish_static_tf" value="false"/>
     <arg name="run_elevation_mapping" value="true"/>
-    <arg name="box_description" default="$(find box_model)/urdf/box/box.urdf.xacro" />
+    <arg name="box_description" default="$(find box_model)/urdf/box/box.urdf.xacro"/>
+    <arg name="run_estimator" default="true"/>
+    <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/gt_box/ap20/imu"/> <!--    /gt_box/cpt7/imu/data_raw"/>-->
@@ -14,7 +16,8 @@
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
 
     <!-- Graph -->
-    <include file="$(find atn_position3_fuser)/launch/graph_leica.launch" pass_all_args="true"/>
+    <include file="$(find atn_position3_fuser)/launch/position3_fuser.launch" if="$(arg run_estimator)"
+             pass_all_args="true"/>
 
     <!-- Static TF Publisher -->
     <group if="$(arg publish_static_tf)">
@@ -25,8 +28,8 @@
     </group>
 
     <!-- Elevation Mapping -->
-    <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
-    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/online_vlp16.yaml"/>
+    <arg name="default_elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/default.yaml"/>
+    <arg name="elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/online_vlp16.yaml"/>
 
     <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log"
           if="$(arg run_elevation_mapping)">
@@ -35,7 +38,7 @@
     </node>
 
     <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)"/>
 
     <!-- Model of the Box -->
     <param name="box_description" command="$(find xacro)/xacro --inorder $(arg box_description)"/>
