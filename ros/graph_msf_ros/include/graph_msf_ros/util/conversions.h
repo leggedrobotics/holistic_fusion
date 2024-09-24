@@ -16,8 +16,6 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam);
-
 void odomMsgToEigen(const nav_msgs::Odometry& odomLidar, Eigen::Matrix4d& T);
 
 void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Matrix4d& T);

@@ -21,12 +21,22 @@ import utils.get_latest_time_string_in_folder as get_latest_time_string_in_folde
 
 
 def plot_quantities_in_file(
-    file_path: str, type: str, dir_path: str, latest_file_string: str
+        file_path: str, type: str, dir_path: str, latest_file_string: str
 ):
     # Data
     fields = []
+    # Bias
     if "bias" in type:
         fields = ["t", "a_x", "a_y", "a_z", "w_x", "w_y", "w_z"]
+    # Covariance --> Then not a transform or pose
+    elif "covariance" in type:
+        fields = ["t",
+                  "cov_00", "cov_01", "cov_02", "cov_03", "cov_04", "cov_05",
+                  "cov_10", "cov_11", "cov_12", "cov_13", "cov_14", "cov_15",
+                  "cov_20", "cov_21", "cov_22", "cov_23", "cov_24", "cov_25",
+                  "cov_30", "cov_31", "cov_32", "cov_33", "cov_34", "cov_35",
+                  "cov_40", "cov_41", "cov_42", "cov_43", "cov_44", "cov_45",
+                  "cov_50", "cov_51", "cov_52", "cov_53", "cov_54", "cov_55"]
     elif "transform" in type or "pose" in type:
         fields = ["t", "x", "y", "z", "qw", "qx", "qy", "qz", "roll", "pitch", "yaw"]
     elif "velocity" in type:
@@ -54,79 +64,103 @@ def plot_quantities_in_file(
     # Subtract first timestamp
     data[:, 0] = data[:, 0] - data[0, 0]
     print(f"Data shape: {data.shape}")
-    print("First 5 rows of data: ", data[:5, :])
+    print(f"Fields: {fields}")
+    #print("First 5 rows of data: ", data[:5, :])
     # Sorty by time
     # indices = np.argsort(data[:, 0])
     # data = data[indices, :]
     # print(indices)
     # Plot
     plt.figure()
-    for i, field in enumerate(fields):
-        # Do not plot time field
-        if i == 0 or field == "qw" or field == "qx" or field == "qy" or field == "qz":
-            continue
-        else:
-            print(f"Plotting field: {field}")
-            # Create figure
-            plt.plot(data[:, 0], data[:, i], label=field)
+    if "covariance" not in type:
+        for i, field in enumerate(fields):
+            # Do not plot time field
+            if i == 0 or field == "qw" or field == "qx" or field == "qy" or field == "qz":
+                continue
+            else:
+                print(f"Plotting field: {field}")
+                # Create figure
+                plt.plot(data[:, 0], data[:, i], label=field)
 
-        # Create plot
-        if ("transform" in type or "pose" in type) and field == "z":
-            plt.xlabel("Time [s]")
-            plt.ylabel("Position [m]")
-            plt.title(f"{type} Position Over Time")
-            plt.legend()
-            plt.grid()
-            # Save the plot
-            plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_position.png")
-            plt.savefig(plot_path)
-            plt.figure()
-        elif ("transform" in type or "pose" in type) and field == "yaw":
-            plt.xlabel("Time [s]")
-            plt.ylabel("Orientation [rad]")
-            plt.title(f"{type} Orientation Over Time")
-            plt.legend()
-            plt.grid()
-            # Save the plot
-            plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_orientation.png")
-            plt.savefig(plot_path)
-            plt.figure()
-        elif "velocity" in type and field == "v_z":
-            plt.xlabel("Time [s]")
-            plt.ylabel("Velocity [m/s]")
-            plt.title(f"{type} Velocity Over Time")
-            plt.legend()
-            plt.grid()
-            # Save the plot
-            plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_velocity.png")
-            plt.savefig(plot_path)
-        elif "bias" in type and field == "a_z":
-            plt.xlabel("Time [s]")
-            plt.ylabel("Acceleration [m/s^2]")
-            plt.title(f"{type} Acceleration Over Time")
-            plt.legend()
-            plt.grid()
-            # Save the plot
-            plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_acceleration.png")
-            plt.savefig(plot_path)
-            plt.figure()
-        elif "bias" in type and field == "w_z":
-            plt.xlabel("Time [s]")
-            plt.ylabel("Angular Velocity [rad/s]")
-            plt.title(f"{type} Angular Velocity Over Time")
-            plt.legend()
-            plt.grid()
-            # Save the plot
-            plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_angular_velocity.png")
-            plt.savefig(plot_path)
-        else: # Continue plotting
-            continue
+            # Create plot when entering last field for each type
+            if "bias" in type and field == "a_z":
+                plt.xlabel("Time [s]")
+                plt.ylabel("Acceleration [m/s^2]")
+                plt.title(f"{type} Acceleration Over Time")
+                plt.legend()
+                plt.grid()
+                # Save the plot
+                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_acceleration.png")
+                plt.savefig(plot_path)
+                plt.figure()
+            elif "bias" in type and field == "w_z":
+                plt.xlabel("Time [s]")
+                plt.ylabel("Angular Velocity [rad/s]")
+                plt.title(f"{type} Angular Velocity Over Time")
+                plt.legend()
+                plt.grid()
+                # Save the plot
+                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_angular_velocity.png")
+                plt.savefig(plot_path)
+                plt.figure()
+            elif ("transform" in type or "pose" in type) and field == "z":
+                plt.xlabel("Time [s]")
+                plt.ylabel("Position [m]")
+                plt.title(f"{type} Position Over Time")
+                plt.legend()
+                plt.grid()
+                # Save the plot
+                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_position.png")
+                plt.savefig(plot_path)
+                plt.figure()
+            elif ("transform" in type or "pose" in type) and field == "yaw":
+                plt.xlabel("Time [s]")
+                plt.ylabel("Orientation [rad]")
+                plt.title(f"{type} Orientation Over Time")
+                plt.legend()
+                plt.grid()
+                # Save the plot
+                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_orientation.png")
+                plt.savefig(plot_path)
+                plt.figure()
+            elif "velocity" in type and field == "v_z":
+                plt.xlabel("Time [s]")
+                plt.ylabel("Velocity [m/s]")
+                plt.title(f"{type} Velocity Over Time")
+                plt.legend()
+                plt.grid()
+                # Save the plot
+                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}.png")
+                plt.savefig(plot_path)
+                plt.figure()
+            else:  # Continue plotting
+                continue
 
-        print(f"Plot saved to: {plot_path}")
+            print(f"Plot saved to: {plot_path}")
 
-    # Now get the x, y plot
-    if "transform" in type or "pose" in type:
+    # Now get the covariance and x, y plot
+    plt.figure()
+    # Covariance
+    if "covariance" in type:
+        # Get the diagonal elements
+        plt.plot(data[:, 0], data[:, 1], label="cov_xx")
+        plt.plot(data[:, 0], data[:, 8], label="cov_yy")
+        plt.plot(data[:, 0], data[:, 15], label="cov_zz")
+        #
+        plt.xlabel("Time [s]")
+        plt.ylabel("Covariance [m]")
+        plt.title(f"{type} Covariance Over Time")
+        plt.legend()
+        plt.grid()
+        # Save the plot
+        plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}.png")
+        plt.savefig(plot_path)
+        print(f"Covariance plot saved to: {plot_path}")
+    # X, Y
+    elif "transform" in type or "pose" in type:
+        # Data
         plt.plot(data[:, 1], data[:, 2], label="x-y")
+        # Plot
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
         plt.title(f"{type} x-y Position Over Time")
@@ -135,8 +169,7 @@ def plot_quantities_in_file(
         # Save the plot
         plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_x_y_position.png")
         plt.savefig(plot_path)
-        print(f"Plot saved to: {plot_path}")
-
+        print(f"X-Y-plot saved to: {plot_path}")
 
 
 def main():
@@ -164,6 +197,7 @@ def main():
         "R_6D_transform",
         "v_state_3D_velocity",
         "X_state_6D_pose",
+        "X_state_6D_pose_covariance",
     ]
     # Get all files in the folder that contain the latest file string
     files = os.listdir(dir_path)

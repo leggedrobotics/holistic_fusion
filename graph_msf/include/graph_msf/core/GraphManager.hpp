@@ -99,7 +99,7 @@ class GraphManager {
                                       const std::string& saveFileName);
 
   // Comfort functions ---------------------------------------------------------
-  gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
+  gtsam::NavState calculateStateAtGeneralKey(bool& computeSuccessfulFlag, const gtsam::Key& generalKey);
 
   // Accessors
   /// Getters
@@ -112,8 +112,13 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
-                                                const gtsam::Key& key, const char* callingFunctionName);
+  static gtsam::NavState calculateNavStateAtGeneralKey(bool& computeSuccessfulFlag, std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
+                                                const gtsam::Key& generalKey, const char* callingFunctionName);
+
+  // Get Covariance of Pose at Key in World Frame, with optional NavState
+  static Eigen::Matrix<double, 6, 6> calculatePoseCovarianceAtKeyInWorldFrame(
+      std::shared_ptr<graph_msf::OptimizerBase> graphPtr, const gtsam::Key& graphKey,
+      const char* callingFunctionName, std::optional<const gtsam::NavState> optionalNavState = std::nullopt);
 
  private:
   // Methods

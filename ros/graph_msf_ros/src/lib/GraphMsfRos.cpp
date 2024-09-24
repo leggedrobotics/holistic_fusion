@@ -13,6 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf_ros/constants.h"
+#include "graph_msf/geometry/conversions.h"
 #include "graph_msf_ros/util/conversions.h"
 
 namespace graph_msf {
