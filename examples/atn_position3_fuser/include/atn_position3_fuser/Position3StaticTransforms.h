@@ -21,10 +21,12 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
   // Setters ---------------------------------------------------------------
   void setPrismPositionMeasFrame(const std::string& s) { prismPositionMeasFrame_ = s; }
   void setGnssPositionMeasFrame(const std::string& s) { gnssPositionMeasFrame_ = s; }
+  void setGnssOfflinePoseMeasFrame(const std::string& s) { gnssOfflinePoseMeasFrame_ = s; }
 
   // Getters ---------------------------------------------------------------
   const std::string& getPrismPositionMeasFrame() { return prismPositionMeasFrame_; }
   const std::string& getGnssPositionMeasFrame() { return gnssPositionMeasFrame_; }
+  const std::string& getGnssOfflinePoseMeasFrame() { return gnssOfflinePoseMeasFrame_; }
 
  protected:  // Methods
   void findTransformations() override;
@@ -33,6 +35,7 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
   // Frame names
   std::string prismPositionMeasFrame_;
   std::string gnssPositionMeasFrame_;
+  std::string gnssOfflinePoseMeasFrame_;
 };
 
 }  // namespace position3_se

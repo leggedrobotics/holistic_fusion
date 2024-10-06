@@ -14,6 +14,7 @@
     <arg name="imu_topic_name" default="/gt_box/ap20/imu"/> <!--    /gt_box/cpt7/imu/data_raw"/>-->
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
+    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>
 
     <!-- Graph -->
     <include file="$(find atn_position3_fuser)/launch/position3_fuser.launch" if="$(arg run_estimator)"

@@ -189,7 +189,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
         return;
       }
       REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
-                << 180.0 * initYaw_W_Base / M_PI << std::endl;
+                   << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
 
     // Actual Initialization
@@ -226,10 +226,9 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Counter
   ++lidarUnaryCallbackCounter_;
 
+  // Prepare Data
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-
-  // Transform to IMU frame
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {

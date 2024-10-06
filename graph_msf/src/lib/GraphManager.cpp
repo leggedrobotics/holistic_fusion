@@ -507,8 +507,8 @@ void GraphManager::updateGraph() {
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // C. Compute & Transform Covariances ------------------------------
   // Pose Covariance in World Frame
-  gtsam::Matrix66 resultPoseCovarianceWorldFrame = calculatePoseCovarianceAtKeyInWorldFrame(
-      rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
+  gtsam::Matrix66 resultPoseCovarianceWorldFrame =
+      calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
   // Velocity Covariance
   gtsam::Matrix33 resultVelocityCovariance =
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
@@ -633,8 +633,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }  // end: if active statement
-    }  // for loop over all transforms
+      }    // end: if active statement
+    }      // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -732,8 +732,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const double timeStamp = keyTimestampMap.at(graphKey);
 
     // Compute Covariance of Pose
-    gtsam::Matrix66 poseCovarianceInWorldGtsam =
-        calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
+    gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
     // Convert to ROS Format
     Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
 

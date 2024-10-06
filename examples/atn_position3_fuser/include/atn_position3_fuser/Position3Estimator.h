@@ -60,30 +60,36 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Callbacks
   void prismPositionCallback_(const geometry_msgs::PointStamped::ConstPtr& leicaPositionPtr);
   void gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr);
+  void gnssOfflinePoseCallback_(const nav_msgs::Odometry::ConstPtr& gnssOfflinePosePtr);
 
   // Services
   bool srvTogglePrismUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
   bool srvToggleGnssUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+  bool srvToggleGnssOfflinePoseUnaryCallback_(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
   // Members ----------------------------------
   // Publishers
   // Path
   ros::Publisher pubMeasWorldPrismPositionPath_;
   ros::Publisher pubMeasWorldGnssPositionPath_;
+  ros::Publisher pubMeasWorldGnssOfflinePosePath_;
 
   // Messages
   // Paths
   nav_msgs::PathPtr measPosition_worldPrismPositionPathPtr_;
   nav_msgs::PathPtr measPosition_worldGnssPositionPathPtr_;
+  nav_msgs::PathPtr measPosition_worldGnssOfflinePosePathPtr_;
 
   // Services
   // Trigger offline smoother optimization
-  ros::ServiceServer srvTogglePrismUnary_;
-  ros::ServiceServer srvToggleGnssUnary_;
+  ros::ServiceServer srvTogglePrismPositionUnary_;
+  ros::ServiceServer srvToggleGnssPositionUnary_;
+  ros::ServiceServer srvToggleGnssOfflinePoseUnary_;
 
   // Subscribers
   ros::Subscriber subPrismPosition_;
   ros::Subscriber subGnssPosition_;
+  ros::Subscriber subGnssOfflinePose_;
   // TF
   tf::TransformListener tfListener_;
 
@@ -99,22 +105,27 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
 
   // Rates
   double prismPositionRate_ = 20.0;
-  double gnssPositionRate_ = 1.0;
+  double gnssPositionRate_ = 10.0;
+  double gnssOfflinePoseRate_ = 10.0;
 
   // Noise
   double prismPositionMeasUnaryNoise_ = 1.0;  // in [m]
   double gnssPositionMeasUnaryNoise_ = 1.0;   // in [m]
+  Eigen::Matrix<double, 6, 1> gnssOfflinePoseMeasUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Variables
   Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int prismPositionCallbackCounter_ = 0;
   int gnssPositionCallbackCounter_ = 0;
+  int gnssOfflinePoseCallbackCounter_ = 0;
 
   // Flags
-  static constexpr bool constexprUsePrismUnaryFlag_ = true;
-  static constexpr bool constexprUseGnssUnaryFlag_ = false;
-  bool usePrismUnaryFlag_ = constexprUsePrismUnaryFlag_;
-  bool useGnssUnaryFlag_ = constexprUseGnssUnaryFlag_;
+  static constexpr bool constexprUsePrismPositionUnaryFlag_ = false;
+  static constexpr bool constexprUseGnssPositionUnaryFlag_ = false;
+  static constexpr bool constexprUseGnssOfflinePoseUnaryFlag_ = true;
+  bool usePrismPositionUnaryFlag_ = constexprUsePrismPositionUnaryFlag_;
+  bool useGnssPositionUnaryFlag_ = constexprUseGnssPositionUnaryFlag_;
+  bool useGnssOfflinePoseUnaryFlag_ = constexprUseGnssOfflinePoseUnaryFlag_;
 };
 
 }  // namespace position3_se

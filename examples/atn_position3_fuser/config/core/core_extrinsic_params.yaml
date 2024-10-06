@@ -4,9 +4,9 @@ extrinsics:
   worldFrame: "world"
   odomFrame: "odom"
   # Used for estimation
-  imuFrame: "State" # "cpt7_imu"
+  imuFrame: "ap20_imu" # "cpt7_imu", "ap20_imu" used to be "State"
   baseLinkFrame: "box_base"
-  initializeZeroYawAndPositionOfFrame: "State" #"cpt7_imu" # Initialize the yaw and position of the base frame to zero
+  initializeZeroYawAndPositionOfFrame: "ap20_imu" #"cpt7_imu" # Initialize the yaw and position of the base frame to zero
                                              # this is just meant to avoid any jump after getting the first true measurements
 name_ids:
   referenceFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
