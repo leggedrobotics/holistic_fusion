@@ -11,7 +11,7 @@
     <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name" default="/gt_box/ap20/imu"/> <!--    /gt_box/cpt7/imu/data_raw"/>-->
+    <arg name="imu_topic_name" default="/gt_box/ap20/imu"/> <!--  /gt_box/ap20/imu  /gt_box/cpt7/imu/data_raw"/>-->
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
     <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>

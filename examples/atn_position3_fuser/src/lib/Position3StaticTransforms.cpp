@@ -51,18 +51,31 @@ void Position3StaticTransforms::findTransformations() {
   // Prism_I
   lv_T_frame1_frame2(prismPositionMeasFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, prismPositionMeasFrame_).inverse();
 
-  // Imu to GNSS Link ---
+  // Imu to GNSS Antenna Link (for Position) ---
   listener_.waitForTransform(imuFrame_, gnssPositionMeasFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, gnssPositionMeasFrame_, ros::Time(0), transform);
 
-  // I_Gnss
+  // I_Gnss1
   graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_));
   std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Gnss: " << std::endl
             << rv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_).translation() << std::endl;
   std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Gnss: " << std::endl
             << rv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_).rotation() << std::endl;
-  // Gnss_I
+  // Gnss1_I
   lv_T_frame1_frame2(gnssPositionMeasFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_).inverse();
+
+  // Imu to CPT7 Link (for Offline Pose) ---
+  listener_.waitForTransform(imuFrame_, gnssOfflinePoseMeasFrame_, ros::Time(0), ros::Duration(1.0));
+  listener_.lookupTransform(imuFrame_, gnssOfflinePoseMeasFrame_, ros::Time(0), transform);
+
+  // I_Gnss2
+  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_));
+  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Gnss2: " << std::endl
+            << rv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_).translation() << std::endl;
+  std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Gnss2: " << std::endl
+            << rv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_).rotation() << std::endl;
+  // Gnss2_I
+  lv_T_frame1_frame2(gnssOfflinePoseMeasFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_).inverse();
 
   // Wrapping up --------------------------
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;

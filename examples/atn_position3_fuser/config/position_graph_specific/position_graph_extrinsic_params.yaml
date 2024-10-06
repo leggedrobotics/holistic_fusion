@@ -2,4 +2,4 @@
 extrinsics:
   prismPositionMeasFrame: prism
   gnssPositionMeasFrame: cpt7_antenna_front
-  gnssOfflinePoseMeasFrame: cpt7_antenna_front
+  gnssOfflinePoseMeasFrame: cpt7_imu

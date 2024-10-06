@@ -4,7 +4,7 @@ extrinsics:
   worldFrame: "world"
   odomFrame: "odom"
   # Used for estimation
-  imuFrame: "ap20_imu" # "cpt7_imu", "ap20_imu" used to be "State"
+  imuFrame: "ap20_imu" # "cpt7_imu", "ap20_imu", "ap20_imu" used to be "State" (in older bags)
   baseLinkFrame: "box_base"
   initializeZeroYawAndPositionOfFrame: "ap20_imu" #"cpt7_imu" # Initialize the yaw and position of the base frame to zero
                                              # this is just meant to avoid any jump after getting the first true measurements
