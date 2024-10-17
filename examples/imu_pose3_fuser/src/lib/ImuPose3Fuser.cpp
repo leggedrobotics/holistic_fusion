@@ -22,7 +22,8 @@ ImuPose3Fuser::ImuPose3Fuser(std::shared_ptr<ros::NodeHandle> privateNodePtr) : 
 
   // Configurations ----------------------------
   // Static transforms
-  staticTransformsPtr_ = std::make_shared<graph_msf::StaticTransforms>();
+  throw std::runtime_error("Static transforms not implemented yet.");
+  // staticTransformsPtr_ = std::make_shared<graph_msf::StaticTransforms>();
 
   // Set up
   ImuPose3Fuser::setup();

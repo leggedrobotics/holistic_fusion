@@ -18,7 +18,7 @@ namespace graph_msf {
 
 class StaticTransformsTf : public StaticTransforms {
  public:
-  StaticTransformsTf(const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
+  StaticTransformsTf() = default;
 
  protected:
   void findTransformations() override;

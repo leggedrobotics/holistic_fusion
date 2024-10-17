@@ -25,7 +25,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include <geometry_msgs/PointStamped.h>
 
 // Workspace
-#include "atn_position3_fuser/Position3StaticTransforms.h"
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf_ros/GraphMsfRos.h"
@@ -120,9 +119,9 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   int gnssOfflinePoseCallbackCounter_ = 0;
 
   // Flags
-  static constexpr bool constexprUsePrismPositionUnaryFlag_ = false;
+  static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;
   static constexpr bool constexprUseGnssPositionUnaryFlag_ = false;
-  static constexpr bool constexprUseGnssOfflinePoseUnaryFlag_ = true;
+  static constexpr bool constexprUseGnssOfflinePoseUnaryFlag_ = false;
   bool usePrismPositionUnaryFlag_ = constexprUsePrismPositionUnaryFlag_;
   bool useGnssPositionUnaryFlag_ = constexprUseGnssPositionUnaryFlag_;
   bool useGnssOfflinePoseUnaryFlag_ = constexprUseGnssOfflinePoseUnaryFlag_;

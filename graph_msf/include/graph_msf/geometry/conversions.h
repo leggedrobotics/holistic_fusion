@@ -25,6 +25,6 @@ Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(cons
   return covRos;
 }
 
-}
+}  // namespace graph_msf
 
 #endif  // GRAPH_MSF_CONVERSIONS_H

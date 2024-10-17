@@ -24,7 +24,8 @@ Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateN
 
   // Configurations ----------------------------
   // Static Transforms
-  staticTransformsPtr_ = std::make_shared<Position3StaticTransforms>(privateNodePtr);
+  staticTransformsPtr_ = std::make_shared<Position3StaticTransforms>(
+      privateNodePtr, constexprUsePrismPositionUnaryFlag_, constexprUseGnssPositionUnaryFlag_ || constexprUseGnssOfflinePoseUnaryFlag_);
 
   // GNSS Handler
   gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();

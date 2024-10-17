@@ -14,8 +14,7 @@ namespace excavator_se {
 
 class ExcavatorStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  ExcavatorStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr,
-                            const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
+  ExcavatorStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
   // Setters ---------------------------------------------------------------
   void setLioOdometryFrame(const std::string& s) { lidarFrame_ = s; }
