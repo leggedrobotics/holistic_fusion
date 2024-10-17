@@ -38,17 +38,17 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  #accNoiseDensity: 8.5e-04                 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
-  accNoiseDensity: 1.0e-03                 # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
+  #accNoiseDensity: 8.5e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
+  accNoiseDensity: 5.9287e-04  # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
   integrationNoiseDensity: 1.0e-05         # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
   use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
   ### Rotation
   #gyrNoiseDensity: 1.308e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
-  gyrNoiseDensity: 1.0e-04               # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03
+  gyrNoiseDensity: 1.1139e-05 # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03
   omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
   ### Bias
-  accBiasRandomWalkNoiseDensity: 3.16e-04 # Default: sqrt(1.0e-03)
-  gyrBiasRandomWalkNoiseDensity: 3.05e-04 # Default: sqrt(9.33e-04)
+  accBiasRandomWalkNoiseDensity: 1.9344e-05 # Default: sqrt(1.0e-03)
+  gyrBiasRandomWalkNoiseDensity: 1.1954e-07 # Default: sqrt(9.33e-04)
   biasAccOmegaInit: 3.16e-04              # Default: sqrt(1.0e-07)
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
