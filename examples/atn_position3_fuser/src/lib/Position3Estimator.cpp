@@ -143,6 +143,22 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   Eigen::Vector3d positionCovarianceXYZ(prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_,
                                         prismPositionMeasUnaryNoise_);  // TODO: Set proper values
 
+  // Case: First call
+  if (prismPositionCallbackCounter_ == 1) {
+    REGULAR_COUT << " First prism position measurement received. Setting initial position to " << positionMeas.transpose() << std::endl;
+    // Set initial position
+    initialPrismPosition_ = positionMeas;
+  }
+
+  // Case: Not moved enough --> check if moved enough in meanwhile
+  if (!prismMovedEnoughFlag_) {
+    if ((positionMeas - initialPrismPosition_).norm() > PRISM_MOVED_ENOUGH_THRESHOLD) {
+      prismMovedEnoughFlag_ = true;
+      REGULAR_COUT << " Prism moved enough from initial position of " << initialPrismPosition_.transpose() << " to "
+                   << positionMeas.transpose() << std::endl;
+    }
+  }
+
   // State Machine
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {
     // Try to initialize yaw and position if not done already
@@ -181,6 +197,14 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
 void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr) {
   // Counter
   gnssPositionCallbackCounter_++;
+
+  // If prism has not moved enough, do not add GNSS measurements
+  if (!prismMovedEnoughFlag_) {
+    if ((gnssPositionCallbackCounter_ % 100) == 0) {
+      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
+    }
+    return;
+  }
 
   // Translate to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssPositionPtr->latitude, gnssPositionPtr->longitude, gnssPositionPtr->altitude);
@@ -250,14 +274,31 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   // Counter
   gnssOfflinePoseCallbackCounter_++;
 
+  // If prism has not moved enough, do not add GNSS measurements
+  if (!prismMovedEnoughFlag_) {
+    if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
+      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
+    }
+    return;
+  }
+
   // Prepare Data
   Eigen::Isometry3d T_ENU_Gk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*gnssOfflinePosePtr, T_ENU_Gk.matrix());
   double gnssUnaryTimeK = gnssOfflinePosePtr->header.stamp.toSec();
 
+  // Get Uncertainty from message
+  // TODO: Still buggy in message
+  auto estGnssOfflinePoseMeasUnaryNoiseList = gnssOfflinePosePtr->pose.covariance;
+  Eigen::Matrix<double, 6, 1> estGnssOfflinePoseMeasUnaryNoise;
+  estGnssOfflinePoseMeasUnaryNoise << sqrt(estGnssOfflinePoseMeasUnaryNoiseList[0]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[7]),
+      sqrt(estGnssOfflinePoseMeasUnaryNoiseList[14]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[21]),
+      sqrt(estGnssOfflinePoseMeasUnaryNoiseList[28]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[35]);
+  // std::cout << "estGnssOfflinePoseMeasUnaryNoise: " << estGnssOfflinePoseMeasUnaryNoise.transpose() << std::endl;
+
   // Fixed Frame
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
-  // fixedFrame = gnssOfflinePosePtr->header.frame_id;
+  fixedFrame = gnssOfflinePosePtr->header.frame_id;
 
   // Measurement
   const std::string& gnssFrameName =

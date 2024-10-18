@@ -205,6 +205,8 @@ Visualization Manager:
           Value: true
         enu_origin:
           Value: true
+        enu_origin_graph_msf_aligned:
+          Value: true
         hdr_base:
           Value: false
         hdr_front:
@@ -306,7 +308,8 @@ Visualization Manager:
                 {}
             odom:
               world:
-                {}
+                enu_origin_graph_msf_aligned:
+                  {}
             prism:
               prism_model:
                 {}
@@ -333,7 +336,7 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
+      Line Style: Billboards
       Line Width: 0.029999999329447746
       Name: MeasuredPath_Leica_PosMarker
       Offset:
@@ -357,7 +360,7 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
+      Line Style: Billboards
       Line Width: 0.029999999329447746
       Name: MeasuredPath_Gnss_PosMarker
       Offset:
@@ -381,7 +384,7 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
+      Line Style: Billboards
       Line Width: 0.029999999329447746
       Name: MeasuredPath_Gnss_OfflinePoseMarker
       Offset:
@@ -654,7 +657,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.680298805236816
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -670,9 +673,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.49039843678474426
+      Pitch: 0.7853981852531433
       Target Frame: cpt7_imu
-      Yaw: 5.278583526611328
+      Yaw: 0.7853981852531433
     Saved:
       - Class: rviz/Orbit
         Distance: 35.76002883911133

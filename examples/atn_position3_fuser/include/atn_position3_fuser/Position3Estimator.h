@@ -113,15 +113,20 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> gnssOfflinePoseMeasUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Variables
-  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
+  // PRISM
   int prismPositionCallbackCounter_ = 0;
+  Eigen::Vector3d initialPrismPosition_ = Eigen::Vector3d::Zero();  // Initial Prism Position in meters
+  bool prismMovedEnoughFlag_ = false;
+  static constexpr double PRISM_MOVED_ENOUGH_THRESHOLD = 1.0;  // in [m]
+  // GNSS
+  Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int gnssPositionCallbackCounter_ = 0;
   int gnssOfflinePoseCallbackCounter_ = 0;
 
   // Flags
   static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;
   static constexpr bool constexprUseGnssPositionUnaryFlag_ = false;
-  static constexpr bool constexprUseGnssOfflinePoseUnaryFlag_ = false;
+  static constexpr bool constexprUseGnssOfflinePoseUnaryFlag_ = true;
   bool usePrismPositionUnaryFlag_ = constexprUsePrismPositionUnaryFlag_;
   bool useGnssPositionUnaryFlag_ = constexprUseGnssPositionUnaryFlag_;
   bool useGnssOfflinePoseUnaryFlag_ = constexprUseGnssOfflinePoseUnaryFlag_;
