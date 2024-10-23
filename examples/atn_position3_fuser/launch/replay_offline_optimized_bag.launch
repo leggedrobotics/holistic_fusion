@@ -24,13 +24,6 @@
     <arg name="prism_file"
             default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_29_55/2024-10-01-11-29-55_jetson_ap20_synced.bag"/>
 
-    <!-- Call Replay Launch -->
-    <include file="$(find atn_position3_fuser)/launch/position3_fuser_replay.launch">
-        <arg name="run_estimator" value="$(arg run_estimator)"/>
-        <arg name="elevation_mapping_parameter_file" value="$(arg elevation_mapping_parameter_file)"/>
-        <arg name="rviz_file_path" value="$(arg rviz_file_path)"/>
-    </include>
-
     <!-- Replay the bag files with clock option -->
     <node pkg="rosbag" type="play" name="rosbag_play" output="screen"
           args="--clock --pause $(arg estimate_file) $(arg tf_file) $(arg pt_file) $(arg prism_file)"/>
