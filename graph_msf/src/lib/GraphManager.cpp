@@ -684,7 +684,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
     double optimizationDuration =
         std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
-    std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
+    std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
 
     // Save Optimized Result
     saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath);
@@ -724,6 +724,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
+    std::cout << "New iteration" << std::endl;
+
     // Read out information
     const gtsam::Key& graphKey = keyPosePair.first;
     const gtsam::Pose3& pose = keyPosePair.second;
@@ -731,8 +733,15 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const char stateCategory = stateSymbol.chr();
     const double timeStamp = keyTimestampMap.at(graphKey);
 
+    // If state is "x0", it is the first state and we do not want to save it
+    //    if (stateSymbol.index() < 10000) {
+    //      std::cout << "skipping " << stateSymbol << std::endl;
+    //      continue;
+    //    }
+
     // Compute Covariance of Pose
     gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
+    std::cout << "computed covariance" << std::endl;
     // Convert to ROS Format
     Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
 
@@ -809,6 +818,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
         << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
         << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
         << poseCovarianceInWorldRos(5, 5) << "\n";
+    std::cout << "Saved covariance to file" << std::endl;
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------

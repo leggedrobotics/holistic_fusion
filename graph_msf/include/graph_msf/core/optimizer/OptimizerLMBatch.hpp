@@ -60,10 +60,10 @@ class OptimizerLMBatch : public OptimizerLM {
     // containerBatchSmootherValues_.clear();
     // Log State of graph in order to compute marginal covariance if desired
     graphLastOptimizedResult_ = containerBatchSmootherFactors_;
-    marginalsComputedForLastOptimizedResultFlag_ = false;
 
     // Optimize
     batchSmootherOptimizedResult_ = batchSmootherPtr_->optimize();
+    marginalsComputedForLastOptimizedResultFlag_ = false;
     optimizedAtLeastOnceFlag_ = true;
   }
 
@@ -132,11 +132,24 @@ class OptimizerLMBatch : public OptimizerLM {
 
     // Have to compute all marginals (if not done already for this result
     if (!marginalsComputedForLastOptimizedResultFlag_) {
+      std::cout << "Getting new marginals for last optimized result." << std::endl;
       marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, batchSmootherOptimizedResult_);
       marginalsComputedForLastOptimizedResultFlag_ = true;
     }
 
+    // Check whether key exists in optimized result
+    if (!batchSmootherOptimizedResult_.exists(key)) {
+      std::cout << "Key " << gtsam::Symbol(key) << " does not exist in optimized result." << std::endl;
+      throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in optimized result.");
+    }
+    // Check whether key exists in nonlinar factor graph
+    if (!graphLastOptimizedResult_.keys().exists(key)) {
+      std::cout << "Key " << gtsam::Symbol(key) << " does not exist in nonlinear factor graph." << std::endl;
+      throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in nonlinear factor graph.");
+    }
+
     // Return marginal covariance for key
+    std::cout << "Returning marginal covariance for key " << gtsam::Symbol(key) << " from marginals: " << std::endl;
     return marginalsForLastOptimizedResult_.marginalCovariance(key);
   }
 
