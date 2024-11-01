@@ -46,14 +46,14 @@ class OptimizerIsam2 : public OptimizerBase {
          graphConfigPtr_->gyroBiasReLinTh_, graphConfigPtr_->gyroBiasReLinTh_, graphConfigPtr_->gyroBiasReLinTh_)
             .finished();
     /// Reference Frames
-    if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
+    if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
       relinTh['r'] = (gtsam::Vector(6) << graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_,
                       graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_,
                       graphConfigPtr_->referenceFrameReLinTh_, graphConfigPtr_->referenceFrameReLinTh_)
                          .finished();
     }
     /// Calibration
-    if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_) {
+    if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_) {
       /// 6 DoF (Position and Rotation)
       relinTh['c'] = (gtsam::Vector(6) << graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_,
                       graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_, graphConfigPtr_->calibrationReLinTh_,
@@ -70,14 +70,6 @@ class OptimizerIsam2 : public OptimizerBase {
             .finished();
     /// Set relinearization thresholds
     isam2Params_.relinearizeThreshold = relinTh;
-
-    // Factorization
-    if (graphConfigPtr_->usingCholeskyFactorizationFlag_) {
-      isam2Params_.factorization = gtsam::ISAM2Params::CHOLESKY;  // CHOLESKY:Fast but non-stable
-    } else {
-      isam2Params_.factorization = gtsam::ISAM2Params::QR;  // QR:Slower but more stable im poorly
-                                                            // conditioned problems
-    }
 
     // Performance parameters
     // Set graph relinearization skip

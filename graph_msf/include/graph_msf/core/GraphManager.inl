@@ -67,9 +67,9 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
   // Create Expression --> exact type of expression is determined by the template
   const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
-      closestGeneralKey, gtsamTransformsExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_,
-      graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_,
-      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_);
+      closestGeneralKey, gtsamTransformsExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
+      graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignmentFlag_,
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
 
   // Factor
   std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> unaryExpressionFactorPtr;
@@ -128,7 +128,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
           writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
         }
         // b) Batch Graph
-        if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+        if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
           auto batchKeyTimestampMapIterator = batchGraphKeysTimestampsMapBufferPtr_->find(key);
           // i) Not existent
@@ -180,7 +180,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 template <class CHILDPTR>
 bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
   rtFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     batchFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
   }
   return true;

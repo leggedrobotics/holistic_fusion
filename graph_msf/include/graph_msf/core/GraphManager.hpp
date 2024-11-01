@@ -46,7 +46,7 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END
                 << " Additional slow batch smoother was built up. Next time the optimization of it can be called before shutting down (if "
                    "not done already)."

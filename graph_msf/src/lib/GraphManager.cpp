@@ -61,7 +61,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
     rtOptimizerPtr_ = std::make_shared<OptimizerLMFixedLag>(graphConfigPtr_);
   }
   // B. Batch Optimizer
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     if (graphConfigPtr_->slowBatchSmootherUseIsamFlag_) {
       batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
     } else {
@@ -270,13 +270,13 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
     rtGraphValuesBufferPtr_->insert(valuesEstimate);
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       batchGraphValuesBufferPtr_->insert(valuesEstimate);
     }
 
     // Add timestamps
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, rtGraphKeysTimestampsMapBufferPtr_);
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, batchGraphKeysTimestampsMapBufferPtr_);
     }
 
@@ -464,7 +464,7 @@ void GraphManager::updateGraph() {
     rtFactorGraphBufferPtr_->resize(0);
     rtGraphValuesBufferPtr_->clear();
     rtGraphKeysTimestampsMapBufferPtr_->clear();
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       newBatchGraphFactors = *batchFactorGraphBufferPtr_;
       newBatchGraphValues = *batchGraphValuesBufferPtr_;
       newBatchGraphKeysTimestampsMap = *batchGraphKeysTimestampsMapBufferPtr_;
@@ -514,7 +514,7 @@ void GraphManager::updateGraph() {
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
   // D. FixedFrame Transformations ------------------------------
-  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamTransformsExpressionKeys_.mutex());
 
@@ -672,7 +672,7 @@ void GraphManager::updateGraph() {
 }
 
 bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
     // Optimization
@@ -724,8 +724,6 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
-    std::cout << "New iteration" << std::endl;
-
     // Read out information
     const gtsam::Key& graphKey = keyPosePair.first;
     const gtsam::Pose3& pose = keyPosePair.second;
@@ -741,7 +739,6 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // Compute Covariance of Pose
     gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
-    std::cout << "computed covariance" << std::endl;
     // Convert to ROS Format
     Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
 
@@ -818,7 +815,6 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
         << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
         << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
         << poseCovarianceInWorldRos(5, 5) << "\n";
-    std::cout << "Saved covariance to file" << std::endl;
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
@@ -991,7 +987,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   }
 
   // Add Factors and States to Batch Optimization (if desired) without running optimization
-  if (graphConfigPtr->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr->useAdditionalSlowBatchSmootherFlag_) {
     batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
   }
 

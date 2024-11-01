@@ -20,9 +20,18 @@ class OptimizerLMBatch : public OptimizerLM {
  public:
   explicit OptimizerLMBatch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
-      std::cout << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+      REGULAR_COUT << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START
                 << " Initializing slow batch smoother that is optimized with LM." << COLOR_END << std::endl;
+      // Set whether to use Cholesky factorization
+      if (graphConfigPtr_->slowBatchSmootherUseCholeskyFactorizationFlag_) {
+        lmParams_.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
+        REGULAR_COUT << "Using Multifrontal-Cholesky factorization for slow batch smoother (LM)." << std::endl;
+      } else {
+        lmParams_.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+        REGULAR_COUT << "Using Multifrontal-QR factorization for slow batch smoother (LM)." << std::endl;
+      }
+      // Print
       lmParams_.print("GraphMSF: OptimizerLMBatch, LM Parameters:");
     }
   }
@@ -62,7 +71,7 @@ class OptimizerLMBatch : public OptimizerLM {
     graphLastOptimizedResult_ = containerBatchSmootherFactors_;
 
     // Optimize
-    batchSmootherOptimizedResult_ = batchSmootherPtr_->optimize();
+    valuesLastOptimizedResult_ = batchSmootherPtr_->optimize();
     marginalsComputedForLastOptimizedResultFlag_ = false;
     optimizedAtLeastOnceFlag_ = true;
   }
@@ -75,11 +84,11 @@ class OptimizerLMBatch : public OptimizerLM {
     }
 
     // Return result
-    return batchSmootherOptimizedResult_;
+    return valuesLastOptimizedResult_;
   }
 
   // Get all keys of optimized states
-  gtsam::KeyVector getAllOptimizedKeys() override { return batchSmootherOptimizedResult_.keys(); }
+  gtsam::KeyVector getAllOptimizedKeys() override { return valuesLastOptimizedResult_.keys(); }
 
   // Get nonlinear factor graph
   const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const override { return batchSmootherPtr_->graph(); }
@@ -93,35 +102,35 @@ class OptimizerLMBatch : public OptimizerLM {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedPose: No optimization has been performed yet.");
     }
-    return batchSmootherOptimizedResult_.at<gtsam::Pose3>(key);
+    return valuesLastOptimizedResult_.at<gtsam::Pose3>(key);
   }
   // Velocity3
   gtsam::Vector3 calculateEstimatedVelocity3(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedVelocity: No optimization has been performed yet.");
     }
-    return batchSmootherOptimizedResult_.at<gtsam::Vector3>(key);
+    return valuesLastOptimizedResult_.at<gtsam::Vector3>(key);
   }
   // Bias
   gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedBias: No optimization has been performed yet.");
     }
-    return batchSmootherOptimizedResult_.at<gtsam::imuBias::ConstantBias>(key);
+    return valuesLastOptimizedResult_.at<gtsam::imuBias::ConstantBias>(key);
   }
   // Point3
   gtsam::Point3 calculateEstimatedPoint3(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateEstimatedDisplacement: No optimization has been performed yet.");
     }
-    return batchSmootherOptimizedResult_.at<gtsam::Point3>(key);
+    return valuesLastOptimizedResult_.at<gtsam::Point3>(key);
   }
   // Vector
   gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: calculateStateAtKey: No optimization has been performed yet.");
     }
-    return batchSmootherOptimizedResult_.at<gtsam::Vector>(key);
+    return valuesLastOptimizedResult_.at<gtsam::Vector>(key);
   }
 
   // Marginal Covariance
@@ -130,15 +139,22 @@ class OptimizerLMBatch : public OptimizerLM {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }
 
-    // Have to compute all marginals (if not done already for this result
+    // Print size of graph
+    //    std::cout << "Size of graph: " << graphLastOptimizedResult_.size() << std::endl;
+    //    std::cout << "Size of values: " << valuesLastOptimizedResult_.size() << std::endl;
+
+    // Have to compute all marginals (if not done already for this result)
     if (!marginalsComputedForLastOptimizedResultFlag_) {
       std::cout << "Getting new marginals for last optimized result." << std::endl;
-      marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, batchSmootherOptimizedResult_);
+      marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, valuesLastOptimizedResult_);
       marginalsComputedForLastOptimizedResultFlag_ = true;
     }
 
+    // Print size of marginals
+    //    std::cout << "Size of marginals: " << marginalsForLastOptimizedResult_.optimize().size() << std::endl;
+
     // Check whether key exists in optimized result
-    if (!batchSmootherOptimizedResult_.exists(key)) {
+    if (!valuesLastOptimizedResult_.exists(key)) {
       std::cout << "Key " << gtsam::Symbol(key) << " does not exist in optimized result." << std::endl;
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in optimized result.");
     }
@@ -150,6 +166,8 @@ class OptimizerLMBatch : public OptimizerLM {
 
     // Return marginal covariance for key
     std::cout << "Returning marginal covariance for key " << gtsam::Symbol(key) << " from marginals: " << std::endl;
+    // Return
+    std::cout << "Running marginal covariance." << std::endl;
     return marginalsForLastOptimizedResult_.marginalCovariance(key);
   }
 
@@ -161,7 +179,7 @@ class OptimizerLMBatch : public OptimizerLM {
   gtsam::Values containerBatchSmootherValues_;
   // Result and keyTimestampMap
   bool optimizedAtLeastOnceFlag_ = false;
-  gtsam::Values batchSmootherOptimizedResult_;
+  gtsam::Values valuesLastOptimizedResult_;
   std::map<gtsam::Key, double> batchSmootherKeyTimestampMap_;
   // Container for ingredients of last optimization, e.g. for marginal covariance
   gtsam::NonlinearFactorGraph graphLastOptimizedResult_;

@@ -14,10 +14,12 @@ initialization_params:
 
 # Factor Graph
 graph_params:
-  realTimeSmootherUseIsam: true
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+  realTimeSmootherUseIsam: true
+  realTimeSmootherUseCholeskyFactorization: true  # CHOLESKY faster, QR numerically more stable
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother, NO EFFECT YET
+  slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
@@ -25,7 +27,6 @@ graph_params:
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
   # Alignment Parameters
   optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world

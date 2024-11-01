@@ -19,6 +19,15 @@ namespace graph_msf {
 class OptimizerIsam2FixedLag : public OptimizerIsam2 {
  public:
   explicit OptimizerIsam2FixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
+    // Fixed Lag --> real-time: Define whether to use Cholesky factorization
+    if (graphConfigPtr_->realTimeSmootherUseCholeskyFactorizationFlag_) {
+      isam2Params_.factorization = gtsam::ISAM2Params::CHOLESKY;
+      std::cout << "Using Cholesky factorization for real-time graph (ISAM2)." << std::endl;
+    } else {
+      isam2Params_.factorization = gtsam::ISAM2Params::QR;
+      std::cout << "Using QR factorization for real-time graph (ISAM2)." << std::endl;
+    }
+
     // Initialize Real-time Smoother -----------------------------------------------
     fixedLagSmootherPtr_ =
         std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_,
