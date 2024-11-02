@@ -22,7 +22,7 @@ class OptimizerLMBatch : public OptimizerLM {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
     if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       REGULAR_COUT << YELLOW_START << "GraphMSF: OptimizerLMBatch" << GREEN_START
-                << " Initializing slow batch smoother that is optimized with LM." << COLOR_END << std::endl;
+                   << " Initializing slow batch smoother that is optimized with LM." << COLOR_END << std::endl;
       // Set whether to use Cholesky factorization
       if (graphConfigPtr_->slowBatchSmootherUseCholeskyFactorizationFlag_) {
         lmParams_.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
@@ -134,41 +134,66 @@ class OptimizerLMBatch : public OptimizerLM {
   }
 
   // Marginal Covariance
-  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
+  gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& valueKey) override {
     if (!optimizedAtLeastOnceFlag_) {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }
 
-    // Print size of graph
-    //    std::cout << "Size of graph: " << graphLastOptimizedResult_.size() << std::endl;
-    //    std::cout << "Size of values: " << valuesLastOptimizedResult_.size() << std::endl;
+    // Only use window around key for marginal covariance ------------------------------------------------
+    if (graphConfigPtr_->useWindowForMarginalsComputationFlag_) {
+      // Get window size
+      const double& windowSize = graphConfigPtr_->windowSizeForMarginalsComputation_;  // Alias
+      // Get key timestamp
+      const double keyTimestamp = batchSmootherKeyTimestampMap_.at(valueKey);
 
-    // Have to compute all marginals (if not done already for this result)
-    if (!marginalsComputedForLastOptimizedResultFlag_) {
-      std::cout << "Getting new marginals for last optimized result." << std::endl;
-      marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, valuesLastOptimizedResult_);
-      marginalsComputedForLastOptimizedResultFlag_ = true;
+      // Get subgraph
+      gtsam::NonlinearFactorGraph subGraph;
+      // Check for EVERY factor whether it is close enough to current key --> total squared complexity (check O(N) factors for O(N) keys)
+        for (const auto& factorPtr : graphLastOptimizedResult_) {
+          bool factorContainsKeyWithinWindow = false;
+          // Check whether the factor contains any key within the window
+          for (const auto& factorKey : factorPtr->keys()) {
+            if (std::abs(batchSmootherKeyTimestampMap_[factorKey] - keyTimestamp) < windowSize) {
+                factorContainsKeyWithinWindow = true;
+                break;
+            }
+          }
+          // Add factor if it contains key within window
+          if (factorContainsKeyWithinWindow) {
+            subGraph.add(factorPtr);
+          }
+        }
+
+      // Get marginals
+      marginalsForLastOptimizedResult_ = gtsam::Marginals(subGraph, valuesLastOptimizedResult_);
+    }
+    // Normal case: Compute marginals for whole graph
+    else {
+      // Have to compute all marginals (if not done already for this result)
+      if (!marginalsComputedForLastOptimizedResultFlag_) {
+        std::cout << "Getting new marginals for last optimized result." << std::endl;
+        marginalsForLastOptimizedResult_ = gtsam::Marginals(graphLastOptimizedResult_, valuesLastOptimizedResult_);
+        marginalsComputedForLastOptimizedResultFlag_ = true;
+      }
     }
 
     // Print size of marginals
-    //    std::cout << "Size of marginals: " << marginalsForLastOptimizedResult_.optimize().size() << std::endl;
+    std::cout << "Key: " << gtsam::Symbol(valueKey) << std::endl;
+    std::cout << "Size of marginals: " << marginalsForLastOptimizedResult_.optimize().size() << std::endl;
 
     // Check whether key exists in optimized result
-    if (!valuesLastOptimizedResult_.exists(key)) {
-      std::cout << "Key " << gtsam::Symbol(key) << " does not exist in optimized result." << std::endl;
+    if (!valuesLastOptimizedResult_.exists(valueKey)) {
+      std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in optimized result." << std::endl;
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in optimized result.");
     }
     // Check whether key exists in nonlinar factor graph
-    if (!graphLastOptimizedResult_.keys().exists(key)) {
-      std::cout << "Key " << gtsam::Symbol(key) << " does not exist in nonlinear factor graph." << std::endl;
+    if (!graphLastOptimizedResult_.keys().exists(valueKey)) {
+      std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in nonlinear factor graph." << std::endl;
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in nonlinear factor graph.");
     }
 
-    // Return marginal covariance for key
-    std::cout << "Returning marginal covariance for key " << gtsam::Symbol(key) << " from marginals: " << std::endl;
     // Return
-    std::cout << "Running marginal covariance." << std::endl;
-    return marginalsForLastOptimizedResult_.marginalCovariance(key);
+    return marginalsForLastOptimizedResult_.marginalCovariance(valueKey);
   }
 
  private:

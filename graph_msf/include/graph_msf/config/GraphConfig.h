@@ -47,6 +47,8 @@ struct GraphConfig {
   bool findUnusedFactorSlotsFlag_ = false;
   bool enableDetailedResultsFlag_ = false;
   bool usingBiasForPreIntegrationFlag_ = true;
+  bool useWindowForMarginalsComputationFlag_ = true;
+  double windowSizeForMarginalsComputation_ = 100.0;
   // Alignment Parameters
   bool optimizeReferenceFramePosesWrtWorldFlag_ = true;
   double referenceFramePosesResetThreshold_ = 0.5;

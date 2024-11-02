@@ -59,6 +59,8 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->findUnusedFactorSlotsFlag_ = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
+  graphConfigPtr_->useWindowForMarginalsComputationFlag_ = tryGetParam<bool>("graph_params/useWindowForMarginalsComputation", privateNode);
+  graphConfigPtr_->windowSizeForMarginalsComputation_ = tryGetParam<double>("graph_params/windowSizeForMarginalsComputation", privateNode);
   // Alignment Parameters
   graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ =
       tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
