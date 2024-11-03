@@ -633,8 +633,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }    // end: if active statement
-    }      // for loop over all transforms
+      }  // end: if active statement
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -920,6 +920,9 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   for (auto& pair : fileStreams) {
     pair.second.close();
   }
+
+  // Print
+  REGULAR_COUT << GREEN_START << " Saved all optimized states to files." << COLOR_END << std::endl;
 }
 
 // Save optimized Graph to Common Open source G2o format
