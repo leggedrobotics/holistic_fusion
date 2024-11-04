@@ -5,6 +5,10 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// Workspace
+#include "graph_msf/core/DynamicVariableType.h"
+#include "graph_msf/interface/Terminal.h"
+
 #ifndef FACTOR_GRAPH_STATE_KEY_H
 #define FACTOR_GRAPH_STATE_KEY_H
 
@@ -13,52 +17,13 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-enum class VariableTypeEnum { Global, RefFrame, Landmark };
-
-// Explanation:
-// 1) global variables are constant along the entire operation, hence they are not removed and will get the same gtsam key upon return
-// 2) reference frames can change, but are modelled according to random walk, hence they are only removed once a successor is initialized
-// 3) landmarks are initialized and removed as needed, hence they are removed once they are not needed anymore
-// Frames that are not needed but also not removed are set to be "inactive"
-
-// Robust Norm Container
-struct VariableType {
-  VariableType(const VariableTypeEnum& variableTypeEnum, const Eigen::Vector3d& referenceFrameKeyframePosition,
-               const double variableCreationTime)
-      : variableTypeEnum_(variableTypeEnum),
-        referenceFrameKeyframePosition_(referenceFrameKeyframePosition),
-        variableCreationTime_(variableCreationTime) {}
-
-  // Syntactic Sugar for Constructor
-  static VariableType Global(const double variableCreationTime) {
-    return VariableType(VariableTypeEnum::Global, Eigen::Vector3d::Zero(), variableCreationTime);
-  }
-  static VariableType RefFrame(const Eigen::Vector3d& referenceFrameKeyframePosition, const double variableCreationTime) {
-    return VariableType(VariableTypeEnum::RefFrame, referenceFrameKeyframePosition, variableCreationTime);
-  }
-  static VariableType Landmark(const double variableCreationTime) {
-    return VariableType(VariableTypeEnum::Landmark, Eigen::Vector3d::Zero(), variableCreationTime);
-  }
-
-  // Getters
-  [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableTypeEnum_; }
-  [[nodiscard]] const Eigen::Vector3d& getReferenceFrameKeyframePosition() const { return referenceFrameKeyframePosition_; }
-  [[nodiscard]] double getVariableCreationTime() const { return variableCreationTime_; }
-
- private:
-  // Standard Members
-  VariableTypeEnum variableTypeEnum_;
-  Eigen::Vector3d referenceFrameKeyframePosition_;
-  double variableCreationTime_;
-};
-
 template <class GTSAM_TRANSFORM_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
-class FactorGraphStateKey {
+class DynamicFactorGraphStateKey {
  public:
   // Constructor
-  FactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
-                      const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, VariableType variableType,
-                      const std::string& frame1, const std::string& frame2)
+  DynamicFactorGraphStateKey(const gtsam::Key& key, const double time, const int numberStepsOptimized,
+                             const GTSAM_TRANSFORM_TYPE& approximateTransformationBeforeOptimization, DynamicVariableType variableType,
+                             const std::string& frame1, const std::string& frame2)
       : key_(key),
         time_(time),
         numberStepsOptimized_(numberStepsOptimized),
@@ -69,10 +34,10 @@ class FactorGraphStateKey {
         frame2_(frame2) {}
 
   // Default constructor for creating identity object
-  FactorGraphStateKey() = default;
+  DynamicFactorGraphStateKey() = default;
 
   // Destructor
-  ~FactorGraphStateKey() = default;
+  ~DynamicFactorGraphStateKey() = default;
 
   // Accessors
   const gtsam::Key key() const { return key_; }
@@ -84,7 +49,7 @@ class FactorGraphStateKey {
   [[nodiscard]] Eigen::Vector3d getReferenceFrameKeyframePosition() const { return variableType_.getReferenceFrameKeyframePosition(); }
   [[nodiscard]] double getVariableCreationTime() const { return variableType_.getVariableCreationTime(); }
   double computeVariableAge(const double currentTime) const { return currentTime - variableType_.getVariableCreationTime(); }
-  [[nodiscard]] const VariableTypeEnum& getVariableTypeEnum() const { return variableType_.getVariableTypeEnum(); }
+  [[nodiscard]] const DynamicVariableTypeEnum& getVariableTypeEnum() const { return variableType_.getVariableTypeEnum(); }
   [[nodiscard]] bool isVariableActive() const { return isVariableActive_; }
   [[nodiscard]] const GTSAM_TRANSFORM_TYPE& getTransformationAfterOptimization() const { return transformationAfterOptimization_; }
   [[nodiscard]] const gtsam::Matrix66& getCovarianceAfterOptimization() const { return covarianceAfterOptimization_; }
@@ -123,7 +88,7 @@ class FactorGraphStateKey {
   double time_ = 0.0;
 
   // Variable Type and status
-  VariableType variableType_ = VariableType::Global(0.0);
+  DynamicVariableType variableType_ = DynamicVariableType::Global(0.0);
   bool isVariableActive_ = true;  // Always active in the beginning when added
 
   // Optimization

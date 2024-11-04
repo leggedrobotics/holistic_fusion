@@ -94,7 +94,7 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   // Measurement
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK, 1.0,
-      T_W_Ik, pose3UnaryNoise_, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_);
+      T_W_Ik, pose3UnaryNoise_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getWorldFrame());
 
   // Only add measurement once every second in beginning
   bool addMeasurementFlag = false;

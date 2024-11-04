@@ -954,7 +954,7 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   auto currItr = imuMeas.begin();
   auto prevItr = currItr++;
 
-  // Calculate dt and integrate IMU measurements for both preintegrators
+  // Calculate dt and integrate IMU measurements for both pre-integrators
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
     imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,       // acc
@@ -962,7 +962,7 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
                                                    dt);                                // delta t
     imuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
                                                      currItr->second.angularVelocity,  // gyro
-                                                     dt);
+                                                     dt);                              // delta t
   }
 }
 

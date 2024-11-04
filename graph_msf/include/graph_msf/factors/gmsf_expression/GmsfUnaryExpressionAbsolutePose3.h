@@ -24,9 +24,9 @@ using GMSF_MEASUREMENT_CLASS = UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>;
 class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut<gtsam::Pose3, 'c'> {
  public:
   // Constructor
-  GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<GMSF_MEASUREMENT_CLASS> poseUnaryMeasurementPtr, const std::string& worldFrameName,
-                                   const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
+  GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<GMSF_MEASUREMENT_CLASS> poseUnaryMeasurementPtr, const std::string& imuFrameName,
+                                   const Eigen::Isometry3d& T_I_sensorFrame, const double createReferenceAlignmentKeyframeEveryNSeconds)
+      : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame, createReferenceAlignmentKeyframeEveryNSeconds),
         gmsfPoseUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
         exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity())  // Placeholder --> will be modified later
   {}

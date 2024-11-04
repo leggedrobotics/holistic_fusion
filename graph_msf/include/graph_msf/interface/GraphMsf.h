@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDLandmark.h"
 #include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
@@ -71,8 +71,8 @@ class GraphMsf {
   virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
 
   /// Landmark Measurements
-  virtual void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L, const int landmarkCreationCounter) = 0;
-  virtual void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) = 0;
+  virtual void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_t_S_L, const int landmarkCreationCounter) = 0;
+  virtual void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_bearing_S_L) = 0;
 
   /// Binary Measurements
   virtual void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& delta) = 0;

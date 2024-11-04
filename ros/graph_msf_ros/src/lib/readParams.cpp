@@ -60,13 +60,16 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
   graphConfigPtr_->useWindowForMarginalsComputationFlag_ = tryGetParam<bool>("graph_params/useWindowForMarginalsComputation", privateNode);
-  graphConfigPtr_->windowSizeSecondsForMarginalsComputation_ = tryGetParam<double>("graph_params/windowSizeSecondsForMarginalsComputation", privateNode);
+  graphConfigPtr_->windowSizeSecondsForMarginalsComputation_ =
+      tryGetParam<double>("graph_params/windowSizeSecondsForMarginalsComputation", privateNode);
   // Alignment Parameters
   graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ =
       tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
   graphConfigPtr_->referenceFramePosesResetThreshold_ = tryGetParam<double>("graph_params/referenceFramePosesResetThreshold", privateNode);
   graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignmentFlag_ =
       tryGetParam<bool>("graph_params/centerReferenceFramesAtRobotPositionBeforeAlignment", privateNode);
+  graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
+      tryGetParam<double>("graph_params/createReferenceAlignmentKeyframeEveryNSeconds", privateNode);
   // Calibration
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);

@@ -19,7 +19,12 @@ enum class MeasurementTypeEnum { Unary, Binary };
 // Enum that defines whether robust norm should be used
 enum class RobustNormEnum { None, Huber, Cauchy, Tukey };
 
-// Robust Norm Container
+/**
+ * @class RobustNorm
+ * @brief Class to represent a robust norm for a measurement.
+ *
+ * Description: This class is used to represent a robust norm for a measurement.
+ */
 struct RobustNorm {
   RobustNorm(const RobustNormEnum& robustNormEnum, const double& robustNormConstant)
       : robustNormEnum_(robustNormEnum), robustNormConstant_(robustNormConstant) {}
@@ -40,10 +45,25 @@ struct RobustNorm {
   double robustNormConstant_;
 };
 
-// Purely virtual interface class for measurements
+/**
+ * @class Measurement
+ * @brief Class to represent a measurement in the graph. It is a pure virtual class.
+ *
+ * Description: This class is used to represent a measurement in the graph.
+ */
 class Measurement {
  public:
-  // Constructor
+  /**
+     * @brief Constructor to create a unary measurement.
+     *
+     * @param measurementName Name of the measurement.
+     * @param measurementRate Rate of the measurement. Mostly used for checking in the core whether all is working correctly.
+     * @param sensorFrameName Name of the sensor frame.
+     * @param sensorFrameCorrectedName Name of the corrected sensor frame.
+     * @param robustNorm Robust norm to be used for the measurement.
+     * @param measurementTypeEnum Type of the measurement.
+     *
+  */
   Measurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
               const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const MeasurementTypeEnum& measurementTypeEnum)
       : measurementName_(measurementName),

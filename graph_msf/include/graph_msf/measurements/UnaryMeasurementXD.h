@@ -12,10 +12,27 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+/**
+ * @class UnaryMeasurementXD
+ * @brief Class to represent x-dimensional unary measurement in the graph.
+ *
+ * Description: This class is used to represent x-dimensional unary measurement in the graph.
+ *
+ * @tparam MEASUREMENT_TYPE The type of the unary measurement. E.g. Eigen::Vector3d for a 3D position measurement.
+ * @tparam DIM The dimension of the unary measurement. E.g. '3' for a 3D position measurement.
+ */
 template <class MEASUREMENT_TYPE, int DIM>
 class UnaryMeasurementXD : public virtual UnaryMeasurement {
  public:
-  // Constructor
+  /**
+     * @brief Constructor to create an absolute unary measurement.
+     *
+     * @copydoc UnaryMeasurement::UnaryMeasurement
+     *
+     * @param unaryMeasurement The templated unary measurement.
+     * @param unaryMeasurementNoiseDensity The noise density of the unary measurement.
+     *
+   */
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                      const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                      const double covarianceViolationThreshold, const MEASUREMENT_TYPE& unaryMeasurement,

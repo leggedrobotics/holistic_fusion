@@ -23,10 +23,12 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
  public:
   // Constructor
   GmsfUnaryExpressionAbsolut(const std::shared_ptr<UnaryMeasurementAbsolute>& gmsfUnaryAbsoluteMeasurementPtr,
-                             const std::string& worldFrameName, const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute, CALIBRATION_CHAR>(
-            gmsfUnaryAbsoluteMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
-        gmsfUnaryAbsoluteMeasurementPtr_(gmsfUnaryAbsoluteMeasurementPtr) {}
+                             const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                             const double createReferenceAlignmentKeyframeEveryNSeconds)
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Absolute, CALIBRATION_CHAR>(gmsfUnaryAbsoluteMeasurementPtr,
+                                                                                                     imuFrameName, T_I_sensorFrame),
+        gmsfUnaryAbsoluteMeasurementPtr_(gmsfUnaryAbsoluteMeasurementPtr),
+        createReferenceAlignmentKeyframeEveryNSeconds_(createReferenceAlignmentKeyframeEveryNSeconds) {}
 
   // Destructor
   ~GmsfUnaryExpressionAbsolut() = default;
@@ -34,10 +36,10 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
  protected:
   // Virtual Methods --------------------------------------------------------------
   // ii).A Holistically Optimize over Fixed Frames
-  void transformImuStateFromWorldToReferenceFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+  void transformImuStateFromWorldToReferenceFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
-    if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == this->worldFrameName_) {
+    if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName()) {
       // Do nothing as this is a world frame measurement
       return;
     }
@@ -57,25 +59,38 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // Search for the new graph key of T_fixedFrame_W
     bool newGraphKeyAddedFlag = false;
-    const VariableType dynamicVariableType = VariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
-    FactorGraphStateKey graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
-        newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
+    const DynamicVariableType dynamicVariableType =
+        DynamicVariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
+    DynamicFactorGraphStateKey graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
+        newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
 
-    const double keyframeAge = -graphKey.computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
-    // std::cout << "Keyframe age: " << keyframeAge << std::endl;
-    //  TODO: If keyframe is too old, we should remove the old one and create a new one with a random walk between the old and the new one
+    const double keyframeAge = graphKey.computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
+    //    std::cout << "Keyframe age: " << keyframeAge << std::endl;
 
-    // If deactivated or too old, we should remove the old keyframe and create a new one
-    if (!graphKey.isVariableActive() || keyframeAge > 100000) {
+    // If deactivated or too old, we should remove the old keyframe and create a new one (with or without random walk)
+    // In any case, we have to add relation between old and new keyframe
+    // Offline graph: we can always add the delta as all states are part of the optimization (random walk or deterministic keyframe
+    // displacement).
+    // Online graph: we can only add the delta if the old keyframe is still active (random walk or deterministic keyframe displacement. If
+    // it is not active, add prior from old keyframe to new keyframe (including the displacement).
+    bool introducedNewKeyframeDisplacement = false;
+    // Old GTSAM key --> needed for adding constraints between previous and new keyframe
+    const gtsam::Key oldGtsamKey = graphKey.key();
+    const Eigen::Vector3d oldKeyframePosition = graphKey.getReferenceFrameKeyframePosition();
+    bool oldVariableWasActive = graphKey.isVariableActive();
+    if (!graphKey.isVariableActive() || keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
       // Remove the old keyframe
-      transformsExpressionKeys.removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_, graphKey);
+      transformsExpressionKeys.removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
+                                               gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), graphKey);
       // Create a new keyframe
       graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
-          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_,
+          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
           gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_fixedFrame_W_initial, dynamicVariableType);
       // Assert that new keyframe was added and that it is active
       assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
+      // Set flag that we introduced a new keyframe
+      introducedNewKeyframeDisplacement = true;
     }
 
     // Shift the measurement to the robot position and recompute initial guess if we create keyframes
@@ -86,7 +101,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Recompute initial guess
       T_fixedFrame_W_initial = computeT_fixedFrame_W_initial(W_currentPropagatedState);
       // Update the initial guess
-      transformsExpressionKeys.lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), this->worldFrameName_)
+      transformsExpressionKeys
+          .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName())
           .setApproximateTransformationBeforeOptimization(T_fixedFrame_W_initial);
     }
 
@@ -104,15 +120,25 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Insert Values
       this->newOnlineStateValues_.insert(graphKey.key(), T_fixedFrame_W_initial);
       this->newOfflineStateValues_.insert(graphKey.key(), T_fixedFrame_W_initial);
-      // Insert Prior ONLY for online graph (offline is observable regardless)
-      this->newOnlinePosePriorFactors_.emplace_back(
-          graphKey.key(), T_fixedFrame_W_initial,
-          gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise()));
+
+      // Case 1: Entirely new keyframe has been added
+      if (!introducedNewKeyframeDisplacement) {
+        // Insert Prior ONLY for online graph (offline is observable regardless)
+        this->newOnlinePosePriorFactors_.emplace_back(
+            graphKey.key(), T_fixedFrame_W_initial,
+            gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise()));
+      }
+      // Case 2: New keyframe has been added, but one existed before already --> add relative constraint from old to new keyframe
+      else {
+        // Add prior from old keyframe to new keyframe
+        REGULAR_COUT << GREEN_START << "Adding relative constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
+                     << gtsam::Symbol(graphKey.key()) << COLOR_END << std::endl;
+      }
     }
   }
 
   // ii).B Adding Landmark State in Dynamic Memory
-  void transformLandmarkInWorldToImuFrame(TransformsExpressionKeys<gtsam::Pose3>& transformsExpressionKeys,
+  void transformLandmarkInWorldToImuFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
                                           const gtsam::NavState& W_currentPropagatedState) final {
     // Raise logic error, as it is not a landmark measurement
     throw std::logic_error("GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement() is not implemented.");
@@ -130,6 +156,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
  private:
   // Pointer to the GMSF Unary Absolute Measurement
   std::shared_ptr<UnaryMeasurementAbsolute> gmsfUnaryAbsoluteMeasurementPtr_;
+  // Create Reference Alignment Keyframe Every N Seconds
+  const double createReferenceAlignmentKeyframeEveryNSeconds_;
 };
 
 }  // namespace graph_msf

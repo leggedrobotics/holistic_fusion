@@ -33,6 +33,17 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   gnssPositionRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssPositionRate", privateNode);
   gnssOfflinePoseRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssOfflinePoseRate", privateNode);
 
+  // Alignment Parameters ----------------------------
+  // Initial SE3 Alignment Noise
+  const auto poseAlignmentNoise =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
+      poseAlignmentNoise[4], poseAlignmentNoise[5];
+  // Random Walk
+  auto gnssSe3AlignmentRandomWalk = graph_msf::tryGetParam<std::vector<double>>("alignment_params/gnssSe3AlignmentRandomWalk", privateNode);
+  gnssSe3AlignmentRandomWalk_ << gnssSe3AlignmentRandomWalk[0], gnssSe3AlignmentRandomWalk[1], gnssSe3AlignmentRandomWalk[2],
+      gnssSe3AlignmentRandomWalk[3], gnssSe3AlignmentRandomWalk[4], gnssSe3AlignmentRandomWalk[5];
+
   /// Noise Parameters ----
   /// Position measurement unary noise
   prismPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/prismPositionMeasUnaryNoise", privateNode);

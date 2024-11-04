@@ -101,6 +101,7 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
 
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> gnssSe3AlignmentRandomWalk_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Rates
   double prismPositionRate_ = 20.0;
