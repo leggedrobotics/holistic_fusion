@@ -46,6 +46,9 @@ def plot_quantities_in_file(
     data = []
     first_line = True
     with open(file_path, "r") as file:
+        # Remove everything after the dot from the type (if any dot)
+        type = type.split(".")[0]
+        # Go through entire file
         for line in file:
             # Header file
             if first_line:
@@ -65,7 +68,7 @@ def plot_quantities_in_file(
     data[:, 0] = data[:, 0] - data[0, 0]
     print(f"Data shape: {data.shape}")
     print(f"Fields: {fields}")
-    #print("First 5 rows of data: ", data[:5, :])
+    # print("First 5 rows of data: ", data[:5, :])
     # Sorty by time
     # indices = np.argsort(data[:, 0])
     # data = data[indices, :]
@@ -78,7 +81,7 @@ def plot_quantities_in_file(
             if i == 0 or field == "qw" or field == "qx" or field == "qy" or field == "qz":
                 continue
             else:
-                print(f"Plotting field: {field}")
+                print(f"Plotting field: {field}. Max value: {np.max(data[:, i])}. Min value: {np.min(data[:, i])}")
                 # Create figure
                 plt.plot(data[:, 0], data[:, i], label=field)
 
@@ -90,7 +93,7 @@ def plot_quantities_in_file(
                 plt.legend()
                 plt.grid()
                 # Save the plot
-                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_acceleration.png")
+                plot_path = os.path.join(dir_path, f"{latest_file_string}{type}_acceleration.png")
                 plt.savefig(plot_path)
                 plt.figure()
             elif "bias" in type and field == "w_z":
@@ -100,7 +103,7 @@ def plot_quantities_in_file(
                 plt.legend()
                 plt.grid()
                 # Save the plot
-                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_angular_velocity.png")
+                plot_path = os.path.join(dir_path, f"{latest_file_string}{type}_angular_velocity.png")
                 plt.savefig(plot_path)
                 plt.figure()
             elif ("transform" in type or "pose" in type) and field == "z":
@@ -110,7 +113,7 @@ def plot_quantities_in_file(
                 plt.legend()
                 plt.grid()
                 # Save the plot
-                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_position.png")
+                plot_path = os.path.join(dir_path, f"{latest_file_string}{type}_position.png")
                 plt.savefig(plot_path)
                 plt.figure()
             elif ("transform" in type or "pose" in type) and field == "yaw":
@@ -120,7 +123,7 @@ def plot_quantities_in_file(
                 plt.legend()
                 plt.grid()
                 # Save the plot
-                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_orientation.png")
+                plot_path = os.path.join(dir_path, f"{latest_file_string}{type}_orientation.png")
                 plt.savefig(plot_path)
                 plt.figure()
             elif "velocity" in type and field == "v_z":
@@ -130,7 +133,7 @@ def plot_quantities_in_file(
                 plt.legend()
                 plt.grid()
                 # Save the plot
-                plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}.png")
+                plot_path = os.path.join(dir_path, f"{latest_file_string}{type}.png")
                 plt.savefig(plot_path)
                 plt.figure()
             else:  # Continue plotting
@@ -153,7 +156,7 @@ def plot_quantities_in_file(
         plt.legend()
         plt.grid()
         # Save the plot
-        plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}.png")
+        plot_path = os.path.join(dir_path, f"{latest_file_string}{type}.png")
         plt.savefig(plot_path)
         print(f"Covariance plot saved to: {plot_path}")
     # X, Y
@@ -167,7 +170,7 @@ def plot_quantities_in_file(
         plt.legend()
         plt.grid()
         # Save the plot
-        plot_path = os.path.join(dir_path, f"{latest_file_string}_plot_{type}_x_y_position.png")
+        plot_path = os.path.join(dir_path, f"{latest_file_string}{type}_x_y_position.png")
         plt.savefig(plot_path)
         print(f"X-Y-plot saved to: {plot_path}")
 
@@ -211,10 +214,10 @@ def main():
                 print(f"Plotting {file_type} from file: {file}")
                 # Plot the quantities in the file
                 plot_quantities_in_file(
-                    os.path.join(dir_path, file),
-                    file_type,
-                    dir_path,
-                    latest_file_string,
+                    file_path=os.path.join(dir_path, file),
+                    type=file,
+                    dir_path=dir_path,
+                    latest_file_string="",
                 )
 
 

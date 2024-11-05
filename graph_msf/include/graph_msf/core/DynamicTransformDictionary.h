@@ -49,7 +49,10 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
       auto keyFramePairMapIterator = transformGtsamKeyToFramePairMap_.find(returnRemovedKey.key());
       // Still in map --> remove
       if (keyFramePairMapIterator != transformGtsamKeyToFramePairMap_.end()) {
-        transformGtsamKeyToFramePairMap_.erase(keyFramePairMapIterator);
+        // transformGtsamKeyToFramePairMap_.erase(keyFramePairMapIterator);
+        // TODO: Remove if offline optimization is disabled, keep otherwise
+        REGULAR_COUT << " Keeping frame pair for key " << gtsam::Symbol(returnRemovedKey.key())
+                     << ", as it might be needed for offline logging." << std::endl;
       }
       // Not in map --> throw error
       else {
@@ -134,9 +137,9 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
   // Returns of key
   template <char SYMBOL_CHAR>
   DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1,
-                                                                 const std::string& frame2, const double timeK,
-                                                                 const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                                                 const DynamicVariableType& variableType) {
+                                                                        const std::string& frame2, const double timeK,
+                                                                        const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                                                        const DynamicVariableType& variableType) {
     // Retrieve key and insert information to map
     DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> stateKey;
     // Case: The dynamically allocated key is not yet in the graph
@@ -177,10 +180,9 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
   // Functionality ------------------------------------------------------------
   template <char SYMBOL_CHAR>
-  DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> addNewFactorGraphStateKey(const std::string& frame1, const std::string& frame2,
-                                                                      const double timeK,
-                                                                      const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                                                      const DynamicVariableType& variableType) {
+  DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> addNewFactorGraphStateKey(
+      const std::string& frame1, const std::string& frame2, const double timeK,
+      const gtsam::Pose3& approximateTransformationBeforeOptimization, const DynamicVariableType& variableType) {
     // Compile Time Checks and Variables
     checkSymbol<SYMBOL_CHAR>();
     constexpr int symbolIndex = getSymbolIndex<SYMBOL_CHAR>();
@@ -196,7 +198,8 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     }
 
     // Add to main dictionary
-    DynamicFactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType, frame1, frame2);
+    DynamicFactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType, frame1,
+                                                   frame2);
     TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
 
     // Increase the counter of specific symbol
