@@ -244,7 +244,6 @@ class GmsfUnaryExpression {
   // TODO: Make this more general
   std::vector<gtsam::PriorFactor<GTSAM_MEASUREMENT_TYPE>> newOnlineDynamicPriorFactors_;
   // New Between Factors
-  // TODO: Make this more general
   std::vector<gtsam::BetweenFactor<gtsam::Pose3>> newOnlineAndOfflinePoseBetweenFactors_;
 };
 

@@ -58,11 +58,12 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
 
   // Interface with three cases (non-exclusive):
   // ii) Holistically Optimize over Fixed Frames -----------------------------------------------------------
-  gtsam::Pose3 computeT_fixedFrame_W_initial(const gtsam::NavState& W_currentPropagatedState) final {
+  gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) final {
     gtsam::Pose3 T_fixedFrame_sensorFrame_meas_noOrientation =
         gtsam::Pose3(gtsam::Rot3::Identity(), positionUnaryMeasurementPtr_->unaryMeasurement());
-    gtsam::Pose3 T_W_sensorFrame_est = W_currentPropagatedState.pose() * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
-    return T_fixedFrame_sensorFrame_meas_noOrientation * T_W_sensorFrame_est.inverse();
+    gtsam::Pose3 T_W_sensorFrame_est =
+        W_currentPropagatedState.pose() * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
+    return T_W_sensorFrame_est * T_fixedFrame_sensorFrame_meas_noOrientation.inverse();  // TODO: Does not yet include orientation
   }
 
   const Eigen::Vector3d getMeasurementPosition() final {
@@ -75,13 +76,13 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     positionUnaryMeasurementPtr_->unaryMeasurement() = position;
   }
 
-  void transformStateToReferenceFrameMeasurement(const gtsam::Pose3_& exp_T_fixedFrame_W) override {
+  void transformStateToReferenceFrameMeasurement(const gtsam::Pose3_& exp_T_W_fixedFrame) override {
     // Transform state to fixed frame
     exp_fixedFrame_t_fixedFrame_sensorFrame_ =
-        gtsam::transformFrom(exp_T_fixedFrame_W, exp_fixedFrame_t_fixedFrame_sensorFrame_);  // T_fixedFrame_I at this point
+        gtsam::transformTo(exp_T_W_fixedFrame, exp_fixedFrame_t_fixedFrame_sensorFrame_);  // T_fixedFrame_I at this point
 
     // Transform rotation from world to fixed frame
-    exp_R_fixedFrame_I_ = gtsam::rotation(exp_T_fixedFrame_W) * exp_R_fixedFrame_I_;  // R_fixedFrame_I at this point
+    exp_R_fixedFrame_I_ = inverseRot3(gtsam::rotation(exp_T_W_fixedFrame)) * exp_R_fixedFrame_I_;  // R_fixedFrame_I at this point
   }
 
   // iii) Transform Measurement to Core Imu Frame -----------------------------------------------------------

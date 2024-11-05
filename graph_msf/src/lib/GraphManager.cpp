@@ -553,11 +553,16 @@ void GraphManager::updateGraph() {
           }
 
           // Write to Result Dictionaries
-          Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-          T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getReferenceFrameKeyframePosition();
+          //          gtsam::Pose3 T_frame1_frame2_corrected = T_frame1_frame2;
+          // For correction first have to transform T_W_F to T_F_W, apply correction, and then transform back to T_W_F
+          gtsam::Pose3 T_frame2_frame1_corrected = T_frame1_frame2.inverse();
+          T_frame2_frame1_corrected =
+              gtsam::Pose3(T_frame2_frame1_corrected.rotation(),
+                           T_frame2_frame1_corrected.translation() + framePairKeyMapIterator.second.getReferenceFrameKeyframePosition());
+          gtsam::Pose3 T_frame1_frame2_corrected = T_frame2_frame1_corrected.inverse();
           // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
           resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
-                                                               Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
+                                                               Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
           resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                          framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
 
