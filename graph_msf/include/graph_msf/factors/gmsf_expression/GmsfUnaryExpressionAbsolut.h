@@ -136,9 +136,9 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Case 2: New keyframe has been added, but one existed before already --> add relative constraint from old to new keyframe
       else {
         // Add relative constraint from old keyframe to new keyframe
-        //        gtsam::Point3 relativeKeyframeTranslation(graphKey.getReferenceFrameKeyframePosition() - oldKeyframePosition);
+        gtsam::Point3 relativeKeyframeTranslation(graphKey.getReferenceFrameKeyframePosition() - oldKeyframePosition);
         // Transform between old and new keyframe
-        gtsam::Pose3 T_fixedFrameOld_fixedFrame = T_W_fixedFrameOld.between(T_W_fixedFrame_initial);
+        gtsam::Pose3 T_fixedFrameOld_fixedFrame(gtsam::Rot3::Identity(), relativeKeyframeTranslation);
         // Define noise model --> either random walk or deterministic displacement
         boost::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr;
         // A: Random Walk between the two
