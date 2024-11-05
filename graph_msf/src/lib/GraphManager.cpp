@@ -731,16 +731,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
     // Read out information
     const gtsam::Key& graphKey = keyPosePair.first;
-    const gtsam::Pose3& pose = keyPosePair.second;
+    gtsam::Pose3 pose = keyPosePair.second;
     const gtsam::Symbol stateSymbol(graphKey);
     const char stateCategory = stateSymbol.chr();
     const double timeStamp = keyTimestampMap.at(graphKey);
-
-    // If state is "x0", it is the first state and we do not want to save it
-    //    if (stateSymbol.index() < 10000) {
-    //      std::cout << "skipping " << stateSymbol << std::endl;
-    //      continue;
-    //    }
 
     // Compute Covariance of Pose
     gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
@@ -779,6 +773,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // Check for the keyframe position
+    Eigen::Vector3d keyframePosition = Eigen::Vector3d::Zero();
+    gtsamTransformsExpressionKeys_.getKeyframePositionFromGtsamKey(keyframePosition, graphKey);
+
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
@@ -798,6 +796,18 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                                           "cov_r1_t1, cov_r1_t2, cov_r1_t3, cov_r1_r1, cov_r1_r2, cov_r1_r3, "
                                                           "cov_r2_t1, cov_r2_t2, cov_r2_t3, cov_r2_r1, cov_r2_r2, cov_r2_r3, "
                                                           "cov_r3_t1, cov_r3_t2, cov_r3_t3, cov_r3_r1, cov_r3_r2, cov_r3_r3\n";
+    }
+
+    // If keyframe position is not zero, move the frame location to capture the random walk
+    if (keyframePosition.norm() > 1e-6) {
+      const gtsam::Pose3& T_W_M = pose;  // alias
+      gtsam::Pose3 T_M_W_corrected = T_W_M.inverse();
+      T_M_W_corrected = gtsam::Pose3(T_M_W_corrected.rotation(),
+                                     T_M_W_corrected.translation() + keyframePosition);  // Remove the effect of the keyframe position
+      gtsam::Pose3 T_W_M_corrected = T_M_W_corrected.inverse();
+      pose = T_W_M_corrected;
+      REGULAR_COUT << " Corrected frame position for " << transformIdentifier << " (" << gtsam::Symbol(graphKey) << ") by "
+                   << keyframePosition.transpose() << std::endl;
     }
 
     // Write the values to the appropriate file

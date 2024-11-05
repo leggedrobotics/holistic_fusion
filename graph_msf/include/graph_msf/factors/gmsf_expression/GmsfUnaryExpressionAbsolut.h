@@ -51,7 +51,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // If it should be centered --> create keyframe for measurement
     Eigen::Vector3d measurementOriginPosition = Eigen::Vector3d::Zero();
     if (centerMeasurementsAtRobotPositionBeforeAlignment) {
-      measurementOriginPosition = getMeasurementPosition();
+      measurementOriginPosition = this->getMeasurementPosition();
     }
 
     // Initial Guess

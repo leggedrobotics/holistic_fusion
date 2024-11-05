@@ -117,7 +117,7 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
   }
 
   // Getters ------------------------------------------------------------
-  // Get transform to frame pair map
+  // Get transform key to frame pair map
   bool getFramePairFromGtsamKey(std::pair<std::string, std::string>& framePairRef, const gtsam::Key& gtsamKey) const {
     // Check if key is in map
     auto keyFramePairMapIterator = transformGtsamKeyToFramePairMap_.find(gtsamKey);
@@ -126,6 +126,18 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     }
     // Retrieve frame pair
     framePairRef = keyFramePairMapIterator->second;
+    return true;
+  }
+
+  // Get transform key to keyframe position
+  bool getKeyframePositionFromGtsamKey(Eigen::Vector3d& keyframePositionRef, const gtsam::Key& gtsamKey) const {
+    // Check if key is in map
+    auto keyFramePositionMapIterator = transformGtsamKeyToKeyframePositionMap_.find(gtsamKey);
+    if (keyFramePositionMapIterator == transformGtsamKeyToKeyframePositionMap_.end()) {
+      return false;
+    }
+    // Retrieve keyframe position
+    keyframePositionRef = keyFramePositionMapIterator->second;
     return true;
   }
 
@@ -207,6 +219,10 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
     // Add to key-to-frame pair map
     transformGtsamKeyToFramePairMap_[gtsamKey] = std::make_pair(frame1, frame2);
+    // Add to key-to-keyframe position map
+    transformGtsamKeyToKeyframePositionMap_[gtsamKey] = variableType.getReferenceFrameKeyframePosition();
+    REGULAR_COUT << " Key " << gtsam::Symbol(gtsamKey) << ": Added keyframe position "
+                 << variableType.getReferenceFrameKeyframePosition() << " to map." << std::endl;
 
     // Return
     return factorGraphStateKey;
@@ -217,6 +233,8 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
  private:
   // Mapping in other direction --> from key to frame pair
   std::map<gtsam::Key, std::pair<std::string, std::string>> transformGtsamKeyToFramePairMap_;
+  // Container for storing the keyframe position for each key (for later use)
+  std::map<gtsam::Key, Eigen::Vector3d> transformGtsamKeyToKeyframePositionMap_;
 
   // Mutex
   std::mutex internalDictionaryModifierMutex_;
