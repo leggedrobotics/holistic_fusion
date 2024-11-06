@@ -240,7 +240,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
       graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
-      staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_);
+      staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;

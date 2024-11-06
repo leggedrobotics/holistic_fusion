@@ -40,10 +40,14 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   leggedKinematicsDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedKinematicsDownsampleFactor", privateNode);
 
   // Alignment Parameters
-  const auto poseAlignmentNoise =
+  const auto initialSe3AlignmentNoise =
       graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
-  initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
-      poseAlignmentNoise[4], poseAlignmentNoise[5];
+  initialSe3AlignmentNoise_ << initialSe3AlignmentNoise[0], initialSe3AlignmentNoise[1], initialSe3AlignmentNoise[2],
+      initialSe3AlignmentNoise[3], initialSe3AlignmentNoise[4], initialSe3AlignmentNoise[5];
+  const auto gnssSe3AlignmentRandomWalk =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/gnssSe3AlignmentRandomWalk", privateNode);
+  gnssSe3AlignmentRandomWalk_ << gnssSe3AlignmentRandomWalk[0], gnssSe3AlignmentRandomWalk[1], gnssSe3AlignmentRandomWalk[2],
+      gnssSe3AlignmentRandomWalk[3], gnssSe3AlignmentRandomWalk[4], gnssSe3AlignmentRandomWalk[5];
 
   // Noise Parameters ---------------------------------------------------
   /// Gnss

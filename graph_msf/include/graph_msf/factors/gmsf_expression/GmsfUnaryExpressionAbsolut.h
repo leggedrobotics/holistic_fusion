@@ -123,8 +123,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       this->newOnlineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
       this->newOfflineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
 
-      // Case 1: Entirely new keyframe has been added (not just a displacement)
-      if (!introducedNewKeyframeDisplacement) {
+      // Case 1: Entirely new keyframe has been added (not just a displacement) or frame was not active --> add prior to online graph
+      if (!introducedNewKeyframeDisplacement || !oldVariableWasActive) {
         // Insert Prior ONLY for online graph (offline is observable regardless)
         this->newOnlinePosePriorFactors_.emplace_back(
             graphKey.key(), T_W_fixedFrame_initial,
@@ -140,16 +140,19 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         // Transform between old and new keyframe
         gtsam::Pose3 T_fixedFrameOld_fixedFrame(gtsam::Rot3::Identity(), relativeKeyframeTranslation);
         // Define noise model --> either random walk or deterministic displacement
-        boost::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr;
+
         // A: Random Walk between the two
         if (gmsfUnaryAbsoluteMeasurementPtr_->modelAsRandomWalkFlag()) {
-          throw std::logic_error("GmsfUnaryExpressionAbsolut: Random Walk not implemented.");
+          boost::shared_ptr<gtsam::noiseModel::Diagonal> noiseModelPtr =
+              gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
+          this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
         }
         // B: Deterministic displacement modelled as equality constraint
         else {
-          noiseModelPtr = gtsam::noiseModel::Constrained::MixedSigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
+          boost::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr =
+              gtsam::noiseModel::Constrained::MixedSigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
+          this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
         }
-        this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
 
         // If the old keyframe was not active, we have to add a prior of the old keyframe location belief plus the displacement to the
         // online graph (only to online, as offline still has the entire history)
