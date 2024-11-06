@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <filesystem>
 #include <iomanip>
 #include <string>
 #include <utility>
@@ -726,6 +727,11 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
+  // Create directory if it does not exist
+  if (!std::filesystem::exists(savePath + timeString)) {
+    std::filesystem::create_directories(savePath + timeString);
+  }
+
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
@@ -781,8 +787,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      const std::string stateFileName = savePath + timeString + "_" + transformIdentifier + ".csv";
-      const std::string covarianceFileName = savePath + timeString + "_" + transformIdentifier + "_covariance.csv";
+      const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
+      const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << stateFileName << std::endl;
       REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
       // Open for writing and appending
@@ -881,7 +887,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
+      std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
@@ -917,7 +923,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Check if we already have a file stream for this category --> if not, create one
     if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
       // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_" + stateCategoryString + ".csv";
+      std::string fileName = savePath + timeString + "/" + stateCategoryString + ".csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
       // Open for writing and appending
       fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);

@@ -190,10 +190,10 @@ def main():
     print(f"Directory path: {dir_path}")
 
     # We want to only get the latest files
-    latest_file_string = (
+    latest_dir_string = (
         get_latest_time_string_in_folder.get_latest_time_string_in_folder(dir_path)
     )
-    print("Latest file string: ", latest_file_string)
+    print("Latest file string: ", latest_dir_string)
     # Plot following files:
     file_types = [
         "B_imu_bias",
@@ -203,9 +203,9 @@ def main():
         "X_state_6D_pose_covariance",
     ]
     # Get all files in the folder that contain the latest file string
-    files = os.listdir(dir_path)
-    files = [f for f in files if (latest_file_string in f and f.endswith(".csv"))]
-    print(f"Files containing {latest_file_string}: {files}")
+    files = os.listdir(os.path.join(dir_path, latest_dir_string))
+    files = [f for f in files if f.endswith(".csv")]
+    print(f"Files in {latest_dir_string} directory: {files}")
 
     # Iterate through files and check if they contain the file types
     for file in files:
@@ -214,9 +214,9 @@ def main():
                 print(f"Plotting {file_type} from file: {file}")
                 # Plot the quantities in the file
                 plot_quantities_in_file(
-                    file_path=os.path.join(dir_path, file),
+                    file_path=os.path.join(dir_path, latest_dir_string, file),
                     type=file,
-                    dir_path=dir_path,
+                    dir_path=os.path.join(dir_path, latest_dir_string),
                     latest_file_string="",
                 )
 
