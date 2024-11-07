@@ -43,7 +43,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   }
 
   // ii.A) Holistically Optimize over Fixed Frames
-  void transformImuStateFromWorldToReferenceFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
+  void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     // Do nothing as this is a landmark measurement
@@ -51,10 +51,10 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   }
 
   // ii.B) Adding Landmark State in Dynamic Memory
-  void transformLandmarkInWorldToImuFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
+  void transformLandmarkInWorldToImuFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                           const gtsam::NavState& W_currentPropagatedState) final {
     // Mutex because we are changing the dynamically allocated graphKeys
-    std::lock_guard<std::mutex> modifyGraphKeysLock(transformsExpressionKeys.mutex());
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys.get<gtsam::Pose3>().mutex());
 
     // Get initial guess (computed geometrically)
     gtsam::Point3 W_t_W_L_initial = computeW_t_W_L_initial(W_currentPropagatedState);
@@ -66,13 +66,13 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
     // Create new graph key for landmark dynamically
     bool newGraphKeyAddedFlag = false;
     DynamicVariableType variableType = DynamicVariableType::Landmark(this->gmsfBaseUnaryMeasurementPtr_->timeK());
-    const DynamicFactorGraphStateKey newGraphKey = transformsExpressionKeys.getTransformationKey<'l'>(
+    const DynamicFactorGraphStateKey newGraphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'l'>(
         newGraphKeyAddedFlag, gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), newLandmarkName,
         this->gmsfBaseUnaryMeasurementPtr_->timeK(), gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
     // Make sure that the variable at the key is active (landmarks always have to be active or removed)
     assert(newGraphKey.isVariableActive());
     // Remove previous landmark with same landmark name;
-    std::ignore = transformsExpressionKeys.removeOrDeactivateTransform(gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
+    std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeOrDeactivateTransform(gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
 
     // Create expression for landmark
     const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());

@@ -517,10 +517,10 @@ void GraphManager::updateGraph() {
   // D. FixedFrame Transformations ------------------------------
   if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
     // Mutex because we are changing the dynamically allocated graphKeys
-    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamTransformsExpressionKeys_.mutex());
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex());
 
     // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
-    for (auto& framePairKeyMapIterator : gtsamTransformsExpressionKeys_.getTransformsMap()) {
+    for (auto& framePairKeyMapIterator : gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getTransformsMap()) {
       // Get Variable Key
       const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
 
@@ -592,7 +592,7 @@ void GraphManager::updateGraph() {
                            << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
                            << std::endl;
               // Remove state from state dictionary
-              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+              gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
                                                                          framePairKeyMapIterator.first.second);
               break;
             }
@@ -610,7 +610,7 @@ void GraphManager::updateGraph() {
                             "dictionary."
                          << COLOR_END << std::endl;
             // Remove state from state dictionary
-            gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+            gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
                                                                        framePairKeyMapIterator.first.second);
             return;
           }
@@ -624,7 +624,7 @@ void GraphManager::updateGraph() {
                               "possibility."
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
-              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+              gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
                                                                          framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
@@ -768,7 +768,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
       stateCategoryString = stateCategoryCapital + "_6D_transform";
       // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, graphKey)) {
+      if (gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getFramePairFromGtsamKey(framePair, graphKey)) {
         frameInformation = "_" + framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << stateSymbol << COLOR_END << std::endl;
@@ -784,7 +784,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // Check for the keyframe position
     Eigen::Vector3d keyframePosition = Eigen::Vector3d::Zero();
-    gtsamTransformsExpressionKeys_.getKeyframePositionFromGtsamKey(keyframePosition, graphKey);
+    gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getKeyframePositionFromGtsamKey(keyframePosition, graphKey);
 
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
@@ -881,7 +881,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
       // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
+      if (gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = "_" + framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;

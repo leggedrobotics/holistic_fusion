@@ -26,12 +26,12 @@ namespace graph_msf {
 // Frames that are not needed but also not removed are set to be "inactive"
 
 // Class Definition
-template <class GTSAM_TRANSFORM_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
-class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>> {
+template <class GTSAM_DYNAMIC_STATE_TYPE>  // e.g. gtsam::Pose3, gtsam::Point3
+class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>> {
  public:
   // Constructor
   DynamicTransformDictionary()
-      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>(DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>()) {
+      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>()) {
     REGULAR_COUT << " Instance created." << std::endl;
   }
 
@@ -40,10 +40,10 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
   // Cleanup
   bool removeTransform(const std::string& frame1, const std::string& frame2,
-                       DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& returnRemovedKey) override {
+                       DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>& returnRemovedKey) override {
     // Removed main element
     bool removedTransformFlag =
-        TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::removeTransform(frame1, frame2, returnRemovedKey);
+        TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::removeTransform(frame1, frame2, returnRemovedKey);
     // If found, we also remove the key from the key-to-frame pair map
     if (removedTransformFlag) {
       auto keyFramePairMapIterator = transformGtsamKeyToFramePairMap_.find(returnRemovedKey.key());
@@ -67,13 +67,13 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
   bool removeOrDeactivateTransform(const std::string& frame1, const std::string& frame2) {
     // Check if key is in map
     const bool isFramePairInDictionary =
-        TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::isFramePairInDictionary(frame1, frame2);
+        TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::isFramePairInDictionary(frame1, frame2);
 
     // Case: Frame pair is in dictionary
     if (isFramePairInDictionary) {
       // Retrieve key and variable type
-      DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& keyToRemoveOrDeactivate =
-          TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
+      DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>& keyToRemoveOrDeactivate =
+          TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
       const DynamicVariableTypeEnum& variableTypeEnum = keyToRemoveOrDeactivate.getVariableTypeEnum();
 
       // Three different cases
@@ -148,12 +148,12 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
   // Returns of key
   template <char SYMBOL_CHAR>
-  DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1,
+  DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE> getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1,
                                                                         const std::string& frame2, const double timeK,
                                                                         const gtsam::Pose3& approximateTransformationBeforeOptimization,
                                                                         const DynamicVariableType& variableType) {
     // Retrieve key and insert information to map
-    DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> stateKey;
+    DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE> stateKey;
     // Case: The dynamically allocated key is not yet in the graph
     newGraphKeyAdded = this->addNewFramePairSafelyToDictionary<SYMBOL_CHAR>(stateKey, frame1, frame2, timeK,
                                                                             approximateTransformationBeforeOptimization, variableType);
@@ -162,7 +162,7 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
   // Safe addition of new frame pair to dictionary --> checks whether already present
   template <char SYMBOL_CHAR>
-  bool addNewFramePairSafelyToDictionary(DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& returnStateKey, const std::string& frame1,
+  bool addNewFramePairSafelyToDictionary(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>& returnStateKey, const std::string& frame1,
                                          const std::string& frame2, const double timeK,
                                          const gtsam::Pose3& approximateTransformationBeforeOptimization,
                                          const DynamicVariableType& variableType) {
@@ -171,9 +171,9 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
     // Logic
     // CASE 1: Frame pair is already in dictionary, hence keyframe is not new (measurement either active or not)
-    if (TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::isFramePairInDictionary(frame1, frame2)) {
-      DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>& factorGraphStateKey =
-          TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
+    if (TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::isFramePairInDictionary(frame1, frame2)) {
+      DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>& factorGraphStateKey =
+          TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
       // Update Timestamp and approximate transformation if newer
       if (timeK > factorGraphStateKey.getTime()) {
         factorGraphStateKey.setTimeStamp(timeK);
@@ -192,7 +192,7 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
 
   // Functionality ------------------------------------------------------------
   template <char SYMBOL_CHAR>
-  DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE> addNewFactorGraphStateKey(
+  DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE> addNewFactorGraphStateKey(
       const std::string& frame1, const std::string& frame2, const double timeK,
       const gtsam::Pose3& approximateTransformationBeforeOptimization, const DynamicVariableType& variableType) {
     // Compile Time Checks and Variables
@@ -212,7 +212,7 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     // Add to main dictionary
     DynamicFactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType, frame1,
                                                    frame2);
-    TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_TRANSFORM_TYPE>>::set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
+    TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::set_T_frame1_frame2(frame1, frame2, factorGraphStateKey);
 
     // Increase the counter of specific symbol
     ++numStoredTransformsPerSymbol_[symbolIndex];

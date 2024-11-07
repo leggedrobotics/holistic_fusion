@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
-#include "graph_msf/core/DynamicTransformDictionary.h"
+#include "graph_msf/core/DynamicDictionaryContainer.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
@@ -156,7 +156,7 @@ class GraphManager {
   // Optimization Transformations
   std::string imuFrame_;
   std::string worldFrame_;
-  DynamicTransformDictionary<gtsam::Pose3> gtsamTransformsExpressionKeys_;
+  DynamicDictionaryContainer gtsamDynamicExpressionKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 

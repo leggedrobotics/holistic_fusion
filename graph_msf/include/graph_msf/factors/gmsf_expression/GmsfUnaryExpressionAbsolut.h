@@ -36,7 +36,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
  protected:
   // Virtual Methods --------------------------------------------------------------
   // ii).A Holistically Optimize over Fixed Frames
-  void transformImuStateFromWorldToReferenceFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
+  void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
                                                   const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
     if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName()) {
@@ -45,7 +45,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     // Mutex because we are changing the dynamically allocated graphKeys
-    std::lock_guard<std::mutex> modifyGraphKeysLock(transformsExpressionKeys.mutex());
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys.get<gtsam::Pose3>().mutex());
 
     // Run through steps needed for absolute measurements
     // If it should be centered --> create keyframe for measurement
@@ -62,7 +62,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     const DynamicVariableType dynamicVariableType =
         DynamicVariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
     // Search for new graph key, if not found, add it
-    DynamicFactorGraphStateKey graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
+    DynamicFactorGraphStateKey graphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'r'>(
         newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
     // Get age of keyframe
@@ -83,10 +83,10 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Create new keyframe
     if (!oldVariableWasActive || keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
       // Remove the old keyframe
-      transformsExpressionKeys.removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
-                                               gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
+                                                                     gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
       // Create a new keyframe
-      graphKey = transformsExpressionKeys.getTransformationKey<'r'>(
+      graphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'r'>(
           newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
           gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
       // Assert that new keyframe was added and that it is active
@@ -103,7 +103,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Recompute initial guess
       T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
       // Update the initial guess
-      transformsExpressionKeys
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
           .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
           .setApproximateTransformationBeforeOptimization(T_W_fixedFrame_initial);
     }
@@ -172,7 +172,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
   }
 
   // ii).B Adding Landmark State in Dynamic Memory
-  void transformLandmarkInWorldToImuFrame(DynamicTransformDictionary<gtsam::Pose3>& transformsExpressionKeys,
+  void transformLandmarkInWorldToImuFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                           const gtsam::NavState& W_currentPropagatedState) final {
     // Raise logic error, as it is not a landmark measurement
     throw std::logic_error("GmsfUnaryExpressionAbsolut: convertRobotAndLandmarkStatesToMeasurement() is not implemented.");

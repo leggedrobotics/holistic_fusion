@@ -74,7 +74,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
   // Create Expression --> exact type of expression is determined by the template
   const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
-      closestGeneralKey, gtsamTransformsExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
+      closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
       graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignmentFlag_,
       graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
 
