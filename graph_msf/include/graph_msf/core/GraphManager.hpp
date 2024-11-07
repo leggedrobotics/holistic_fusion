@@ -88,11 +88,11 @@ class GraphManager {
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                 const std::string& savePath);
+                                 const std::string& savePath, const bool saveCovarianceFlag);
 
   // Save Optimized Graph to G2O Format
   static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,

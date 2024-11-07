@@ -25,7 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf/interface/GraphMsfClassic.h"
 #include "graph_msf/interface/GraphMsfHolistic.h"
-#include "graph_msf_ros/OfflineOptimizationTrigger.h"
+#include "graph_msf_ros_msgs/OfflineOptimizationTrigger.h"
 
 // Macros
 #define ROS_QUEUE_SIZE 1
@@ -78,8 +78,8 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);
 
   // Services
-  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
-                                          graph_msf_ros::OfflineOptimizationTrigger::Response& res);
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res);
 
   // Publishing -----------------------------------
   // Higher Level Functions

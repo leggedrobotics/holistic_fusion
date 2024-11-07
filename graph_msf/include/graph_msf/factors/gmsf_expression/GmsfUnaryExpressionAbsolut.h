@@ -123,8 +123,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       this->newOnlineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
       this->newOfflineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
 
-      // Case 1: Entirely new keyframe has been added (not just a displacement) or frame was not active --> add prior to online graph
-      if (!introducedNewKeyframeDisplacement || !oldVariableWasActive) {
+      // Case 1: Entirely new keyframe has been added (not just a displacement) --> add prior to online graph
+      if (!introducedNewKeyframeDisplacement) {
         // Insert Prior ONLY for online graph (offline is observable regardless)
         this->newOnlinePosePriorFactors_.emplace_back(
             graphKey.key(), T_W_fixedFrame_initial,
@@ -146,12 +146,20 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
           boost::shared_ptr<gtsam::noiseModel::Diagonal> noiseModelPtr =
               gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
           this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
+
+          // Add prior from old keyframe to new keyframe
+          REGULAR_COUT << GREEN_START << " Adding relative RANDOM WALK constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
+                       << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
         }
         // B: Deterministic displacement modelled as equality constraint
         else {
           boost::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr =
               gtsam::noiseModel::Constrained::MixedSigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
           this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
+
+          // Add prior from old keyframe to new keyframe
+          REGULAR_COUT << GREEN_START << " Adding relative DETERMINISTIC constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
+                       << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
         }
 
         // If the old keyframe was not active, we have to add a prior of the old keyframe location belief plus the displacement to the
@@ -159,10 +167,6 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         if (!oldVariableWasActive) {
           throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe was not active, not implemented.");
         }
-
-        // Add prior from old keyframe to new keyframe
-        REGULAR_COUT << GREEN_START << " Adding relative constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
-                     << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
       }
     }
   }

@@ -114,13 +114,14 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback, this);
 }
 
-bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
-                                                     graph_msf_ros::OfflineOptimizationTrigger::Response& res) {
+bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                     graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
   // Max Iterations from service call
-  int maxIterations = req.max_optimization_iterations;
+  const int maxIterations = req.max_optimization_iterations;
+  const bool saveCovarianceFlag = req.save_covariance;
 
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath)) {
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, saveCovarianceFlag)) {
     res.success = true;
     res.message = "Optimization successful.";
   } else {

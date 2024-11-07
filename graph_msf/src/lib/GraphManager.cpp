@@ -677,7 +677,7 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
+bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag) {
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
@@ -693,7 +693,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
 
     // Save Optimized Result
-    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath);
+    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath, saveCovarianceFlag);
 
     // Return
     return true;
@@ -704,7 +704,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                             const std::string& savePath) {
+                                             const std::string& savePath, const bool saveCovarianceFlag) {
   // At compile time get the symbols for the 6D and 3D states
   constexpr int num6DStates = countNDStates<6>();
   constexpr int num3DStates = countNDStates<3>();
@@ -743,9 +743,12 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const double timeStamp = keyTimestampMap.at(graphKey);
 
     // Compute Covariance of Pose
-    gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
-    // Convert to ROS Format
-    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
+    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
+    if (saveCovarianceFlag) {
+      gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
+      // Convert to ROS Format
+      poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
+    }
 
     // Additional strings
     std::string stateCategoryString = "";
@@ -788,20 +791,26 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
       // If not, create a new file stream for this category
       const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-      const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
       REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << stateFileName << std::endl;
-      REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
+
       // Open for writing and appending
       fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
-      fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
       // Write header
       fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
-      fileStreams[transformIdentifier + "_covariance"] << "time, cov_t1_t1, cov_t1_t2, cov_t1_t3, cov_t1_r1, cov_t1_r2, cov_t1_r3, "
-                                                          "cov_t2_t1, cov_t2_t2, cov_t2_t3, cov_t2_r1, cov_t2_r2, cov_t2_r3, "
-                                                          "cov_t3_t1, cov_t3_t2, cov_t3_t3, cov_t3_r1, cov_t3_r2, cov_t3_r3, "
-                                                          "cov_r1_t1, cov_r1_t2, cov_r1_t3, cov_r1_r1, cov_r1_r2, cov_r1_r3, "
-                                                          "cov_r2_t1, cov_r2_t2, cov_r2_t3, cov_r2_r1, cov_r2_r2, cov_r2_r3, "
-                                                          "cov_r3_t1, cov_r3_t2, cov_r3_t3, cov_r3_r1, cov_r3_r2, cov_r3_r3\n";
+
+      if (saveCovarianceFlag) {
+        const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
+        REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
+        // Open for writing and appending
+        fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
+        // Write header
+        fileStreams[transformIdentifier + "_covariance"] << "time, cov_t1_t1, cov_t1_t2, cov_t1_t3, cov_t1_r1, cov_t1_r2, cov_t1_r3, "
+                                                            "cov_t2_t1, cov_t2_t2, cov_t2_t3, cov_t2_r1, cov_t2_r2, cov_t2_r3, "
+                                                            "cov_t3_t1, cov_t3_t2, cov_t3_t3, cov_t3_r1, cov_t3_r2, cov_t3_r3, "
+                                                            "cov_r1_t1, cov_r1_t2, cov_r1_t3, cov_r1_r1, cov_r1_r2, cov_r1_r3, "
+                                                            "cov_r2_t1, cov_r2_t2, cov_r2_t3, cov_r2_r1, cov_r2_r2, cov_r2_r3, "
+                                                            "cov_r3_t1, cov_r3_t2, cov_r3_t3, cov_r3_r1, cov_r3_r2, cov_r3_r3\n";
+      }
     }
 
     // If keyframe position is not zero, move the frame location to capture the random walk
@@ -822,20 +831,22 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
                                      << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
                                      << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
     // Write the covariance to the appropriate file
-    fileStreams[transformIdentifier + "_covariance"]
-        << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
-        << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
-        << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
-        << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
-        << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
-        << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
-        << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
-        << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
-        << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
-        << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
-        << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
-        << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
-        << poseCovarianceInWorldRos(5, 5) << "\n";
+    if (saveCovarianceFlag) {
+      fileStreams[transformIdentifier + "_covariance"]
+          << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
+          << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
+          << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
+          << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
+          << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
+          << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
+          << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
+          << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
+          << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
+          << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
+          << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
+          << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
+          << poseCovarianceInWorldRos(5, 5) << "\n";
+    }
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
