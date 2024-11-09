@@ -1,5 +1,5 @@
 # External Prior/Transform Input
 extrinsics:
-  lioOdometryFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
-  leggedOdometryFrame: base      #Tracked Legged odometry frame name
+  lioOdometryFrame: hesai_lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+  leggedOdometryFrame: base_link      #Tracked Legged odometry frame name
   gnssFrame: gps

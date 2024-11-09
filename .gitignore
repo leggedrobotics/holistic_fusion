@@ -18,6 +18,7 @@ dist/
 *.log
 *.csv
 *.bag
+*.tum
 
 # Plots
 *.png

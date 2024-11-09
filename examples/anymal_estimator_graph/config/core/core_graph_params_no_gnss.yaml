@@ -1,7 +1,7 @@
 # Sensor Params
 sensor_params:
-  imuRate: 400                            #Rate of IMU input (Hz)
-  createStateEveryNthImuMeasurement: 10    # Create a new state every n-th IMU measurement
+  imuRate: 200                            #Rate of IMU input (Hz)
+  createStateEveryNthImuMeasurement: 1    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
   imuBufferLength: 800
@@ -16,16 +16,16 @@ initialization_params:
 graph_params:
   realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
-  useAdditionalSlowBatchSmoother: false    # If true, a slower smoother is used in addition to the real-time smoother
-  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
+  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  slowBatchSmootherUseIsam: true         # if false, then levenberg-marquardt is used for the slow batch smoother
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
   maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
-  additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
+  additionalOptimizationIterations: 40     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
+  usingCholeskyFactorization: false        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
   # Alignment Parameters
   optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world

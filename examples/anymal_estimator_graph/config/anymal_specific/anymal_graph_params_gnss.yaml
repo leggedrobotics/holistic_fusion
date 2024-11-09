@@ -1,8 +1,8 @@
 # Sensor Params
 sensor_params:
-  lioOdometryRate: 5
-  leggedOdometryBetweenRate: 400
-  leggedOdometryPoseDownsampleFactor: 40
+  lioOdometryRate: 10
+  leggedOdometryBetweenRate: 30
+  leggedOdometryPoseDownsampleFactor: 1
   leggedOdometryVelocityRate: 20
   leggedOdometryVelocityDownsampleFactor: 1
   leggedKinematicsRate: 400

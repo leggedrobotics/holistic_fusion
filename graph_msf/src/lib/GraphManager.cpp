@@ -8,11 +8,13 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <filesystem>
 #include <iomanip>
 #include <string>
 #include <utility>
-
-// IO
+// #include <rosbag/bag.h>
+// #include <nav_msgs/Odometry.h>
+// // IO
 #include <gtsam/slam/dataset.h>
 
 // Factors
@@ -299,17 +301,16 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
     // Measurement coming from the future
     if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
       // Not too far in the future --> add to buffer and add later
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
-        // TODO: Add to buffer and return --> still add it until we are there
-      }
-      // Too far in the future --> do not add it
-      else {
-        REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
-                     << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
-                     << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
-                     << " ms. Not adding to graph." << COLOR_END << std::endl;
-        return false;
-      }
+      // if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
+      //   // TODO: Add to buffer and return --> still add it until we are there
+      // }
+      // else {
+      //   REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
+      //                << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
+      //                << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
+      //                << " ms. Not adding to graph." << COLOR_END << std::endl;
+      //   return false;
+      // }
     }
     // Measurement coming from the past, but could not find suitable key
     else {  // Otherwise do not add it
@@ -663,10 +664,10 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
     // Save Optimized Result
     saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, savePath);
-
     // Return
     return true;
   } else {
+    std::cout << "Slow batch optimizer is not enabled but it is called" << std::endl;
     return false;
   }
 }
@@ -695,6 +696,26 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   timeString.erase(std::remove(timeString.begin(), timeString.end(), '\n'), timeString.end());
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
+
+  // TUM file format
+  std::ofstream tumPoseFile;
+  const std::string poseLogFileHeader_ = "# timestamp x y z q_x q_y q_z q_w";
+  const std::string outputFilePath = savePath + "/6D_pose.tum";
+
+  // Check if file exists
+  if (std::filesystem::exists(outputFilePath)) {
+    // Remove the file if it exists
+    std::filesystem::remove(outputFilePath);
+  } else {
+    // Open file and set numerical precision to the max.
+    tumPoseFile.open(outputFilePath, std::ios_base::app);
+    tumPoseFile.precision(std::numeric_limits<double>::max_digits10);
+    tumPoseFile << poseLogFileHeader_ << std::endl;
+  }
+
+  // Make sure the file is readable and writable only by everyone
+  std::filesystem::permissions(outputFilePath, std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
+                               std::filesystem::perm_options::add);
 
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
@@ -750,12 +771,20 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
       fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
     }
 
+    // A.C Write to the TUM file format --------------------------------------------
+    tumPoseFile << timeStamp << " ";
+    tumPoseFile << pose.x() << " " << pose.y() << " " << pose.z() << " ";
+    tumPoseFile << pose.rotation().toQuaternion().x() << " " << pose.rotation().toQuaternion().y() << " "
+                << pose.rotation().toQuaternion().z() << " " << pose.rotation().toQuaternion().w() << std::endl;
+
     // Write the values to the appropriate file
     fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
                                      << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                      << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
                                      << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
   }  // end of for loop over all pose states
+
+  tumPoseFile.close();
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
   for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {

@@ -5,23 +5,25 @@
     <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <!-- GMSF Input Topics -->
-    <arg name="imu_topic_name" default="/sensors/imu"/>
+    <arg name="imu_topic_name" default="/zed2i/zed_node/imu/data"/>
     <arg name="gnss_topic_name" default="/rtk_gps_driver/position_receiver_0/ros/navsatfix"/>
-    <arg name="lidar_odometry_topic_name" default="/open3d_slam/scan2map_odometry"/>
-    <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom"/>
-    <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry"/>
-    <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state"/>
+    <arg name="lidar_odometry_topic_name" default="/slam_optimized_poses_odometry"/>
+    <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom22"/>
+    <arg name="legged_odometry_odom_topic_name" default="/zed2i/zed_node/odom"/>
+    <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state22"/>
 
+
+     <arg name="rviz_file_path" default="$(find anymal_estimator_graph)/rviz/gnss_lidar.rviz"/>
     <!-- Servers -->
     <arg name="gnss_coordinates_to_enu_topic_name" default="/dual_graph_node/get_path_in_enu"/>
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary" default="true"/>
+    <arg name="using_gnss_unary" default="false"/>
     <arg name="using_lio_unary" default="true"/>
     <arg name="using_lio_between" default="false"/>
-    <arg name="using_legged_between" default="false"/>
-    <arg name="using_legged_velocity_unary" default="true"/>
+    <arg name="using_legged_between" default="true"/>
+    <arg name="using_legged_velocity_unary" default="false"/>
     <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Config Files -->
@@ -79,6 +81,11 @@
         <!-- Remapping of services -->
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)"/>
     </node>
+
+
+
+    <!-- RVIZ for Visualization -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" required="true" output="screen"/>
 
     <!-- TF for Aligning Compslam Map 
     <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_o3d map_graph_msf_ 10" />-->
