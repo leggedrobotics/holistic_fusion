@@ -647,7 +647,7 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
+bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const std::string& format) {
   if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
@@ -663,7 +663,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
 
     // Save Optimized Result
-    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, savePath);
+    saveOptimizedValuesToFile(isam2OptimizedStates, keyTimestampMap, savePath, format);
     // Return
     return true;
   } else {
@@ -674,7 +674,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                             const std::string& savePath) {
+                                             const std::string& savePath, const std::string& format) {
   // At compile time get the symbols for the 6D and 3D states
   constexpr int num6DStates = countNDStates<6>();
   constexpr int num3DStates = countNDStates<3>();
@@ -697,25 +697,52 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
-  // TUM file format
-  std::ofstream tumPoseFile;
-  const std::string poseLogFileHeader_ = "# timestamp x y z q_x q_y q_z q_w";
-  const std::string outputFilePath = savePath + "/6D_pose.tum";
+  if (format == fileFormats::kTum) {
+    // TUM file format
+    std::ofstream tumPoseFile;
+    const std::string poseLogFileHeader_ = "# timestamp x y z q_x q_y q_z q_w";
+    const std::string outputFilePath = savePath + "6D_pose_of_imu_in_world.tum";
+    REGULAR_COUT << GREEN_START << "Saving poses as TUM file is enabled. Saving to: " << outputFilePath << COLOR_END << std::endl;
 
-  // Check if file exists
-  if (std::filesystem::exists(outputFilePath)) {
-    // Remove the file if it exists
-    std::filesystem::remove(outputFilePath);
-  } else {
-    // Open file and set numerical precision to the max.
-    tumPoseFile.open(outputFilePath, std::ios_base::app);
-    tumPoseFile.precision(std::numeric_limits<double>::max_digits10);
-    tumPoseFile << poseLogFileHeader_ << std::endl;
+    // Check if file exists
+    if (std::filesystem::is_regular_file(outputFilePath)) {
+      // Remove the file if it exists
+      std::filesystem::remove(outputFilePath);
+    } else {
+      // Open file and set numerical precision to the max.
+      tumPoseFile.open(outputFilePath, std::ios_base::app);
+      tumPoseFile.precision(std::numeric_limits<double>::max_digits10);
+      tumPoseFile << poseLogFileHeader_ << std::endl;
+    }
+
+    for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
+      const gtsam::Key& key = keyPosePair.first;
+      const gtsam::Pose3& pose = keyPosePair.second;
+      const double timeStamp = keyTimestampMap.at(key);
+
+      // Write to the TUM file format --------------------------------------------
+      tumPoseFile << timeStamp << " ";
+      tumPoseFile << pose.x() << " " << pose.y() << " " << pose.z() << " ";
+      tumPoseFile << pose.rotation().toQuaternion().x() << " " << pose.rotation().toQuaternion().y() << " "
+                  << pose.rotation().toQuaternion().z() << " " << pose.rotation().toQuaternion().w() << std::endl;
+    }
+
+    tumPoseFile.close();
+
+    if (std::filesystem::is_regular_file(outputFilePath)) {
+      // Make sure the file is readable and writable only by everyone
+      std::filesystem::permissions(outputFilePath, std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
+                                   std::filesystem::perm_options::add);
+      // This command opens the saved folder
+      std::string command = "xdg-open " + savePath;
+      std::system(command.c_str());
+
+    } else {
+      REGULAR_COUT << GREEN_START << "SAVED TO: " << outputFilePath << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Could not save TUM file format. " << COLOR_END << std::endl;
+      throw std::runtime_error("Error in saving TUM file.");
+    }
   }
-
-  // Make sure the file is readable and writable only by everyone
-  std::filesystem::permissions(outputFilePath, std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
-                               std::filesystem::perm_options::add);
 
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
@@ -771,20 +798,12 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
       fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
     }
 
-    // A.C Write to the TUM file format --------------------------------------------
-    tumPoseFile << timeStamp << " ";
-    tumPoseFile << pose.x() << " " << pose.y() << " " << pose.z() << " ";
-    tumPoseFile << pose.rotation().toQuaternion().x() << " " << pose.rotation().toQuaternion().y() << " "
-                << pose.rotation().toQuaternion().z() << " " << pose.rotation().toQuaternion().w() << std::endl;
-
     // Write the values to the appropriate file
     fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
                                      << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                      << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
                                      << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
   }  // end of for loop over all pose states
-
-  tumPoseFile.close();
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
   for (const auto& keyVectorPair : optimizedValues.extract<gtsam::Point3>()) {

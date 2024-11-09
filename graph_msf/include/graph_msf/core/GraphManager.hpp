@@ -54,6 +54,12 @@ class GraphManager {
     }
   };
 
+  struct fileFormats {
+    static constexpr const char* kTum = "tum";
+    static constexpr const char* kG2o = "g2o";
+    static constexpr const char* kCsv = "csv";
+  };
+
   // Initialization Interface ---------------------------------------------------
   bool initImuIntegrators(double gravityValue);
   bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
@@ -88,11 +94,11 @@ class GraphManager {
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const std::string& format);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                 const std::string& savePath);
+                                 const std::string& savePath, const std::string& format);
 
   // Save Optimized Graph to G2O Format
   static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,

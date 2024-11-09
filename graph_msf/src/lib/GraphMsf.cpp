@@ -48,8 +48,8 @@ void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const st
 }
 
 // Trigger functions -----------------------
-bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
-  return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, savePath);
+bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const std::string& format) {
+  return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, savePath, format);
 }
 
 // Getter functions -----------------------

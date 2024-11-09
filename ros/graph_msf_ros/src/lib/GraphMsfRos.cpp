@@ -117,9 +117,10 @@ bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros::OfflineOptim
                                                      graph_msf_ros::OfflineOptimizationTrigger::Response& res) {
   // Max Iterations from service call
   int maxIterations = req.max_optimization_iterations;
+  std::string format = req.format;
 
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath)) {
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, format)) {
     res.success = true;
     res.message = "Optimization successful.";
   } else {
