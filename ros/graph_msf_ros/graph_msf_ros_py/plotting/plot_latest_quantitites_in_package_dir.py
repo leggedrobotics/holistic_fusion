@@ -167,6 +167,7 @@ def plot_quantities_in_file(
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
         plt.title(f"{type} x-y Position Over Time")
+        plt.axis("equal")
         plt.legend()
         plt.grid()
         # Save the plot

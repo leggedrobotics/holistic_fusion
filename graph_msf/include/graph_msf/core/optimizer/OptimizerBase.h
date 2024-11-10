@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_BASE_HPP
 
 // GTSAM
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
 

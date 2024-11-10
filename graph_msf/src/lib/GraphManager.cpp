@@ -593,7 +593,7 @@ void GraphManager::updateGraph() {
                            << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                         framePairKeyMapIterator.first.second);
+                                                                                          framePairKeyMapIterator.first.second);
               break;
             }
           }
@@ -611,7 +611,7 @@ void GraphManager::updateGraph() {
                          << COLOR_END << std::endl;
             // Remove state from state dictionary
             gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                       framePairKeyMapIterator.first.second);
+                                                                                        framePairKeyMapIterator.first.second);
             return;
           }
           // If active but added newly but never optimized
@@ -625,7 +625,7 @@ void GraphManager::updateGraph() {
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                         framePairKeyMapIterator.first.second);
+                                                                                          framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
             else if (graphConfigPtr_->verboseLevel_ > 1) {
@@ -788,30 +788,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << stateFileName << std::endl;
-
-      // Open for writing and appending
-      fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
-
-      if (saveCovarianceFlag) {
-        const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
-        REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
-        // Open for writing and appending
-        fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
-        // Write header
-        fileStreams[transformIdentifier + "_covariance"] << "time, cov_t1_t1, cov_t1_t2, cov_t1_t3, cov_t1_r1, cov_t1_r2, cov_t1_r3, "
-                                                            "cov_t2_t1, cov_t2_t2, cov_t2_t3, cov_t2_r1, cov_t2_r2, cov_t2_r3, "
-                                                            "cov_t3_t1, cov_t3_t2, cov_t3_t3, cov_t3_r1, cov_t3_r2, cov_t3_r3, "
-                                                            "cov_r1_t1, cov_r1_t2, cov_r1_t3, cov_r1_r1, cov_r1_r2, cov_r1_r3, "
-                                                            "cov_r2_t1, cov_r2_t2, cov_r2_t3, cov_r2_r1, cov_r2_r2, cov_r2_r3, "
-                                                            "cov_r3_t1, cov_r3_t2, cov_r3_t3, cov_r3_r1, cov_r3_r2, cov_r3_r3\n";
-      }
-    }
+    fileLogger_.createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
 
     // If keyframe position is not zero, move the frame location to capture the random walk
     if (keyframePosition.norm() > 1e-6) {
@@ -826,27 +803,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
 
     // Write the values to the appropriate file
-    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
-                                     << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
-                                     << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
-                                     << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
-    // Write the covariance to the appropriate file
-    if (saveCovarianceFlag) {
-      fileStreams[transformIdentifier + "_covariance"]
-          << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
-          << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
-          << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
-          << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
-          << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
-          << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
-          << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
-          << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
-          << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
-          << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
-          << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
-          << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
-          << poseCovarianceInWorldRos(5, 5) << "\n";
-    }
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose, poseCovarianceInWorldRos, transformIdentifier, timeStamp, saveCovarianceFlag);
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
@@ -896,19 +853,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // B.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
-      // Open for writing and appending
-      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[transformIdentifier] << "time, x, y, z\n";
-    }
+    fileLogger_.createPoint3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << vector.x() << ", " << vector.y() << ", " << vector.z()
-                                     << "\n";
+    fileLogger_.writePoint3ToCsvFile(fileStreams, vector, transformIdentifier, timeStamp);
   }  // end of for loop over all vector states
 
   // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
@@ -928,24 +876,14 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     ;
 
     // C.A Creation of the identifier for the file -----------------------------------
-    std::string stateCategoryString = stateCategoryCapital + "_imu_bias";
+    std::string stateCategoryIdentifier = stateCategoryCapital + "_imu_bias";
 
     // C.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "/" + stateCategoryString + ".csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
-      // Open for writing and appending
-      fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[stateCategoryString] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
-    }
+    fileLogger_.createImuBiasCsvFileStream(fileStreams, savePath, stateCategoryIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileStreams[stateCategoryString] << std::setprecision(14) << timeStamp << ", " << bias.accelerometer().x() << ", "
-                                     << bias.accelerometer().y() << ", " << bias.accelerometer().z() << ", " << bias.gyroscope().x() << ", "
-                                     << bias.gyroscope().y() << ", " << bias.gyroscope().z() << "\n";
+    fileLogger_.writeImuBiasToCsvFile(fileStreams, bias, stateCategoryIdentifier, timeStamp);
   }
 
   // Close all file streams

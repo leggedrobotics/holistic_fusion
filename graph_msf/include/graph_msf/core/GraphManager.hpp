@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPH_MANAGER_HPP_
-#define GRAPH_MANAGER_HPP_
+#ifndef GRAPH_MANAGER_HPP
+#define GRAPH_MANAGER_HPP
 
 // C++
 #include <chrono>
@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/DynamicDictionaryContainer.h"
+#include "graph_msf/core/FileLogger.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
@@ -160,6 +161,9 @@ class GraphManager {
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 
+  // File Logger
+  FileLogger fileLogger_;
+
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
@@ -209,4 +213,4 @@ class GraphManager {
 // Template Implementations
 #include "graph_msf/core/GraphManager.inl"
 
-#endif  // GRAPH_MANAGER_HPP_
+#endif  // GRAPH_MANAGER_HPP
