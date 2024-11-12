@@ -54,16 +54,16 @@ struct RobustNorm {
 class Measurement {
  public:
   /**
-     * @brief Constructor to create a unary measurement.
-     *
-     * @param measurementName Name of the measurement.
-     * @param measurementRate Rate of the measurement. Mostly used for checking in the core whether all is working correctly.
-     * @param sensorFrameName Name of the sensor frame.
-     * @param sensorFrameCorrectedName Name of the corrected sensor frame.
-     * @param robustNorm Robust norm to be used for the measurement.
-     * @param measurementTypeEnum Type of the measurement.
-     *
-  */
+   * @brief Constructor to create a unary measurement.
+   *
+   * @param measurementName Name of the measurement.
+   * @param measurementRate Rate of the measurement. Mostly used for checking in the core whether all is working correctly.
+   * @param sensorFrameName Name of the sensor frame.
+   * @param sensorFrameCorrectedName Name of the corrected sensor frame.
+   * @param robustNorm Robust norm to be used for the measurement.
+   * @param measurementTypeEnum Type of the measurement.
+   *
+   */
   Measurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
               const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const MeasurementTypeEnum& measurementTypeEnum)
       : measurementName_(measurementName),

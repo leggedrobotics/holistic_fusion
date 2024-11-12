@@ -23,9 +23,9 @@ namespace graph_msf {
 class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLandmark<gtsam::Point3, 'd'> {
  public:
   // Constructor
-  GmsfUnaryExpressionLandmarkPosition3(const std::shared_ptr<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>>& positionXDLandmarkMeasurementPtr,
-                                       const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
-                                       const int landmarkCreationCounter)
+  GmsfUnaryExpressionLandmarkPosition3(
+      const std::shared_ptr<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>>& positionXDLandmarkMeasurementPtr,
+      const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame, const int landmarkCreationCounter)
       : GmsfUnaryExpressionLandmark(positionXDLandmarkMeasurementPtr, imuFrameName, T_I_sensorFrame, landmarkCreationCounter),
         positionXDLandmarkMeasurementPtr_(positionXDLandmarkMeasurementPtr) {}
 
@@ -46,7 +46,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
   // ii.B) Adding Landmark State in Dynamic Memory
   virtual gtsam::Point3 computeW_t_W_L_initial(const gtsam::NavState& W_currentPropagatedState) final {
     // Get initial guess (computed geometrically)
-    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
+    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                           // alias
     const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionXDLandmarkMeasurementPtr_->unaryMeasurement());  // alias
     const gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
     const gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();

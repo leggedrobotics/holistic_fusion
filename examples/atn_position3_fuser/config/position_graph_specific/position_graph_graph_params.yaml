@@ -12,6 +12,6 @@ alignment_params:
 # Noise Parameters
 noise_params:
   ## Position measurement
-  prismPositionMeasUnaryNoise: 0.04 # x, y, z of global position
-  gnssPositionMeasUnaryNoise: 0.04 # x, y, z of global position
-  gnssOfflinePoseMeasUnaryNoise: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  prismPositionMeasUnaryNoiseDensity: 0.04 # x, y, z of global position
+  gnssPositionMeasUnaryNoiseDensity: 0.04 # x, y, z of global position
+  gnssOfflinePoseMeasUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

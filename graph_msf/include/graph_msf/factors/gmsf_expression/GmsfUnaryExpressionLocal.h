@@ -21,10 +21,10 @@ template <class GTSAM_MEASUREMENT_TYPE, char CALIBRATION_CHAR>
 class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Local, CALIBRATION_CHAR> {
  public:
   // Constructor
-  GmsfUnaryExpressionLocal(const std::shared_ptr<UnaryMeasurement>& baseUnaryAbsoluteMeasurementPtr,
-                           const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Local, CALIBRATION_CHAR>(
-            baseUnaryAbsoluteMeasurementPtr, imuFrameName, T_I_sensorFrame) {}
+  GmsfUnaryExpressionLocal(const std::shared_ptr<UnaryMeasurement>& baseUnaryAbsoluteMeasurementPtr, const std::string& imuFrameName,
+                           const Eigen::Isometry3d& T_I_sensorFrame)
+      : GmsfUnaryExpression<GTSAM_MEASUREMENT_TYPE, UnaryExpressionType::Local, CALIBRATION_CHAR>(baseUnaryAbsoluteMeasurementPtr,
+                                                                                                  imuFrameName, T_I_sensorFrame) {}
 
   // Destructor
   ~GmsfUnaryExpressionLocal() = default;
@@ -34,7 +34,7 @@ class GmsfUnaryExpressionLocal : public GmsfUnaryExpression<GTSAM_MEASUREMENT_TY
   // ii.A) Holistically Optimize over Fixed Frames
   void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
-                                                  const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+                                                  const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) final {
     // Do nothing as this velocity measurement is purely local
     throw std::logic_error("GmsfUnaryExpressionLocal: transformStateFromWorldToFixedFrame not implemented, as it is a local measurement.");
   }

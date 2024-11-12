@@ -57,10 +57,12 @@ class GmsfUnaryExpression {
   ~GmsfUnaryExpression() = default;
 
   // Main method for creating the expression
-  gtsam::Expression<GTSAM_MEASUREMENT_TYPE> createAndReturnExpression(
-      const gtsam::Key& closestGeneralKey, DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
-      const gtsam::NavState& W_imuPropagatedState, const bool optimizeReferenceFramePosesWrtWorldFlag,
-      const bool centerReferenceFramesAtRobotPositionBeforeAlignmentFlag, const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
+  gtsam::Expression<GTSAM_MEASUREMENT_TYPE> createAndReturnExpression(const gtsam::Key& closestGeneralKey,
+                                                                      DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
+                                                                      const gtsam::NavState& W_imuPropagatedState,
+                                                                      const bool optimizeReferenceFramePosesWrtWorldFlag,
+                                                                      const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag,
+                                                                      const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
     // Measurement Pointer
     const auto& gmsfUnaryMeasurement = *getGmsfBaseUnaryMeasurementPtr();
 
@@ -71,7 +73,7 @@ class GmsfUnaryExpression {
     if constexpr (TYPE == UnaryExpressionType::Absolute) {
       if (optimizeReferenceFramePosesWrtWorldFlag) {
         transformImuStateFromWorldToReferenceFrame(gtsamDynamicExpressionKeys, W_imuPropagatedState,
-                                                   centerReferenceFramesAtRobotPositionBeforeAlignmentFlag);
+                                                   centerMeasurementsAtKeyframePositionBeforeAlignmentFlag);
       }
     }
 
@@ -134,7 +136,7 @@ class GmsfUnaryExpression {
   // ii).A Holistically optimize over fixed frames
   virtual void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                           const gtsam::NavState& W_currentPropagatedState,
-                                                          const bool centerMeasurementsAtRobotPositionBeforeAlignment) = 0;
+                                                          const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) = 0;
 
   // ii).B Adding landmark state in dynamic memory
   virtual void transformLandmarkInWorldToImuFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
@@ -206,9 +208,9 @@ class GmsfUnaryExpression {
                    << " is deactivated but was never optimized. Hence, Removing it from the graph." << std::endl;
       // Remove key
       DynamicFactorGraphStateKey<gtsam::Pose3> keyToRemoveOrDeactivate;
-      std::ignore =
-          gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfBaseUnaryMeasurementPtr_->sensorFrameName(),
-                                                   gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(), keyToRemoveOrDeactivate);
+      std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfBaseUnaryMeasurementPtr_->sensorFrameName(),
+                                                                                   gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(),
+                                                                                   keyToRemoveOrDeactivate);
     }
   }
 

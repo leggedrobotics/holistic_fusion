@@ -6,8 +6,9 @@ extrinsics:
   # Used for estimation
   imuFrame: "imu"
   baseLinkFrame: "base_link"
-  initializeZeroYawAndPositionOfFrame: "rslidar"
+  initializeZeroYawAndPositionOfFrame: "rslidar" # Initialize the yaw and position of the base frame to zero
+  # this is just meant to avoid any jump after getting the first true measurements
 
 name_ids:
-  fixedFrameAligned: "_graph_msf_aligned"
-  sensorFrameCorrected: "_graph_msf_corrected"
+  referenceFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
+  sensorFrameCorrected: "_graph_msf_corrected" # Specifies what is the suffix of the corrected published sensor frames

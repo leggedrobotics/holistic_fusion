@@ -149,9 +149,9 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
   // Returns of key
   template <char SYMBOL_CHAR>
   DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE> getTransformationKey(bool& newGraphKeyAdded, const std::string& frame1,
-                                                                        const std::string& frame2, const double timeK,
-                                                                        const gtsam::Pose3& approximateTransformationBeforeOptimization,
-                                                                        const DynamicVariableType& variableType) {
+                                                                            const std::string& frame2, const double timeK,
+                                                                            const gtsam::Pose3& approximateTransformationBeforeOptimization,
+                                                                            const DynamicVariableType& variableType) {
     // Retrieve key and insert information to map
     DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE> stateKey;
     // Case: The dynamically allocated key is not yet in the graph
@@ -221,8 +221,8 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     transformGtsamKeyToFramePairMap_[gtsamKey] = std::make_pair(frame1, frame2);
     // Add to key-to-keyframe position map
     transformGtsamKeyToKeyframePositionMap_[gtsamKey] = variableType.getReferenceFrameKeyframePosition();
-    REGULAR_COUT << " Key " << gtsam::Symbol(gtsamKey) << ": Added keyframe position "
-                 << variableType.getReferenceFrameKeyframePosition() << " to map." << std::endl;
+    REGULAR_COUT << " Key " << gtsam::Symbol(gtsamKey) << ": Added keyframe position " << variableType.getReferenceFrameKeyframePosition()
+                 << " to map." << std::endl;
 
     // Return
     return factorGraphStateKey;

@@ -25,13 +25,13 @@ template <class MEASUREMENT_TYPE, int DIM>
 class UnaryMeasurementXD : public virtual UnaryMeasurement {
  public:
   /**
-     * @brief Constructor to create an absolute unary measurement.
-     *
-     * @copydoc UnaryMeasurement::UnaryMeasurement
-     *
-     * @param unaryMeasurement The templated unary measurement.
-     * @param unaryMeasurementNoiseDensity The noise density of the unary measurement.
-     *
+   * @brief Constructor to create an absolute unary measurement.
+   *
+   * @copydoc UnaryMeasurement::UnaryMeasurement
+   *
+   * @param unaryMeasurement The templated unary measurement.
+   * @param unaryMeasurementNoiseDensity The noise density of the unary measurement.
+   *
    */
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                      const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,

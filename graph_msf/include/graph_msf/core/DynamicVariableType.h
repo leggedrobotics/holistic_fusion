@@ -18,7 +18,7 @@ enum class DynamicVariableTypeEnum { Global, RefFrame, Landmark };
 // Robust Norm Container
 struct DynamicVariableType {
   DynamicVariableType(const DynamicVariableTypeEnum& variableTypeEnum, const Eigen::Vector3d& referenceFrameKeyframePosition,
-               const double variableCreationTime)
+                      const double variableCreationTime)
       : variableTypeEnum_(variableTypeEnum),
         referenceFrameKeyframePosition_(referenceFrameKeyframePosition),
         variableCreationTime_(variableCreationTime) {}
@@ -46,6 +46,6 @@ struct DynamicVariableType {
   double variableCreationTime_;
 };
 
-} // namespace graph_msf
+}  // namespace graph_msf
 
 #endif  // GRAPH_MSF_DYANAMIC_VARIABLE_TYPE_H

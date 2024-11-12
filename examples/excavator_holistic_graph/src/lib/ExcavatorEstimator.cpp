@@ -117,7 +117,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
       lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, staticTransformsPtr_->getWorldFrame(),
-      initialSe3AlignmentNoise_);
+      initialSe3AlignmentNoiseDensity_, lioSe3AlignmentRandomWalk_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
@@ -134,14 +134,8 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(
-      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
-      (lio_T_M_Lk * staticTransformsPtr_
-                        ->rv_T_frame1_frame2(dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-                                             staticTransformsPtr_->getImuFrame())
-                        .matrix())
-          .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength_ * 4);
+  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp, (lio_T_M_Lk.matrix()).block<3, 1>(0, 3),
+               graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);

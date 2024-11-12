@@ -66,8 +66,8 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ =
       tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
   graphConfigPtr_->referenceFramePosesResetThreshold_ = tryGetParam<double>("graph_params/referenceFramePosesResetThreshold", privateNode);
-  graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignmentFlag_ =
-      tryGetParam<bool>("graph_params/centerReferenceFramesAtRobotPositionBeforeAlignment", privateNode);
+  graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_ =
+      tryGetParam<bool>("graph_params/centerMeasurementsAtKeyframePositionBeforeAlignment", privateNode);
   graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
       tryGetParam<double>("graph_params/createReferenceAlignmentKeyframeEveryNSeconds", privateNode);
   // Calibration

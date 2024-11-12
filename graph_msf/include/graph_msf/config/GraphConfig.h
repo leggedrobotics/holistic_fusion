@@ -52,7 +52,7 @@ struct GraphConfig {
   // Alignment Parameters
   bool optimizeReferenceFramePosesWrtWorldFlag_ = true;
   double referenceFramePosesResetThreshold_ = 0.5;
-  bool centerReferenceFramesAtRobotPositionBeforeAlignmentFlag_ = false;
+  bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_ = false;
   double createReferenceAlignmentKeyframeEveryNSeconds_ = 10.0;  // [s]
   // Calibration
   bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ = false;

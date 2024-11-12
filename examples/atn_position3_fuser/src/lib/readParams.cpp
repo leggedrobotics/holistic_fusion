@@ -46,10 +46,10 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
 
   /// Noise Parameters ----
   /// Position measurement unary noise
-  prismPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/prismPositionMeasUnaryNoise", privateNode);
-  gnssPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionMeasUnaryNoise", privateNode);
+  prismPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/prismPositionMeasUnaryNoiseDensity", privateNode);
+  gnssPositionMeasUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionMeasUnaryNoiseDensity", privateNode);
   const auto gnssOfflinePoseMeasUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/gnssOfflinePoseMeasUnaryNoise", privateNode);
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/gnssOfflinePoseMeasUnaryNoiseDensity", privateNode);
   gnssOfflinePoseMeasUnaryNoise_ << gnssOfflinePoseMeasUnaryNoise[0], gnssOfflinePoseMeasUnaryNoise[1], gnssOfflinePoseMeasUnaryNoise[2],
       gnssOfflinePoseMeasUnaryNoise[3], gnssOfflinePoseMeasUnaryNoise[4], gnssOfflinePoseMeasUnaryNoise[5];
 }

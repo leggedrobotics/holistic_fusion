@@ -32,10 +32,10 @@ class UnaryMeasurementXDAbsolute final : public virtual UnaryMeasurementAbsolute
 
  public:
   /**
-     * @brief Constructor to create an absolute unary measurement with a specific dimension.
-     *
-     * @copydoc UnaryMeasurementAbsolute::UnaryMeasurementAbsolute
-     *
+   * @brief Constructor to create an absolute unary measurement with a specific dimension.
+   *
+   * @copydoc UnaryMeasurementAbsolute::UnaryMeasurementAbsolute
+   *
    */
   UnaryMeasurementXDAbsolute(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                              const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,

@@ -38,7 +38,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
   // ii).A Holistically Optimize over Fixed Frames
   void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
-                                                  const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+                                                  const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) final {
     if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName()) {
       // Do nothing as this is a world frame measurement
       return;
@@ -50,7 +50,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Run through steps needed for absolute measurements
     // If it should be centered --> create keyframe for measurement
     Eigen::Vector3d measurementOriginPosition = Eigen::Vector3d::Zero();
-    if (centerMeasurementsAtRobotPositionBeforeAlignment) {
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) {
       measurementOriginPosition = this->getMeasurementPosition();
     }
 
@@ -97,7 +97,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // Shift the measurement to the robot position and recompute initial guess if we create keyframes
     // Has to be done here, as we did not know the keyframe position before
-    if (centerMeasurementsAtRobotPositionBeforeAlignment) {
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) {
       // Shift the measurement to the robot position
       this->setMeasurementPosition(this->getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
       // Recompute initial guess

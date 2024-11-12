@@ -33,7 +33,7 @@ graph_params:
   # Alignment Parameters
   optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   referenceFramePosesResetThreshold: 8.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
-  centerReferenceFramesAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
   createReferenceAlignmentKeyframeEveryNSeconds: 10.0   # Create a new keyframe for alignment every n seconds
   # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized

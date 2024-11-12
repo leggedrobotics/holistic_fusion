@@ -45,7 +45,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
   // ii.A) Holistically Optimize over Fixed Frames
   void transformImuStateFromWorldToReferenceFrame(DynamicDictionaryContainer& gtsamDynamicExpressionKeys,
                                                   const gtsam::NavState& W_currentPropagatedState,
-                                                  const bool centerMeasurementsAtRobotPositionBeforeAlignment) final {
+                                                  const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) final {
     // Do nothing as this is a landmark measurement
     throw std::logic_error("GmsfUnaryExpressionLandmark: transformStateFromWorldToFixedFrame not implemented for Landmark Measurements.");
   }
@@ -72,7 +72,8 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
     // Make sure that the variable at the key is active (landmarks always have to be active or removed)
     assert(newGraphKey.isVariableActive());
     // Remove previous landmark with same landmark name;
-    std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeOrDeactivateTransform(gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
+    std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeOrDeactivateTransform(
+        gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
 
     // Create expression for landmark
     const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());

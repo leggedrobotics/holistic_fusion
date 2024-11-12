@@ -61,8 +61,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
   gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) final {
     gtsam::Pose3 T_fixedFrame_sensorFrame_meas_noOrientation =
         gtsam::Pose3(gtsam::Rot3::Identity(), positionUnaryMeasurementPtr_->unaryMeasurement());
-    gtsam::Pose3 T_W_sensorFrame_est =
-        W_currentPropagatedState.pose() * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
+    gtsam::Pose3 T_W_sensorFrame_est = W_currentPropagatedState.pose() * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
     return T_W_sensorFrame_est * T_fixedFrame_sensorFrame_meas_noOrientation.inverse();  // TODO: Does not yet include orientation
   }
 
