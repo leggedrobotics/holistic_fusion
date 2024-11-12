@@ -12,7 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsf.h"
 
 // Workspace
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 #include "graph_msf/interface/constants.h"
 
 namespace graph_msf {
@@ -52,6 +52,18 @@ bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations, const std::string& s
   return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, savePath, saveCovarianceFlag);
 }
 
+bool GraphMsf::logRealTimeStates(const std::string& savePath) {
+  // String of time without line breaks: year_month_day_hour_min_sec
+  std::ostringstream oss;
+  std::time_t now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::tm now_tm = *std::localtime(&now_time_t);
+  oss << std::put_time(&now_tm, "%Y_%m_%d_%H_%M_%S");
+  // Convert stream to string
+  std::string timeString = oss.str();
+  // Return
+  return graphMgrPtr_->logRealTimeStates(savePath, timeString);
+}
+
 // Getter functions -----------------------
 bool GraphMsf::areYawAndPositionInited() const {
   return foundInitialYawAndPositionFlag_;
@@ -89,7 +101,7 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
          gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
             .yaw();
     // Set Yaw
-    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->odomNotJumpAtStart_);
+    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->odomNotJumpAtStartFlag_);
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
@@ -97,7 +109,7 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
     Eigen::Vector3d W_t_W_I0 =
         W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
     // Set Position
-    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStart_);
+    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStartFlag_);
 
     REGULAR_COUT << " Preintegrated state after init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
 

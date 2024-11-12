@@ -46,6 +46,9 @@ class GraphMsf {
   // Trigger offline smoother optimization
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
+  // Logging of the real-time states
+  bool logRealTimeStates(const std::string& savePath);
+
   // Getter functions
   bool areYawAndPositionInited() const;
   bool areRollAndPitchInited() const;

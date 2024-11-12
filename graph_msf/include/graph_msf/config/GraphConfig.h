@@ -17,7 +17,8 @@ struct GraphConfig {
 
   // General Config
   int verboseLevel_ = 0;
-  bool odomNotJumpAtStart_ = false;
+  bool odomNotJumpAtStartFlag_ = false;
+  bool logRealTimeStateToMemoryFlag_ = false;
 
   // Sensor Params
   double imuRate_ = 100;

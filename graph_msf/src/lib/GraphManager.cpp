@@ -22,7 +22,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 #include "graph_msf/geometry/conversions.h"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -36,7 +36,6 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Public --------------------------------------------------------------------
-
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
     : graphConfigPtr_(std::move(graphConfigPtr)),
       imuFrame_(std::move(imuFrame)),
@@ -289,6 +288,12 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
   }  // End of create new state
+
+  // Potentially log real-time state to container
+  if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    realTimeWorldPoseContainer_[imuTimeK] = W_imuPropagatedState_.pose();
+    realTimeOdomPoseContainer_[imuTimeK] = O_imuPropagatedState_.pose();
+  }
 }
 
 // Unary factors ----------------------------------------------------------------
@@ -702,6 +707,52 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
   }
 }
 
+// Logging of the real-time states
+bool GraphManager::logRealTimeStates(const std::string& savePath, const std::string& timeString) {
+  // Note enabled
+  if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
+    return false;
+  }
+  // Enabled
+  else {
+    // Main container: map, although only one element
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Create directory if it does not exist
+    if (!std::filesystem::exists(savePath + timeString)) {
+      std::filesystem::create_directories(savePath + timeString);
+    }
+
+    // Create File Streams
+    // CSV
+    FileLogger::createPose3CsvFileStream(fileStreams, savePath, "rt_world_x_state_6D_pose", timeString, false);
+    FileLogger::createPose3CsvFileStream(fileStreams, savePath, "rt_odom_x_state_6D_pose", timeString, false);
+    // TUM
+    FileLogger::createPose3TumFileStream(fileStreams, savePath, "rt_world_x_state_6D_pose_tum", timeString);
+    FileLogger::createPose3TumFileStream(fileStreams, savePath, "rt_odom_x_state_6D_pose_tum", timeString);
+
+    // Iterate through all states and write them to file
+    // A. World Pose
+    for (const auto& statePair : realTimeWorldPoseContainer_) {
+      // Write to files
+      // CSV
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose", statePair.first, false);
+      // TUM
+      FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose_tum", statePair.first);
+    }
+    // B. Odom Pose
+    for (const auto& statePair : realTimeOdomPoseContainer_) {
+      // Write to files
+      // CSV
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose", statePair.first, false);
+      // TUM
+      FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose_tum", statePair.first);
+    }
+    return true;
+  }
+}
+
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath, const bool saveCovarianceFlag) {
@@ -730,6 +781,11 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Create directory if it does not exist
   if (!std::filesystem::exists(savePath + timeString)) {
     std::filesystem::create_directories(savePath + timeString);
+  }
+
+  // Save real-time states
+  if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    std::ignore = logRealTimeStates(savePath, timeString);
   }
 
   // Save optimized states
@@ -788,7 +844,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
+    // CSV file for Pose3
     fileLogger_.createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
+    // TUM file for Pose3
+    fileLogger_.createPose3TumFileStream(fileStreams, savePath, transformIdentifier + "_tum", timeString);
 
     // If keyframe position is not zero, move the frame location to capture the random walk
     if (keyframePosition.norm() > 1e-6) {
@@ -803,7 +862,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
 
     // Write the values to the appropriate file
-    fileLogger_.writePose3ToCsvFile(fileStreams, pose, poseCovarianceInWorldRos, transformIdentifier, timeStamp, saveCovarianceFlag);
+    // CSV file for Pose3
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose, transformIdentifier, timeStamp, saveCovarianceFlag, poseCovarianceInWorldRos);
+    // TUM file for Pose3
+    fileLogger_.writePose3ToTumFile(fileStreams, pose, transformIdentifier + "_tum", timeStamp);
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------

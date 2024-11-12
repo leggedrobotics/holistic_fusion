@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Create File Streams
+// 1. CSV
 // Pose3
 void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                           const std::string& transformIdentifier, const std::string& timeString,
@@ -25,7 +26,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << stateFileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << stateFileName << std::endl;
 
     // Open for writing and appending
     fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
@@ -34,7 +35,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
 
     if (saveCovarianceFlag) {
       const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
+      REGULAR_COUT << GREEN_START << " Saving covariances to file: " << COLOR_END << covarianceFileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
       // Write header
@@ -54,7 +55,7 @@ void FileLogger::createPoint3CsvFileStream(std::map<std::string, std::ofstream>&
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -68,39 +69,61 @@ void FileLogger::createImuBiasCsvFileStream(std::map<std::string, std::ofstream>
   if (fileStreams.find(stateCategoryIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + stateCategoryIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[stateCategoryIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
     fileStreams[stateCategoryIdentifier] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
   }
 }
+// 2. TUM
+// Pose3
+void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                          const std::string& transformIdentifier, const std::string& timeString) {
+  if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
+    // If not, create a new file stream for this category
+    std::string fileName = savePath + timeString + "/" + transformIdentifier + ".tum";
+    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    // Open for writing and appending
+    fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
+    // Precision
+    fileStreams[transformIdentifier].precision(std::numeric_limits<double>::max_digits10);
+    // Write header
+    fileStreams[transformIdentifier] << "# timestamp tx ty tz qx qy qz qw\n";
+  }
+}
 
 // Write to File
+// 1. CSV
 // Pose3
 void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
-                                     const Eigen::Matrix<double, 6, 6>& poseCovarianceInWorldRos, const std::string& transformIdentifier,
-                                     const double timeStamp, const bool saveCovarianceFlag) {
+                                     const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
+                                     boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
   fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
                                    << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                    << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
                                    << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
   // Write the covariance to the appropriate file
   if (saveCovarianceFlag) {
-    fileStreams[transformIdentifier + "_covariance"]
-        << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
-        << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
-        << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
-        << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
-        << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
-        << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
-        << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
-        << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
-        << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
-        << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
-        << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
-        << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
-        << poseCovarianceInWorldRos(5, 5) << "\n";
+    if (!optionalPoseCovarianceInWorldRos) {
+      throw std::runtime_error("FileLogger: Pose covariance not provided for writing to file.");
+    } else {
+      const auto& poseCovarianceInWorldRos = optionalPoseCovarianceInWorldRos.value();
+      fileStreams[transformIdentifier + "_covariance"]
+          << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
+          << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
+          << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
+          << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
+          << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
+          << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
+          << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
+          << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
+          << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
+          << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
+          << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
+          << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
+          << poseCovarianceInWorldRos(5, 5) << "\n";
+    }
   }
 }
 
@@ -118,6 +141,15 @@ void FileLogger::writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fil
                                        << imuBias.accelerometer().y() << ", " << imuBias.accelerometer().z() << ", "
                                        << imuBias.gyroscope().x() << ", " << imuBias.gyroscope().y() << ", " << imuBias.gyroscope().z()
                                        << "\n";
+}
+
+// 2. TUM
+// Pose3
+void FileLogger::writePose3ToTumFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
+                                     const std::string& transformIdentifier, const double timeStamp) {
+  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << " " << pose.x() << " " << pose.y() << " " << pose.z() << " "
+                                   << pose.rotation().toQuaternion().x() << " " << pose.rotation().toQuaternion().y() << " "
+                                   << pose.rotation().toQuaternion().z() << " " << pose.rotation().toQuaternion().w() << "\n";
 }
 
 }  // namespace graph_msf

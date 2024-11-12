@@ -112,6 +112,8 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
   // Trigger offline smoother optimization
   srvSmootherOptimize_ =
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback, this);
+  // Real-Time State Logging
+  srvLogRealTimeStates_ = privateNode.advertiseService("/graph_msf/log_real_time_states", &GraphMsfRos::srvLogRealTimeStatesCallback, this);
 }
 
 bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
@@ -127,6 +129,18 @@ bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Offline
   } else {
     res.success = false;
     res.message = "Optimization failed.";
+  }
+  return true;
+}
+
+bool GraphMsfRos::srvLogRealTimeStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+  // Log real-time states
+  if (GraphMsf::logRealTimeStates(optimizationResultLoggingPath)) {
+    res.success = true;
+    res.message = "Logging real-time states.";
+  } else {
+    res.success = false;
+    res.message = "Could not log real-time states. Did you enable the flag 'logRealTimeStateToMemory'?";
   }
   return true;
 }

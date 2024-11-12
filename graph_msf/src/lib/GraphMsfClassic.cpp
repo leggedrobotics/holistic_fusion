@@ -9,7 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsfClassic.h"
 
 // Workspace
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 
 // Unary Factors
 #include "graph_msf/factors/non_expression/unaryYawFactor.h"
