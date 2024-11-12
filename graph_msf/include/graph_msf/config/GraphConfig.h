@@ -33,10 +33,12 @@ struct GraphConfig {
   Eigen::Vector3d W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude_;
 
   // Factor Graph
-  bool realTimeSmootherUseIsamFlag_ = true;
   double realTimeSmootherLag_ = 1.5;
-  bool useAdditionalSlowBatchSmoother_ = false;
-  bool slowBatchSmootherUseIsamFlag_ = true;
+  bool realTimeSmootherUseIsamFlag_ = true;
+  bool realTimeSmootherUseCholeskyFactorizationFlag_ = true;
+  bool useAdditionalSlowBatchSmootherFlag_ = false;
+  bool slowBatchSmootherUseIsamFlag_ = false;
+  bool slowBatchSmootherUseCholeskyFactorizationFlag_ = false;
   // Optimizer Config
   double gaussNewtonWildfireThreshold_ = 0.001;
   double minOptimizationFrequency_ = 5;
@@ -44,13 +46,16 @@ struct GraphConfig {
   int additionalOptimizationIterations_ = 0;
   bool findUnusedFactorSlotsFlag_ = false;
   bool enableDetailedResultsFlag_ = false;
-  bool usingCholeskyFactorizationFlag_ = true;
   bool usingBiasForPreIntegrationFlag_ = true;
-  bool optimizeReferenceFramePosesWrtWorld_ = true;
-  bool optimizeExtrinsicSensorToSensorCorrectedOffset_ = false;
+  bool useWindowForMarginalsComputationFlag_ = true;
+  double windowSizeSecondsForMarginalsComputation_ = 300.0;
   // Alignment Parameters
+  bool optimizeReferenceFramePosesWrtWorldFlag_ = true;
   double referenceFramePosesResetThreshold_ = 0.5;
-  bool centerReferenceFramesAtRobotPositionBeforeAlignment_ = false;
+  bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_ = false;
+  double createReferenceAlignmentKeyframeEveryNSeconds_ = 10.0;  // [s]
+  // Calibration
+  bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ = false;
 
   // Noise Params (Noise Amplitude Spectral Density)
   // Position

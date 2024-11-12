@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPH_MANAGER_HPP_
-#define GRAPH_MANAGER_HPP_
+#ifndef GRAPH_MANAGER_HPP
+#define GRAPH_MANAGER_HPP
 
 // C++
 #include <chrono>
@@ -19,9 +19,10 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
+#include "graph_msf/core/DynamicDictionaryContainer.h"
+#include "graph_msf/core/FileLogger.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
-#include "graph_msf/core/TransformsExpressionKeys.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
@@ -46,7 +47,7 @@ class GraphManager {
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END
                 << " Additional slow batch smoother was built up. Next time the optimization of it can be called before shutting down (if "
                    "not done already)."
@@ -88,18 +89,18 @@ class GraphManager {
   void updateGraph();
 
   // Slow Graph Update (if desired)
-  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath);
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                 const std::string& savePath);
+                                 const std::string& savePath, const bool saveCovarianceFlag);
 
   // Save Optimized Graph to G2O Format
   static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,
                                       const std::string& saveFileName);
 
   // Comfort functions ---------------------------------------------------------
-  gtsam::NavState calculateStateAtKey(bool& computeSuccessfulFlag, const gtsam::Key& key);
+  gtsam::NavState calculateStateAtGeneralKey(bool& computeSuccessfulFlag, const gtsam::Key& generalKey);
 
   // Accessors
   /// Getters
@@ -112,8 +113,13 @@ class GraphManager {
 
  protected:
   // Calculate state at key for graph
-  static gtsam::NavState calculateNavStateAtKey(bool& computeSuccessfulFlag, std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
-                                                const gtsam::Key& key, const char* callingFunctionName);
+  static gtsam::NavState calculateNavStateAtGeneralKey(bool& computeSuccessfulFlag, std::shared_ptr<graph_msf::OptimizerBase> graphPtr,
+                                                       const gtsam::Key& generalKey, const char* callingFunctionName);
+
+  // Get Covariance of Pose at Key in World Frame, with optional NavState
+  static Eigen::Matrix<double, 6, 6> calculatePoseCovarianceAtKeyInWorldFrame(
+      std::shared_ptr<graph_msf::OptimizerBase> graphPtr, const gtsam::Key& graphKey, const char* callingFunctionName,
+      std::optional<const gtsam::NavState> optionalNavState = std::nullopt);
 
  private:
   // Methods
@@ -151,9 +157,12 @@ class GraphManager {
   // Optimization Transformations
   std::string imuFrame_;
   std::string worldFrame_;
-  TransformsExpressionKeys<gtsam::Pose3> gtsamTransformsExpressionKeys_;
+  DynamicDictionaryContainer gtsamDynamicExpressionKeys_;
   TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
+
+  // File Logger
+  FileLogger fileLogger_;
 
   // Objects
   boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
@@ -204,4 +213,4 @@ class GraphManager {
 // Template Implementations
 #include "graph_msf/core/GraphManager.inl"
 
-#endif  // GRAPH_MANAGER_HPP_
+#endif  // GRAPH_MANAGER_HPP

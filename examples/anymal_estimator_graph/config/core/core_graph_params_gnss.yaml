@@ -14,10 +14,12 @@ initialization_params:
 
 # Factor Graph
 graph_params:
-  realTimeSmootherUseIsam: true           # if false, then levenberg-marquardt is used for the real-time graph --> not recommended
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
-  useAdditionalSlowBatchSmoother: false   # If true, a slower smoother is used in addition to the real-time smoother
-  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
+  realTimeSmootherUseIsam: true
+  realTimeSmootherUseCholeskyFactorization: true  # CHOLESKY faster, QR numerically more stable
+  useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
+  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother, NO EFFECT YET
+  slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
@@ -25,12 +27,14 @@ graph_params:
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  useWindowForMarginalsComputation: true  # If true, the window is used for marginal computation
+  windowSizeSecondsForMarginalsComputation: 300.0   # Size of the window for marginal computation, unit: seconds
   # Alignment Parameters
   optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   referenceFramePosesResetThreshold: 8.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
-  centerReferenceFramesAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  createReferenceAlignmentKeyframeEveryNSeconds: 10.0   # Create a new keyframe for alignment every n seconds
   # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
 

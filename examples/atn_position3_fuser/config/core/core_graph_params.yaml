@@ -1,7 +1,7 @@
 # Sensor Params
 sensor_params:
-  imuRate: 200.0                          # Rate of IMU input (Hz)
-  createStateEveryNthImuMeasurement: 4    # Create a new state every n-th IMU measurement
+  imuRate: 100.0                          # Rate of IMU input (Hz)
+  createStateEveryNthImuMeasurement: 1    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
   imuBufferLength: 400
@@ -14,10 +14,12 @@ initialization_params:
 
 # Factor Graph
 graph_params:
-  realTimeSmootherUseIsam: true
   realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+  realTimeSmootherUseIsam: true
+  realTimeSmootherUseCholeskyFactorization: true  # CHOLESKY faster, QR numerically more stable
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother, NO EFFECT YET
+  slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
@@ -25,12 +27,14 @@ graph_params:
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  useWindowForMarginalsComputation: true  # If true, the window is used for marginal computation
+  windowSizeSecondsForMarginalsComputation: 300.0   # Size of the window for marginal computation, unit: seconds
   # Alignment Parameters
   optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
   referenceFramePosesResetThreshold: 8.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
-  centerReferenceFramesAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  createReferenceAlignmentKeyframeEveryNSeconds: 10.0   # Create a new keyframe for alignment every n seconds
   # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
 
@@ -38,17 +42,17 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  #accNoiseDensity: 8.5e-04                 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
-  accNoiseDensity: 1.0e-02                 # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
-  integrationNoiseDensity: 1.0e-03         # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
-  use2ndOrderCoriolis: false               # Whether to use 2nd order coriolis effect
+  #accNoiseDensity: 8.5e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
+  accNoiseDensity: 5.9287e-04  # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
+  integrationNoiseDensity: 1.0e-05         # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
+  use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
   ### Rotation
   #gyrNoiseDensity: 1.308e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
-  gyrNoiseDensity: 1.0e-03               # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03 
+  gyrNoiseDensity: 1.1139e-05 # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03
   omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
   ### Bias
-  accBiasRandomWalkNoiseDensity: 3.16e-02 # Default: sqrt(1.0e-03)
-  gyrBiasRandomWalkNoiseDensity: 3.05e-02 # Default: sqrt(9.33e-04)
+  accBiasRandomWalkNoiseDensity: 1.9344e-05 # Default: sqrt(1.0e-03)
+  gyrBiasRandomWalkNoiseDensity: 1.1954e-07 # Default: sqrt(9.33e-04)
   biasAccOmegaInit: 3.16e-04              # Default: sqrt(1.0e-07)
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias

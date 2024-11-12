@@ -16,9 +16,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace excavator_se {
 
-ExcavatorStaticTransforms::ExcavatorStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr,
-                                                     const graph_msf::StaticTransforms& staticTransforms)
-    : graph_msf::StaticTransformsTf(staticTransforms) {
+ExcavatorStaticTransforms::ExcavatorStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr)
+    : graph_msf::StaticTransformsTf() {
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 

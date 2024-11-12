@@ -15,8 +15,7 @@ namespace anymal_se {
 
 class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr,
-                         const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
+  AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr);
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lioOdometryFrame_ = s; }

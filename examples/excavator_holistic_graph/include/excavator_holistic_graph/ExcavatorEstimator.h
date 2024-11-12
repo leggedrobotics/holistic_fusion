@@ -98,7 +98,8 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   double gnssRate_ = 20.0;
 
   // Alignment Parameters
-  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoiseDensity_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> lioSe3AlignmentRandomWalk_ = 0.01 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_;

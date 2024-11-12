@@ -15,16 +15,17 @@ namespace position3_se {
 
 class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  Position3StaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr,
-                            const graph_msf::StaticTransforms& staticTransforms = graph_msf::StaticTransforms());
+  Position3StaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr, bool usePrism, bool useGnss);
 
   // Setters ---------------------------------------------------------------
   void setPrismPositionMeasFrame(const std::string& s) { prismPositionMeasFrame_ = s; }
   void setGnssPositionMeasFrame(const std::string& s) { gnssPositionMeasFrame_ = s; }
+  void setGnssOfflinePoseMeasFrame(const std::string& s) { gnssOfflinePoseMeasFrame_ = s; }
 
   // Getters ---------------------------------------------------------------
   const std::string& getPrismPositionMeasFrame() { return prismPositionMeasFrame_; }
   const std::string& getGnssPositionMeasFrame() { return gnssPositionMeasFrame_; }
+  const std::string& getGnssOfflinePoseMeasFrame() { return gnssOfflinePoseMeasFrame_; }
 
  protected:  // Methods
   void findTransformations() override;
@@ -33,6 +34,11 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
   // Frame names
   std::string prismPositionMeasFrame_;
   std::string gnssPositionMeasFrame_;
+  std::string gnssOfflinePoseMeasFrame_;
+
+  // Bools
+  bool usePrism_;
+  bool useGnss_;
 };
 
 }  // namespace position3_se

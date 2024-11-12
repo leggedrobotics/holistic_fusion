@@ -16,38 +16,38 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/measurements/UnaryMeasurementXDLandmark.h"
 
 namespace graph_msf {
 
 class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLandmark<gtsam::Point3, 'd'> {
  public:
   // Constructor
-  GmsfUnaryExpressionLandmarkPosition3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& positionLandmarkMeasurementPtr,
-                                       const std::string& worldFrameName, const std::string& imuFrameName,
-                                       const Eigen::Isometry3d& T_I_sensorFrame, const int landmarkCreationCounter)
-      : GmsfUnaryExpressionLandmark(positionLandmarkMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame, landmarkCreationCounter),
-        positionLandmarkMeasurementPtr_(positionLandmarkMeasurementPtr) {}
+  GmsfUnaryExpressionLandmarkPosition3(
+      const std::shared_ptr<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>>& positionXDLandmarkMeasurementPtr,
+      const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame, const int landmarkCreationCounter)
+      : GmsfUnaryExpressionLandmark(positionXDLandmarkMeasurementPtr, imuFrameName, T_I_sensorFrame, landmarkCreationCounter),
+        positionXDLandmarkMeasurementPtr_(positionXDLandmarkMeasurementPtr) {}
 
   // Destructor
   ~GmsfUnaryExpressionLandmarkPosition3() = default;
 
   // Noise as GTSAM Datatype
   [[nodiscard]] const gtsam::Vector getNoiseDensity() const override {
-    return positionLandmarkMeasurementPtr_->unaryMeasurementNoiseDensity();
+    return positionXDLandmarkMeasurementPtr_->unaryMeasurementNoiseDensity();
   }
 
   // Return Measurement as GTSAM Datatype
   [[nodiscard]] const gtsam::Point3 getGtsamMeasurementValue() const override {
-    return gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement().matrix());
+    return gtsam::Point3(positionXDLandmarkMeasurementPtr_->unaryMeasurement().matrix());
   }
 
  protected:
   // ii.B) Adding Landmark State in Dynamic Memory
   virtual gtsam::Point3 computeW_t_W_L_initial(const gtsam::NavState& W_currentPropagatedState) final {
     // Get initial guess (computed geometrically)
-    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                         // alias
-    const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionLandmarkMeasurementPtr_->unaryMeasurement());  // alias
+    const gtsam::Pose3& T_W_I_est = W_currentPropagatedState.pose();                                           // alias
+    const gtsam::Point3& S_t_S_L_meas = gtsam::Point3(positionXDLandmarkMeasurementPtr_->unaryMeasurement());  // alias
     const gtsam::Pose3 T_W_S_est = T_W_I_est * gtsam::Pose3(T_I_sensorFrameInit_.matrix());
     const gtsam::Point3 W_t_W_S_est = T_W_S_est.translation();
     const gtsam::Point3 W_t_S_L_meas = T_W_S_est.rotation().rotate(S_t_S_L_meas);
@@ -82,7 +82,7 @@ class GmsfUnaryExpressionLandmarkPosition3 final : public GmsfUnaryExpressionLan
 
  private:
   // Full Measurement Type
-  std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>> positionLandmarkMeasurementPtr_;
+  std::shared_ptr<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>> positionXDLandmarkMeasurementPtr_;
 };
 }  // namespace graph_msf
 

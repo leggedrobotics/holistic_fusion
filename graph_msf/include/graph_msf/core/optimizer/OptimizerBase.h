@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_BASE_HPP
 
 // GTSAM
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
 
@@ -44,7 +45,7 @@ class OptimizerBase {
   virtual gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) = 0;
 
   // Marginal Covariance
-  virtual gtsam::Matrix calculateMarginalCovarianceMatrix(const gtsam::Key& key) = 0;
+  virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
 
  protected:
   // Config

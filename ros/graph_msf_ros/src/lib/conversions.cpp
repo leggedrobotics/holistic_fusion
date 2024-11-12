@@ -3,16 +3,6 @@
 
 namespace graph_msf {
 
-Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam) {
-  Eigen::Matrix<double, 6, 6> covRos;
-  covRos.setZero();
-  covRos.block<3, 3>(0, 0) = covGtsam.block<3, 3>(3, 3);
-  covRos.block<3, 3>(3, 3) = covGtsam.block<3, 3>(0, 0);
-  covRos.block<3, 3>(0, 3) = covGtsam.block<3, 3>(3, 0);
-  covRos.block<3, 3>(3, 0) = covGtsam.block<3, 3>(0, 3);
-  return covRos;
-}
-
 void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Matrix4d& T) {
   tf::Quaternion tf_q;
   tf::quaternionMsgToTF(pose.orientation, tf_q);

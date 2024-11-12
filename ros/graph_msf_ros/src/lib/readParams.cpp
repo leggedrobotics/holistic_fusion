@@ -27,6 +27,11 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   // Sensor Parameters
   graphConfigPtr_->imuRate_ = tryGetParam<double>("sensor_params/imuRate", privateNode);
   graphConfigPtr_->createStateEveryNthImuMeasurement_ = tryGetParam<int>("sensor_params/createStateEveryNthImuMeasurement", privateNode);
+  // Make sure that it is larger than 0
+  if (graphConfigPtr_->createStateEveryNthImuMeasurement_ <= 0) {
+    throw std::runtime_error("GraphMsfRos: createStateEveryNthImuMeasurement must be larger than 0.");
+  }
+  // Continue reading
   graphConfigPtr_->useImuSignalLowPassFilter_ = tryGetParam<bool>("sensor_params/useImuSignalLowPassFilter", privateNode);
   graphConfigPtr_->imuLowPassFilterCutoffFreqHz_ = tryGetParam<double>("sensor_params/imuLowPassFilterCutoffFreq", privateNode);
   graphConfigPtr_->maxSearchDeviation_ = 1.0 / (graphConfigPtr_->imuRate_ / graphConfigPtr_->createStateEveryNthImuMeasurement_);
@@ -38,10 +43,14 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->gravityMagnitude_ = tryGetParam<double>("initialization_params/gravityMagnitude", privateNode);
 
   // Graph Params
-  graphConfigPtr_->realTimeSmootherUseIsamFlag_ = tryGetParam<bool>("graph_params/realTimeSmootherUseIsam", privateNode);
   graphConfigPtr_->realTimeSmootherLag_ = tryGetParam<double>("graph_params/realTimeSmootherLag", privateNode);
-  graphConfigPtr_->useAdditionalSlowBatchSmoother_ = tryGetParam<bool>("graph_params/useAdditionalSlowBatchSmoother", privateNode);
+  graphConfigPtr_->realTimeSmootherUseIsamFlag_ = tryGetParam<bool>("graph_params/realTimeSmootherUseIsam", privateNode);
+  graphConfigPtr_->realTimeSmootherUseCholeskyFactorizationFlag_ =
+      tryGetParam<bool>("graph_params/realTimeSmootherUseCholeskyFactorization", privateNode);
+  graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_ = tryGetParam<bool>("graph_params/useAdditionalSlowBatchSmoother", privateNode);
   graphConfigPtr_->slowBatchSmootherUseIsamFlag_ = tryGetParam<bool>("graph_params/slowBatchSmootherUseIsam", privateNode);
+  graphConfigPtr_->slowBatchSmootherUseCholeskyFactorizationFlag_ =
+      tryGetParam<bool>("graph_params/slowBatchSmootherUseCholeskyFactorization", privateNode);
   // Optimizer Config
   graphConfigPtr_->gaussNewtonWildfireThreshold_ = tryGetParam<double>("graph_params/gaussNewtonWildfireThreshold", privateNode);
   graphConfigPtr_->minOptimizationFrequency_ = tryGetParam<double>("graph_params/minOptimizationFrequency", privateNode);
@@ -49,16 +58,21 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->additionalOptimizationIterations_ = tryGetParam<int>("graph_params/additionalOptimizationIterations", privateNode);
   graphConfigPtr_->findUnusedFactorSlotsFlag_ = tryGetParam<bool>("graph_params/findUnusedFactorSlots", privateNode);
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>("graph_params/enableDetailedResults", privateNode);
-  graphConfigPtr_->usingCholeskyFactorizationFlag_ = tryGetParam<bool>("graph_params/usingCholeskyFactorization", privateNode);
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ = tryGetParam<bool>("graph_params/usingBiasForPreIntegration", privateNode);
-  graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_ =
-      tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
-  graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffset_ =
-      tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
+  graphConfigPtr_->useWindowForMarginalsComputationFlag_ = tryGetParam<bool>("graph_params/useWindowForMarginalsComputation", privateNode);
+  graphConfigPtr_->windowSizeSecondsForMarginalsComputation_ =
+      tryGetParam<double>("graph_params/windowSizeSecondsForMarginalsComputation", privateNode);
   // Alignment Parameters
+  graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ =
+      tryGetParam<bool>("graph_params/optimizeReferenceFramePosesWrtWorld", privateNode);
   graphConfigPtr_->referenceFramePosesResetThreshold_ = tryGetParam<double>("graph_params/referenceFramePosesResetThreshold", privateNode);
-  graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_ =
-      tryGetParam<bool>("graph_params/centerReferenceFramesAtRobotPositionBeforeAlignment", privateNode);
+  graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_ =
+      tryGetParam<bool>("graph_params/centerMeasurementsAtKeyframePositionBeforeAlignment", privateNode);
+  graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
+      tryGetParam<double>("graph_params/createReferenceAlignmentKeyframeEveryNSeconds", privateNode);
+  // Calibration
+  graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ =
+      tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
 
   // Noise Parameters
   /// IMU
@@ -125,7 +139,7 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   sensorFrameCorrectedNameId = tryGetParam<std::string>("name_ids/sensorFrameCorrected", privateNode);
 
   // Logging path in case we run offline optimization
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     // Get the path
     optimizationResultLoggingPath = tryGetParam<std::string>("launch/optimizationResultLoggingPath", privateNode);
     // Make sure the path ends with a slash

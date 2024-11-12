@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="run_estimator" value="false"/>
+    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/offline_vlp16.yaml"/>
+    <arg name="rviz_file_path" value="$(find anymal_estimator_graph)/rviz/gnss_lidar_offline.rviz"/>
+
+    <!-- Paths to the bag files -->
+    <arg name="estimate_file"
+         default="$(find anymal_estimator_graph)/logging/2024_11_06_02_36_38/bag_X_state_6D_pose.bag"/>
+    <arg name="rosbag_files_dir"
+         default="$(env HOME)/data_rosbags/anymal/2024_06_hike_dodo_debug/run2"/>
+
+    <!-- Call Replay Launch -->
+    <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
+        <arg name="run_estimator" value="$(arg run_estimator)"/>
+        <arg name="elevation_mapping_parameter_file" value="$(arg elevation_mapping_parameter_file)"/>
+        <arg name="rviz_file_path" value="$(arg rviz_file_path)"/>
+    </include>
+
+    <!-- Replay the bag files with clock option -->
+<!--    <node pkg="rosbag" type="play" name="rosbag_play_estimate_file" output="screen"-->
+<!--          args="&#45;&#45;clock &#45;&#45;pause $(arg estimate_file)"/>-->
+<!--    &lt;!&ndash; Replay the bag files within the rosbag_files_dir &ndash;&gt;-->
+<!--    <node pkg="rosbag" type="play" name="rosbag_play_files_dir" output="screen"-->
+<!--          args="&#45;&#45;clock &#45;&#45;pause $(arg rosbag_files_dir)/*.bag"/>-->
+</launch>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="run_estimator" value="false"/>
+    <arg name="elevation_mapping_parameter_file"
+         value="$(find atn_position3_fuser)/config/elevation_mapping/offline_vlp16.yaml"/>
+    <arg name="rviz_file_path" value="$(find atn_position3_fuser)/rviz/rviz_imuOdom_offline.rviz"/>
+
+    <!-- Paths to the bag files -->
+<!--    <arg name="estimate_file"-->
+<!--         default="$(find atn_position3_fuser)/logging/2024_10_17_01_51_35_bag_X_state_6D_pose.bag"/>-->
+<!--    <arg name="tf_file"-->
+<!--         default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_47_44/2024-10-01-11-47-44_tf_static.bag"/>-->
+<!--    <arg name="pt_file"-->
+<!--         default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_47_44/2024-10-01-11-47-44_nuc_livox.bag"/>-->
+<!--    <arg name="prism_file"-->
+<!--         default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_47_44/2024-10-01-11-47-44_jetson_ap20_synced.bag"/>-->
+    <arg name="estimate_file"
+         default="$(find atn_position3_fuser)/logging/2024_10_18_02_27_05_bag_X_state_6D_pose.bag"/>
+    <arg name="tf_file"
+         default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_29_55/2024-10-01-11-29-55_tf_static.bag"/>
+    <arg name="pt_file"
+            default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_29_55/2024-10-01-11-29-55_nuc_livox.bag"/>
+    <arg name="prism_file"
+            default="$(env HOME)/data_rosbags/grand_tour/2024_10_01-11_29_55/2024-10-01-11-29-55_jetson_ap20_synced.bag"/>
+
+    <!-- Call Replay Launch -->
+    <include file="$(find atn_position3_fuser)/launch/position3_fuser_replay.launch">
+        <arg name="run_estimator" value="$(arg run_estimator)"/>
+        <arg name="elevation_mapping_parameter_file" value="$(arg elevation_mapping_parameter_file)"/>
+        <arg name="rviz_file_path" value="$(arg rviz_file_path)"/>
+    </include>
+
+    <!-- Replay the bag files with clock option -->
+    <node pkg="rosbag" type="play" name="rosbag_play" output="screen"
+          args="--clock --pause $(arg estimate_file) $(arg tf_file) $(arg pt_file) $(arg prism_file)"/>
+</launch>

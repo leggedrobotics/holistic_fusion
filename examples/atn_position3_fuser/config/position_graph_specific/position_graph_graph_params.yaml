@@ -2,13 +2,16 @@
 sensor_params:
   prismPositionRate: 20 # Rate of the Position input (Hz)
   gnssPositionRate: 20 # Rate of the GNSS input (Hz)
+  gnssOfflinePoseRate: 20 # Rate of the GNSS offline pose input (Hz)
 
 # Alignment Parameters
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  gnssSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
 noise_params:
   ## Position measurement
-  prismPositionMeasUnaryNoise: 0.04 # x, y, z of global position
-  gnssPositionMeasUnaryNoise: 0.04 # x, y, z of global position
+  prismPositionMeasUnaryNoiseDensity: 0.04 # x, y, z of global position
+  gnssPositionMeasUnaryNoiseDensity: 0.04 # x, y, z of global position
+  gnssOfflinePoseMeasUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

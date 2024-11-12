@@ -12,9 +12,23 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+/**
+ * @class UnaryMeasurement
+ * @brief Class to represent a unary measurement in the graph.
+ *
+ * Description: This class is used to represent a unary measurement in the graph.
+ */
 class UnaryMeasurement : public Measurement {
  public:
-  // Constructor
+  /**
+   * @brief Constructor to create a unary measurement.
+   *
+   * @copydoc Measurement::Measurement
+   *
+   * @param timeStamp Time stamp of the measurement. Argument of parent class.
+   * @param covarianceViolationThreshold Threshold for the covariance violation. Argument of parent class.
+   *
+   */
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                    const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                    const double covarianceViolationThreshold)

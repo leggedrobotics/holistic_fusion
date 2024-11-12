@@ -23,9 +23,9 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
  public:
   // Constructor
   GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
-                                    const std::string& worldFrameName, const std::string& imuFrameName,
-                                    const Eigen::Isometry3d& T_I_sensorFrame, const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
-      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
+                                    const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                                    const std::shared_ptr<graph_msf::ImuBuffer> imuBufferPtr)
+      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {

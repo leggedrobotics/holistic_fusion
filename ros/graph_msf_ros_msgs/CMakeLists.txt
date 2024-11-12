@@ -22,6 +22,7 @@ add_service_files(
   DIRECTORY srv
   FILES
   GetPathInEnu.srv
+  OfflineOptimizationTrigger.srv
 )
 
 generate_messages(

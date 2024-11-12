@@ -9,5 +9,5 @@ extrinsics:
   initializeZeroYawAndPositionOfFrame: "imu_box_link"
 
 name_ids:
-  fixedFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
+  referenceFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
   sensorFrameCorrected: "_graph_msf_corrected" # Specifies what is the suffix of the corrected published sensor frames

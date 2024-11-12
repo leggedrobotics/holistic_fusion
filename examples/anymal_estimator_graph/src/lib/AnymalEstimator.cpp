@@ -140,20 +140,20 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
     // Wait until measurements got accumulated
     accumulatedGnssCoordinates_ += gnssCoord;
-    if (!(gnssCallbackCounter_ % 10)) {
-      std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
+    if ((gnssCallbackCounter_ % 10) == 0) {
+      REGULAR_COUT << " NOT ENOUGH GNSS MESSAGES ARRIVED!" << std::endl;
     }
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
     gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
-    std::cout << YELLOW_START << "AnymalEstimator" << COLOR_END << " GNSS Handler initialized." << std::endl;
+    REGULAR_COUT << " GNSS Handler initialized." << std::endl;
     return;
   }
 
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // Alias
   // fixedFrame = "east_north_up";
 
   //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
@@ -168,7 +168,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   //    estStdDevXYZ(i) = sqrt(estStdDevXYZ(i) * estStdDevXYZ(i) + 0.1 * 0.1);
   //  }
 
-  // Inital world yaw initialization options
+  // Initial world yaw initialization options
   // Case 1: Initialization
   if (!areYawAndPositionInited()) {
     // a: Default
@@ -184,12 +184,12 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       // In radians.
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
         if (gnssCallbackCounter_ % 10 == 0) {
-          std::cout << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
+          REGULAR_COUT << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
         }
         return;
       }
-      std::cout << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
-                << 180.0 * initYaw_W_Base / M_PI << std::endl;
+      REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
+                   << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
 
     // Actual Initialization
@@ -206,8 +206,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, initialSe3AlignmentNoise_);
-    // graph_msf::GraphMsfInterface::addGnssPositionMeasurement_(meas_W_t_W_Gnss);
+        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
 
@@ -227,10 +226,9 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   // Counter
   ++lidarUnaryCallbackCounter_;
 
+  // Prepare Data
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-
-  // Transform to IMU frame
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
@@ -242,7 +240,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
       graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
-      initialSe3AlignmentNoise_);
+      staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;
@@ -509,9 +507,10 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
 
             // Create the unary measurement with contact counter
             std::string legIdentifier = legName;
-            graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
+            graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_);
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_,
+                staticTransformsPtr_->getWorldFrame());
 
             // Add to graph
             this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement, legTotalContactsCounter_[legIndex]);

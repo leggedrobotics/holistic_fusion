@@ -33,7 +33,7 @@
   <run_depend>tf</run_depend>
   <run_depend>std_srvs</run_depend>
   <run_depend>message_filters</run_depend>
-  <run_depend>heap_urdf</run_depend>
+  <run_depend>box_model</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosbag</test_depend>
