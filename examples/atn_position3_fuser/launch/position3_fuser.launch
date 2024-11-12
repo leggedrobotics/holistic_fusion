@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
-    <arg name="use_sim_time" default="false"/>
+    <arg name="use_sim_time" default="true"/>
     <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <!-- Input Topics -->
