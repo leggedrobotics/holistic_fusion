@@ -24,9 +24,9 @@ using GMSF_MEASUREMENT_CLASS = UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>;
 class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut<gtsam::Pose3, 'c'> {
  public:
   // Constructor
-  GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<GMSF_MEASUREMENT_CLASS> poseUnaryMeasurementPtr, const std::string& worldFrameName,
-                                   const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame)
-      : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, worldFrameName, imuFrameName, T_I_sensorFrame),
+  GmsfUnaryExpressionAbsolutePose3(const std::shared_ptr<GMSF_MEASUREMENT_CLASS> poseUnaryMeasurementPtr, const std::string& imuFrameName,
+                                   const Eigen::Isometry3d& T_I_sensorFrame, const double createReferenceAlignmentKeyframeEveryNSeconds)
+      : GmsfUnaryExpressionAbsolut(poseUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame, createReferenceAlignmentKeyframeEveryNSeconds),
         gmsfPoseUnaryMeasurementPtr_(poseUnaryMeasurementPtr),
         exp_T_fixedFrame_sensorFrame_(gtsam::Pose3::Identity())  // Placeholder --> will be modified later
   {}
@@ -50,10 +50,10 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
 
   // Interface with three cases (non-exclusive):
   // ii) holistically optimize over fixed frames --> All methods needed for this -------------------------------------
-  gtsam::Pose3 computeT_fixedFrame_W_initial(const gtsam::NavState& W_currentPropagatedState) final {
+  gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) final {
     const Eigen::Matrix4d& T_W_I_est = W_currentPropagatedState.pose().matrix();
     const Eigen::Isometry3d& T_fixedFrame_sensorFrame_meas = gmsfPoseUnaryMeasurementPtr_->unaryMeasurement();
-    return gtsam::Pose3(T_fixedFrame_sensorFrame_meas * T_I_sensorFrameInit_.inverse() * T_W_I_est.inverse());
+    return gtsam::Pose3(T_W_I_est * T_I_sensorFrameInit_ * T_fixedFrame_sensorFrame_meas.inverse().matrix());
   }
 
   const Eigen::Vector3d getMeasurementPosition() final {
@@ -66,9 +66,10 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     gmsfPoseUnaryMeasurementPtr_->unaryMeasurement().translation() = position;
   }
 
-  void transformStateToReferenceFrameMeasurement(const gtsam::Pose3_& exp_T_fixedFrame_W) override {
+  void transformStateToReferenceFrameMeasurement(const gtsam::Pose3_& exp_T_W_fixedFrame) override {
     // Transform state to fixed frame
-    exp_T_fixedFrame_sensorFrame_ = exp_T_fixedFrame_W * exp_T_fixedFrame_sensorFrame_;  // T_fixedFrame_imu at this point
+    // Following: T_fixedFrame_I = T_fixedFrame_W * T_W_I --> transformPoseTo is including the inverse
+    exp_T_fixedFrame_sensorFrame_ = transformPoseTo(exp_T_W_fixedFrame, exp_T_fixedFrame_sensorFrame_);  // T_fixedFrame_imu at this point
   }
 
   // iii) transform estimate to sensor frame --------------------------------------------------------------

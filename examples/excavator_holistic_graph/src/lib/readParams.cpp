@@ -38,15 +38,27 @@ void ExcavatorEstimator::readParams(const ros::NodeHandle& privateNode) {
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
+  // Alignment Parameters ----------------------------
+  /// Initial Se3 Alignment
+  auto initialSe3AlignmentNoiseDensity =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  initialSe3AlignmentNoiseDensity_ << initialSe3AlignmentNoiseDensity[0], initialSe3AlignmentNoiseDensity[1],
+      initialSe3AlignmentNoiseDensity[2], initialSe3AlignmentNoiseDensity[3], initialSe3AlignmentNoiseDensity[4],
+      initialSe3AlignmentNoiseDensity[5];
+  ///
+  auto lioSe3AlignmentRandomWalk = graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
+  lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
+      lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
+
   /// Noise Parameters ----
   /// LiDAR Odometry
   const auto lioPoseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoise", privateNode);  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << lioPoseUnaryNoise[0], lioPoseUnaryNoise[1], lioPoseUnaryNoise[2], lioPoseUnaryNoise[3], lioPoseUnaryNoise[4],
       lioPoseUnaryNoise[5];
   /// Gnss
-  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoise", privateNode);
-  gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoise", privateNode);
+  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoiseDensity", privateNode);
+  gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoiseDensity", privateNode);
 
   // Launch Parameters
   /// LiDAR Odometry

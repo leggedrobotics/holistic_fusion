@@ -7,6 +7,6 @@ input_sources:
     sensor_processor:
       type: laser
 robot_base_frame_id: base
-map_frame_id: offline_world_graph_msf
+map_frame_id: gt_world
 track_point_frame_id: base
 sensor_frame_id: lidar

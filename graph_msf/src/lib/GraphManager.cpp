@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <filesystem>
 #include <iomanip>
 #include <string>
 #include <utility>
@@ -61,7 +62,7 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
     rtOptimizerPtr_ = std::make_shared<OptimizerLMFixedLag>(graphConfigPtr_);
   }
   // B. Batch Optimizer
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     if (graphConfigPtr_->slowBatchSmootherUseIsamFlag_) {
       batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
     } else {
@@ -270,13 +271,13 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
     rtGraphValuesBufferPtr_->insert(valuesEstimate);
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       batchGraphValuesBufferPtr_->insert(valuesEstimate);
     }
 
     // Add timestamps
     writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, rtGraphKeysTimestampsMapBufferPtr_);
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       writeValueKeysToKeyTimeStampMap_(valuesEstimate, imuTimeK, batchGraphKeysTimestampsMapBufferPtr_);
     }
 
@@ -464,7 +465,7 @@ void GraphManager::updateGraph() {
     rtFactorGraphBufferPtr_->resize(0);
     rtGraphValuesBufferPtr_->clear();
     rtGraphKeysTimestampsMapBufferPtr_->clear();
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       newBatchGraphFactors = *batchFactorGraphBufferPtr_;
       newBatchGraphValues = *batchGraphValuesBufferPtr_;
       newBatchGraphKeysTimestampsMap = *batchGraphKeysTimestampsMapBufferPtr_;
@@ -514,12 +515,12 @@ void GraphManager::updateGraph() {
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
   // D. FixedFrame Transformations ------------------------------
-  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorld_) {
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
     // Mutex because we are changing the dynamically allocated graphKeys
-    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamTransformsExpressionKeys_.mutex());
+    std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex());
 
     // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
-    for (auto& framePairKeyMapIterator : gtsamTransformsExpressionKeys_.getTransformsMap()) {
+    for (auto& framePairKeyMapIterator : gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getTransformsMap()) {
       // Get Variable Key
       const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
 
@@ -553,11 +554,16 @@ void GraphManager::updateGraph() {
           }
 
           // Write to Result Dictionaries
-          Eigen::Matrix4d T_frame1_frame2_corrected_matrix = T_frame1_frame2.matrix();
-          T_frame1_frame2_corrected_matrix.block<3, 1>(0, 3) += framePairKeyMapIterator.second.getReferenceFrameKeyframePosition();
+          //          gtsam::Pose3 T_frame1_frame2_corrected = T_frame1_frame2;
+          // For correction first have to transform T_W_F to T_F_W, apply correction, and then transform back to T_W_F
+          gtsam::Pose3 T_frame2_frame1_corrected = T_frame1_frame2.inverse();
+          T_frame2_frame1_corrected =
+              gtsam::Pose3(T_frame2_frame1_corrected.rotation(),
+                           T_frame2_frame1_corrected.translation() + framePairKeyMapIterator.second.getReferenceFrameKeyframePosition());
+          gtsam::Pose3 T_frame1_frame2_corrected = T_frame2_frame1_corrected.inverse();
           // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
           resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
-                                                               Eigen::Isometry3d(T_frame1_frame2_corrected_matrix));
+                                                               Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
           resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                          framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
 
@@ -586,8 +592,8 @@ void GraphManager::updateGraph() {
                            << " diverged too much. Removing from optimization and adding again freshly at next possibility." << COLOR_END
                            << std::endl;
               // Remove state from state dictionary
-              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                         framePairKeyMapIterator.first.second);
+              gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                                          framePairKeyMapIterator.first.second);
               break;
             }
           }
@@ -604,8 +610,8 @@ void GraphManager::updateGraph() {
                             "dictionary."
                          << COLOR_END << std::endl;
             // Remove state from state dictionary
-            gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                       framePairKeyMapIterator.first.second);
+            gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                                        framePairKeyMapIterator.first.second);
             return;
           }
           // If active but added newly but never optimized
@@ -618,8 +624,8 @@ void GraphManager::updateGraph() {
                               "possibility."
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
-              gtsamTransformsExpressionKeys_.removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                         framePairKeyMapIterator.first.second);
+              gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
+                                                                                          framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
             else if (graphConfigPtr_->verboseLevel_ > 1) {
@@ -671,8 +677,8 @@ void GraphManager::updateGraph() {
   }  // end of locking
 }
 
-bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath) {
-  if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag) {
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
     // Optimization
@@ -684,10 +690,10 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
     double optimizationDuration =
         std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
-    std::cout << "Optimization took " << optimizationDuration << " ms." << std::endl;
+    std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
 
     // Save Optimized Result
-    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath);
+    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath, saveCovarianceFlag);
 
     // Return
     return true;
@@ -698,7 +704,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
-                                             const std::string& savePath) {
+                                             const std::string& savePath, const bool saveCovarianceFlag) {
   // At compile time get the symbols for the 6D and 3D states
   constexpr int num6DStates = countNDStates<6>();
   constexpr int num3DStates = countNDStates<3>();
@@ -721,20 +727,28 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Replace spaces with underscores
   std::replace(timeString.begin(), timeString.end(), ' ', '_');
 
+  // Create directory if it does not exist
+  if (!std::filesystem::exists(savePath + timeString)) {
+    std::filesystem::create_directories(savePath + timeString);
+  }
+
   // Save optimized states
   // A. 6D SE(3) states -----------------------------------------------------------
   for (const auto& keyPosePair : optimizedValues.extract<gtsam::Pose3>()) {
     // Read out information
     const gtsam::Key& graphKey = keyPosePair.first;
-    const gtsam::Pose3& pose = keyPosePair.second;
+    gtsam::Pose3 pose = keyPosePair.second;
     const gtsam::Symbol stateSymbol(graphKey);
     const char stateCategory = stateSymbol.chr();
     const double timeStamp = keyTimestampMap.at(graphKey);
 
     // Compute Covariance of Pose
-    gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
-    // Convert to ROS Format
-    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
+    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
+    if (saveCovarianceFlag) {
+      gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
+      // Convert to ROS Format
+      poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
+    }
 
     // Additional strings
     std::string stateCategoryString = "";
@@ -754,7 +768,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
       stateCategoryString = stateCategoryCapital + "_6D_transform";
       // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, graphKey)) {
+      if (gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getFramePairFromGtsamKey(framePair, graphKey)) {
         frameInformation = "_" + framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << stateSymbol << COLOR_END << std::endl;
@@ -768,47 +782,28 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
 
+    // Check for the keyframe position
+    Eigen::Vector3d keyframePosition = Eigen::Vector3d::Zero();
+    gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getKeyframePositionFromGtsamKey(keyframePosition, graphKey);
+
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      const std::string stateFileName = savePath + timeString + "_" + transformIdentifier + ".csv";
-      const std::string covarianceFileName = savePath + timeString + "_" + transformIdentifier + "_covariance.csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << stateFileName << std::endl;
-      REGULAR_COUT << GREEN_START << " Saving optimized covariances to file: " << COLOR_END << covarianceFileName << std::endl;
-      // Open for writing and appending
-      fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
-      fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[transformIdentifier] << "time, x, y, z, quat_x, quat_y, quat_z, quat_w, roll, pitch, yaw\n";
-      fileStreams[transformIdentifier + "_covariance"] << "time, cov_t1_t1, cov_t1_t2, cov_t1_t3, cov_t1_r1, cov_t1_r2, cov_t1_r3, "
-                                                          "cov_t2_t1, cov_t2_t2, cov_t2_t3, cov_t2_r1, cov_t2_r2, cov_t2_r3, "
-                                                          "cov_t3_t1, cov_t3_t2, cov_t3_t3, cov_t3_r1, cov_t3_r2, cov_t3_r3, "
-                                                          "cov_r1_t1, cov_r1_t2, cov_r1_t3, cov_r1_r1, cov_r1_r2, cov_r1_r3, "
-                                                          "cov_r2_t1, cov_r2_t2, cov_r2_t3, cov_r2_r1, cov_r2_r2, cov_r2_r3, "
-                                                          "cov_r3_t1, cov_r3_t2, cov_r3_t3, cov_r3_r1, cov_r3_r2, cov_r3_r3\n";
+    fileLogger_.createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
+
+    // If keyframe position is not zero, move the frame location to capture the random walk
+    if (keyframePosition.norm() > 1e-6) {
+      const gtsam::Pose3& T_W_M = pose;  // alias
+      gtsam::Pose3 T_M_W_corrected = T_W_M.inverse();
+      T_M_W_corrected = gtsam::Pose3(T_M_W_corrected.rotation(),
+                                     T_M_W_corrected.translation() + keyframePosition);  // Remove the effect of the keyframe position
+      gtsam::Pose3 T_W_M_corrected = T_M_W_corrected.inverse();
+      pose = T_W_M_corrected;
+      REGULAR_COUT << " Corrected frame position for " << transformIdentifier << " (" << gtsam::Symbol(graphKey) << ") by "
+                   << keyframePosition.transpose() << std::endl;
     }
 
     // Write the values to the appropriate file
-    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z()
-                                     << ", " << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
-                                     << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
-                                     << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
-    // Write the covariance to the appropriate file
-    fileStreams[transformIdentifier + "_covariance"]
-        << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
-        << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "
-        << poseCovarianceInWorldRos(0, 5) << ", " << poseCovarianceInWorldRos(1, 0) << ", " << poseCovarianceInWorldRos(1, 1) << ", "
-        << poseCovarianceInWorldRos(1, 2) << ", " << poseCovarianceInWorldRos(1, 3) << ", " << poseCovarianceInWorldRos(1, 4) << ", "
-        << poseCovarianceInWorldRos(1, 5) << ", " << poseCovarianceInWorldRos(2, 0) << ", " << poseCovarianceInWorldRos(2, 1) << ", "
-        << poseCovarianceInWorldRos(2, 2) << ", " << poseCovarianceInWorldRos(2, 3) << ", " << poseCovarianceInWorldRos(2, 4) << ", "
-        << poseCovarianceInWorldRos(2, 5) << ", " << poseCovarianceInWorldRos(3, 0) << ", " << poseCovarianceInWorldRos(3, 1) << ", "
-        << poseCovarianceInWorldRos(3, 2) << ", " << poseCovarianceInWorldRos(3, 3) << ", " << poseCovarianceInWorldRos(3, 4) << ", "
-        << poseCovarianceInWorldRos(3, 5) << ", " << poseCovarianceInWorldRos(4, 0) << ", " << poseCovarianceInWorldRos(4, 1) << ", "
-        << poseCovarianceInWorldRos(4, 2) << ", " << poseCovarianceInWorldRos(4, 3) << ", " << poseCovarianceInWorldRos(4, 4) << ", "
-        << poseCovarianceInWorldRos(4, 5) << ", " << poseCovarianceInWorldRos(5, 0) << ", " << poseCovarianceInWorldRos(5, 1) << ", "
-        << poseCovarianceInWorldRos(5, 2) << ", " << poseCovarianceInWorldRos(5, 3) << ", " << poseCovarianceInWorldRos(5, 4) << ", "
-        << poseCovarianceInWorldRos(5, 5) << "\n";
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose, poseCovarianceInWorldRos, transformIdentifier, timeStamp, saveCovarianceFlag);
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
@@ -843,7 +838,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
       // Get Frame Pair
       std::pair<std::string, std::string> framePair;
-      if (gtsamTransformsExpressionKeys_.getFramePairFromGtsamKey(framePair, key)) {
+      if (gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getFramePairFromGtsamKey(framePair, key)) {
         frameInformation = "_" + framePair.first + "_to_" + framePair.second;
       } else {
         REGULAR_COUT << RED_START << " Could not find frame pair for key: " << symbol.chr() << COLOR_END << std::endl;
@@ -858,19 +853,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // B.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_" + transformIdentifier + ".csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
-      // Open for writing and appending
-      fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[transformIdentifier] << "time, x, y, z\n";
-    }
+    fileLogger_.createPoint3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << vector.x() << ", " << vector.y() << ", " << vector.z()
-                                     << "\n";
+    fileLogger_.writePoint3ToCsvFile(fileStreams, vector, transformIdentifier, timeStamp);
   }  // end of for loop over all vector states
 
   // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
@@ -890,30 +876,23 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     ;
 
     // C.A Creation of the identifier for the file -----------------------------------
-    std::string stateCategoryString = stateCategoryCapital + "_imu_bias";
+    std::string stateCategoryIdentifier = stateCategoryCapital + "_imu_bias";
 
     // C.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
-    if (fileStreams.find(stateCategoryString) == fileStreams.end()) {
-      // If not, create a new file stream for this category
-      std::string fileName = savePath + timeString + "_" + stateCategoryString + ".csv";
-      REGULAR_COUT << GREEN_START << " Saving optimized states to file: " << COLOR_END << fileName << std::endl;
-      // Open for writing and appending
-      fileStreams[stateCategoryString].open(fileName, std::ofstream::out | std::ofstream::app);
-      // Write header
-      fileStreams[stateCategoryString] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
-    }
+    fileLogger_.createImuBiasCsvFileStream(fileStreams, savePath, stateCategoryIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileStreams[stateCategoryString] << std::setprecision(14) << timeStamp << ", " << bias.accelerometer().x() << ", "
-                                     << bias.accelerometer().y() << ", " << bias.accelerometer().z() << ", " << bias.gyroscope().x() << ", "
-                                     << bias.gyroscope().y() << ", " << bias.gyroscope().z() << "\n";
+    fileLogger_.writeImuBiasToCsvFile(fileStreams, bias, stateCategoryIdentifier, timeStamp);
   }
 
   // Close all file streams
   for (auto& pair : fileStreams) {
     pair.second.close();
   }
+
+  // Print
+  REGULAR_COUT << GREEN_START << " Saved all optimized states to files." << COLOR_END << std::endl;
 }
 
 // Save optimized Graph to Common Open source G2o format
@@ -945,7 +924,7 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
   auto currItr = imuMeas.begin();
   auto prevItr = currItr++;
 
-  // Calculate dt and integrate IMU measurements for both preintegrators
+  // Calculate dt and integrate IMU measurements for both pre-integrators
   for (; currItr != imuMeas.end(); ++currItr, ++prevItr) {
     double dt = currItr->first - prevItr->first;
     imuStepPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,       // acc
@@ -953,7 +932,7 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
                                                    dt);                                // delta t
     imuBufferPreintegratorPtr_->integrateMeasurement(currItr->second.acceleration,     // acc
                                                      currItr->second.angularVelocity,  // gyro
-                                                     dt);
+                                                     dt);                              // delta t
   }
 }
 
@@ -981,7 +960,7 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   }
 
   // Add Factors and States to Batch Optimization (if desired) without running optimization
-  if (graphConfigPtr->useAdditionalSlowBatchSmoother_) {
+  if (graphConfigPtr->useAdditionalSlowBatchSmootherFlag_) {
     batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
   }
 

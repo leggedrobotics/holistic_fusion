@@ -153,7 +153,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // Alias
   // fixedFrame = "east_north_up";
 
   //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
@@ -206,7 +206,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, initialSe3AlignmentNoise_);
+        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
 
@@ -240,7 +240,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
       graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
-      initialSe3AlignmentNoise_);
+      staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;
@@ -507,9 +507,10 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
 
             // Create the unary measurement with contact counter
             std::string legIdentifier = legName;
-            graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> footContactPositionMeasurement(
+            graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_);
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_,
+                staticTransformsPtr_->getWorldFrame());
 
             // Add to graph
             this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement, legTotalContactsCounter_[legIndex]);

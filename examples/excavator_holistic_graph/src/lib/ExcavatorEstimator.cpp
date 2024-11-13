@@ -116,7 +116,8 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   // Measurement
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-      lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, initialSe3AlignmentNoise_);
+      lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, staticTransformsPtr_->getWorldFrame(),
+      initialSe3AlignmentNoiseDensity_, lioSe3AlignmentRandomWalk_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
@@ -133,14 +134,8 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(
-      measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
-      (lio_T_M_Lk * staticTransformsPtr_
-                        ->rv_T_frame1_frame2(dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame(),
-                                             staticTransformsPtr_->getImuFrame())
-                        .matrix())
-          .block<3, 1>(0, 3),
-      graphConfigPtr_->imuBufferLength_ * 4);
+  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp, (lio_T_M_Lk.matrix()).block<3, 1>(0, 3),
+               graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapImuPathPtr_);
@@ -202,7 +197,7 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       Eigen::Matrix<double, 1, 1> gnssHeadingUnaryNoise(std::max(5.0 * leftGnssCovarianceXYZ.maxCoeff(), gnssHeadingUnaryNoise_));
       graph_msf::UnaryMeasurementXDAbsolute<double, 1> meas_yaw_W_C(
           "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-          leftGnssMsgPtr->header.stamp.toSec(), 1.0, yaw_W_C, gnssHeadingUnaryNoise, fixedFrameName, initialSe3AlignmentNoise_);
+          leftGnssMsgPtr->header.stamp.toSec(), 1.0, yaw_W_C, gnssHeadingUnaryNoise, fixedFrameName, staticTransformsPtr_->getWorldFrame());
       this->addUnaryYawAbsoluteMeasurement(meas_yaw_W_C);
     }
     // Measurement type 2: GNSS Left Position ----------------------------------------------------
@@ -215,7 +210,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                               std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
           "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-          leftGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssL, leftGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
+          leftGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssL, leftGnssCovarianceXYZ, fixedFrameName,
+          staticTransformsPtr_->getWorldFrame());
       this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssL);
     }
     // Measurement type 3: GNSS Right Position ----------------------------------------------------
@@ -228,7 +224,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
       graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
           "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-          rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR, rightGnssCovarianceXYZ, fixedFrameName, initialSe3AlignmentNoise_);
+          rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR, rightGnssCovarianceXYZ, fixedFrameName,
+          staticTransformsPtr_->getWorldFrame());
       this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssR);
     }
     // Visualizations ------------------------------------------------------------

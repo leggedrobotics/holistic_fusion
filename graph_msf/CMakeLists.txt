@@ -56,6 +56,7 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
+        src/lib/FileLogger.cpp
         src/lib/GraphMsf.cpp
         src/lib/GraphMsfClassic.cpp
         src/lib/GraphMsfHolistic.cpp

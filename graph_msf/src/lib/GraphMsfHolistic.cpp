@@ -55,9 +55,9 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
 
     // Create GMSF expression
     auto gmsfUnaryExpressionPose3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePose3>(
-        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getWorldFrame(),
-        staticTransformsPtr_->getImuFrame(),
-        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_fixedFrame_sensorFrame.sensorFrameName()));
+        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getImuFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_fixedFrame_sensorFrame.sensorFrameName()),
+        graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
     // Add factor to graph
     graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr);
@@ -94,9 +94,10 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
     // Create GMSF expression
     auto gmsfUnaryExpressionPosition3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePosition3>(
         std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>>(fixedFrame_t_fixedFrame_sensorFrame),
-        staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getImuFrame(),
+        staticTransformsPtr_->getImuFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
-                                                 fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()));
+                                                 fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()),
+        graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
     // Add factor to graph
     graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
@@ -146,8 +147,7 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
 
     // Create GMSF expression
     auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionLocalVelocity3>(
-        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getWorldFrame(),
-        staticTransformsPtr_->getImuFrame(),
+        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getImuFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()), coreImuBufferPtr_);
 
     // Add factor to graph
@@ -164,7 +164,7 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
 
 // Landmark Measurements: No systematic drift ------------------------------------------------------
 // Position3
-void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_t_S_L,
+void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_t_S_L,
                                                             const int landmarkCreationCounter) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
@@ -187,8 +187,7 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<E
 
     // Create GMSF expression
     auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionLandmarkPosition3>(
-        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_t_S_L), staticTransformsPtr_->getWorldFrame(),
-        staticTransformsPtr_->getImuFrame(),
+        std::make_shared<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>>(S_t_S_L), staticTransformsPtr_->getImuFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_t_S_L.sensorFrameName()), landmarkCreationCounter);
 
     // Add factor to graph
@@ -204,7 +203,7 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXD<E
 }
 
 // Bearing3
-void GraphMsfHolistic::addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_bearing_S_L) {
+void GraphMsfHolistic::addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_bearing_S_L) {
   throw std::runtime_error("Landmark measurements are not yet supported for the holistic MSF.");
 }
 

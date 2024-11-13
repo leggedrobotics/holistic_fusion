@@ -12,9 +12,23 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+/**
+ * @class BinaryMeasurement
+ * @brief Class to represent a binary measurement in the graph.
+ *
+ * Description: This class is used to represent a binary measurement in the graph.
+ */
 class BinaryMeasurement : public Measurement {
  public:
-  // Constructor
+  /**
+   * @brief Constructor to create a binary measurement.
+   *
+   * @copydoc Measurement::Measurement
+   *
+   * @param timeKm1 Time stamp of the measurement at time k-1.
+   * @param timeK Time stamp of the measurement at time k.
+   *
+   */
   BinaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                     const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const double timeKm1, const double timeK)
       : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Binary),

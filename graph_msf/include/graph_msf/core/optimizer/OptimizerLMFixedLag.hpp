@@ -19,6 +19,15 @@ namespace graph_msf {
 class OptimizerLMFixedLag : public OptimizerLM {
  public:
   explicit OptimizerLMFixedLag(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerLM(graphConfigPtr) {
+    // Set Linear Solver Type
+    if (graphConfigPtr_->realTimeSmootherUseCholeskyFactorizationFlag_) {
+      lmParams_.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
+      REGULAR_COUT << "Using Multifrontal-Cholesky factorization for fixed-lag smoother (LM)." << std::endl;
+    } else {
+      lmParams_.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+      REGULAR_COUT << "Using Multifrontal-QR factorization for fixed-lag smoother (LM)." << std::endl;
+    }
+
     // Initialize Real-time Smoother -----------------------------------------------
     fixedLagSmootherPtr_ = std::make_shared<gtsam::BatchFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_, lmParams_);
     // Print

@@ -114,13 +114,14 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback, this);
 }
 
-bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros::OfflineOptimizationTrigger::Request& req,
-                                                     graph_msf_ros::OfflineOptimizationTrigger::Response& res) {
+bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                     graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
   // Max Iterations from service call
-  int maxIterations = req.max_optimization_iterations;
+  const int maxIterations = req.max_optimization_iterations;
+  const bool saveCovarianceFlag = req.save_covariance;
 
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath)) {
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, saveCovarianceFlag)) {
     res.success = true;
     res.message = "Optimization successful.";
   } else {
@@ -406,26 +407,26 @@ void GraphMsfRos::publishOptimizedStateAndBias(
       if (framePairTransformMapIterator.first.first == staticTransformsPtr_->getWorldFrame() ||
           framePairTransformMapIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
         // A. Get transform
-        Eigen::Isometry3d T_M_W;
+        Eigen::Isometry3d T_W_M;
         std::string mapFrameName;
         const std::string& worldFrameName = staticTransformsPtr_->getWorldFrame();
 
-        // If world is first, then map is second
-        if (framePairTransformMapIterator.first.first == worldFrameName) {
-          T_M_W = framePairTransformMapIterator.second.inverse();
-          mapFrameName = framePairTransformMapIterator.first.second;
-        }
-        // If world is second, then map is first, this is the case for holistic alignment
-        else {
-          T_M_W = framePairTransformMapIterator.second;
+        // If world is second, then map is second
+        if (framePairTransformMapIterator.first.second == worldFrameName) {
+          T_W_M = framePairTransformMapIterator.second.inverse();
           mapFrameName = framePairTransformMapIterator.first.first;
+        }
+        // If world is first, then map is second, this is the case for holistic alignment
+        else {
+          T_W_M = framePairTransformMapIterator.second;
+          mapFrameName = framePairTransformMapIterator.first.second;
 
           // B. Publish TransformStamped for Aligned Frames (dynamically create publisher) --> only for reference frames
           std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + referenceFrameAlignedNameId;
           geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
               boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
           addToPoseWithCovarianceStampedMsg(poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
-                                            ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_M_W.inverse(),
+                                            ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_W_M,
                                             optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
                                                 framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
           // Check whether publisher already exists
@@ -449,7 +450,7 @@ void GraphMsfRos::publishOptimizedStateAndBias(
 
         // C. Publish TF Tree --> everything children of world
         publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId,
-                               optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_M_W.inverse());
+                               optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_W_M);
 
       }
       // Case 2: Other transformation (e.g. calibration) --> does not include world frame ----------------

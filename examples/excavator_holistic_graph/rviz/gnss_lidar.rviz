@@ -5,8 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /ExcavatorModel1
         - /TF1/Frames1
+        - /Odometry1/Covariance1
+        - /Odometry1/Covariance1/Position1
       Splitter Ratio: 0.5169660449028015
     Tree Height: 801
   - Class: rviz/Selection
@@ -369,6 +370,8 @@ Visualization Manager:
           Value: true
         compslam_lio/camera_init_CORRECTED:
           Value: true
+        compslam_lio/camera_init_CORRECTED_graph_msf_aligned:
+          Value: true
         compslam_lio/camera_init_GRAVITY_ALIGNED:
           Value: true
         compslam_lio/laser_odom:
@@ -381,7 +384,7 @@ Visualization Manager:
           Value: true
         livox_frame:
           Value: true
-        odom:
+        odom_graph_msf:
           Value: true
         os_imu:
           Value: true
@@ -391,7 +394,7 @@ Visualization Manager:
           Value: true
         roof_top_box:
           Value: true
-        world:
+        world_graph_msf:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -466,17 +469,18 @@ Visualization Manager:
                 RH_WHEEL:
                   RH_WHEEL_CONTACT:
                     {}
-          odom:
-            world:
-              compslam_lio/camera_init_CORRECTED:
-                compslam_lio/aft_mapped_to_init_CORRECTED:
-                  {}
-                compslam_lio/camera_CORRECTED:
-                  {}
-                compslam_lio/camera_init_GRAVITY_ALIGNED:
-                  {}
-                compslam_lio/laser_odom_CORRECTED:
-                  {}
+          odom_graph_msf:
+            world_graph_msf:
+              compslam_lio/camera_init_CORRECTED_graph_msf_aligned:
+                compslam_lio/camera_init_CORRECTED:
+                  compslam_lio/aft_mapped_to_init_CORRECTED:
+                    {}
+                  compslam_lio/camera_CORRECTED:
+                    {}
+                  compslam_lio/camera_init_GRAVITY_ALIGNED:
+                    {}
+                  compslam_lio/laser_odom_CORRECTED:
+                    {}
         compslam_lio/camera_init:
           compslam_lio/aft_mapped:
             {}
@@ -612,7 +616,7 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 255; 255; 255
+      Color: 25; 255; 240
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
@@ -636,7 +640,7 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 52; 101; 164
+      Color: 255; 255; 255
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
@@ -737,11 +741,46 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.5
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 1
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Queue Size: 0
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /graph_msf/est_odometry_odom_imu
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom
+    Fixed Frame: odom_graph_msf
     Frame Rate: 30
   Name: root
   Tools:
@@ -765,7 +804,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 13.260666847229004
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -773,17 +812,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -14.01284122467041
-        Y: -51.92868423461914
-        Z: 5.947627544403076
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.36039841175079346
-      Target Frame: odom
-      Yaw: 4.428581237792969
+      Pitch: 0.7853981852531433
+      Target Frame: BASE
+      Yaw: 0.7853981852531433
     Saved: ~
 Window Geometry:
   Displays:
@@ -802,4 +841,4 @@ Window Geometry:
     collapsed: true
   Width: 1920
   X: 0
-  Y: 27
+  Y: 0

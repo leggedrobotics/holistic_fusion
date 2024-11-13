@@ -17,7 +17,15 @@ class OptimizerIsam2Batch : public OptimizerIsam2 {
  public:
   explicit OptimizerIsam2Batch(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerIsam2(graphConfigPtr) {
     // Initialize Slow Bundle Adjustement Smoother (if desired) -----------------------------------------------
-    if (graphConfigPtr_->useAdditionalSlowBatchSmoother_) {
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+      // Batch --> slowBatchSmoother: Define whether to use Cholesky factorization
+      if (graphConfigPtr_->slowBatchSmootherUseCholeskyFactorizationFlag_) {
+        isam2Params_.factorization = gtsam::ISAM2Params::CHOLESKY;
+        std::cout << "Using Cholesky factorization for slow batch smoother (ISAM2)." << std::endl;
+      } else {
+        isam2Params_.factorization = gtsam::ISAM2Params::QR;
+        std::cout << "Using QR factorization for slow batch smoother (ISAM2)." << std::endl;
+      }
       // Initialize Slow Bundle Adjustement Smoother
       batchSmootherPtr_ = std::make_shared<gtsam::ISAM2>(isam2Params_);
       batchSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of Slow Batch Optimization Graph.");

@@ -179,7 +179,7 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
         "LeicaPosition", int(prismPositionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
         graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
-        positionCovarianceXYZ, fixedFrame, initialSe3AlignmentNoise_);
+        positionCovarianceXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   }
   // Else if not active
@@ -228,7 +228,8 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
   gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  // std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  std::string fixedFrame = gnssPositionPtr->header.frame_id;
 
   // Regular Operation
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {
@@ -251,7 +252,7 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
         "GnssPosition", int(gnssPositionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
         graph_msf::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
-        fixedFrame, initialSe3AlignmentNoise_);
+        fixedFrame, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   } else if ((gnssPositionCallbackCounter_ % 10) == 0) {
     REGULAR_COUT << " GNSS unary measurement is turned off." << std::endl;
@@ -297,15 +298,16 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   // std::cout << "estGnssOfflinePoseMeasUnaryNoise: " << estGnssOfflinePoseMeasUnaryNoise.transpose() << std::endl;
 
   // Fixed Frame
-  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
-  fixedFrame = gnssOfflinePosePtr->header.frame_id;
+  // std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  std::string fixedFrame = gnssOfflinePosePtr->header.frame_id;
 
   // Measurement
   const std::string& gnssFrameName =
       dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssOfflinePoseMeasFrame();  // alias
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(gnssOfflinePoseRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-      gnssUnaryTimeK, 1.0, T_ENU_Gk, gnssOfflinePoseMeasUnaryNoise_, fixedFrame, initialSe3AlignmentNoise_);
+      gnssUnaryTimeK, 1.0, T_ENU_Gk, gnssOfflinePoseMeasUnaryNoise_, fixedFrame, staticTransformsPtr_->getWorldFrame(),
+      initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
 
   if (gnssOfflinePoseCallbackCounter_ <= 2) {
     return;

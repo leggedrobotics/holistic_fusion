@@ -102,6 +102,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> lioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   double gnssPositionUnaryNoise_ = 1.0;  // in [m]
