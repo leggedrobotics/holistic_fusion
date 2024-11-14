@@ -77,7 +77,8 @@ class GraphManager {
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr);
+  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                    const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -127,10 +128,10 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag = true);
   template <class CHILDPTR>
   bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
-                                   const std::string& measurementName);
+                                   const std::string& measurementName, const bool addToOnlineSmootherFlag = true);
   template <class CHILDPTR>
   bool addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
