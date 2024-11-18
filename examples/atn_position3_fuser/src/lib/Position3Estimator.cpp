@@ -279,6 +279,7 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
     if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
       REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements to online graph." << std::endl;
     }
+    //    return;
   }
 
   // Prepare Data

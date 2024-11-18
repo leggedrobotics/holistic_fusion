@@ -137,12 +137,16 @@ class GraphManager {
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
-  // Add Factors for a smoother
-  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
-                                       const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
-                                       const gtsam::NonlinearFactorGraph& newBatchGraphFactors, const gtsam::Values& newBatchGraphValues,
-                                       const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
-                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  // Add Factors, Values, and Keys to Graph
+  // Rt Smoother
+  bool addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
+                                         const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                         const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  // Batch Smoother
+  bool addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                            const gtsam::Values& newBatchGraphValues,
+                                            const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                            const std::shared_ptr<GraphConfig>& graphConfigPtr);
   /// Find graph keys for timestamps
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
                       double timeKm1, double timeK, const std::string& name);

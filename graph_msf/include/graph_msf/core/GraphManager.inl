@@ -115,13 +115,13 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Operating on graph data
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    // Main expression factor: add to graph
+    // A. Main expression factor: add to graph ---------------------------------------------------------------------------------------------
     const bool success = addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
         unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression", addToOnlineSmootherFlag);
 
     // If successful
     if (success) {
-      // A. Write to timestamp map for fixed lag smoother if newer than existing one for all keys that are in expression factor
+      // B. Write to timestamp map for fixed lag smoother if newer than existing one for all keys that are in expression factor ------------
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
         // a) Rt Graph
         if (addToOnlineSmootherFlag) {
@@ -137,15 +137,6 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
           }
         }
-        //        // Just printout
-        //        else {
-        //          // Only print every 100th time
-        //          static int printCounter = 0;
-        //          if (printCounter % 100 == 0) {
-        //            REGULAR_COUT << RED_START << " Not adding to online smoother." << COLOR_END << std::endl;
-        //          }
-        //          printCounter++;
-        //        }
         // b) Batch Graph
         if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
@@ -160,7 +151,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
           }
         }
       }
-      // B. If one of the states was newly created, then add it to the values
+      // C. If one of the states was newly created, then add it to the values buffer -------------------------------------------------------
       // a) Rt Graph
       if (!gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().empty() && addToOnlineSmootherFlag) {
         rtGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues());
@@ -169,7 +160,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
       if (!gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues().empty()) {
         batchGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues());
       }
-      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph
+      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph ----------------------------
       // a) Rt Graph
       if (!gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors().empty() && addToOnlineSmootherFlag) {
         // Prior factors --> only needed for online graph, as observable for offline graph
