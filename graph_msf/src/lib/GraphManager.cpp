@@ -622,10 +622,11 @@ void GraphManager::updateGraph() {
           // If active but added newly but never optimized
           else {
             // If too old but was never optimized --> remove or deactivate
-            if (framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime) > graphConfigPtr_->realTimeSmootherLag_) {
+            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime);
+            if (variableAge > graphConfigPtr_->realTimeSmootherLag_) {
               REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
                            << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
-                           << " is too old and was never optimized. Removing from optimization and adding again freshly at next "
+                           << " is too old (" << variableAge << ")s and was never optimized. Removing from optimization and adding again freshly at next "
                               "possibility."
                            << COLOR_END << std::endl;
               // Remove state from state dictionary

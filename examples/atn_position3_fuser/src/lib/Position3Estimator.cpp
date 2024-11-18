@@ -275,12 +275,11 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   gnssOfflinePoseCallbackCounter_++;
 
   // If prism has not moved enough, do not add GNSS measurements
-  //  if (!prismMovedEnoughFlag_) {
-  //    if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
-  //      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
-  //    }
-  //    return;
-  //  }
+  if (!prismMovedEnoughFlag_) {
+    if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
+      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements to online graph." << std::endl;
+    }
+  }
 
   // Prepare Data
   Eigen::Isometry3d T_ENU_Gk = Eigen::Isometry3d::Identity();

@@ -136,9 +136,16 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
           else if (gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
           }
-        } else {
-          REGULAR_COUT << RED_START << " Not adding to online smoother." << COLOR_END << std::endl;
         }
+        //        // Just printout
+        //        else {
+        //          // Only print every 100th time
+        //          static int printCounter = 0;
+        //          if (printCounter % 100 == 0) {
+        //            REGULAR_COUT << RED_START << " Not adding to online smoother." << COLOR_END << std::endl;
+        //          }
+        //          printCounter++;
+        //        }
         // b) Batch Graph
         if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
