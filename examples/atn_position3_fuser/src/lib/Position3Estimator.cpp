@@ -138,6 +138,15 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   // Counter
   prismPositionCallbackCounter_++;
 
+  // Debug: Skip the first 40 seconds
+  //  const int numSkipSteps = 40 * prismPositionRate_;
+  //  if (prismPositionCallbackCounter_ < numSkipSteps) {
+  //    if ((prismPositionCallbackCounter_ % 100) == 0) {
+  //      REGULAR_COUT << " Skipping prism position measurement. Counter: " << prismPositionCallbackCounter_ << std::endl;
+  //    }
+  //    return;
+  //  }
+
   // Translate to Eigen
   Eigen::Vector3d positionMeas = Eigen::Vector3d(leicaPositionPtr->point.x, leicaPositionPtr->point.y, leicaPositionPtr->point.z);
   Eigen::Vector3d positionCovarianceXYZ(prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_,
@@ -199,12 +208,12 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   gnssPositionCallbackCounter_++;
 
   // If prism has not moved enough, do not add GNSS measurements
-  //  if (!prismMovedEnoughFlag_) {
-  //    if ((gnssPositionCallbackCounter_ % 100) == 0) {
-  //      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
-  //    }
-  //    return;
-  //  }
+  if (!prismMovedEnoughFlag_ && !initializedByGnssFlag_) {
+    if ((gnssPositionCallbackCounter_ % 100) == 0) {
+      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
+    }
+    //      return;
+  }
 
   // Translate to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssPositionPtr->latitude, gnssPositionPtr->longitude, gnssPositionPtr->altitude);
@@ -238,6 +247,7 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
     if (this->initYawAndPositionInWorld(0.0, W_t_W_Gnss, staticTransformsPtr_->getBaseLinkFrame(),
                                         dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame())) {
       REGULAR_COUT << " GNSS set yaw and position successfully, as there is no prism." << std::endl;
+      initializedByGnssFlag_ = true;
     } else {
       REGULAR_COUT << " Could not set yaw and position." << std::endl;
     }
@@ -275,11 +285,12 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   gnssOfflinePoseCallbackCounter_++;
 
   // If prism has not moved enough, do not add GNSS measurements
-  if (!prismMovedEnoughFlag_) {
+  bool addToOnlineSmootherFlag = true;
+  if (!prismMovedEnoughFlag_ && !initializedByGnssFlag_) {
     if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
       REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements to online graph." << std::endl;
     }
-    //    return;
+    addToOnlineSmootherFlag = false;
   }
 
   // Prepare Data
@@ -313,14 +324,16 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
     return;
   }
   // Initialize if needed and no prism is used
-  else if (!areYawAndPositionInited() && areRollAndPitchInited() && !usePrismPositionUnaryFlag_) {  // Initializing if no GNSS
+  else if (!areYawAndPositionInited() && areRollAndPitchInited() &&
+           (!usePrismPositionUnaryFlag_ ||
+            gnssOfflinePoseCallbackCounter_ > NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT)) {  // Initializing if no GNSS
     REGULAR_COUT << GREEN_START << " GNSS offline odometry callback is setting global yaw, as it was not set so far." << COLOR_END
                  << std::endl;
     this->initYawAndPosition(unary6DMeasurement);
+    initializedByGnssFlag_ = true;
   }
   // Otherwise just add measurement
   else {  // Already initialized --> unary factor
-    const bool& addToOnlineSmootherFlag = prismMovedEnoughFlag_;
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement, addToOnlineSmootherFlag);
   }
 
