@@ -9,7 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/interface/GraphMsfHolistic.h"
 
 // Workspace
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 #include "graph_msf/interface/constants.h"
 
 // Unary Expression Factors
@@ -35,7 +35,8 @@ GraphMsfHolistic::GraphMsfHolistic() {
 // Unary Measurements: In reference frame --> systematic drift ---------------------------------------------------------
 
 // Pose3
-void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_fixedFrame_sensorFrame) {
+void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& R_T_R_S,
+                                                        const bool addToOnlineSmootherFlag) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -46,8 +47,7 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
     return;
   } else {  // Graph initialized
     // Check for covariance violation
-    bool covarianceViolatedFlag = isCovarianceViolated_<6>(T_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
-                                                           T_fixedFrame_sensorFrame.covarianceViolationThreshold());
+    bool covarianceViolatedFlag = isCovarianceViolated_<6>(R_T_R_S.unaryMeasurementNoiseDensity(), R_T_R_S.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
       REGULAR_COUT << RED_START << " Pose covariance violated. Not adding factor." << COLOR_END << std::endl;
       return;
@@ -55,12 +55,12 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
 
     // Create GMSF expression
     auto gmsfUnaryExpressionPose3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePose3>(
-        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(T_fixedFrame_sensorFrame), staticTransformsPtr_->getImuFrame(),
-        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_fixedFrame_sensorFrame.sensorFrameName()),
+        std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(R_T_R_S), staticTransformsPtr_->getImuFrame(),
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), R_T_R_S.sensorFrameName()),
         graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr);
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr, addToOnlineSmootherFlag);
 
     // Optimize ---------------------------------------------------------------
     {

@@ -23,12 +23,15 @@ struct FileFormats {
   static constexpr const char* kCsv = "csv";
 };
 
+enum class FileFormatType { kCsv, kTum, kG2o };
+
 class FileLogger {
  public:
   FileLogger() = default;
   virtual ~FileLogger() = default;
 
   // Create File Streams
+  // 1. CSV
   // Pose3
   static void createPose3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                        const std::string& transformIdentifier, const std::string& timeString,
@@ -39,18 +42,27 @@ class FileLogger {
   // Imu Bias
   static void createImuBiasCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                          const std::string& stateCategoryIdentifier, const std::string& timeString);
+  // 2. TUM
+  // Pose3
+  static void createPose3TumFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                       const std::string& transformIdentifier, const std::string& timeString);
 
   // Write to File
+  // 1. CSV
   // Pose3
   static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
-                                  const Eigen::Matrix<double, 6, 6>& poseCovarianceInWorldRos, const std::string& transformIdentifier,
-                                  const double timeStamp, const bool saveCovarianceFlag);
+                                  const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
+                                  boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
   // Point3
   static void writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
                                    const std::string& transformIdentifier, const double timeStamp);
   // Imu Bias
   static void writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,
                                     const std::string& stateCategoryIdentifier, const double timeStamp);
+  // 2. TUM
+  // Pose3
+  static void writePose3ToTumFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
+                                  const std::string& transformIdentifier, const double timeStamp);
 };
 
 }  // namespace graph_msf

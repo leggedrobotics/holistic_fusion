@@ -6,7 +6,7 @@ sensor_params:
 
 # Alignment Parameters
 alignment_params:
-  initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  initialSe3AlignmentNoiseDensity: [ 100.0, 100.0, 100.0, 100.0, 100.0, 100.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   gnssSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters

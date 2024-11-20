@@ -77,7 +77,8 @@ class GraphManager {
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr);
+  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                    const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -90,6 +91,9 @@ class GraphManager {
 
   // Slow Graph Update (if desired)
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
+
+  // Logging of real-time states
+  bool logRealTimeStates(const std::string& savePath, const std::string& timeString);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
@@ -124,21 +128,25 @@ class GraphManager {
  private:
   // Methods
   template <class CHILDPTR>
-  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr);
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag = true);
   template <class CHILDPTR>
   bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
-                                   const std::string& measurementName);
+                                   const std::string& measurementName, const bool addToOnlineSmootherFlag = true);
   template <class CHILDPTR>
   bool addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
   /// Update IMU integrators
   void updateImuIntegrators_(const TimeToImuMap& imuMeas);
 
-  // Add Factors for a smoother
-  bool addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
-                                       const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
-                                       const gtsam::NonlinearFactorGraph& newBatchGraphFactors, const gtsam::Values& newBatchGraphValues,
-                                       const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
-                                       const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  // Add Factors, Values, and Keys to Graph
+  // Rt Smoother
+  bool addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
+                                         const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                         const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  // Batch Smoother
+  bool addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                            const gtsam::Values& newBatchGraphValues,
+                                            const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                            const std::shared_ptr<GraphConfig>& graphConfigPtr);
   /// Find graph keys for timestamps
   bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
                       double timeKm1, double timeK, const std::string& name);
@@ -201,6 +209,10 @@ class GraphManager {
 
   /// Config
   std::shared_ptr<graph_msf::GraphConfig> graphConfigPtr_ = nullptr;
+
+  // Real-time Pose Container
+  std::map<double, gtsam::Pose3> realTimeWorldPoseContainer_ = {};
+  std::map<double, gtsam::Pose3> realTimeOdomPoseContainer_ = {};
 
   // Member variables
   /// Mutex

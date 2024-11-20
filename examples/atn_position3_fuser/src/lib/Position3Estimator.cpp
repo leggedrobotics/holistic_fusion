@@ -138,6 +138,15 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   // Counter
   prismPositionCallbackCounter_++;
 
+  // Debug: Skip the first 40 seconds
+  //  const int numSkipSteps = 40 * prismPositionRate_;
+  //  if (prismPositionCallbackCounter_ < numSkipSteps) {
+  //    if ((prismPositionCallbackCounter_ % 100) == 0) {
+  //      REGULAR_COUT << " Skipping prism position measurement. Counter: " << prismPositionCallbackCounter_ << std::endl;
+  //    }
+  //    return;
+  //  }
+
   // Translate to Eigen
   Eigen::Vector3d positionMeas = Eigen::Vector3d(leicaPositionPtr->point.x, leicaPositionPtr->point.y, leicaPositionPtr->point.z);
   Eigen::Vector3d positionCovarianceXYZ(prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_,
@@ -199,11 +208,11 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   gnssPositionCallbackCounter_++;
 
   // If prism has not moved enough, do not add GNSS measurements
-  if (!prismMovedEnoughFlag_) {
+  if (!prismMovedEnoughFlag_ && !initializedByGnssFlag_) {
     if ((gnssPositionCallbackCounter_ % 100) == 0) {
       REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
     }
-    return;
+    //      return;
   }
 
   // Translate to Eigen
@@ -232,20 +241,18 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   std::string fixedFrame = gnssPositionPtr->header.frame_id;
 
   // Regular Operation
-  if (!areYawAndPositionInited() && areRollAndPitchInited()) {
-    // Set yaw (only if no prism is used)
-    if constexpr (!constexprUsePrismPositionUnaryFlag_) {
-      // Try to initialize yaw and position if not done already
-      if (this->initYawAndPositionInWorld(
-              0.0, W_t_W_Gnss, staticTransformsPtr_->getBaseLinkFrame(),
-              dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame())) {
-        REGULAR_COUT << " GNSS set yaw and position successfully, as there is no prism." << std::endl;
-      } else {
-        REGULAR_COUT << " Could not set yaw and position." << std::endl;
-      }
+  // Initialize if needed and no prism is used
+  if (!areYawAndPositionInited() && areRollAndPitchInited() && !constexprUsePrismPositionUnaryFlag_) {
+    // Try to initialize yaw and position if not done already
+    if (this->initYawAndPositionInWorld(0.0, W_t_W_Gnss, staticTransformsPtr_->getBaseLinkFrame(),
+                                        dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame())) {
+      REGULAR_COUT << " GNSS set yaw and position successfully, as there is no prism." << std::endl;
+      initializedByGnssFlag_ = true;
+    } else {
+      REGULAR_COUT << " Could not set yaw and position." << std::endl;
     }
   }
-  // Else if active
+  // Else if inited or prism is used
   else if (areRollAndPitchInited() && useGnssPositionUnaryFlag_) {
     const std::string& positionMeasFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame();
     // Already initialized --> add position measurement to graph
@@ -254,8 +261,10 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
         graph_msf::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
-  } else if ((gnssPositionCallbackCounter_ % 10) == 0) {
-    REGULAR_COUT << " GNSS unary measurement is turned off." << std::endl;
+  }
+  // Status
+  else if ((gnssPositionCallbackCounter_ % 10) == 0) {
+    REGULAR_COUT << " GNSS unary measurement is turned off or roll/pitch not yet inited." << std::endl;
   }
 
   // Adjust frame name
@@ -276,11 +285,12 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   gnssOfflinePoseCallbackCounter_++;
 
   // If prism has not moved enough, do not add GNSS measurements
-  if (!prismMovedEnoughFlag_) {
+  bool addToOnlineSmootherFlag = true;
+  if (!prismMovedEnoughFlag_ && !initializedByGnssFlag_) {
     if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
-      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements." << std::endl;
+      REGULAR_COUT << " PRISM HAS NOT MOVED ENOUGH YET! Not adding GNSS measurements to online graph." << std::endl;
     }
-    return;
+    addToOnlineSmootherFlag = false;
   }
 
   // Prepare Data
@@ -309,16 +319,22 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
       gnssUnaryTimeK, 1.0, T_ENU_Gk, gnssOfflinePoseMeasUnaryNoise_, fixedFrame, staticTransformsPtr_->getWorldFrame(),
       initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
 
+  // Wait until enough measurements have arrived
   if (gnssOfflinePoseCallbackCounter_ <= 2) {
     return;
-  } else if (!areYawAndPositionInited()) {  // Initializing if no GNSS
-    if (areRollAndPitchInited() && !usePrismPositionUnaryFlag_) {
-      REGULAR_COUT << GREEN_START << " GNSS offline odometry callback is setting global yaw, as it was not set so far." << COLOR_END
-                   << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
-    }
-  } else {  // Already initialized --> unary factor
-    this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
+  }
+  // Initialize if needed and no prism is used
+  else if (!areYawAndPositionInited() && areRollAndPitchInited() &&
+           (!usePrismPositionUnaryFlag_ ||
+            gnssOfflinePoseCallbackCounter_ > NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT)) {  // Initializing if no GNSS
+    REGULAR_COUT << GREEN_START << " GNSS offline odometry callback is setting global yaw, as it was not set so far." << COLOR_END
+                 << std::endl;
+    this->initYawAndPosition(unary6DMeasurement);
+    initializedByGnssFlag_ = true;
+  }
+  // Otherwise just add measurement
+  else {  // Already initialized --> unary factor
+    this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement, addToOnlineSmootherFlag);
   }
 
   // Visualization ----------------------------

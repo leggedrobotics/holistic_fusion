@@ -46,6 +46,9 @@ class GraphMsf {
   // Trigger offline smoother optimization
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
+  // Logging of the real-time states
+  bool logRealTimeStates(const std::string& savePath);
+
   // Getter functions
   bool areYawAndPositionInited() const;
   bool areRollAndPitchInited() const;
@@ -61,14 +64,15 @@ class GraphMsf {
   // Pure Virtual Methods
   /// Unary Measurements
   //// Absolute Measurements
-  virtual void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& F_T_F_S) = 0;
-  virtual void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_t_F_S) = 0;
-  virtual void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) = 0;
-  virtual void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) = 0;
-  virtual void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) = 0;
-  virtual void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) = 0;
+  virtual void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& R_T_R_S,
+                                                const bool addToOnlineSmootherFlag = true) = 0;
+  virtual void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_t_R_S) = 0;
+  virtual void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_v_R_S) = 0;
+  virtual void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_R_S) = 0;
+  virtual void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_R_S) = 0;
+  virtual void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_R_S) = 0;
   //// Local Measurements
-  virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) = 0;
+  virtual void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_R_S) = 0;
 
   /// Landmark Measurements
   virtual void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_t_S_L,

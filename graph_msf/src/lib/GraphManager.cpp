@@ -22,7 +22,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 #include "graph_msf/geometry/conversions.h"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -36,7 +36,6 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Public --------------------------------------------------------------------
-
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
     : graphConfigPtr_(std::move(graphConfigPtr)),
       imuFrame_(std::move(imuFrame)),
@@ -180,8 +179,10 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
   }
 
   /// Add prior factor to graph and optimize for the first time ----------------
-  addFactorsToSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, *priorKeyTimestampMapPtr, newBatchGraphFactors, newBatchGraphValues,
-                                  *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
+  // Rt Smoother
+  addFactorsToRtSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, *priorKeyTimestampMapPtr, graphConfigPtr_, 0);
+  // Batch Smoother
+  addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, *priorKeyTimestampMapPtr, graphConfigPtr_);
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
@@ -289,6 +290,12 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
   }  // End of create new state
+
+  // Potentially log real-time state to container
+  if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    realTimeWorldPoseContainer_[imuTimeK] = W_imuPropagatedState_.pose();
+    realTimeOdomPoseContainer_[imuTimeK] = O_imuPropagatedState_.pose();
+  }
 }
 
 // Unary factors ----------------------------------------------------------------
@@ -483,18 +490,24 @@ void GraphManager::updateGraph() {
     }
   }  // end of locking
 
-  // if no factors are present, return
-  if (newRtGraphFactors.size() == 0) {
-    if (graphConfigPtr_->verboseLevel_ > 3) {
-      REGULAR_COUT << " No factors present, not optimizing." << std::endl;
-    }
-    return;
+  // Graph Update (time consuming) -------------------------------------------
+  bool successfulOptimizationFlag = true;
+  // Rt Smoother
+  if (newRtGraphFactors.size() > 0) {
+    successfulOptimizationFlag = addFactorsToRtSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap,
+                                                                   graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
+  } else if (graphConfigPtr_->verboseLevel_ > 3) {
+    REGULAR_COUT << " No factors present in rt smoother, not optimizing." << std::endl;
+  }
+  // Batch Smoother
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_ && newBatchGraphFactors.size() > 0) {
+    successfulOptimizationFlag =
+        addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, graphConfigPtr_);
+  } else if (graphConfigPtr_->verboseLevel_ > 3) {
+    REGULAR_COUT << " No factors present in batch smoother, not optimizing." << std::endl;
   }
 
-  // Graph Update (time consuming) -------------------
-  bool successfulOptimizationFlag = addFactorsToSmootherAndOptimize(
-      newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, newBatchGraphFactors, newBatchGraphValues,
-      newBatchGraphKeysTimestampsMap, graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
+  // Return if optimization failed
   if (!successfulOptimizationFlag) {
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
@@ -617,10 +630,12 @@ void GraphManager::updateGraph() {
           // If active but added newly but never optimized
           else {
             // If too old but was never optimized --> remove or deactivate
-            if (framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime) > graphConfigPtr_->realTimeSmootherLag_) {
+            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime);
+            if (variableAge > graphConfigPtr_->realTimeSmootherLag_) {
               REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
-                           << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second
-                           << " is too old and was never optimized. Removing from optimization and adding again freshly at next "
+                           << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second << " is too old ("
+                           << variableAge
+                           << ")s and was never optimized. Removing from optimization and adding again freshly at next "
                               "possibility."
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
@@ -702,6 +717,52 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
   }
 }
 
+// Logging of the real-time states
+bool GraphManager::logRealTimeStates(const std::string& savePath, const std::string& timeString) {
+  // Note enabled
+  if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
+    return false;
+  }
+  // Enabled
+  else {
+    // Main container: map, although only one element
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Create directory if it does not exist
+    if (!std::filesystem::exists(savePath + timeString)) {
+      std::filesystem::create_directories(savePath + timeString);
+    }
+
+    // Create File Streams
+    // CSV
+    FileLogger::createPose3CsvFileStream(fileStreams, savePath, "rt_world_x_state_6D_pose", timeString, false);
+    FileLogger::createPose3CsvFileStream(fileStreams, savePath, "rt_odom_x_state_6D_pose", timeString, false);
+    // TUM
+    FileLogger::createPose3TumFileStream(fileStreams, savePath, "rt_world_x_state_6D_pose_tum", timeString);
+    FileLogger::createPose3TumFileStream(fileStreams, savePath, "rt_odom_x_state_6D_pose_tum", timeString);
+
+    // Iterate through all states and write them to file
+    // A. World Pose
+    for (const auto& statePair : realTimeWorldPoseContainer_) {
+      // Write to files
+      // CSV
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose", statePair.first, false);
+      // TUM
+      FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose_tum", statePair.first);
+    }
+    // B. Odom Pose
+    for (const auto& statePair : realTimeOdomPoseContainer_) {
+      // Write to files
+      // CSV
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose", statePair.first, false);
+      // TUM
+      FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose_tum", statePair.first);
+    }
+    return true;
+  }
+}
+
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath, const bool saveCovarianceFlag) {
@@ -730,6 +791,11 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
   // Create directory if it does not exist
   if (!std::filesystem::exists(savePath + timeString)) {
     std::filesystem::create_directories(savePath + timeString);
+  }
+
+  // Save real-time states
+  if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    std::ignore = logRealTimeStates(savePath, timeString);
   }
 
   // Save optimized states
@@ -788,7 +854,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // A.B Write to file -----------------------------------------------------------
     // Check if we already have a file stream for this category --> if not, create one
+    // CSV file for Pose3
     fileLogger_.createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
+    // TUM file for Pose3
+    fileLogger_.createPose3TumFileStream(fileStreams, savePath, transformIdentifier + "_tum", timeString);
 
     // If keyframe position is not zero, move the frame location to capture the random walk
     if (keyframePosition.norm() > 1e-6) {
@@ -803,7 +872,10 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
 
     // Write the values to the appropriate file
-    fileLogger_.writePose3ToCsvFile(fileStreams, pose, poseCovarianceInWorldRos, transformIdentifier, timeStamp, saveCovarianceFlag);
+    // CSV file for Pose3
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose, transformIdentifier, timeStamp, saveCovarianceFlag, poseCovarianceInWorldRos);
+    // TUM file for Pose3
+    fileLogger_.writePose3ToTumFile(fileStreams, pose, transformIdentifier + "_tum", timeStamp);
   }  // end of for loop over all pose states
 
   // B. 3D R(3) states (e.g. velocity, calibration displacement, landmarks) -----------------------------------------------------------
@@ -938,13 +1010,10 @@ void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
 
 // Returns true if the factors/values were added without any problems
 // Otherwise returns false (e.g. if exception occurs while adding
-bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors,
-                                                   const gtsam::Values& newRtGraphValues,
-                                                   const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
-                                                   const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
-                                                   const gtsam::Values& newBatchGraphValues,
-                                                   const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
-                                                   const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
+bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors,
+                                                     const gtsam::Values& newRtGraphValues,
+                                                     const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                                     const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
@@ -959,11 +1028,6 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
     successFlag = successFlag && rtOptimizerPtr_->update();
   }
 
-  // Add Factors and States to Batch Optimization (if desired) without running optimization
-  if (graphConfigPtr->useAdditionalSlowBatchSmootherFlag_) {
-    batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
-  }
-
   // Logging
   if (graphConfigPtr->verboseLevel_ > 0) {
     endLoopTime = std::chrono::high_resolution_clock::now();
@@ -975,6 +1039,25 @@ bool GraphManager::addFactorsToSmootherAndOptimize(const gtsam::NonlinearFactorG
   return successFlag;
 }
 
+// Batch Smoother
+bool GraphManager::addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                                        const gtsam::Values& newBatchGraphValues,
+                                                        const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                                        const std::shared_ptr<GraphConfig>& graphConfigPtr) {
+  // Lock for optimization (as shared rtOptimizer is optimized)
+  const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
+
+  // Add Factors and States to Batch Optimization (if desired) without running optimization
+  bool successFlag = false;
+  if (graphConfigPtr->useAdditionalSlowBatchSmootherFlag_) {
+    successFlag = batchOptimizerPtr_->update(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap);
+  }
+
+  // Return
+  return successFlag;
+}
+
+// Find closest keys in graph
 bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance,
                                   const double maxTimestampDistance, const double timeKm1, const double timeK, const std::string& name) {
   // Find closest lidar keys in existing graph

@@ -27,7 +27,8 @@ class GraphMsfHolistic : virtual public GraphMsf {
   // Adder Functions for Holistic Fusion
   /// Unary Measurements
   //// Absolute Measurements: In reference frame --> systematic drift
-  void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& R_T_R_S) override;
+  void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& R_T_R_S,
+                                        const bool addToOnlineSmootherFlag = true) override;
   void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_t_R_S) override;
   void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_v_R_S) override;
   void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_R_S) override;
