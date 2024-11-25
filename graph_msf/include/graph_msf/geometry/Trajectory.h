@@ -34,7 +34,7 @@ class Trajectory {
     return distance;
   }
 
-  bool isStanding(const int& rate, const int& seconds, const double& noMovementThreshold) {
+  bool isStanding(const double rate, const double seconds, const double& noMovementThreshold) {
     if (_poses.size() < rate * seconds) {
       return false;
     }

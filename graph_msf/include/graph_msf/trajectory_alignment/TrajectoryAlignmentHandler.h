@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -27,20 +27,20 @@ class TrajectoryAlignmentHandler {
 
   // Methods
   void initHandler();
-  void addLidarPose(Eigen::Vector3d position, double time);
-  void addGnssPose(Eigen::Vector3d position, double time);
-  bool alignTrajectories(double& yaw);
+  void addSe3Position(Eigen::Vector3d position, double time);
+  void addR3Position(Eigen::Vector3d position, double time);
+  bool alignTrajectories(double& yaw, Eigen::Isometry3d& se3);
 
   // Setters
-  void setGnssRate(const double& gnssRate);
-  void setLidarRate(const double& lidarRate);
+  void setR3Rate(const double& r3Rate);
+  void setSe3Rate(const double& se3Rate);
   void setMinDistanceHeadingInit(const double& minDistanceHeadingInit);
   void setNoMovementDistance(const double& noMovementDistance);
   void setNoMovementTime(const double& noMovementTime);
 
   // Getters
-  std::vector<std::pair<double, Eigen::Vector3d>> getLidarTrajectory();
-  std::vector<std::pair<double, Eigen::Vector3d>> getGnssTrajectory();
+  std::vector<std::pair<double, Eigen::Vector3d>> getSe3Trajectory();
+  std::vector<std::pair<double, Eigen::Vector3d>> getR3Trajectory();
 
  private:
   // Member variables

@@ -88,23 +88,12 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     // C: Check if we need to create a new keyframe -----------------------------------------------------
-    // Case 1: Keyframe is too old --> create a new keyframe
-    if (keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
-      // Remove the old keyframe from memory
-      gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
-                                                                     gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
-      // Create a new keyframe
-      graphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'r'>(
-          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
-          gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
-      // Assert that new keyframe was added and that it is active
-      assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
-      // Set flag that we introduced a new keyframe
-      introducedNewKeyframeDisplacement = true;
-    }
-
-    // Case 2: Not active but not too old --> just reactivate the keyframe (both if delta has been added or not)
+    // Case 1: Old keyframe not active --> just reactivate the keyframe (independent of whether new keyframe was added or not)
     if (!oldVariableWasActive) {
+      // Check whether no new keyframe was added
+      if (newGraphKeyAddedFlag) {
+        throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe was not active, but new keyframe was added.");
+      }
       // Reactivate the keyframe (have to use reference instead of copy "graphKey" above)
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
           .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
@@ -141,10 +130,26 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         REGULAR_COUT << " Old keyframe has not been optimized before. Adding very initial guess that should have been added last time."
                      << std::endl;
       }
+      // Add information to online graph only (as has been marginalized out), offline still has it
       // Prior belief
       this->newOnlinePosePriorFactors_.emplace_back(oldGtsamKey, T_W_fixedFrameOld, noiseModelPtr);
       // State value
       this->newOnlineStateValues_.insert(oldGtsamKey, T_W_fixedFrameOld);
+    }
+
+    // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
+    if (keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
+      // Remove the old keyframe from memory
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
+                                                                     gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
+      // Create a new keyframe
+      graphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'r'>(
+          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
+          gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
+      // Assert that new keyframe was added and that it is active
+      assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
+      // Set flag that we introduced a new keyframe
+      introducedNewKeyframeDisplacement = true;
     }
 
     // D: Shift the measurement to the robot position and recompute initial guess if we create keyframes -----------------------------------

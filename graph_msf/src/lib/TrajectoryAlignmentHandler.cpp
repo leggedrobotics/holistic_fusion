@@ -1,5 +1,5 @@
 /*
-Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
 This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
@@ -22,28 +22,28 @@ void TrajectoryAlignmentHandler::initHandler() {
   std::cout << YELLOW_START << "TrajectoryAlignmentHandler" << GREEN_START << " Initializing the handler." << COLOR_END << std::endl;
 }
 
-std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getLidarTrajectory() {
-  return trajectoryAlignment_.getLidarTrajectory();
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getSe3Trajectory() {
+  return trajectoryAlignment_.getSe3Trajectory();
 }
 
-std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getGnssTrajectory() {
-  return trajectoryAlignment_.getGnssTrajectory();
+std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignmentHandler::getR3Trajectory() {
+  return trajectoryAlignment_.getR3Trajectory();
 }
 
-void TrajectoryAlignmentHandler::addLidarPose(Eigen::Vector3d position, double time) {
-  trajectoryAlignment_.addLidarPose(position, time);
+void TrajectoryAlignmentHandler::addSe3Position(Eigen::Vector3d position, double time) {
+  trajectoryAlignment_.addSe3Position(position, time);
 }
 
-void TrajectoryAlignmentHandler::addGnssPose(Eigen::Vector3d position, double time) {
-  trajectoryAlignment_.addGnssPose(position, time);
+void TrajectoryAlignmentHandler::addR3Position(Eigen::Vector3d position, double time){
+  trajectoryAlignment_.addR3Position(position, time);
 }
 
-void TrajectoryAlignmentHandler::setGnssRate(const double& gnssRate) {
-  trajectoryAlignment_.setGnssRate(gnssRate);
+void TrajectoryAlignmentHandler::setR3Rate(const double& r3Rate) {
+  trajectoryAlignment_.setR3Rate(r3Rate);
 }
 
-void TrajectoryAlignmentHandler::setLidarRate(const double& lidarRate) {
-  trajectoryAlignment_.setLidarRate(lidarRate);
+void TrajectoryAlignmentHandler::setSe3Rate(const double& se3Rate) {
+  trajectoryAlignment_.setSe3Rate(se3Rate);
 }
 
 void TrajectoryAlignmentHandler::setMinDistanceHeadingInit(const double& minDistanceHeadingInit) {
@@ -58,8 +58,8 @@ void TrajectoryAlignmentHandler::setNoMovementTime(const double& noMovementTime)
   trajectoryAlignment_.setNoMovementTime(noMovementTime);
 }
 
-bool TrajectoryAlignmentHandler::alignTrajectories(double& yaw) {
-  return trajectoryAlignment_.alignTrajectories(yaw);
+bool TrajectoryAlignmentHandler::alignTrajectories(double& yaw, Eigen::Isometry3d& se3) {
+  return trajectoryAlignment_.alignTrajectories(yaw, se3);
 }
 
 }  // namespace graph_msf

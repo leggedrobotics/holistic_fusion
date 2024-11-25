@@ -40,9 +40,15 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
       poseAlignmentNoise[4], poseAlignmentNoise[5];
   // Random Walk
+  // GNSS
   auto gnssSe3AlignmentRandomWalk = graph_msf::tryGetParam<std::vector<double>>("alignment_params/gnssSe3AlignmentRandomWalk", privateNode);
   gnssSe3AlignmentRandomWalk_ << gnssSe3AlignmentRandomWalk[0], gnssSe3AlignmentRandomWalk[1], gnssSe3AlignmentRandomWalk[2],
       gnssSe3AlignmentRandomWalk[3], gnssSe3AlignmentRandomWalk[4], gnssSe3AlignmentRandomWalk[5];
+  // Prism
+  auto prismSe3AlignmentRandomWalk =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/prismSe3AlignmentRandomWalk", privateNode);
+  prismSe3AlignmentRandomWalk_ << prismSe3AlignmentRandomWalk[0], prismSe3AlignmentRandomWalk[1], prismSe3AlignmentRandomWalk[2],
+      prismSe3AlignmentRandomWalk[3], prismSe3AlignmentRandomWalk[4], prismSe3AlignmentRandomWalk[5];
 
   /// Noise Parameters ----
   /// Position measurement unary noise
@@ -52,6 +58,15 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
       graph_msf::tryGetParam<std::vector<double>>("noise_params/gnssOfflinePoseMeasUnaryNoiseDensity", privateNode);
   gnssOfflinePoseMeasUnaryNoise_ << gnssOfflinePoseMeasUnaryNoise[0], gnssOfflinePoseMeasUnaryNoise[1], gnssOfflinePoseMeasUnaryNoise[2],
       gnssOfflinePoseMeasUnaryNoise[3], gnssOfflinePoseMeasUnaryNoise[4], gnssOfflinePoseMeasUnaryNoise[5];
+
+  // Manual Alignment Handler ----------------------------
+  trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/gnssSe3Rate", privateNode));
+  trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/prismR3Rate", privateNode));
+  trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
+      graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));
+  trajectoryAlignmentHandler_->setNoMovementDistance(
+      graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
+  trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
 }
 
 }  // namespace position3_se

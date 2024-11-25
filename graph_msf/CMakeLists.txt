@@ -10,12 +10,12 @@ message("Eigen Version::" ${EIGEN3_VERSION_STRING})
 message("Eigen Path::" ${Eigen3_DIR})
 
 # Color
-if(NOT WIN32)
+if (NOT WIN32)
     string(ASCII 27 Esc)
     set(ColourReset "${Esc}[m")
     set(BoldMagenta "${Esc}[1;35m")
-    set(Magenta     "${Esc}[35m")
-endif()
+    set(Magenta "${Esc}[35m")
+endif ()
 
 # March native check
 #include(CheckCXXCompilerFlag)
@@ -28,11 +28,11 @@ endif()
 # Catkin
 set(CATKIN_PACKAGE_DEPENDENCIES
         gtsam_catkin
-        )
+)
 
 find_package(catkin REQUIRED COMPONENTS
         ${CATKIN_PACKAGE_DEPENDENCIES}
-        )
+)
 
 catkin_package(
         CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
@@ -51,11 +51,12 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
-#        ${GTSAM_INCLUDE_DIR}
+        #        ${GTSAM_INCLUDE_DIR}
         ${Python3_INCLUDE_DIRS}
 )
 
 add_library(${PROJECT_NAME}
+        src/lib/eigen_wrapped_gtsam_utils.cpp
         src/lib/FileLogger.cpp
         src/lib/GraphMsf.cpp
         src/lib/GraphMsfClassic.cpp
@@ -68,7 +69,8 @@ add_library(${PROJECT_NAME}
         src/lib/TrajectoryAlignment.cpp
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp
-        include/graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h)
+)
+
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
@@ -92,8 +94,8 @@ install(TARGETS ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-        )
+)
 
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-        )
+)
