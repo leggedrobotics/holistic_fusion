@@ -18,6 +18,8 @@
          default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_graph_params.yaml"/>
     <arg name="position_extrinsic_file"
          default="$(find atn_position3_fuser)/config/position_graph_specific/position_graph_extrinsic_params.yaml"/>
+    <arg name="trajectory_alignment_parameter_file"
+         default="$(find atn_position3_fuser)/config/position_graph_specific/trajectory_alignment_params.yaml"/>
 
     <!-- Logging Location -->
     <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging"/>
@@ -33,6 +35,7 @@
         <rosparam command="load" file="$(arg core_extrinsic_file)"/>
         <rosparam command="load" file="$(arg position_graph_parameter_file)"/>
         <rosparam command="load" file="$(arg position_extrinsic_file)"/>
+        <rosparam command="load" file="$(arg trajectory_alignment_parameter_file)"/>
         <!-- Remapping of topics -->
         <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
         <remap from="/prism_position_topic" to="$(arg prism_position_topic_name)"/>

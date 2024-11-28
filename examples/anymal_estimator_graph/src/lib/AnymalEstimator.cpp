@@ -180,15 +180,16 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // c: From alignment
     else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
       // Adding the GNSS measurement
-      trajectoryAlignmentHandler_->addGnssPose(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
-      // In radians.
-      if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base))) {
+      trajectoryAlignmentHandler_->addR3Position(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
+      // In radians
+      Eigen::Isometry3d T_W_Base = Eigen::Isometry3d::Identity();
+      if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base, T_W_Base))) {
         if (gnssCallbackCounter_ % 10 == 0) {
           REGULAR_COUT << YELLOW_START << "Trajectory alignment not ready. Waiting for more motion." << COLOR_END << std::endl;
         }
         return;
       }
-      REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value (deg): " << COLOR_END
+      REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value of T_W_Base (deg): " << COLOR_END
                    << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
 
@@ -232,7 +233,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-    trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarUnaryTimeK);
+    trajectoryAlignmentHandler_->addSe3Position(lio_T_M_Lk.translation(), lidarUnaryTimeK);
   }
 
   // Measurement
@@ -285,7 +286,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
 
   // Add to trajectory aligner if needed.
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-    trajectoryAlignmentHandler_->addLidarPose(lio_T_M_Lk.translation(), lidarBetweenTimeK);
+    trajectoryAlignmentHandler_->addSe3Position(lio_T_M_Lk.translation(), lidarBetweenTimeK);
   }
 
   // Frame Name

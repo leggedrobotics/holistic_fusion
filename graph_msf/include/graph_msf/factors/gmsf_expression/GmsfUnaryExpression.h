@@ -69,7 +69,7 @@ class GmsfUnaryExpression {
     // A. Generate Expression for Basic IMU State in World Frame at Key --------------------------------
     generateImuStateInWorldFrameAtKey(closestGeneralKey);
 
-    // B.A. Holistic Fusion: Optimize over fixed frame poses --------------------------------------------
+    // B.A. Holistic Fusion: Optimize over reference frame poses --------------------------------------------
     if constexpr (TYPE == UnaryExpressionType::Absolute) {
       if (optimizeReferenceFramePosesWrtWorldFlag) {
         transformImuStateFromWorldToReferenceFrame(gtsamDynamicExpressionKeys, W_imuPropagatedState,

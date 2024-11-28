@@ -27,36 +27,37 @@ class TrajectoryAlignment {
   TrajectoryAlignment();
 
   // Methods
-  void addLidarPose(Eigen::Vector3d position, double time);
-  void addGnssPose(Eigen::Vector3d position, double time);
-  bool alignTrajectories(double& yaw);
+  void addSe3Position(Eigen::Vector3d position, double time);
+  void addR3Position(Eigen::Vector3d position, double time);
+  bool alignTrajectories(double& yaw, Eigen::Isometry3d& returnTransform);
 
   // Setters
-  void setGnssRate(const double gnssRate) { gnssRate_ = gnssRate; }
-  void setLidarRate(const double lidarRate) { lidarRate_ = lidarRate; }
+  void setR3Rate(const double r3Rate) { r3Rate_ = r3Rate; }
+  void setSe3Rate(const double se3Rate) { se3Rate_ = se3Rate; }
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
   void setNoMovementDistance(const double noMovementDistance) { noMovementDistance_ = noMovementDistance; }
   void setNoMovementTime(const double noMovementTime) { noMovementTime_ = noMovementTime; }
 
   // Getters
-  std::vector<std::pair<double, Eigen::Vector3d>> getLidarTrajectory();
-  std::vector<std::pair<double, Eigen::Vector3d>> getGnssTrajectory();
+  std::vector<std::pair<double, Eigen::Vector3d>> getSe3Trajectory();
+  std::vector<std::pair<double, Eigen::Vector3d>> getR3Trajectory();
 
  private:
   // Member methods
   bool associateTrajectories(Trajectory& trajectoryA, Trajectory& trajectoryB, Trajectory& newTrajectoryA, Trajectory& newTrajectoryB);
-  bool trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Matrix4d& transform);
+  bool trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform);
 
   // Member variables
-  Trajectory gnssTrajectory_;
-  Trajectory lidarTrajectory_;
+  Trajectory r3Trajectory_;
+  Trajectory se3Trajectory_;
 
   // Reference Parameters
-  double gnssRate_{20.0};
-  double lidarRate_{10.0};
+  double r3Rate_{20.0};
+  double se3Rate_{10.0};
   double minDistanceHeadingInit_{3.0};
   double noMovementDistance_{1.0};
   double noMovementTime_{3.0};
+  bool firstAlignmentTryFlag_{true};
 
   // Mutex for adding new measurements
   std::mutex alignmentMutex;

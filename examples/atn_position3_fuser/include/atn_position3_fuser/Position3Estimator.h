@@ -27,12 +27,13 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros/GraphMsfRos.h"
 
 // Defined Macros
 #define POS_COVARIANCE_VIOLATION_THRESHOLD 0.2
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20
-#define NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT 10000
+#define NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT 300
 
 namespace position3_se {
 
@@ -103,6 +104,10 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> gnssSe3AlignmentRandomWalk_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> prismSe3AlignmentRandomWalk_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+
+  // Manual Alignment Handler
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
 
   // Rates
   double prismPositionRate_ = 20.0;
@@ -125,6 +130,8 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   int gnssPositionCallbackCounter_ = 0;
   int gnssOfflinePoseCallbackCounter_ = 0;
   bool initializedByGnssFlag_ = false;
+  bool alignedPrismAndGnssFlag_ = false;
+  Eigen::Isometry3d T_enu_totalStation_ = Eigen::Isometry3d::Identity();
 
   // Flags
   static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;
