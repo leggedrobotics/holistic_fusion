@@ -50,6 +50,26 @@ class Trajectory {
 
   std::vector<Pose> poses() const { return _poses; }
 
+  // Cut the trajectory to the time window
+  void cutTrajectory(const double& startTime, const double& endTime) {
+    // Find the first pose that is within the time window
+    auto firstPose = std::find_if(_poses.begin(), _poses.end(), [startTime](const Pose& pose) { return pose.time() >= startTime; });
+    // Find the last pose that is within the time window
+    auto lastPose = std::find_if(_poses.rbegin(), _poses.rend(), [endTime](const Pose& pose) { return pose.time() <= endTime; });
+    // Erase the poses outside the time window
+    _poses.erase(lastPose.base(), _poses.end());
+    _poses.erase(_poses.begin(), firstPose);
+  }
+
+  // Downsample the trajectory by a factor
+  void downsample(const int& factor) {
+    std::vector<Pose> downsampledPoses;
+    for (int i = 0; i < _poses.size(); i += factor) {
+      downsampledPoses.push_back(_poses[i]);
+    }
+    _poses = downsampledPoses;
+  }
+
  private:
   std::vector<Pose> _poses;
 };

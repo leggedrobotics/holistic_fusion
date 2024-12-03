@@ -13,9 +13,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "atn_position3_fuser/constants.h"
 
 // Workspace
-#include "graph_msf_ros/util/conversions.h"
 #include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
-
+#include "graph_msf_ros/util/conversions.h"
 
 namespace position3_se {
 
@@ -150,10 +149,12 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   //    return;
   //  }
 
+  // Fixed Frame
+  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+
   // Translate to Eigen
   Eigen::Vector3d positionMeas = Eigen::Vector3d(leicaPositionPtr->point.x, leicaPositionPtr->point.y, leicaPositionPtr->point.z);
-  Eigen::Vector3d positionCovarianceXYZ(prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_,
-                                        prismPositionMeasUnaryNoise_);
+  Eigen::Vector3d positionCovarianceXYZ(prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_, prismPositionMeasUnaryNoise_);
 
   // Case: First call
   if (prismPositionCallbackCounter_ == 1) {
@@ -171,6 +172,9 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     }
   }
 
+  // Flag
+  bool addToGraphFlag = true;
+
   // Case: Graph was not initialized by this callback, but instead by GNSS
   if (initializedByGnssFlag_ && !alignedPrismAndGnssFlag_) {
     trajectoryAlignmentHandler_->addR3Position(positionMeas, leicaPositionPtr->header.stamp.toSec());
@@ -181,16 +185,18 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
         REGULAR_COUT << " Graph was initialized by GNSS, hence trying to align. Trajectory alignment not ready. Waiting for more motion."
                      << std::endl;
       }
+      addToGraphFlag = false;
     } else {
       T_enu_totalStation_ = T_enu_totalStation_.inverse();
       // Only keep yaw of the orientation part of the transformation
       REGULAR_COUT << GREEN_START << " ENU to Total Station Transformation: " << COLOR_END << T_enu_totalStation_.matrix() << std::endl;
       graph_msf::inPlaceRemoveRollPitch(T_enu_totalStation_);
-      REGULAR_COUT << GREEN_START << " ENU to Total Station Transformation after removing roll and pitch: " << COLOR_END << T_enu_totalStation_.matrix() << std::endl;
+      REGULAR_COUT << GREEN_START << " ENU to Total Station Transformation after removing roll and pitch: " << COLOR_END
+                   << T_enu_totalStation_.matrix() << std::endl;
       // Prepare for using this transformation in the graph
       alignedPrismAndGnssFlag_ = true;
+      return;  // Do not add unary measurement this round
     }
-    return;  // Do not add unary measurement this round
   }
 
   // State Machine
@@ -205,10 +211,9 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     }
   }
   // Else if active
-  else if (usePrismPositionUnaryFlag_) {
+  else if (usePrismPositionUnaryFlag_ && addToGraphFlag) {
     const std::string& positionMeasFrame =
         dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPrismPositionMeasFrame();
-    std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
     // Consider whether graph was initialized by GNSS or not ----------------------------
     //    if (initializedByGnssFlag_) {
     //      fixedFrame = leicaPositionPtr->header.frame_id;
@@ -228,12 +233,12 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   }
   // Else if not active
-  else if ((prismPositionCallbackCounter_ % 10) == 0) {
+  else if ((prismPositionCallbackCounter_ % 10) == 0 && addToGraphFlag) {
     REGULAR_COUT << " Prism unary measurement is turned off." << std::endl;
   }
 
   // Visualizations
-  addToPathMsg(measPosition_worldPrismPositionPathPtr_, staticTransformsPtr_->getWorldFrame(), leicaPositionPtr->header.stamp, positionMeas,
+  addToPathMsg(measPosition_worldPrismPositionPathPtr_, fixedFrame, leicaPositionPtr->header.stamp, positionMeas,
                graphConfigPtr_->imuBufferLength_ * 4);
   pubMeasWorldPrismPositionPath_.publish(measPosition_worldPrismPositionPathPtr_);
 }
@@ -320,6 +325,9 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   // Counter
   gnssOfflinePoseCallbackCounter_++;
 
+  // Fixed Frame
+  std::string fixedFrame = gnssOfflinePosePtr->header.frame_id;
+
   // If prism has not moved enough, do not add GNSS measurements
   bool addToOnlineSmootherFlag = true;
   if (!prismMovedEnoughFlag_ && !initializedByGnssFlag_) {
@@ -345,9 +353,6 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   estGnssOfflinePoseMeasUnaryNoise << sqrt(estGnssOfflinePoseMeasUnaryNoiseList[0]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[7]),
       sqrt(estGnssOfflinePoseMeasUnaryNoiseList[14]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[21]),
       sqrt(estGnssOfflinePoseMeasUnaryNoiseList[28]), sqrt(estGnssOfflinePoseMeasUnaryNoiseList[35]);
-
-  // Fixed Frame
-  std::string fixedFrame = gnssOfflinePosePtr->header.frame_id;
 
   // Measurement
   const std::string& gnssFrameName =

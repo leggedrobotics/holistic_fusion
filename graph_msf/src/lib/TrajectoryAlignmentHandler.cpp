@@ -34,7 +34,7 @@ void TrajectoryAlignmentHandler::addSe3Position(Eigen::Vector3d position, double
   trajectoryAlignment_.addSe3Position(position, time);
 }
 
-void TrajectoryAlignmentHandler::addR3Position(Eigen::Vector3d position, double time){
+void TrajectoryAlignmentHandler::addR3Position(Eigen::Vector3d position, double time) {
   trajectoryAlignment_.addR3Position(position, time);
 }
 
@@ -59,7 +59,8 @@ void TrajectoryAlignmentHandler::setNoMovementTime(const double& noMovementTime)
 }
 
 bool TrajectoryAlignmentHandler::alignTrajectories(double& yaw, Eigen::Isometry3d& se3) {
-  return trajectoryAlignment_.alignTrajectories(yaw, se3);
+  bool success = trajectoryAlignment_.alignTrajectories(yaw, se3);
+  return success;
 }
 
 }  // namespace graph_msf

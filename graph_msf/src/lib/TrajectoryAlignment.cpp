@@ -161,11 +161,58 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
     return false;
   }
 
+  // Status that all checks passed
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " All checks passed. Trying to align." << COLOR_END << std::endl;
+
+  // Cutting of Timestamps Outside the Joint Time Window
+  double startTime = std::max(copySe3Trajectory.poses().front().time(), copyR3Trajectory.poses().front().time());
+  double endTime = std::min(copySe3Trajectory.poses().back().time(), copyR3Trajectory.poses().back().time());
+  // Print
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories A and B before cutting of size: " << COLOR_END
+            << copySe3Trajectory.poses().size() << " / " << copyR3Trajectory.poses().size() << std::endl;
+  // Cut
+  copySe3Trajectory.cutTrajectory(startTime, endTime);
+  copyR3Trajectory.cutTrajectory(startTime, endTime);
+  // Print
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
+            << " Trajectories A and B after cutting of size and time: " << COLOR_END << copySe3Trajectory.poses().size() << " / "
+            << copyR3Trajectory.poses().size() << std::endl;
+  // Downsample the longer trajectory to the shorter one
+  int downsampleFactor = 1;
+  if (copySe3Trajectory.poses().size() > copyR3Trajectory.poses().size()) {
+    downsampleFactor = std::floor(copySe3Trajectory.poses().size() / copyR3Trajectory.poses().size());
+    copySe3Trajectory.downsample(downsampleFactor);
+  } else {
+    downsampleFactor = std::floor(copyR3Trajectory.poses().size() / copySe3Trajectory.poses().size());
+    copyR3Trajectory.downsample(downsampleFactor);
+  }
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Downsample Factor: " << COLOR_END << downsampleFactor
+            << std::endl;
+  // Print
+  std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories A and B after downsampling: " << COLOR_END
+            << copySe3Trajectory.poses().size() << " / " << copyR3Trajectory.poses().size() << std::endl;
+
   // Align Trajectories
   Trajectory newSe3Trajectory;
   Trajectory newR3Trajectory;
   // Associate Trajectories
-  associateTrajectories(copySe3Trajectory, copyR3Trajectory, newSe3Trajectory, newR3Trajectory);
+  // Difference of trajectory size should not be larger than 10%
+  bool sizeDeviatesTooMuch = (std::abs(static_cast<int>(copySe3Trajectory.poses().size() - copyR3Trajectory.poses().size())) >
+                          0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
+  // If the trajectories deviate too much, associate them
+  if (sizeDeviatesTooMuch) {
+    associateTrajectories(copySe3Trajectory, copyR3Trajectory, newSe3Trajectory, newR3Trajectory);
+    std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
+              << " Trajectories Associated, as after downsampling they were different in size." << COLOR_END << std::endl;
+  }
+  // If the trajectories do not deviate too much, just copy them
+  else {
+    newSe3Trajectory = copySe3Trajectory;
+    newR3Trajectory = copyR3Trajectory;
+    std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
+              << " Trajectories copied, as after downsampling they were similar in size." << COLOR_END << std::endl;
+  }
+
   // Update Trajectories
   copySe3Trajectory = newSe3Trajectory;
   copyR3Trajectory = newR3Trajectory;
