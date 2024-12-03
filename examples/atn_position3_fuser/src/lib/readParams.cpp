@@ -67,6 +67,9 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   trajectoryAlignmentHandler_->setNoMovementDistance(
       graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
   trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
+
+  // Launch Parameters ----------------------------
+  initializeUsingGnssFlag_ = graph_msf::tryGetParam<bool>("launch/initializeUsingGnss", privateNode);
 }
 
 }  // namespace position3_se

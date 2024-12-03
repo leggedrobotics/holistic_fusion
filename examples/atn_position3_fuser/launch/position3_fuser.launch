@@ -21,6 +21,9 @@
     <arg name="trajectory_alignment_parameter_file"
          default="$(find atn_position3_fuser)/config/position_graph_specific/trajectory_alignment_params.yaml"/>
 
+    <!-- Initialize using GNSS -->
+    <arg name="initialize_using_gnss" default="false"/>
+
     <!-- Logging Location -->
     <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging"/>
 
@@ -29,6 +32,7 @@
           output="screen"> <!-- launch-prefix="gdb -args"-->
         <!-- Launch Parameters -->
         <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
+        <param name="launch/initializeUsingGnss" type="bool" value="$(arg initialize_using_gnss)"/>
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_file)"/>
         <rosparam command="load" file="$(arg core_graph_parameter_file)"/>
