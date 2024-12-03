@@ -15,6 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
+find_package(Glog REQUIRED)
 
 # Color
 if (NOT WIN32)
@@ -41,7 +42,8 @@ find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
-find_package(Glog REQUIRED)
+# Python
+catkin_python_setup()
 
 catkin_package(
   INCLUDE_DIRS include
@@ -61,6 +63,7 @@ include_directories(
         ${EIGEN3_INCLUDE_DIR}
         ${GLOG_INCLUDE_DIRS}
         ${gflags_INCLUDE_DIRS}
+        ${Python3_INCLUDE_DIRS}
 )
 
 # Library
@@ -113,4 +116,15 @@ install(DIRECTORY include/${PROJECT_NAME}/
 ## Mark cpp header files for installation
 install(DIRECTORY config launch rviz
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+# Python
+catkin_install_python(PROGRAMS
+        position3_fuser_py/check_gnss_in_bag.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY position3_fuser_py
+        DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
+        FILES_MATCHING PATTERN "*.py"
 )
