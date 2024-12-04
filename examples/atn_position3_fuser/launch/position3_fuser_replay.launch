@@ -5,7 +5,6 @@
 
     <!-- Arguments -->
     <arg name="publish_static_tf" value="false"/>
-    <arg name="run_elevation_mapping" value="true"/>
     <arg name="box_description" default="$(find box_model)/urdf/box/box.urdf.xacro"/>
     <arg name="run_estimator" default="true"/>
     <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
@@ -27,21 +26,5 @@
         <node pkg="tf2_ros" type="static_transform_publisher" name="cpt_to_body_tf_publisher"
               args="0.0 0.0 0.0 0 0 0 body imu"/>
     </group>
-
-    <!-- Elevation Mapping -->
-    <arg name="default_elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/default.yaml"/>
-    <arg name="elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/online_vlp16.yaml"/>
-
-    <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log"
-          if="$(arg run_elevation_mapping)">
-        <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
-        <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
-    </node>
-
-    <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)"/>
-
-    <!-- Model of the Box -->
-    <param name="box_description" command="$(find xacro)/xacro --inorder $(arg box_description)"/>
 
 </launch>
