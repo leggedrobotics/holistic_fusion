@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "atn_position3_fuser/Position3Estimator.h"
 
+// C++
+#include <boost/filesystem.hpp>
+
 // Project
 #include "atn_position3_fuser/Position3StaticTransforms.h"
 #include "atn_position3_fuser/constants.h"
@@ -135,6 +138,60 @@ void Position3Estimator::initializeServices(ros::NodeHandle& privateNode) {
   }
 }
 
+// Utility
+std::string getLatestSubdirectory(const std::string& directoryPath) {
+  boost::filesystem::path latestDir;
+  std::time_t latestTime = 0;
+
+  REGULAR_COUT << " Looking for latest directory in " << directoryPath << std::endl;
+
+  for (const auto& entry : boost::filesystem::directory_iterator(directoryPath)) {
+    if (is_directory(entry)) {
+      std::time_t currentLastWriteTime = boost::filesystem::last_write_time(entry);
+      if (currentLastWriteTime > latestTime) {
+        latestTime = currentLastWriteTime;
+        latestDir = entry.path();
+      }
+    }
+  }
+
+  return latestDir.empty() ? "" : latestDir.filename().string();
+}
+
+// Overwritten service for offline optimization
+bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                            graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
+  std::cout << "Position3Estimator: srvOfflineSmootherOptimizeCallback (derived class) called." << std::endl;
+  // Call parent class and create most of the files already
+  bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
+
+  // If GNSS was used to initialize the graph also log T_W_prism
+  if (initializeUsingGnssFlag_) {
+    std::map<std::string, std::ofstream> fileStreams;
+    // Get time string by finding latest directory in optimizationResultLoggingPath
+    std::string timeString = getLatestSubdirectory(optimizationResultLoggingPath);
+    if (timeString.empty()) {
+      REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
+      return false;
+    } else {
+      REGULAR_COUT << " Found latest directory in " << optimizationResultLoggingPath << ": " << timeString << std::endl;
+    }
+    // Create file stream
+    std::string transformIdentifier = "R_6D_transform_world_to_total_station";
+    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+    // Add to file
+    graph_msf::writePose3ToCsvFile(fileStreams, T_W_totalStation_, transformIdentifier, ros::Time::now().toSec(), false);
+    REGULAR_COUT << " Wrote T_W_totalStation to file." << std::endl;
+
+    // Close all file streams
+    for (auto& pair : fileStreams) {
+      pair.second.close();
+    }
+  }
+  // Return
+  return success;
+}
+
 //---------------------------------------------------------------
 void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStamped::ConstPtr& leicaPositionPtr) {
   // Counter
@@ -180,19 +237,20 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     trajectoryAlignmentHandler_->addR3Position(positionMeas, leicaPositionPtr->header.stamp.toSec());
     // In radians
     double yaw{0};
-    if (!(trajectoryAlignmentHandler_->alignTrajectories(yaw, T_enu_totalStation_))) {
+    if (!(trajectoryAlignmentHandler_->alignTrajectories(yaw, T_totalStation_enu_))) {
       if (prismPositionCallbackCounter_ % 10 == 0) {
         REGULAR_COUT << " Graph was initialized by GNSS, hence trying to align. Trajectory alignment not ready. Waiting for more motion."
                      << std::endl;
       }
       addToGraphFlag = false;
     } else {
-      T_enu_totalStation_ = T_enu_totalStation_.inverse();
+      T_W_totalStation_ = T_totalStation_enu_.inverse();
       // Only keep yaw of the orientation part of the transformation
-      REGULAR_COUT << GREEN_START << " ENU to Total Station Transformation: " << COLOR_END << T_enu_totalStation_.matrix() << std::endl;
-      graph_msf::inPlaceRemoveRollPitch(T_enu_totalStation_);
-      REGULAR_COUT << GREEN_START << " ENU to Total Station Transformation after removing roll and pitch: " << COLOR_END
-                   << T_enu_totalStation_.matrix() << std::endl;
+      REGULAR_COUT << GREEN_START << " World (pseudo ENU) to Total Station Transformation: " << COLOR_END << T_W_totalStation_.matrix()
+                   << std::endl;
+      graph_msf::inPlaceRemoveRollPitch(T_W_totalStation_);
+      REGULAR_COUT << GREEN_START << " World to Total Station Transformation after removing roll and pitch: " << COLOR_END
+                   << T_W_totalStation_.matrix() << std::endl;
       // Prepare for using this transformation in the graph
       alignedPrismAndGnssFlag_ = true;
       return;  // Do not add unary measurement this round
@@ -225,7 +283,7 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     //    }
     // Potentially transform measurement to start ENU frame (if world origin was set to coincide with GNSS)
     if (alignedPrismAndGnssFlag_) {
-      positionMeas = T_enu_totalStation_ * positionMeas;
+      positionMeas = T_W_totalStation_ * positionMeas;
     }
 
     // Already initialized --> add position measurement to graph ----------------------------
@@ -360,7 +418,7 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   }
   // Otherwise just add measurement
   else if (areYawAndPositionInited()) {  // Already initialized --> unary factor
-          // If prism has not moved enough, do not add GNSS measurements
+                                         // If prism has not moved enough, do not add GNSS measurements
     bool addToOnlineSmootherFlag = true;
     if (!prismMovedEnoughFlag_ && !initializeUsingGnssFlag_) {
       if ((gnssOfflinePoseCallbackCounter_ % 100) == 0) {
