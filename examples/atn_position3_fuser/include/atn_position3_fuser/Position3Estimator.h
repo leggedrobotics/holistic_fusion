@@ -119,6 +119,9 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   double gnssPositionMeasUnaryNoise_ = 1.0;   // in [m]
   Eigen::Matrix<double, 6, 1> gnssOfflinePoseMeasUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
+  // State Machine
+  bool initializeUsingGnssFlag_ = false;
+
   // Variables
   // PRISM
   int prismPositionCallbackCounter_ = 0;
@@ -129,7 +132,6 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int gnssPositionCallbackCounter_ = 0;
   int gnssOfflinePoseCallbackCounter_ = 0;
-  bool initializedByGnssFlag_ = false;
   bool alignedPrismAndGnssFlag_ = false;
   Eigen::Isometry3d T_enu_totalStation_ = Eigen::Isometry3d::Identity();
 
