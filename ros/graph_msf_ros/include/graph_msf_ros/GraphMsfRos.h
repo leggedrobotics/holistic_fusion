@@ -78,7 +78,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);
 
   // Services
-  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+  virtual bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
                                           graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res);
   bool srvLogRealTimeStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 

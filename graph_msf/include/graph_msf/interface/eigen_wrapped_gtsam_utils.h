@@ -16,5 +16,15 @@ namespace graph_msf {
 // Transformation Functions
 void inPlaceRemoveRollPitch(Eigen::Isometry3d& T);
 
+// Creation of Files
+void createPose3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                     const std::string& transformIdentifier, const std::string& timeString,
+                                     const bool saveCovarianceFlag);
+
+// Addition to Files
+void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose,
+                                const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
+                                boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+
 }  // namespace graph_msf
 #endif  // GMSF_EIGEN_WRAPPED_GTSAM_UTILS_H

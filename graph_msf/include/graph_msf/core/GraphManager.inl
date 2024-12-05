@@ -121,36 +121,45 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
     // If successful
     if (success) {
-      // B. Write to timestamp map for fixed lag smoother if newer than existing one for all keys that are in expression factor ------------
+      // B. Write to timestamp map for fixed lag smoother if newer than existing ------------
+      // B.a) Check keys in expression factor and write to timestamp map
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
-        // a) Rt Graph
+        // 1) Rt Graph
         if (addToOnlineSmootherFlag) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
           auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
-          // i) Not existent
-          if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end()) {
-            // TODO: Check if it should not be propagatedStateTime_ instead of gmsfUnaryExpressionPtr->getTimestamp()
-            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
-          }
-          // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-          else if (gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
           }
         }
-        // b) Batch Graph
+        // 2) Batch Graph (TODO: Check if this is needed, as batch does not do marginalization)
         if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
           auto batchKeyTimestampMapIterator = batchGraphKeysTimestampsMapBufferPtr_->find(key);
-          // i) Not existent
-          if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end()) {
-            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
-          }
-          // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-          else if (gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
           }
         }
       }
+      // B.b) Check keys in online graph values and write to timestamp map (can be that inactive keys have been activated, which are not in
+      // expression factor)
+      // 1) Rt Graph
+      if (addToOnlineSmootherFlag) {
+        for (const auto& key : gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().keys()) {
+          // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+          auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
+            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
+          }
+        }
+      }
+      // 2) Batch Graph --> not needed, as these states are only added to online graph
       // C. If one of the states was newly created, then add it to the values buffer -------------------------------------------------------
       // a) Rt Graph
       if (!gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().empty() && addToOnlineSmootherFlag) {

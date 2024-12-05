@@ -57,6 +57,10 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
 
   void readParams(const ros::NodeHandle& privateNode) override;
 
+  // Callbacks
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
+
  private:
   // Callbacks
   void prismPositionCallback_(const geometry_msgs::PointStamped::ConstPtr& leicaPositionPtr);
@@ -133,7 +137,11 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   int gnssPositionCallbackCounter_ = 0;
   int gnssOfflinePoseCallbackCounter_ = 0;
   bool alignedPrismAndGnssFlag_ = false;
-  Eigen::Isometry3d T_enu_totalStation_ = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d T_totalStation_enu_ = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d T_totalStation_totalStationOld_ = Eigen::Isometry3d::Identity();
+
+  // Frames
+  std::string totalStationReferenceFrame_ = "";
 
   // Flags
   static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;
