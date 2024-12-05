@@ -22,7 +22,7 @@
          default="$(find atn_position3_fuser)/config/position_graph_specific/trajectory_alignment_params.yaml"/>
 
     <!-- Initialize using GNSS -->
-    <arg name="initialize_using_gnss" default="false"/>
+    <arg name="initialize_using_gnss" default="true"/>
 
     <!-- Logging Location -->
     <arg name="logging_dir_location" default="$(find atn_position3_fuser)/logging"/>

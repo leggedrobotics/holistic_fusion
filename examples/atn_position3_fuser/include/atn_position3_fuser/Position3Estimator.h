@@ -138,7 +138,10 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   int gnssOfflinePoseCallbackCounter_ = 0;
   bool alignedPrismAndGnssFlag_ = false;
   Eigen::Isometry3d T_totalStation_enu_ = Eigen::Isometry3d::Identity();
-  Eigen::Isometry3d T_W_totalStation_ = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d T_totalStation_totalStationOld_ = Eigen::Isometry3d::Identity();
+
+  // Frames
+  std::string totalStationReferenceFrame_ = "";
 
   // Flags
   static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;

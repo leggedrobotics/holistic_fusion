@@ -165,28 +165,26 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   // Call parent class and create most of the files already
   bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
 
-  // If GNSS was used to initialize the graph also log T_W_prism
-  if (initializeUsingGnssFlag_) {
-    std::map<std::string, std::ofstream> fileStreams;
-    // Get time string by finding latest directory in optimizationResultLoggingPath
-    std::string timeString = getLatestSubdirectory(optimizationResultLoggingPath);
-    if (timeString.empty()) {
-      REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
-      return false;
-    } else {
-      REGULAR_COUT << " Found latest directory in " << optimizationResultLoggingPath << ": " << timeString << std::endl;
-    }
-    // Create file stream
-    std::string transformIdentifier = "R_6D_transform_world_to_total_station";
-    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
-    // Add to file
-    graph_msf::writePose3ToCsvFile(fileStreams, T_W_totalStation_, transformIdentifier, ros::Time::now().toSec(), false);
-    REGULAR_COUT << " Wrote T_W_totalStation to file." << std::endl;
+  // Write T_totalStationCorr_totalStation_ to file
+  std::map<std::string, std::ofstream> fileStreams;
+  // Get time string by finding latest directory in optimizationResultLoggingPath
+  std::string timeString = getLatestSubdirectory(optimizationResultLoggingPath);
+  if (timeString.empty()) {
+    REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
+    return false;
+  } else {
+    REGULAR_COUT << " Found latest directory in " << optimizationResultLoggingPath << ": " << timeString << std::endl;
+  }
+  // Create file stream
+  std::string transformIdentifier = "R_6D_transform_" + totalStationReferenceFrame_ + "_to_" + totalStationReferenceFrame_ + "Old";
+  graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+  // Add to file
+  graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, transformIdentifier, ros::Time::now().toSec(), false);
+  REGULAR_COUT << " Wrote T_totalStation_totalStationOld to file." << std::endl;
 
-    // Close all file streams
-    for (auto& pair : fileStreams) {
-      pair.second.close();
-    }
+  // Close all file streams
+  for (auto& pair : fileStreams) {
+    pair.second.close();
   }
   // Return
   return success;
@@ -197,17 +195,13 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   // Counter
   prismPositionCallbackCounter_++;
 
-  // Debug: Skip the first 40 seconds
-  //  const int numSkipSteps = 40 * prismPositionRate_;
-  //  if (prismPositionCallbackCounter_ < numSkipSteps) {
-  //    if ((prismPositionCallbackCounter_ % 100) == 0) {
-  //      REGULAR_COUT << " Skipping prism position measurement. Counter: " << prismPositionCallbackCounter_ << std::endl;
-  //    }
-  //    return;
-  //  }
-
   // Fixed Frame
-  std::string fixedFrame = staticTransformsPtr_->getWorldFrame();
+  std::string fixedFrame;
+  if (!initializeUsingGnssFlag_) {
+    fixedFrame = staticTransformsPtr_->getWorldFrame();
+  } else {
+    fixedFrame = leicaPositionPtr->header.frame_id;
+  }
 
   // Translate to Eigen
   Eigen::Vector3d positionMeas = Eigen::Vector3d(leicaPositionPtr->point.x, leicaPositionPtr->point.y, leicaPositionPtr->point.z);
@@ -244,13 +238,14 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
       }
       addToGraphFlag = false;
     } else {
-      T_W_totalStation_ = T_totalStation_enu_.inverse();
+      T_totalStation_totalStationOld_ = T_totalStation_enu_.inverse();
+      totalStationReferenceFrame_ = leicaPositionPtr->header.frame_id;
       // Only keep yaw of the orientation part of the transformation
-      REGULAR_COUT << GREEN_START << " World (pseudo ENU) to Total Station Transformation: " << COLOR_END << T_W_totalStation_.matrix()
-                   << std::endl;
-      graph_msf::inPlaceRemoveRollPitch(T_W_totalStation_);
-      REGULAR_COUT << GREEN_START << " World to Total Station Transformation after removing roll and pitch: " << COLOR_END
-                   << T_W_totalStation_.matrix() << std::endl;
+      REGULAR_COUT << GREEN_START << " Total Station to Old Total Station Transformation: " << COLOR_END
+                   << T_totalStation_totalStationOld_.matrix() << std::endl;
+      graph_msf::inPlaceRemoveRollPitch(T_totalStation_totalStationOld_);
+      REGULAR_COUT << GREEN_START << " Total Station to Old Total Station Transformation after removing roll and pitch: " << COLOR_END
+                   << T_totalStation_totalStationOld_.matrix() << std::endl;
       // Prepare for using this transformation in the graph
       alignedPrismAndGnssFlag_ = true;
       return;  // Do not add unary measurement this round
@@ -283,7 +278,7 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     //    }
     // Potentially transform measurement to start ENU frame (if world origin was set to coincide with GNSS)
     if (alignedPrismAndGnssFlag_) {
-      positionMeas = T_W_totalStation_ * positionMeas;
+      positionMeas = T_totalStation_totalStationOld_ * positionMeas;
     }
 
     // Already initialized --> add position measurement to graph ----------------------------
@@ -306,6 +301,8 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
 
 //---------------------------------------------------------------
 void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPositionPtr) {
+  throw std::runtime_error("Position3Estimator: outdated in terms of logic.");
+
   // Counter
   gnssPositionCallbackCounter_++;
 
@@ -378,7 +375,12 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   gnssOfflinePoseCallbackCounter_++;
 
   // Fixed Frame
-  std::string fixedFrame = gnssOfflinePosePtr->header.frame_id;
+  std::string fixedFrame;
+  if (initializeUsingGnssFlag_) {
+    fixedFrame = staticTransformsPtr_->getWorldFrame();
+  } else {
+    fixedFrame = gnssOfflinePosePtr->header.frame_id;
+  }
 
   // Prepare Data
   Eigen::Isometry3d T_ENU_Gk = Eigen::Isometry3d::Identity();

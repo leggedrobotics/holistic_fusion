@@ -100,7 +100,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
           .activateVariable();
       // Print out
       REGULAR_COUT << GREEN_START << " Reactivated old keyframe " << gtsam::Symbol(graphKey.key())
-                   << " as it was deactivated, is needed again, but not too old." << COLOR_END << std::endl;
+                   << " as it was deactivated, but is needed again." << COLOR_END << std::endl;
 
       // If the old keyframe was not active, then it is not part of the optimization anymore (or has never been) --> prior to online graph
       // Make sure that old key ptr is not null
@@ -118,7 +118,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         // Noise model from 6x6 covariance
         noiseModelPtr = gtsam::noiseModel::Gaussian::Covariance(oldKeyframeCovariance);
         // Print
-        REGULAR_COUT << " Old keyframe has been optimized before. Adding prior optimization outcome again to online graph." << std::endl;
+        REGULAR_COUT << " Old keyframe has been optimized before. Adding previous optimization outcome again to online graph." << std::endl;
       }
       // Case 2: Has not been optimized before
       else {
@@ -135,6 +135,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       this->newOnlinePosePriorFactors_.emplace_back(oldGtsamKey, T_W_fixedFrameOld, noiseModelPtr);
       // State value
       this->newOnlineStateValues_.insert(oldGtsamKey, T_W_fixedFrameOld);
+      // Time stamp
     }
 
     // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
