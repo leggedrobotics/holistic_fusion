@@ -165,7 +165,7 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   // Call parent class and create most of the files already
   bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
 
-  // Write T_totalStationCorr_totalStation_ to file
+  // Write T_totalStation_totalStationOld_ to file ----------------------------
   std::map<std::string, std::ofstream> fileStreams;
   // Get time string by finding latest directory in optimizationResultLoggingPath
   std::string timeString = getLatestSubdirectory(optimizationResultLoggingPath);
@@ -181,6 +181,23 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   // Add to file
   graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, transformIdentifier, ros::Time::now().toSec(), false);
   REGULAR_COUT << " Wrote T_totalStation_totalStationOld to file." << std::endl;
+
+  // Depending on whether GNSS or Prism was used for initialization, write the corresponding T_W_R identity to file ------------------------
+  if (initializeUsingGnssFlag_) {
+    // Write T_totalStation_totalStationOld_ to file
+    std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + gnssReferenceFrame_;
+    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+    // Add to file
+    graph_msf::writePose3ToCsvFile(fileStreams, Eigen::Isometry3d::Identity(), transformIdentifier, ros::Time::now().toSec(), false);
+    REGULAR_COUT << " Wrote T_W_gnssReferenceFrame to file." << std::endl;
+  } else {
+    // Write T_totalStation_enu_ to file
+    std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + totalStationReferenceFrame_;
+    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+    // Add to file
+    graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_enu_, transformIdentifier, ros::Time::now().toSec(), false);
+    REGULAR_COUT << " Wrote T_W_totalStationReferenceFrame to file." << std::endl;
+  }
 
   // Close all file streams
   for (auto& pair : fileStreams) {
@@ -212,6 +229,8 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     REGULAR_COUT << " First prism position measurement received. Setting initial position to " << positionMeas.transpose() << std::endl;
     // Set initial position
     initialPrismPosition_ = positionMeas;
+    // Set Reference Frame
+    totalStationReferenceFrame_ = leicaPositionPtr->header.frame_id;
   }
 
   // Case: Not moved enough --> check if moved enough in meanwhile, only relevant if not initialized by GNSS
@@ -239,7 +258,6 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
       addToGraphFlag = false;
     } else {
       T_totalStation_totalStationOld_ = T_totalStation_enu_.inverse();
-      totalStationReferenceFrame_ = leicaPositionPtr->header.frame_id;
       // Only keep yaw of the orientation part of the transformation
       REGULAR_COUT << GREEN_START << " Total Station to Old Total Station Transformation: " << COLOR_END
                    << T_totalStation_totalStationOld_.matrix() << std::endl;
@@ -380,6 +398,13 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
     fixedFrame = staticTransformsPtr_->getWorldFrame();
   } else {
     fixedFrame = gnssOfflinePosePtr->header.frame_id;
+  }
+
+  // Case: First call
+  if (gnssOfflinePoseCallbackCounter_ == 1) {
+    REGULAR_COUT << " First GNSS offline pose measurement received." << std::endl;
+    // Set Reference Frame
+    gnssReferenceFrame_ = gnssOfflinePosePtr->header.frame_id;
   }
 
   // Prepare Data
