@@ -28,13 +28,22 @@ void inPlaceRemoveRollPitch(Eigen::Isometry3d& T) {
 }
 
 // Creation of Files -----------------------------------------------------------
+// Pose 3
 void createPose3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                               const std::string& transformIdentifier, const std::string& timeString, const bool saveCovarianceFlag) {
   // Create the file stream
   FileLogger::createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
 }
 
+// Latitude, Longitude, Altitude
+void createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                  const std::string& transformIdentifier, const std::string& timeString) {
+  // Create the file stream
+  FileLogger::createLatLonAltCsvFileStream(fileStreams, savePath, transformIdentifier, timeString);
+}
+
 // Addition to Files -----------------------------------------------------------
+// Pose 3
 void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose,
                          const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
                          boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
@@ -42,6 +51,12 @@ void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, cons
   gtsam::Pose3 poseGtsam = gtsam::Pose3(pose.matrix());
   // Write to the file
   FileLogger::writePose3ToCsvFile(fileStreams, poseGtsam, transformIdentifier, timeStamp, saveCovarianceFlag, optionalPoseCovarianceInWorldRos);
+}
+// Latitude, Longitude, Altitude
+void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Vector3d& latLonAlt,
+                             const std::string& transformIdentifier, const double timeStamp) {
+  // Write to the file
+  FileLogger::writeLatLonAltToCsvFile(fileStreams, latLonAlt, transformIdentifier, timeStamp);
 }
 
 }  // namespace graph_msf

@@ -47,7 +47,7 @@ Eigen::Vector3d Gnss::gpsToCartesian(const double& latitudeInDegrees, const doub
   return position;
 }
 
-Eigen::Vector3d Gnss::cartesianToGps(const Eigen::Matrix<double, 3, 1> position) {
+Eigen::Vector3d Gnss::cartesianToGps(const Eigen::Matrix<double, 3, 1> position) const {
   Eigen::Vector3d gpsCoordinates;
   gpsCoordinates(0) =
       referenceLatitude_ + (cos(referenceHeading_) * position(0) + sin(referenceHeading_) * position(1)) / earthRadiusN_ * 180.0 / M_PI;

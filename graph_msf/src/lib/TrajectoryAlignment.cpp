@@ -93,8 +93,8 @@ bool TrajectoryAlignment::associateTrajectories(Trajectory& trajectoryA, Traject
 }
 
 bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform) {
-  // fill matrices to use Eigen Umeyama function
-  const int numberOfMeasurements = trajectoryA.poses().size();
+  // Fill matrices to use Eigen Umeyama function
+  const int numberOfMeasurements = std::min(trajectoryA.poses().size(), trajectoryB.poses().size());
   if (numberOfMeasurements < 2) return false;
 
   Eigen::MatrixXd posesA;

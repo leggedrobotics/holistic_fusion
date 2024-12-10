@@ -13,6 +13,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "anymal_estimator_graph/constants.h"
+#include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
+#include "graph_msf/interface/input_output.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
@@ -124,6 +126,47 @@ void AnymalEstimator::initializeMessages(ros::NodeHandle& privateNode) {
 void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
   // Nothing
   // TODO: add soft reset of the graph for on-the-go re-init.
+}
+
+// Offline Optimization Service
+bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                         graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
+  // Call super class
+  bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
+
+  // if GNSS is used at all, also log the reference frame
+  if (gnssCallbackCounter_ > 0) {
+    // Get the reference coordinates of the GNSS handler
+    const double referenceLatitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    const double referenceLongitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    const double referenceAltitude = gnssHandlerPtr_->getGnssReferenceAltitude();
+    const double referenceHeading = gnssHandlerPtr_->getGnssReferenceHeading();
+    REGULAR_COUT << " GNSS reference (latitude, longitude, altitude, heading): " << referenceLatitude << ", " << referenceLongitude << ", "
+                 << referenceAltitude << ", " << referenceHeading << std::endl;
+
+    // File streams
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Write T_totalStation_totalStationOld_ to file ----------------------------
+    // Get time string by finding latest directory in optimizationResultLoggingPath
+    std::string timeString = graph_msf::getLatestSubdirectory(optimizationResultLoggingPath);
+    if (timeString.empty()) {
+      REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
+      return false;
+    } else {
+      REGULAR_COUT << " Found latest directory in " << optimizationResultLoggingPath << ": " << timeString << std::endl;
+    }
+    // Create file stream
+    std::string transformIdentifier = "gnss_reference_lat_lon_alt";
+    graph_msf::createLatLonAltCsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString);
+    // Add to file
+    graph_msf::writeLatLonAltToCsvFile(fileStreams, Eigen::Vector3d(referenceLatitude, referenceLongitude, referenceAltitude),
+                                       transformIdentifier, ros::Time::now().toSec());
+    REGULAR_COUT << " Wrote GNSS reference (latitude, longitude, altitude) coordinates to file." << std::endl;
+  }
+
+  // Return
+  return success;
 }
 
 // Priority: 1

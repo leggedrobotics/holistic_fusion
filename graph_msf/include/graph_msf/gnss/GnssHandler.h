@@ -39,16 +39,21 @@ class GnssHandler {
     useYawInitialGuessFromAlignment_ = useYawInitialGuessFromAlignment;
   }
   // Actual Reference Coordinate Parameters
-  void setGnssReferenceLatitude(const double gnssReferenceLatitude) { gnssReferenceLatitude_ = gnssReferenceLatitude; }
-  void setGnssReferenceLongitude(const double gnssReferenceLongitude) { gnssReferenceLongitude_ = gnssReferenceLongitude; }
-  void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
-  void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
+  void setGnssReferenceLatitude(const double gnssReferenceLatitude) { presetGnssReferenceLatitude_ = gnssReferenceLatitude; }
+  void setGnssReferenceLongitude(const double gnssReferenceLongitude) { presetGnssReferenceLongitude_ = gnssReferenceLongitude; }
+  void setGnssReferenceAltitude(const double gnssReferenceAltitude) { presetGnssReferenceAltitude_ = gnssReferenceAltitude; }
+  void setGnssReferenceHeading(const double gnssReferenceHeading) { presetGnssReferenceHeading_ = gnssReferenceHeading; }
 
   // Getters
   bool getUseGnssReferenceFlag() const { return useGnssReferenceFlag_; }
   double getGlobalYawDegFromFile() const { return globalYawDegFromFile_; }
   bool getUseYawInitialGuessFromFile() const { return useYawInitialGuessFromFile_; }
   bool getUseYawInitialGuessFromAlignment() const { return useYawInitialGuessFromAlignment_; }
+  // Reference Coordinate Parameters
+  double getGnssReferenceLatitude() const { return gnssSensor_.getReferenceLatitude(); }
+  double getGnssReferenceLongitude() const { return gnssSensor_.getReferenceLongitude(); }
+  double getGnssReferenceAltitude() const { return gnssSensor_.getReferenceAltitude(); }
+  double getGnssReferenceHeading() const { return gnssSensor_.getReferenceHeading(); }
 
  private:
   // Member methods
@@ -68,10 +73,10 @@ class GnssHandler {
   bool useYawInitialGuessFromAlignment_{false};
 
   // Reference Coordinate Parameters
-  double gnssReferenceLatitude_;
-  double gnssReferenceLongitude_;
-  double gnssReferenceAltitude_;
-  double gnssReferenceHeading_;
+  double presetGnssReferenceLatitude_;
+  double presetGnssReferenceLongitude_;
+  double presetGnssReferenceAltitude_;
+  double presetGnssReferenceHeading_;
 };
 
 }  // namespace graph_msf

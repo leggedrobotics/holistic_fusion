@@ -55,6 +55,10 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
   void readParams(const ros::NodeHandle& privateNode) override;
 
+  // Callbacks
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
+
  private:
   // Callbacks
   // LIO

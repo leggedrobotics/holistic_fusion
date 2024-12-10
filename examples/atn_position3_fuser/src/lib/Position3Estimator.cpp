@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
 #include "graph_msf_ros/util/conversions.h"
+#include "graph_msf/interface/input_output.h"
 
 namespace position3_se {
 
@@ -138,26 +139,6 @@ void Position3Estimator::initializeServices(ros::NodeHandle& privateNode) {
   }
 }
 
-// Utility
-std::string getLatestSubdirectory(const std::string& directoryPath) {
-  boost::filesystem::path latestDir;
-  std::time_t latestTime = 0;
-
-  REGULAR_COUT << " Looking for latest directory in " << directoryPath << std::endl;
-
-  for (const auto& entry : boost::filesystem::directory_iterator(directoryPath)) {
-    if (is_directory(entry)) {
-      std::time_t currentLastWriteTime = boost::filesystem::last_write_time(entry);
-      if (currentLastWriteTime > latestTime) {
-        latestTime = currentLastWriteTime;
-        latestDir = entry.path();
-      }
-    }
-  }
-
-  return latestDir.empty() ? "" : latestDir.filename().string();
-}
-
 // Overwritten service for offline optimization
 bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
                                                             graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
@@ -165,10 +146,12 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   // Call parent class and create most of the files already
   bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
 
-  // Write T_totalStation_totalStationOld_ to file ----------------------------
+  // File streams
   std::map<std::string, std::ofstream> fileStreams;
+
+  // Write T_totalStation_totalStationOld_ to file ----------------------------
   // Get time string by finding latest directory in optimizationResultLoggingPath
-  std::string timeString = getLatestSubdirectory(optimizationResultLoggingPath);
+  std::string timeString = graph_msf::getLatestSubdirectory(optimizationResultLoggingPath);
   if (timeString.empty()) {
     REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
     return false;

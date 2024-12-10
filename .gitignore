@@ -19,6 +19,7 @@ dist/
 *.csv
 *.bag
 *.tum
+*.geojson
 
 # Plots
 *.png

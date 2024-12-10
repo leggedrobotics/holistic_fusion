@@ -22,15 +22,15 @@ class Gnss {
   void setReference(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
                     const double& referenceHeading);
   Eigen::Vector3d gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
-  Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position);
+  Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position) const;
   Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
   void setMercatorReferenceFrame(const Eigen::Vector3d newReferencePoint);
 
   // Getters.
-  double getReferenceLongitude() { return referenceLongitude_; }
-  double getReferenceLatitude() { return referenceLatitude_; }
-  double getReferenceAltitude() { return referenceAltitude_; }
-  double getReferenceHeading() { return referenceHeading_; }
+  double getReferenceLongitude() const { return referenceLongitude_; }
+  double getReferenceLatitude() const { return referenceLatitude_; }
+  double getReferenceAltitude() const { return referenceAltitude_; }
+  double getReferenceHeading() const { return referenceHeading_; }
 
  protected:
   void calculateConversionParameters();
