@@ -163,6 +163,23 @@ bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Off
     graph_msf::writeLatLonAltToCsvFile(fileStreams, Eigen::Vector3d(referenceLatitude, referenceLongitude, referenceAltitude),
                                        transformIdentifier, ros::Time::now().toSec());
     REGULAR_COUT << " Wrote GNSS reference (latitude, longitude, altitude) coordinates to file." << std::endl;
+
+    // If optional GNSS ENU coordinates are logged, write them to pose file
+    if constexpr (logOptionalGnssEnuCoordinatesFlag_) {
+      transformIdentifier = "gnss_enu_trajectory";
+      graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+      // Iterate over all optional GNSS ENU coordinates
+      int index = 0;
+      for (const auto& optionalGnssEnuCoordinates : optionalGnssEnuCoordinatesTrajectory_) {
+        // Create Isometry3d with identity rotation
+        Eigen::Isometry3d optionalGnssEnuCoordinatesIsometry = Eigen::Isometry3d::Identity();
+        optionalGnssEnuCoordinatesIsometry.translation() = optionalGnssEnuCoordinates;
+        // Add to file
+        graph_msf::writePose3ToCsvFile(fileStreams, optionalGnssEnuCoordinatesIsometry, transformIdentifier, optionalGnssEnuCoordinatesTimeStamps_[index],
+                                       false);
+        index++;
+      }
+    }
   }
 
   // Return
@@ -263,6 +280,12 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   addToPathMsg(measGnss_worldGnssPathPtr_, fixedFrame, gnssMsgPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength_ * 4);
   /// Publish path
   pubMeasWorldGnssPath_.publish(measGnss_worldGnssPathPtr_);
+
+  // Potentially log the GNSS ENU coordinates
+  if (logOptionalGnssEnuCoordinatesFlag_) {
+    optionalGnssEnuCoordinatesTimeStamps_.push_back(gnssMsgPtr->header.stamp.toSec());
+    optionalGnssEnuCoordinatesTrajectory_.push_back(W_t_W_Gnss);
+  }
 }
 
 // Priority: 2
