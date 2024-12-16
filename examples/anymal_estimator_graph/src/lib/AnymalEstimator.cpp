@@ -212,7 +212,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
-  gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  //gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // Alias
   // fixedFrame = "east_north_up";
 

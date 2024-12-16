@@ -22,13 +22,16 @@ class GnssHandler {
   GnssHandler();
 
   // Methods
+  // Init
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
   void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
 
+  // Conversion methods
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
   void convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
   double computeYaw(const Eigen::Vector3d& gnssPos1, const Eigen::Vector3d& gnssPos2);
+  void convertNavSatToPositionLV03(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
 
   // Setters
   // For state machine and bookkeeping
@@ -63,7 +66,6 @@ class GnssHandler {
 
   // Member variables
   Gnss gnssSensor_;
-  Eigen::Vector3d W_t_W_GnssL0_;
   double globalAttitudeYaw_;
 
   // State Machine and bookkeeping.
