@@ -32,6 +32,6 @@ std::string getLatestSubdirectory(const std::string& directoryPath) {
   return latestDir.empty() ? "" : latestDir.filename().string();
 }
 
-} // namespace graph_msf
+}  // namespace graph_msf
 
 #endif  // GMSF_INPUT_OUTPUT_H

@@ -50,7 +50,8 @@ void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, cons
   // Convert
   gtsam::Pose3 poseGtsam = gtsam::Pose3(pose.matrix());
   // Write to the file
-  FileLogger::writePose3ToCsvFile(fileStreams, poseGtsam, transformIdentifier, timeStamp, saveCovarianceFlag, optionalPoseCovarianceInWorldRos);
+  FileLogger::writePose3ToCsvFile(fileStreams, poseGtsam, transformIdentifier, timeStamp, saveCovarianceFlag,
+                                  optionalPoseCovarianceInWorldRos);
 }
 // Latitude, Longitude, Altitude
 void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Vector3d& latLonAlt,

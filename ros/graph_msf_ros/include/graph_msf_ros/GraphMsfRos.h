@@ -79,7 +79,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
 
   // Services
   virtual bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
-                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res);
+                                                  graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res);
   bool srvLogRealTimeStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
   // Publishing -----------------------------------

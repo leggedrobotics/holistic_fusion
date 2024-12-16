@@ -198,7 +198,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   // Associate Trajectories
   // Difference of trajectory size should not be larger than 10%
   bool sizeDeviatesTooMuch = (std::abs(static_cast<int>(copySe3Trajectory.poses().size() - copyR3Trajectory.poses().size())) >
-                          0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
+                              0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
   // If the trajectories deviate too much, associate them
   if (sizeDeviatesTooMuch) {
     associateTrajectories(copySe3Trajectory, copyR3Trajectory, newSe3Trajectory, newR3Trajectory);

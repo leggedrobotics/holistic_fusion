@@ -17,8 +17,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
-#include "graph_msf_ros/util/conversions.h"
 #include "graph_msf/interface/input_output.h"
+#include "graph_msf_ros/util/conversions.h"
 
 namespace position3_se {
 

@@ -29,7 +29,7 @@ class Gnss {
   Eigen::Vector3d gnssToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
   Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position) const;
   Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
-  //LV03
+  // LV03
   Eigen::Vector3d gnssToLv03Raw(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
   Eigen::Vector3d gnssToLv03(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
   double wGStoCHx(double lat, double lng);

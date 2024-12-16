@@ -64,8 +64,7 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/prismR3Rate", privateNode));
   trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
       graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));
-  trajectoryAlignmentHandler_->setNoMovementDistance(
-      graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
+  trajectoryAlignmentHandler_->setNoMovementDistance(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
   trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
 
   // Launch Parameters ----------------------------
