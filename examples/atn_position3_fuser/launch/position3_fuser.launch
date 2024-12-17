@@ -8,7 +8,7 @@
     <arg name="imu_topic_name" default="/gt_box/ap20/imu"/>
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
-    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>
+    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/tc/odometry"/>
 
     <!-- Config Files -->
     <arg name="core_graph_config_file" default="$(find atn_position3_fuser)/config/core/core_graph_config.yaml"/>

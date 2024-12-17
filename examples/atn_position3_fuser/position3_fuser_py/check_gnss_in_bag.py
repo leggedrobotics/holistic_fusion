@@ -41,7 +41,7 @@ if __name__ == "__main__":
         print("Usage: python check_topic_in_rosbag.py <bag_file_path>")
     else:
         bag_file_path = sys.argv[1]
-        topic_name = "/gt_box/inertial_explorer/odometry"
+        topic_name = "/gt_box/inertial_explorer/tc/odometry"
         # Check when the topic first appears in the bag
         topic_first_appearance = check_topic_in_rosbag(bag_file_path, topic_name)
         if topic_first_appearance is None:
