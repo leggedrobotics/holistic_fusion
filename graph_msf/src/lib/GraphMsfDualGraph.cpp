@@ -6,7 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 #include "graph_msf/interface/GraphMsfDualGraph.h"
-#include "graph_msf/core/GraphManager.hpp"
+#include "graph_msf/core/GraphManager.h"
 
 namespace graph_msf {
 

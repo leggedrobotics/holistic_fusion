@@ -55,6 +55,10 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
   void readParams(const ros::NodeHandle& privateNode) override;
 
+  // Callbacks
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
+
  private:
   // Callbacks
   // LIO
@@ -122,6 +126,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // GNSS
   Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int gnssCallbackCounter_{-1};
+  std::vector<Eigen::Vector3d> optionalGnssEnuCoordinatesTrajectory_;
+  std::vector<double> optionalGnssEnuCoordinatesTimeStamps_;
+  static constexpr bool logOptionalGnssEnuCoordinatesFlag_ = false;
   // LIO
   // Unary
   int lidarUnaryCallbackCounter_{-1};

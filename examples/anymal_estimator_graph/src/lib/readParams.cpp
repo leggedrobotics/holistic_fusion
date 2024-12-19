@@ -106,12 +106,12 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
 
     // Alignment options.
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-      // Make sure no dual true.
+      // Make sure no dual true
       gnssHandlerPtr_->setUseYawInitialGuessFromFile(false);
       trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
 
-      trajectoryAlignmentHandler_->setLidarRate(graph_msf::tryGetParam<double>("trajectoryAlignment/lidarRate", privateNode));
-      trajectoryAlignmentHandler_->setGnssRate(graph_msf::tryGetParam<double>("trajectoryAlignment/gnssRate", privateNode));
+      trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/lidarRate", privateNode));
+      trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/gnssRate", privateNode));
 
       trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
           graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));

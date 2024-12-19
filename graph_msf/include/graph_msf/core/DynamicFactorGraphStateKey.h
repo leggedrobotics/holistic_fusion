@@ -48,7 +48,10 @@ class DynamicFactorGraphStateKey {
   }
   [[nodiscard]] Eigen::Vector3d getReferenceFrameKeyframePosition() const { return variableType_.getReferenceFrameKeyframePosition(); }
   [[nodiscard]] double getVariableCreationTime() const { return variableType_.getVariableCreationTime(); }
-  double computeVariableAge(const double currentTime) const { return currentTime - variableType_.getVariableCreationTime(); }
+  double computeVariableAge(const double currentTime) const { return currentTime - time_; }
+  double computeKeyframeAge(const double currentTime) const { return currentTime - variableType_.getVariableCreationTime(); }
+  [[nodiscard]] const std::string& getFrame1() const { return frame1_; }
+  [[nodiscard]] const std::string& getFrame2() const { return frame2_; }
   [[nodiscard]] const DynamicVariableTypeEnum& getVariableTypeEnum() const { return variableType_.getVariableTypeEnum(); }
   [[nodiscard]] bool isVariableActive() const { return isVariableActive_; }
   [[nodiscard]] const GTSAM_TRANSFORM_TYPE& getTransformationAfterOptimization() const { return transformationAfterOptimization_; }
@@ -58,6 +61,7 @@ class DynamicFactorGraphStateKey {
   /// Members
   void setTimeStamp(const double time) { time_ = time; }
   void resetNumberStepsOptimized() { numberStepsOptimized_ = 0; }
+  void setVariableCreationTime(const double variableCreationTime) { variableType_.setVariableCreationTime(variableCreationTime); }
 
   /// Status
   void activateVariable() {

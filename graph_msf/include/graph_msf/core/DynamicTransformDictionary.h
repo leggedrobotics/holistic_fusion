@@ -94,7 +94,6 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
           // Currently active, so we can deactivate
           if (keyToRemoveOrDeactivate.isVariableActive()) {
             keyToRemoveOrDeactivate.deactivateVariable();
-            assert(!keyToRemoveOrDeactivate.isVariableActive());
             return true;
           }
           // Already deactivated, so we do not need to do anything
@@ -103,11 +102,10 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
           }
         // Case 3: Landmark --> Remove, as the landmark is not needed anymore
         case DynamicVariableTypeEnum::Landmark:
-          // std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Removing landmark " << frame2 << "." << std::endl;
           return removeTransform(frame1, frame2, keyToRemoveOrDeactivate);
         // Has to be one of the three cases
         default:
-          throw std::runtime_error("Variable Type not found.");
+          throw std::logic_error("Variable Type not found.");
       }
     }
     // Case: Frame pair is not in dictionary
@@ -176,6 +174,9 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
           TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::lv_T_frame1_frame2(frame1, frame2);
       // Update Timestamp and approximate transformation if newer
       if (timeK > factorGraphStateKey.getTime()) {
+        //        std::cout << " Updating timestamp of key " << gtsam::Symbol(factorGraphStateKey.key()) << " from " <<
+        //        std::setprecision(14)
+        //                  << factorGraphStateKey.getTime() << " to " << timeK << "." << std::endl;
         factorGraphStateKey.setTimeStamp(timeK);
         factorGraphStateKey.setApproximateTransformationBeforeOptimization(approximateTransformationBeforeOptimization);
       }

@@ -59,9 +59,10 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
  * @param gmsfUnaryExpressionPtr Pointer to the unary GMSF expression (can be found in core/factors/gmsf_expression).
  *
  * @tparam GMSF_EXPRESSION_TYPE Type of the GMSF expression (e.g. GmsfUnaryExpressionAbsolutePose3).
-*/
+ */
 template <class GMSF_EXPRESSION_TYPE>  // e.g. GmsfUnaryExpressionAbsolutePose3
-void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr) {
+void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                                const bool addToOnlineSmootherFlag) {
   // Measurement
   const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
 
@@ -114,59 +115,76 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Operating on graph data
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    // Main expression factor: add to graph
+    // A. Main expression factor: add to graph ---------------------------------------------------------------------------------------------
     const bool success = addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
-        unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression");
+        unaryExpressionFactorPtr.get(), gmsfUnaryExpressionPtr->getTimestamp(), "GMSF-Expression", addToOnlineSmootherFlag);
 
     // If successful
     if (success) {
-      // A. Write to timestamp map for fixed lag smoother if newer than existing one for all keys that are in expression factor
+      // B. Write to timestamp map for fixed lag smoother if newer than existing ------------
+      // B.a) Check keys in expression factor and write to timestamp map
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
-        // a) Rt Graph
-        // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
-        auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
-        // i) Not existent
-        if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end()) {
-          // TODO: Check if it should not be propagatedStateTime_ instead of gmsfUnaryExpressionPtr->getTimestamp()
-          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
+        // 1) Rt Graph
+        if (addToOnlineSmootherFlag) {
+          // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+          auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
+            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
+          }
         }
-        // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-        else if (gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
-          writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
-        }
-        // b) Batch Graph
+        // 2) Batch Graph (TODO: Check if this is needed, as batch does not do marginalization)
         if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
           auto batchKeyTimestampMapIterator = batchGraphKeysTimestampsMapBufferPtr_->find(key);
-          // i) Not existent
-          if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end()) {
-            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
-          }
-          // ii) If timestamp is newer than existing one, write it --> dangerous, as it can get states out of order
-          else if (gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
           }
         }
       }
-      // B. If one of the states was newly created, then add it to the values
-      if (!gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().empty()) {
+      // B.b) Check keys in online graph values and write to timestamp map (can be that inactive keys have been activated, which are not in
+      // expression factor)
+      // 1) Rt Graph
+      if (addToOnlineSmootherFlag) {
+        for (const auto& key : gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().keys()) {
+          // Find timestamp in existing buffer and update: if i) not existent or ii) newer than existing one -> write
+          auto rtKeyTimestampMapIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
+          // i) Not existent or ii) If timestamp is newer than existing one
+          if (rtKeyTimestampMapIterator == rtGraphKeysTimestampsMapBufferPtr_->end() ||
+              gmsfUnaryExpressionPtr->getTimestamp() > rtKeyTimestampMapIterator->second) {
+            writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), rtGraphKeysTimestampsMapBufferPtr_);
+          }
+        }
+      }
+      // 2) Batch Graph --> not needed, as these states are only added to online graph
+      // C. If one of the states was newly created, then add it to the values buffer -------------------------------------------------------
+      // a) Rt Graph
+      if (!gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues().empty() && addToOnlineSmootherFlag) {
         rtGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOnlineGraphStateValues());
       }
+      // b) Batch Graph
       if (!gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues().empty()) {
         batchGraphValuesBufferPtr_->insert(gmsfUnaryExpressionPtr->getNewOfflineGraphStateValues());
       }
-      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph
-      if (!gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors().empty()) {
+      // C. If new factors are there (due to newly generated factor or for regularization), add it to the graph ----------------------------
+      // a) Rt Graph
+      if (!gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors().empty() && addToOnlineSmootherFlag) {
         // Prior factors --> only needed for online graph, as observable for offline graph
         rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlinePosePriorFactors());
       }
-      if (!gmsfUnaryExpressionPtr->getNewOnlineDynamicPriorFactors().empty()) {
+      if (!gmsfUnaryExpressionPtr->getNewOnlineDynamicPriorFactors().empty() && addToOnlineSmootherFlag) {
         // Dynamic prior factors --> only needed for online graph, as observable for offline graph
         rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineDynamicPriorFactors());
       }
+      // Both
       if (!gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors().empty()) {
         // Between factors --> needed for both online and offline graph to model random walk
-        rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
+        if (addToOnlineSmootherFlag) {
+          rtFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
+        }
         batchFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
       }
     }
@@ -185,8 +203,13 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
 
 // Private -----------------------------------------------------------------------------------------
 template <class CHILDPTR>
-bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr) {
-  rtFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag) {
+  // Add to real-time graph
+  if (addToOnlineSmootherFlag) {
+    rtFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
+  }
+
+  // Add to batch graph
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     batchFactorGraphBufferPtr_->add(*dynamic_cast<CHILDPTR>(noiseModelFactorPtr));
   }
@@ -195,7 +218,7 @@ bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* no
 
 template <class CHILDPTR>
 bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const double measurementTimestamp,
-                                               const std::string& measurementName) {
+                                               const std::string& measurementName, const bool addToOnlineSmootherFlag) {
   // Check Timestamp of Measurement on Delay
   if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
       (graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME)) {
@@ -208,7 +231,7 @@ bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* no
     return false;
   }
   // Add measurements
-  return addFactorToRtAndBatchGraph_<CHILDPTR>(noiseModelFactorPtr);
+  return addFactorToRtAndBatchGraph_<CHILDPTR>(noiseModelFactorPtr, addToOnlineSmootherFlag);
 }
 
 template <class CHILDPTR>

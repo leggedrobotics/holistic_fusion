@@ -39,6 +39,9 @@ struct DynamicVariableType {
   [[nodiscard]] const Eigen::Vector3d& getReferenceFrameKeyframePosition() const { return referenceFrameKeyframePosition_; }
   [[nodiscard]] double getVariableCreationTime() const { return variableCreationTime_; }
 
+  // Setters
+  void setVariableCreationTime(const double variableCreationTime) { variableCreationTime_ = variableCreationTime; }
+
  private:
   // Standard Members
   DynamicVariableTypeEnum variableTypeEnum_;
