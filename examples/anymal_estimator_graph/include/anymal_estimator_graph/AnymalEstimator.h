@@ -51,8 +51,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
  protected:
   // Virtual Functions
   void initializePublishers(ros::NodeHandle& privateNode) override;
-  void initializeMessages(ros::NodeHandle& privateNodePtr) override;
-  void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNode) override;
+  void initializeServices_(ros::NodeHandle& privateNode);
+
+  // Parameter Loading
   void readParams(const ros::NodeHandle& privateNode) override;
 
   // Callbacks
@@ -70,9 +73,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
   void leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
-
-  // Other
-  void initializeServices_(ros::NodeHandle& privateNode);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;

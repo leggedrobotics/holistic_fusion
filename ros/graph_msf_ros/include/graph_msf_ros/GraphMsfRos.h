@@ -48,6 +48,9 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void initializeMessages(ros::NodeHandle& privateNode);
   virtual void initializeServices(ros::NodeHandle& privateNode);
 
+  // Parameter Loading -----------------------------------
+  virtual void readParams(const ros::NodeHandle& privateNode);
+
   // Commodity Functions to be shared -----------------------------------
   // Static
   // Add to Topics
@@ -70,9 +73,6 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
                                    visualization_msgs::Marker& marker);
   void createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
                            const std::string& nameSpace, const int id, visualization_msgs::Marker& marker);
-
-  // Parameter Loading -----------------------------------
-  virtual void readParams(const ros::NodeHandle& privateNode);
 
   // Callbacks
   virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);
