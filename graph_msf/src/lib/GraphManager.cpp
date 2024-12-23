@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <chrono>
 #include <filesystem>
 #include <iomanip>
 #include <string>
@@ -423,7 +424,13 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
                                                                                    const char* callingFunctionName,
                                                                                    std::optional<const gtsam::NavState> optionalNavState) {
   // Pose Covariance in Tangent Space
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
   gtsam::Matrix66 resultPoseCovarianceBodyFrame = graphPtr->calculateMarginalCovarianceMatrixAtKey(graphKey);
+  std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  if (!optionalNavState.has_value() && duration > 400) {
+    std::cout << RED_START << "Time to calculate marginal covariance: " << duration << " microseconds, which is too much." << std::endl;
+  }
   // Transform covariance from I_S_I in body frame, to W_S_W in world frame
   // Get NavState
   gtsam::NavState navState;
@@ -654,8 +661,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }    // end: if active statement
-    }      // for loop over all transforms
+      }  // end: if active statement
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
@@ -808,14 +815,6 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const char stateCategory = stateSymbol.chr();
     const double timeStamp = keyTimestampMap.at(graphKey);
 
-    // Compute Covariance of Pose
-    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
-    if (saveCovarianceFlag) {
-      gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
-      // Convert to ROS Format
-      poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
-    }
-
     // Additional strings
     std::string stateCategoryString = "";
     std::string frameInformation = "";
@@ -858,6 +857,14 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     fileLogger_.createPose3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString, saveCovarianceFlag);
     // TUM file for Pose3
     fileLogger_.createPose3TumFileStream(fileStreams, savePath, transformIdentifier + "_tum", timeString);
+
+    // Compute Covariance of Pose
+    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
+    if (saveCovarianceFlag) {
+      gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
+      // Convert to ROS Format
+      poseCovarianceInWorldRos = convertCovarianceGtsamConventionToRosConvention(poseCovarianceInWorldGtsam);
+    }
 
     // If keyframe position is not zero, move the frame location to capture the random walk
     if (keyframePosition.norm() > 1e-6) {

@@ -11,10 +11,11 @@
     <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name" default="/gt_box/cpt7/offline_from_novatel_logs/imu"/> <!--  /gt_box/ap20/imu  /gt_box/cpt7/offline_from_novatel_logs/imu /gt_box/cpt7/imu/data_raw"/>-->
+    <arg name="imu_topic_name"
+         default="/gt_box/cpt7/offline_from_novatel_logs/imu"/> <!--  /gt_box/ap20/imu  /gt_box/cpt7/offline_from_novatel_logs/imu /gt_box/cpt7/imu/data_raw"/>-->
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
-    <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
-    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>
+    <!--    <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>-->
+    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/tc/odometry"/>
 
     <!-- Graph -->
     <include file="$(find atn_position3_fuser)/launch/position3_fuser.launch" if="$(arg run_estimator)"
@@ -29,8 +30,10 @@
     </group>
 
     <!-- Elevation Mapping -->
-    <arg name="default_elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/default.yaml"/>
-    <arg name="elevation_mapping_parameter_file" default="$(find atn_position3_fuser)/config/elevation_mapping/online_vlp16.yaml"/>
+    <arg name="default_elevation_mapping_parameter_file"
+         default="$(find atn_position3_fuser)/config/elevation_mapping/default.yaml"/>
+    <arg name="elevation_mapping_parameter_file"
+         default="$(find atn_position3_fuser)/config/elevation_mapping/online_vlp16.yaml"/>
 
     <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log"
           if="$(arg run_elevation_mapping)">

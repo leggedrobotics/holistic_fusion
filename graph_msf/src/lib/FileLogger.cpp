@@ -26,7 +26,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << stateFileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 6D pose states to CSV-file: " << COLOR_END << stateFileName << std::endl;
 
     // Open for writing and appending
     fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
@@ -35,7 +35,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
 
     if (saveCovarianceFlag) {
       const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
-      REGULAR_COUT << GREEN_START << " Saving covariances to file: " << COLOR_END << covarianceFileName << std::endl;
+      REGULAR_COUT << GREEN_START << " Saving covariances to CSV-file: " << COLOR_END << covarianceFileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
       // Write header
@@ -55,7 +55,7 @@ void FileLogger::createLatLonAltCsvFileStream(std::map<std::string, std::ofstrea
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving lat-lon-alt states to CSV-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -69,7 +69,7 @@ void FileLogger::createPoint3CsvFileStream(std::map<std::string, std::ofstream>&
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 3D states to CSV-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -83,7 +83,7 @@ void FileLogger::createImuBiasCsvFileStream(std::map<std::string, std::ofstream>
   if (fileStreams.find(stateCategoryIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + stateCategoryIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving IMU bias states to CSV-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[stateCategoryIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -97,7 +97,7 @@ void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& 
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".tum";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 6D pose states to TUM-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Precision

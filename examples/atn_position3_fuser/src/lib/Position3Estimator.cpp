@@ -295,9 +295,17 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
   }
 
   // Visualizations
-  addToPathMsg(measPosition_worldPrismPositionPathPtr_, fixedFrame, leicaPositionPtr->header.stamp, positionMeas,
-               graphConfigPtr_->imuBufferLength_ * 4);
-  pubMeasWorldPrismPositionPath_.publish(measPosition_worldPrismPositionPathPtr_);
+  // Fixed Frame
+  std::string msgFixedFrame = fixedFrame;
+  if (msgFixedFrame != staticTransformsPtr_->getWorldFrame()) {
+    msgFixedFrame += referenceFrameAlignedNameId;
+  }
+  // Add to Path
+  if (!initializeUsingGnssFlag_ || alignedPrismAndGnssFlag_) {
+    addToPathMsg(measPosition_worldPrismPositionPathPtr_, msgFixedFrame, leicaPositionPtr->header.stamp, positionMeas,
+                 graphConfigPtr_->imuBufferLength_ * 4);
+    pubMeasWorldPrismPositionPath_.publish(measPosition_worldPrismPositionPathPtr_);
+  }
 }
 
 //---------------------------------------------------------------

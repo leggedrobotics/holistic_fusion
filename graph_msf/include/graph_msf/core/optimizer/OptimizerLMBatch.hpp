@@ -250,7 +250,7 @@ class OptimizerLMBatch : public OptimizerLM {
       }
     }
 
-    // Assign each key to the sub-graph with the closest center time
+    // Assign each key to the sub-graph with the closest center time to know in which sub-graph to compute marginals
     for (const auto& key : keysSorted) {
       double keyTime = batchSmootherKeyTimestampMap_[key];
       // Find the closest center time
@@ -293,23 +293,32 @@ class OptimizerLMBatch : public OptimizerLM {
       divideGraphIntoSubGraphs();
     }
 
-    // Check whether key exists in optimized result
-    if (!valuesLastOptimizedResult_.exists(valueKey)) {
-      std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in optimized result." << std::endl;
-      throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in optimized result.");
-    }
-    // Check whether key exists in nonlinar factor graph
-    if (!graphLastOptimizedResult_.keys().exists(valueKey)) {
-      std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in nonlinear factor graph." << std::endl;
-      throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in nonlinear factor graph.");
+    // Super slow check
+    if constexpr (false) {
+      // Check whether key exists in optimized result
+      if (!valuesLastOptimizedResult_.exists(valueKey)) {
+        std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in optimized result." << std::endl;
+        throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in optimized result.");
+      }
+      // Check whether key exists in nonlinar factor graph
+      if (!graphLastOptimizedResult_.keys().exists(valueKey)) {
+        std::cout << "Key " << gtsam::Symbol(valueKey) << " does not exist in nonlinear factor graph." << std::endl;
+        throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: Key does not exist in nonlinear factor graph.");
+      }
     }
 
     // Only use window around key for marginal covariance ------------------------------------------------
     if (graphConfigPtr_->useWindowForMarginalsComputationFlag_) {
       // Get sub-graph index
       const int& subGraphsIndex_ = keyToSubGraphIndexMap_[valueKey];  // Alias
-      // Return
-      return marginalsForSubGraphs_[subGraphsIndex_].marginalCovariance(valueKey);
+      if (subGraphsIndex_ != currentOptimizedSubgraphIndex_) {
+        std::cout << GREEN_START << "Switching to sub-graph " << subGraphsIndex_ << " for marginal covariance computation." << COLOR_END
+                  << std::endl;
+        currentOptimizedSubgraphIndex_ = subGraphsIndex_;
+      }
+      // Compute marginal covariance and measure time
+      gtsam::Matrix marginalCovariance = marginalsForSubGraphs_[subGraphsIndex_].marginalCovariance(valueKey);
+      return marginalCovariance;
     }
     // Normal case: Compute marginals for whole graph
     else {
@@ -337,12 +346,15 @@ class OptimizerLMBatch : public OptimizerLM {
   // Sub-graphs for marginal covariance computation
   bool dividedIntoSubGraphsFlag_ = false;
   std::vector<gtsam::NonlinearFactorGraph> subGraphs_;
-  std::map<gtsam::Key, int> keyToSubGraphIndexMap_;
+  std::unordered_map<gtsam::Key, int> keyToSubGraphIndexMap_;
   std::vector<gtsam::Marginals> marginalsForSubGraphs_;
   // Container for ingredients of last optimization, e.g. for marginal covariance
   gtsam::NonlinearFactorGraph graphLastOptimizedResult_;
   bool marginalsComputedForLastOptimizedResultFlag_ = false;
   gtsam::Marginals marginalsForLastOptimizedResult_;
+
+  // Indicator of current sub-graph
+  int currentOptimizedSubgraphIndex_ = -1;
 };
 
 }  // namespace graph_msf
