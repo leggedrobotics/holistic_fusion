@@ -19,18 +19,29 @@ class Gnss {
   Gnss();
   virtual ~Gnss() = default;
 
+  // Setters
   void setReference(const double& referenceLatitude, const double& referenceLongitude, const double& referenceAltitude,
                     const double& referenceHeading);
-  Eigen::Vector3d gpsToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
-  Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position);
-  Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
   void setMercatorReferenceFrame(const Eigen::Vector3d newReferencePoint);
 
-  // Getters.
-  double getReferenceLongitude() { return referenceLongitude_; }
-  double getReferenceLatitude() { return referenceLatitude_; }
-  double getReferenceAltitude() { return referenceAltitude_; }
-  double getReferenceHeading() { return referenceHeading_; }
+  // Conversion methods
+  // Default
+  Eigen::Vector3d gnssToCartesian(const double& latitudeInDegrees, const double& longitudeInDegrees, const double& altitude);
+  Eigen::Vector3d cartesianToGps(const Eigen::Matrix<double, 3, 1> position) const;
+  Eigen::Vector3d besselEllipsoidToMercator(const double& latitudeInRad, const double& longitudeInRad, const double& altitude);
+  // LV03
+  Eigen::Vector3d gnssToLv03Raw(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
+  Eigen::Vector3d gnssToLv03(const double latitude_in_degrees, const double longitude_in_degrees, const double altitude);
+  double wGStoCHx(double lat, double lng);
+  double wGStoCHy(double lat, double lng);
+  double decToSexAngle(double dec);
+  double sexAngleToSeconds(double dms);
+
+  // Getters
+  double getReferenceLongitude() const { return referenceLongitude_; }
+  double getReferenceLatitude() const { return referenceLatitude_; }
+  double getReferenceAltitude() const { return referenceAltitude_; }
+  double getReferenceHeading() const { return referenceHeading_; }
 
  protected:
   void calculateConversionParameters();
@@ -46,6 +57,9 @@ class Gnss {
 
   /// Reference heading for the GPS measurements [rad]
   double referenceHeading_ = 0.0;
+
+  // LV03 Reference
+  Eigen::Vector3d referencePointLv03_ = Eigen::Vector3d::Zero();
 
   // Conversion parameters
   double earthRadiusN_ = 0.0;

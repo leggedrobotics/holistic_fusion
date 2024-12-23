@@ -93,8 +93,8 @@ bool TrajectoryAlignment::associateTrajectories(Trajectory& trajectoryA, Traject
 }
 
 bool TrajectoryAlignment::trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform) {
-  // fill matrices to use Eigen Umeyama function
-  const int numberOfMeasurements = trajectoryA.poses().size();
+  // Fill matrices to use Eigen Umeyama function
+  const int numberOfMeasurements = std::min(trajectoryA.poses().size(), trajectoryB.poses().size());
   if (numberOfMeasurements < 2) return false;
 
   Eigen::MatrixXd posesA;
@@ -198,7 +198,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   // Associate Trajectories
   // Difference of trajectory size should not be larger than 10%
   bool sizeDeviatesTooMuch = (std::abs(static_cast<int>(copySe3Trajectory.poses().size() - copyR3Trajectory.poses().size())) >
-                          0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
+                              0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
   // If the trajectories deviate too much, associate them
   if (sizeDeviatesTooMuch) {
     associateTrajectories(copySe3Trajectory, copyR3Trajectory, newSe3Trajectory, newR3Trajectory);

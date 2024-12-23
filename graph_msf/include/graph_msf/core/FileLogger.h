@@ -36,6 +36,9 @@ class FileLogger {
   static void createPose3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                        const std::string& transformIdentifier, const std::string& timeString,
                                        const bool saveCovarianceFlag);
+  // Latitude, Longitude, Altitude
+  static void createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                           const std::string& transformIdentifier, const std::string& timeString);
   // Point3
   static void createPoint3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                         const std::string& transformIdentifier, const std::string& timeString);
@@ -53,6 +56,9 @@ class FileLogger {
   static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
                                   const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
                                   boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+  // Latitude, Longitude, Altitude
+  static void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
+                                      const std::string& transformIdentifier, const double timeStamp);
   // Point3
   static void writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
                                    const std::string& transformIdentifier, const double timeStamp);

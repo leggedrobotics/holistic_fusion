@@ -51,9 +51,16 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
  protected:
   // Virtual Functions
   void initializePublishers(ros::NodeHandle& privateNode) override;
-  void initializeMessages(ros::NodeHandle& privateNodePtr) override;
-  void initializeSubscribers(ros::NodeHandle& privateNodePtr) override;
+  void initializeSubscribers(ros::NodeHandle& privateNode) override;
+  void initializeMessages(ros::NodeHandle& privateNode) override;
+  void initializeServices_(ros::NodeHandle& privateNode);
+
+  // Parameter Loading
   void readParams(const ros::NodeHandle& privateNode) override;
+
+  // Callbacks
+  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
 
  private:
   // Callbacks
@@ -66,9 +73,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
   void leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
-
-  // Other
-  void initializeServices_(ros::NodeHandle& privateNode);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
@@ -122,6 +126,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // GNSS
   Eigen::Vector3d accumulatedGnssCoordinates_{0.0, 0.0, 0.0};
   int gnssCallbackCounter_{-1};
+  std::vector<Eigen::Vector3d> optionalGnssEnuCoordinatesTrajectory_;
+  std::vector<double> optionalGnssEnuCoordinatesTimeStamps_;
+  static constexpr bool logOptionalGnssEnuCoordinatesFlag_ = false;
   // LIO
   // Unary
   int lidarUnaryCallbackCounter_{-1};

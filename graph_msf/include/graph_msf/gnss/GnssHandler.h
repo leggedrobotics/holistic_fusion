@@ -22,13 +22,16 @@ class GnssHandler {
   GnssHandler();
 
   // Methods
+  // Init
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
   void initHandler(const Eigen::Vector3d& accumulatedCoordinates);
 
+  // Conversion methods
   void convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordinate, const Eigen::Vector3d& rightGnssCoordinate,
                                 Eigen::Vector3d& leftPosition, Eigen::Vector3d& rightPosition);
   void convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
   double computeYaw(const Eigen::Vector3d& gnssPos1, const Eigen::Vector3d& gnssPos2);
+  void convertNavSatToPositionLV03(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position);
 
   // Setters
   // For state machine and bookkeeping
@@ -39,16 +42,21 @@ class GnssHandler {
     useYawInitialGuessFromAlignment_ = useYawInitialGuessFromAlignment;
   }
   // Actual Reference Coordinate Parameters
-  void setGnssReferenceLatitude(const double gnssReferenceLatitude) { gnssReferenceLatitude_ = gnssReferenceLatitude; }
-  void setGnssReferenceLongitude(const double gnssReferenceLongitude) { gnssReferenceLongitude_ = gnssReferenceLongitude; }
-  void setGnssReferenceAltitude(const double gnssReferenceAltitude) { gnssReferenceAltitude_ = gnssReferenceAltitude; }
-  void setGnssReferenceHeading(const double gnssReferenceHeading) { gnssReferenceHeading_ = gnssReferenceHeading; }
+  void setGnssReferenceLatitude(const double gnssReferenceLatitude) { presetGnssReferenceLatitude_ = gnssReferenceLatitude; }
+  void setGnssReferenceLongitude(const double gnssReferenceLongitude) { presetGnssReferenceLongitude_ = gnssReferenceLongitude; }
+  void setGnssReferenceAltitude(const double gnssReferenceAltitude) { presetGnssReferenceAltitude_ = gnssReferenceAltitude; }
+  void setGnssReferenceHeading(const double gnssReferenceHeading) { presetGnssReferenceHeading_ = gnssReferenceHeading; }
 
   // Getters
   bool getUseGnssReferenceFlag() const { return useGnssReferenceFlag_; }
   double getGlobalYawDegFromFile() const { return globalYawDegFromFile_; }
   bool getUseYawInitialGuessFromFile() const { return useYawInitialGuessFromFile_; }
   bool getUseYawInitialGuessFromAlignment() const { return useYawInitialGuessFromAlignment_; }
+  // Reference Coordinate Parameters
+  double getGnssReferenceLatitude() const { return gnssSensor_.getReferenceLatitude(); }
+  double getGnssReferenceLongitude() const { return gnssSensor_.getReferenceLongitude(); }
+  double getGnssReferenceAltitude() const { return gnssSensor_.getReferenceAltitude(); }
+  double getGnssReferenceHeading() const { return gnssSensor_.getReferenceHeading(); }
 
  private:
   // Member methods
@@ -58,7 +66,6 @@ class GnssHandler {
 
   // Member variables
   Gnss gnssSensor_;
-  Eigen::Vector3d W_t_W_GnssL0_;
   double globalAttitudeYaw_;
 
   // State Machine and bookkeeping.
@@ -68,10 +75,10 @@ class GnssHandler {
   bool useYawInitialGuessFromAlignment_{false};
 
   // Reference Coordinate Parameters
-  double gnssReferenceLatitude_;
-  double gnssReferenceLongitude_;
-  double gnssReferenceAltitude_;
-  double gnssReferenceHeading_;
+  double presetGnssReferenceLatitude_;
+  double presetGnssReferenceLongitude_;
+  double presetGnssReferenceAltitude_;
+  double presetGnssReferenceHeading_;
 };
 
 }  // namespace graph_msf

@@ -26,7 +26,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     const std::string stateFileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << stateFileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 6D pose states to CSV-file: " << COLOR_END << stateFileName << std::endl;
 
     // Open for writing and appending
     fileStreams[transformIdentifier].open(stateFileName, std::ofstream::out | std::ofstream::app);
@@ -35,7 +35,7 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
 
     if (saveCovarianceFlag) {
       const std::string covarianceFileName = savePath + timeString + "/" + transformIdentifier + "_covariance.csv";
-      REGULAR_COUT << GREEN_START << " Saving covariances to file: " << COLOR_END << covarianceFileName << std::endl;
+      REGULAR_COUT << GREEN_START << " Saving covariances to CSV-file: " << COLOR_END << covarianceFileName << std::endl;
       // Open for writing and appending
       fileStreams[transformIdentifier + "_covariance"].open(covarianceFileName, std::ofstream::out | std::ofstream::app);
       // Write header
@@ -49,13 +49,27 @@ void FileLogger::createPose3CsvFileStream(std::map<std::string, std::ofstream>& 
   }
 }
 
+// Latitude, Longitude, Altitude
+void FileLogger::createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                              const std::string& transformIdentifier, const std::string& timeString) {
+  if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
+    // If not, create a new file stream for this category
+    std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
+    REGULAR_COUT << GREEN_START << " Saving lat-lon-alt states to CSV-file: " << COLOR_END << fileName << std::endl;
+    // Open for writing and appending
+    fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
+    // Write header
+    fileStreams[transformIdentifier] << "time, latitude, longitude, altitude\n";
+  }
+}
+
 // Point3
 void FileLogger::createPoint3CsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                            const std::string& transformIdentifier, const std::string& timeString) {
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 3D states to CSV-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -69,7 +83,7 @@ void FileLogger::createImuBiasCsvFileStream(std::map<std::string, std::ofstream>
   if (fileStreams.find(stateCategoryIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + stateCategoryIdentifier + ".csv";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving IMU bias states to CSV-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[stateCategoryIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Write header
@@ -83,7 +97,7 @@ void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& 
   if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
     // If not, create a new file stream for this category
     std::string fileName = savePath + timeString + "/" + transformIdentifier + ".tum";
-    REGULAR_COUT << GREEN_START << " Saving states to file: " << COLOR_END << fileName << std::endl;
+    REGULAR_COUT << GREEN_START << " Saving 6D pose states to TUM-file: " << COLOR_END << fileName << std::endl;
     // Open for writing and appending
     fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
     // Precision
@@ -125,6 +139,13 @@ void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileS
           << poseCovarianceInWorldRos(5, 5) << "\n";
     }
   }
+}
+
+// Latitude, Longitude, Altitude
+void FileLogger::writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
+                                         const std::string& transformIdentifier, const double timeStamp) {
+  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << point.x() << ", " << point.y() << ", " << point.z()
+                                   << "\n";
 }
 
 // Point3

@@ -142,6 +142,7 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
 
   // Frames
   std::string totalStationReferenceFrame_ = "";
+  std::string gnssReferenceFrame_ = "";
 
   // Flags
   static constexpr bool constexprUsePrismPositionUnaryFlag_ = true;
