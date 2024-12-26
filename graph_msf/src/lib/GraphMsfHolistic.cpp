@@ -87,7 +87,8 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
     bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
                                                            fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
     if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " " << fixedFrame_t_fixedFrame_sensorFrame.measurementName()
+                   << " covariance violated. Not adding factor." << COLOR_END << std::endl;
       return;
     }
 

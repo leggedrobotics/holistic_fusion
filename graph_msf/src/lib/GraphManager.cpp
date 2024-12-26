@@ -846,6 +846,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
+    // Replace / with underscore
+    std::replace(transformIdentifier.begin(), transformIdentifier.end(), '/', '_');
 
     // Check for the keyframe position
     Eigen::Vector3d keyframePosition = Eigen::Vector3d::Zero();
