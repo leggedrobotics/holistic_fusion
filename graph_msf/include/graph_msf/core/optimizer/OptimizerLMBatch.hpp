@@ -152,6 +152,77 @@ class OptimizerLMBatch : public OptimizerLM {
     return result;
   }
 
+  static int filterFactorsConnectedToKey(gtsam::NonlinearFactorGraph& graph, const gtsam::Key& keyToFilter) {
+    gtsam::NonlinearFactorGraph filteredGraph;
+    int numFilteredFactors = 0;
+    for (const auto& factor : graph) {
+      bool foundKeyInFactor = false;
+      for (const gtsam::Key& key : factor->keys()) {
+        if (key == keyToFilter) {
+          foundKeyInFactor = true;
+          break;
+        }
+      }
+      if (!foundKeyInFactor) {
+        filteredGraph.add(factor);
+      } else {
+        numFilteredFactors++;
+      }
+    }
+    graph = filteredGraph;
+    return numFilteredFactors;
+  }
+
+  static gtsam::Marginals computeMarginals(gtsam::NonlinearFactorGraph& graph, gtsam::Values& values) {
+    //    // Create linearized factor graph
+    //    gtsam::GaussianFactorGraph linearizedGraph = *graph.linearize(values);
+
+    // Try to create marginals, filter out ill-conditioned states if necessary
+    gtsam::Marginals marginals;
+    try {
+      marginals = gtsam::Marginals(graph, values);
+    } catch (const gtsam::IndeterminantLinearSystemException& e) {
+      std::cout << "GraphMSF: OptimizerLMBatch: computing marginals failed with error: " << e.what() << std::endl;
+      // Filter out ill-conditioned states
+      std::cout << "GraphMSF: OptimizerLMBatch: filtering out ill-conditioned state: " << gtsam::Symbol(e.nearbyVariable()) << std::endl;
+      // Values
+      bool foundInValues = false;
+      for (const gtsam::Key& key : values.keys()) {
+        if (key == e.nearbyVariable()) {
+          values.erase(key);
+          foundInValues = true;
+          break;
+        }
+      }
+      // Factors
+      int numFilteredFactors = filterFactorsConnectedToKey(graph, e.nearbyVariable());
+
+      // Filtered out
+      if (foundInValues) {
+        std::cout << "GraphMSF: OptimizerLMBatch: Filtered out state from values (" << gtsam::Symbol(e.nearbyVariable()) << ")."
+                  << std::endl;
+        std::cout << "GraphMSF: OptimizerLMBatch: Filtered out " << numFilteredFactors << " factors. Retrying to compute marginals."
+                  << std::endl;
+        // Retry
+        marginals = OptimizerLMBatch::computeMarginals(graph, values);
+      } else {
+        throw std::runtime_error("GraphMSF: OptimizerLMBatch: computing marginals failed and could not filter out ill-conditioned state.");
+      }
+    } catch (const gtsam::ValuesKeyDoesNotExist& e) {
+      std::cout << "GraphMSF: OptimizerLMBatch: computing marginals failed with error: " << e.what() << std::endl;
+
+      // Filtering out the factors that contain the not existing key
+      int numFilteredFactors = filterFactorsConnectedToKey(graph, e.key());
+      std::cout << "GraphMSF: OptimizerLMBatch: Filtered out " << numFilteredFactors << " factors. Retrying to compute marginals."
+                << std::endl;
+      // Retry
+      marginals = OptimizerLMBatch::computeMarginals(graph, values);
+    }
+
+    // Return
+    return marginals;
+  }
+
   void divideGraphIntoSubGraphs() {
     // Check
     if (!optimizedAtLeastOnceFlag_) {
@@ -228,20 +299,28 @@ class OptimizerLMBatch : public OptimizerLM {
       bool factorAtLeastInOneSubGraph = false;
       // Check whether the factor contains any key within the window of all sub-graphs
       for (int i = 0; i < numSubGraphs; ++i) {
-        // Check whether factor contains key within window
-        bool factorContainsKeyWithinSubGraphWindow = false;
         // Go through all keys of factor
+        int numReferenceFrameKeysInFactor = 0;
         for (const auto& factorKey : factorPtr->keys()) {
+          // Skip keys of reference frame alignment factors for determining timestamp (as they can span a lot of time) unless it is random
+          // walk factor with two reference frame keys
+          if (gtsam::Symbol(factorKey).chr() == 'r') {
+            numReferenceFrameKeysInFactor++;
+            if (numReferenceFrameKeysInFactor == 1) {
+              continue;  // Skip timestamp of first reference frame key
+            } else if (numReferenceFrameKeysInFactor > 1) {
+              std::cout << "Found random walk factor with (at least) two reference frame keys (including " << gtsam::Symbol(factorKey)
+                        << ")." << std::endl; // Do not skip
+            }
+          }
+
+          // Check whether key is within window
           if (batchSmootherKeyTimestampMap_[factorKey] >= subGraphStartTimes[i] &&
               batchSmootherKeyTimestampMap_[factorKey] <= subGraphEndTimes[i]) {
-            factorContainsKeyWithinSubGraphWindow = true;
+            subGraphs_[i].add(factorPtr);
+            factorAtLeastInOneSubGraph = true;
             break;
           }
-        }
-        // Add factor if it contains key within window
-        if (factorContainsKeyWithinSubGraphWindow) {
-          subGraphs_[i].add(factorPtr);
-          factorAtLeastInOneSubGraph = true;
         }
       }
       // Has to be in at least one sub-graph
@@ -258,7 +337,7 @@ class OptimizerLMBatch : public OptimizerLM {
       int closestSubGraphIndex = -1;
       // Go through all sub-graphs
       for (int i = 0; i < numSubGraphs; ++i) {
-        double timeDifference = std::abs(subGraphCenterTimes[i] - keyTime);
+        const double timeDifference = std::abs(subGraphCenterTimes[i] - keyTime);
         if (timeDifference < minTimeDifference) {
           minTimeDifference = timeDifference;
           closestSubGraphIndex = i;
@@ -270,8 +349,11 @@ class OptimizerLMBatch : public OptimizerLM {
 
     // Optimize each sub-graph and compute marginals
     for (int i = 0; i < numSubGraphs; ++i) {
+      // Print sub-graph information
+      std::cout << "GraphMSF: OptimizerLMBatch: Optimizing subgraph " << i << " with " << subGraphs_[i].size() << " factors and "
+                << subGraphs_[i].keys().size() << " keys." << std::endl;
       // Optimize
-      marginalsForSubGraphs_[i] = gtsam::Marginals(subGraphs_[i], valuesLastOptimizedResult_);
+      marginalsForSubGraphs_[i] = computeMarginals(subGraphs_[i], valuesLastOptimizedResult_);
       // Print
       std::cout << "GraphMSF: OptimizerLMBatch: Subgraph " << i << " optimized and marginals computed." << std::endl;
     }
