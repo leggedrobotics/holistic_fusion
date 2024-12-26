@@ -135,7 +135,9 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       this->newOnlinePosePriorFactors_.emplace_back(oldGtsamKey, T_W_fixedFrameOld, noiseModelPtr);
       // State value
       this->newOnlineStateValues_.insert(oldGtsamKey, T_W_fixedFrameOld);
-      // Time stamp
+      // Print
+      REGULAR_COUT << GREEN_START << " Added prior to old keyframe " << gtsam::Symbol(oldGtsamKey)
+                   << " to the online graph, as it was not active anymore." << COLOR_END << std::endl;
     }
 
     // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
