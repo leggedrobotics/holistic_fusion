@@ -39,8 +39,10 @@ void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const st
   coreImuBufferPtr_ = std::make_shared<graph_msf::ImuBuffer>(graphConfigPtr_);
 
   // Graph Manager
+  std::cout << "GraphMsf: Creating GraphManager." << std::endl;
   graphMgrPtr_ =
       std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getWorldFrame());
+  std::cout << "GraphMsf: GraphManager created." << std::endl;
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
