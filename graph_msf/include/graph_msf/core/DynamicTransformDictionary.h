@@ -51,8 +51,6 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
       if (keyFramePairMapIterator != transformGtsamKeyToFramePairMap_.end()) {
         // transformGtsamKeyToFramePairMap_.erase(keyFramePairMapIterator);
         // TODO: Remove if offline optimization is disabled, keep otherwise
-        REGULAR_COUT << " Keeping frame pair for key " << gtsam::Symbol(returnRemovedKey.key())
-                     << ", as it might be needed for offline logging." << std::endl;
       }
       // Not in map --> throw error
       else {
@@ -219,11 +217,10 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     ++numStoredTransformsPerSymbol_[symbolIndex];
 
     // Add to key-to-frame pair map
+    // TODO: Check if necessary for non reference frames
     transformGtsamKeyToFramePairMap_[gtsamKey] = std::make_pair(frame1, frame2);
     // Add to key-to-keyframe position map
     transformGtsamKeyToKeyframePositionMap_[gtsamKey] = variableType.getReferenceFrameKeyframePosition();
-    REGULAR_COUT << " Key " << gtsam::Symbol(gtsamKey) << ": Added keyframe position " << variableType.getReferenceFrameKeyframePosition()
-                 << " to map." << std::endl;
 
     // Return
     return factorGraphStateKey;

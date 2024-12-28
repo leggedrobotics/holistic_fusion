@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <!-- Parameters -->
+    <!-- Config -->
+    <arg name="using_gnss_unary" default="true"/>
+
+    <!-- Input Topics -->
     <arg name="imu_topic_name"             default="/sensors/imu" />
     <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
-    <!-- Compslam Config -->
+    <!-- O3D SLAM Config -->
     <arg name="launch_o3d_slam" default="true"/>
     <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
-        <!-- Config  -->
+        <!-- Config -->
+        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <!-- Input Topics -->
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>

@@ -7,6 +7,9 @@
     <arg name="run_estimator" default="true"/>
     <arg name="rviz_file_path" default="$(find anymal_estimator_graph)/rviz/gnss_lidar.rviz"/>
 
+    <!-- Config -->
+    <arg name="using_gnss_unary" default="true"/>
+
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
     <arg name="lidar_odometry_topic_name"
@@ -17,8 +20,11 @@
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph.launch" if="$(arg run_estimator)">
-        <!-- Input Topics -->
+        <!-- Parameters -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <!-- Config -->
+        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <!-- Input Topics -->
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
