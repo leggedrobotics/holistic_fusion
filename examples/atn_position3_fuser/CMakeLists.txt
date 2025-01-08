@@ -4,9 +4,7 @@ project(atn_position3_fuser)
 ## Compile as C++17, supported in ROS Noetic and newer
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-std=c++17)
-
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+add_compile_options(-Wdeprecated-declarations -O3 -std=c++17)
 
 # For FindGlog.cmake and FindGflags.cmake
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
