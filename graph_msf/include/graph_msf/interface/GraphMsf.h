@@ -39,8 +39,8 @@ class GraphMsf {
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Initialization Interface
-  bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2,
-                                 const std::string& frame1, const std::string& frame2);
+  bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2, const std::string& frame1,
+                                 const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
 
   // Trigger offline smoother optimization

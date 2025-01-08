@@ -661,8 +661,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }  // end: if active statement
-    }  // for loop over all transforms
+      }    // end: if active statement
+    }      // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
