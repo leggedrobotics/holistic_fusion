@@ -310,7 +310,7 @@ class OptimizerLMBatch : public OptimizerLM {
               continue;  // Skip timestamp of first reference frame key
             } else if (numReferenceFrameKeysInFactor > 1) {
               std::cout << "Found random walk factor with (at least) two reference frame keys (including " << gtsam::Symbol(factorKey)
-                        << ")." << std::endl; // Do not skip
+                        << ")." << std::endl;  // Do not skip
             }
           }
 
