@@ -4,7 +4,7 @@
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # Documentation Artifacts
-docs/_build/doctrees
+docs/_build
 docs/_static
 docs/_templates
 
