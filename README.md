@@ -4,7 +4,7 @@
 , [Shehryar Khattak](https://www.linkedin.com/in/shehryar-khattak/)
 , [Marco Hutter](https://rsl.ethz.ch/the-lab/people/person-detail.MTIxOTEx.TGlzdC8yNDQxLC0xNDI1MTk1NzM1.html)
 
-<img src="doc/graph_msf.gif" width="100%" height="60%">
+<img src="docs/img/graph_msf.gif" width="100%" height="60%">
 
 ## Resources
 
@@ -29,7 +29,7 @@ There are two intended **use-cases**:
 2. A more general graph-based multi-sensor fusion. An example for fusing LiDAR odometry and IMU on the dataset of the
    [ETH Zurich Robotic Summer School](https://ethz-robotx.github.io/SuperMegaBot/) will follow shortly.
 
-<img src="doc/titleimg.png" width="50%" height="50%">**Copyright IEEE**
+<img src="docs/img/titleimg.png" width="50%" height="50%">**Copyright IEEE**
 
 **Disclaimer:** The framework is still under development and will be updated, extended, and more generalized in the
 future.
@@ -47,7 +47,7 @@ This repository contains the following modules:
 
 ## Installation
 
-For the installation instructions please refer to the [./doc/installation.md](./doc/installation.md).
+For the installation instructions please refer to the [./docs/1_installation.md](./docs/1_installation.md).
 
 ## Example Usage
 

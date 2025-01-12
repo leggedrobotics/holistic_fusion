@@ -3,6 +3,11 @@
 # Learn more about .gitignore:
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
+# Documentation Artifacts
+docs/_build/doctrees
+docs/_static
+docs/_templates
+
 # Node artifact files
 node_modules/
 dist/
