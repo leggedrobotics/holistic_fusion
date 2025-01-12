@@ -7,6 +7,7 @@
 docs_src/_build
 docs_src/_static
 docs_src/_templates
+*.doctree
 
 # Node artifact files
 node_modules/
