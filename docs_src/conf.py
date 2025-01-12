@@ -18,6 +18,7 @@ release = 'January 2025'
 extensions = [
     'myst_parser', # Markdown support
     'sphinx_rtd_theme', # Read the Docs theme
+    'sphinx.ext.githubpages', # GitHub Pages, create .nojekyll file
 ]
 
 # Specify the file extensions to look for
