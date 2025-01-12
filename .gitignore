@@ -27,7 +27,7 @@ dist/
 *.geojson
 
 # Plots
-*.png
+logging/
 
 # Package files
 *.jar
