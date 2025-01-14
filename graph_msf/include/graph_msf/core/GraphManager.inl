@@ -191,8 +191,8 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   }
 
   // Print summary --------------------------------------
-  if (graphConfigPtr_->verboseLevel_ > 0) {
-    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", expression factor of type "
+  if (graphConfigPtr_->verboseLevel_ >= 2) {
+    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << ": expression factor of type "
                  << typeid(GMSF_EXPRESSION_TYPE).name() << " added to keys ";
     for (const auto& key : unaryExpressionFactorPtr->keys()) {
       std::cout << gtsam::Symbol(key) << ", ";

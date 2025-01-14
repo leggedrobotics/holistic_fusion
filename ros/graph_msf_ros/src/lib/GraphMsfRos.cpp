@@ -79,6 +79,8 @@ void GraphMsfRos::initializePublishers(ros::NodeHandle& privateNode) {
   pubGyroBias_ = privateNode.advertise<geometry_msgs::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
   // Added Imu Measurements
   pubAddedImuMeas_ = privateNode.advertise<sensor_msgs::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
+  // Landmarks
+  pubLandmarks_ = privateNode.advertise<visualization_msgs::MarkerArray>("/graph_msf/landmarks", ROS_QUEUE_SIZE);
 }
 
 void GraphMsfRos::initializeSubscribers(ros::NodeHandle& privateNode) {
@@ -106,6 +108,8 @@ void GraphMsfRos::initializeMessages(ros::NodeHandle& privateNode) {
   // Imu Bias
   accelBiasMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
   gyroBiasMsgPtr_ = boost::make_shared<geometry_msgs::Vector3Stamped>();
+  // Landmark Markers
+  landmarkMarkersMsgPtr_ = boost::make_shared<visualization_msgs::MarkerArray>();
 }
 
 void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
@@ -197,6 +201,37 @@ void GraphMsfRos::addToPoseWithCovarianceStampedMsg(const geometry_msgs::PoseWit
   }
 }
 
+void GraphMsfRos::addToLandmarkMarkerArrayMsg(const visualization_msgs::MarkerArrayPtr& markerArrayPtr,
+                                              const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Isometry3d& T_R_L,
+                                              const std::string& transformName) {
+  // Save last 10 markers to know whether to add or not
+  static std::deque<std::string> lastMarkerNames;
+  static int landmarkIndex = 0;
+  // Check whether marker already exists --> return if already added
+  if (std::find(lastMarkerNames.begin(), lastMarkerNames.end(), transformName) != lastMarkerNames.end()) {
+    return;
+  }
+  // Else add
+  else {
+    lastMarkerNames.push_back(transformName);
+    if (lastMarkerNames.size() > NUM_KEEP_MARKER_NAMES) {
+      lastMarkerNames.pop_front();
+    }
+  }
+
+  // Marker
+  visualization_msgs::Marker landmarkMarker;
+  GraphMsfRos::createContactMarker(referenceFrameName, stamp, T_R_L.translation(), "landmarks", landmarkIndex++,
+                                   Eigen::Vector3d(1.0, 0.0, 0.0), landmarkMarker);
+
+  // Add to array
+  markerArrayPtr->markers.push_back(landmarkMarker);
+  // If too many markers, delete the first one
+  if (markerArrayPtr->markers.size() > NUM_MARKERS_IN_ARRAY) {
+    markerArrayPtr->markers.erase(markerArrayPtr->markers.begin());
+  }
+}
+
 void GraphMsfRos::extractCovariancesFromOptimizedState(
     Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
@@ -247,7 +282,8 @@ void GraphMsfRos::createVelocityMarker(const std::string& referenceFrameName, co
 }
 
 void GraphMsfRos::createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
-                                      const std::string& nameSpace, const int id, visualization_msgs::Marker& marker) {
+                                      const std::string& nameSpace, const int id, const Eigen::Vector3d& colorRgb,
+                                      visualization_msgs::Marker& marker) {
   // Sphere
   marker.header.frame_id = referenceFrameName;
   marker.header.stamp = stamp;
@@ -260,9 +296,9 @@ void GraphMsfRos::createContactMarker(const std::string& referenceFrameName, con
   marker.scale.y = 0.1;
   marker.scale.z = 0.1;
   marker.color.a = 1.0;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 0.0;
+  marker.color.r = colorRgb(0);
+  marker.color.g = colorRgb(1);
+  marker.color.b = colorRgb(2);
   // Position
   marker.pose.position.x = position(0);
   marker.pose.position.y = position(1);
@@ -415,8 +451,9 @@ void GraphMsfRos::publishOptimizedStateAndBias(
       pubGyroBias_.publish(gyroBiasMsgPtr_);
     }
 
-    // TFs in Optimized State
-    for (const auto& framePairTransformMapIterator : optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransforms().getTransformsMap()) {
+    // Reference Frame TFs in Optimized State
+    for (const auto& framePairTransformMapIterator :
+         optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransforms().getTransformsMap()) {
       // Case 1: If includes world frame --> everything child of world --------------------------------
       if (framePairTransformMapIterator.first.first == staticTransformsPtr_->getWorldFrame() ||
           framePairTransformMapIterator.first.second == staticTransformsPtr_->getWorldFrame()) {
@@ -439,14 +476,17 @@ void GraphMsfRos::publishOptimizedStateAndBias(
           std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + referenceFrameAlignedNameId;
           geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
               boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
-          addToPoseWithCovarianceStampedMsg(poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
-                                            ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_W_M,
-                                            optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-                                                framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
+          addToPoseWithCovarianceStampedMsg(
+              poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
+              ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_W_M,
+              optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(
+                  framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
           // Check whether publisher already exists
           if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
             pubPoseStampedByTopicMap_[transformTopic] = privateNode.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
-            REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+            if (graphConfigPtr_->verboseLevel_ >= VerbosityLevels::kFunctioningAndStateMachine1) {
+              REGULAR_COUT << GREEN_START << " Initialized publisher for " << transformTopic << COLOR_END << std::endl;
+            }
           }
           if (pubPoseStampedByTopicMap_[transformTopic].getNumSubscribers() > 0) {
             pubPoseStampedByTopicMap_[transformTopic].publish(poseWithCovarianceStampedMsgPtr);
@@ -454,10 +494,10 @@ void GraphMsfRos::publishOptimizedStateAndBias(
         }
 
         // Print for debug
-        if (graphConfigPtr_->verboseLevel_ >= 2) {
+        if (graphConfigPtr_->verboseLevel_ >= VerbosityLevels::kOperationInformation3) {
           std::cout << "Transformation from " << mapFrameName << " to " << worldFrameName << std::endl;
           std::cout << "Uncertainty: " << std::endl
-                    << optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
+                    << optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(
                            framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second)
                     << std::endl;
         }
@@ -465,9 +505,8 @@ void GraphMsfRos::publishOptimizedStateAndBias(
         // C. Publish TF Tree --> everything children of world
         publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId,
                                optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_W_M);
-
       }
-      // Case 2: Other transformation (e.g. calibration) --> does not include world frame ----------------
+      // Case 2: Other transformation (e.g. calibration) --> does usually not include world frame ----------------
       else {
         const std::string& sensorFrameName = framePairTransformMapIterator.first.first;
         const std::string& sensorFrameNameCorrected = framePairTransformMapIterator.first.second;
@@ -477,10 +516,11 @@ void GraphMsfRos::publishOptimizedStateAndBias(
         std::string transformTopic = "/graph_msf/transform_" + sensorFrameName + "_to_" + sensorFrameNameCorrected;
         geometry_msgs::PoseWithCovarianceStampedPtr poseWithCovarianceStampedMsgPtr =
             boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
-        addToPoseWithCovarianceStampedMsg(poseWithCovarianceStampedMsgPtr, sensorFrameName,
-                                          ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_sensor_sensorCorrected,
-                                          optimizedStateWithCovarianceAndBiasPtr->getFixedFrameTransformsCovariance().rv_T_frame1_frame2(
-                                              sensorFrameName, sensorFrameNameCorrected));
+        addToPoseWithCovarianceStampedMsg(
+            poseWithCovarianceStampedMsgPtr, sensorFrameName, ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
+            T_sensor_sensorCorrected,
+            optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(sensorFrameName,
+                                                                                                               sensorFrameNameCorrected));
         // Check whether publisher already exists
         if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
           pubPoseStampedByTopicMap_[transformTopic] = privateNode.advertise<geometry_msgs::PoseWithCovarianceStamped>(transformTopic, 1);
@@ -493,6 +533,23 @@ void GraphMsfRos::publishOptimizedStateAndBias(
         // B. Publish TF Tree --> as children of sensor frame
         publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
                                T_sensor_sensorCorrected);
+      }
+    }
+
+    // Landmarks
+    for (const auto& landmarkTransformMapIterator : optimizedStateWithCovarianceAndBiasPtr->getLandmarkTransforms().getTransformsMap()) {
+      // A. Get transform
+      Eigen::Isometry3d T_W_L = landmarkTransformMapIterator.second;
+      std::string worldFrameName = landmarkTransformMapIterator.first.first;
+      std::string landmarkFrameName = landmarkTransformMapIterator.first.second;
+
+      // B. Publish TransformStamped for Landmarks
+      std::string landmarkName = "/graph_msf/landmark_" + staticTransformsPtr_->getWorldFrame() + "_to_" + landmarkFrameName;
+      addToLandmarkMarkerArrayMsg(landmarkMarkersMsgPtr_, staticTransformsPtr_->getWorldFrame(),
+                                  ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()), T_W_L, landmarkName);
+      // Publish if there is a subscriber
+      if (pubLandmarks_.getNumSubscribers() > 0) {
+        pubLandmarks_.publish(landmarkMarkersMsgPtr_);
       }
     }
   }

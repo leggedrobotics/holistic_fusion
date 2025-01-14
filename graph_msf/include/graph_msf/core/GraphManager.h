@@ -166,8 +166,6 @@ class GraphManager {
   std::string imuFrame_;
   std::string worldFrame_;
   DynamicDictionaryContainer gtsamDynamicExpressionKeys_;
-  TransformsDictionary<Eigen::Isometry3d> resultFixedFrameTransformations_;
-  TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultFixedFrameTransformationsCovariance_;
 
   // File Logger
   FileLogger fileLogger_;

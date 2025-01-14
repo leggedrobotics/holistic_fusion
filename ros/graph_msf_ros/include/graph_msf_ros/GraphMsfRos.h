@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <std_srvs/Trigger.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 // Workspace
 #include "graph_msf/interface/GraphMsf.h"
@@ -29,6 +30,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Macros
 #define ROS_QUEUE_SIZE 1
+#define NUM_KEEP_MARKER_NAMES 10   // Simply used to detect duplications (with 4 legs 10 is enough)
+#define NUM_MARKERS_IN_ARRAY 1000  // Actual number of markers in array
 
 namespace graph_msf {
 
@@ -52,6 +55,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void readParams(const ros::NodeHandle& privateNode);
 
   // Commodity Functions to be shared -----------------------------------
+
   // Static
   // Add to Topics
   static void addToPathMsg(const nav_msgs::PathPtr& pathPtr, const std::string& frameName, const ros::Time& stamp, const Eigen::Vector3d& t,
@@ -64,6 +68,9 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   static void addToPoseWithCovarianceStampedMsg(
       const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName, const ros::Time& stamp,
       const Eigen::Isometry3d& T, const Eigen::Matrix<double, 6, 6>& transformCovariance = Eigen::Matrix<double, 6, 6>::Zero());
+  static void addToLandmarkMarkerArrayMsg(const visualization_msgs::MarkerArrayPtr& markerArrayPtr, const std::string& referenceFrameName,
+                                  const ros::Time& stamp, const Eigen::Isometry3d& T_R_L, const std::string& transformName);
+
   // Extract from State
   static void extractCovariancesFromOptimizedState(
       Eigen::Matrix<double, 6, 6>& poseCovarianceRos, Eigen::Matrix<double, 6, 6>& twistCovarianceRos,
@@ -71,8 +78,8 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Markers
   static void createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
                                    visualization_msgs::Marker& marker);
-  void createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
-                           const std::string& nameSpace, const int id, visualization_msgs::Marker& marker);
+  static void createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
+                           const std::string& nameSpace, const int id, const Eigen::Vector3d& colorRgb, visualization_msgs::Marker& marker);
 
   // Callbacks
   virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);
@@ -152,6 +159,9 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // PoseStamped --> Needs to be dynamic as we do not know the number of sensors
   std::map<std::string, ros::Publisher> pubPoseStampedByTopicMap_ = {};
 
+  // Landmarks in Marker Array
+  ros::Publisher pubLandmarks_;
+
   // Subscribers
   ros::Subscriber subImu_;
 
@@ -173,6 +183,8 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Imu Bias
   geometry_msgs::Vector3StampedPtr accelBiasMsgPtr_;
   geometry_msgs::Vector3StampedPtr gyroBiasMsgPtr_;
+  // Marker Array
+  visualization_msgs::MarkerArrayPtr landmarkMarkersMsgPtr_;
 
   // Services
   // Trigger offline smoother optimization

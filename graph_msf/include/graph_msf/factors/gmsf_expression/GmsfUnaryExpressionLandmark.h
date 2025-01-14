@@ -71,9 +71,12 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
         this->gmsfBaseUnaryMeasurementPtr_->timeK(), gtsam::Pose3(gtsam::Rot3::Identity(), W_t_W_L_initial), variableType);
     // Make sure that the variable at the key is active (landmarks always have to be active or removed)
     assert(newGraphKey.isVariableActive());
+
     // Remove previous landmark with same landmark name;
-    std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeOrDeactivateTransform(
-        gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
+    if (newGraphKeyAddedFlag) {
+      std::ignore = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeOrDeactivateTransform(
+          gmsfUnaryLandmarkMeasurementPtr_->worldFrameName(), previousLandmarkName);
+    }
 
     // Create expression for landmark
     const gtsam::Point3_ exp_W_t_W_L = gtsam::Point3_(newGraphKey.key());

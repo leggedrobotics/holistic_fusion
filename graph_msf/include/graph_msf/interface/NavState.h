@@ -124,31 +124,39 @@ class SafeNavStateWithCovarianceAndBias : public NavState {
                                     const double timeK, const Eigen::Matrix<double, 6, 6>& poseCovariance,
                                     const Eigen::Matrix<double, 3, 3>& velocityCovariance, Eigen::Vector3d accelerometerBias,
                                     Eigen::Vector3d gyroscopeBias, const TransformsDictionary<Eigen::Isometry3d>& fixedFrameTransforms,
-                                    const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& fixedFrameTransformsCovariance)
+                                    const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& fixedFrameTransformsCovariance,
+                                    const TransformsDictionary<Eigen::Isometry3d>& landmarkTransforms,
+                                    const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& landmarkTransformsCovariance)
       : NavState(T_W_Ik, I_v_W_I, I_w_W_I, timeK),
         poseCovariance_(poseCovariance),
         velocityCovariance_(velocityCovariance),
         accelerometerBias_(std::move(accelerometerBias)),
         gyroscopeBias_(std::move(gyroscopeBias)),
-        fixedFrameTransforms_(fixedFrameTransforms),
-        fixedFrameTransformsCovariance_(fixedFrameTransformsCovariance) {}
+        referenceFrameTransforms_(fixedFrameTransforms),
+        referenceFrameTransformsCovariance_(fixedFrameTransformsCovariance),
+        landmarkTransforms_(landmarkTransforms),
+        landmarkTransformsCovariance_(landmarkTransformsCovariance) {}
 
   // From Optimized State
   explicit SafeNavStateWithCovarianceAndBias(const GraphState& graphState)
-      : SafeNavStateWithCovarianceAndBias(Eigen::Isometry3d(graphState.navState().pose().matrix()), graphState.navState().velocity(),
-                                          graphState.angularVelocityCorrected(), graphState.ts(), graphState.poseCovariance(),
-                                          graphState.velocityCovariance(), graphState.imuBias().accelerometer(),
-                                          graphState.imuBias().gyroscope(), graphState.fixedFrameTransforms(),
-                                          graphState.fixedFrameTransformsCovariance()) {}
+      : SafeNavStateWithCovarianceAndBias(
+            Eigen::Isometry3d(graphState.navState().pose().matrix()), graphState.navState().velocity(),
+            graphState.angularVelocityCorrected(), graphState.ts(), graphState.poseCovariance(), graphState.velocityCovariance(),
+            graphState.imuBias().accelerometer(), graphState.imuBias().gyroscope(), graphState.referenceFrameTransforms(),
+            graphState.referenceFrameTransformsCovariance(), graphState.landmarkTransforms(), graphState.landmarkTransformsCovariance()) {}
 
   // Getters
   const Eigen::Matrix<double, 6, 6>& getPoseCovariance() const { return poseCovariance_; }  // yaw, pitch, roll, x, y, z
   const Eigen::Matrix<double, 3, 3>& getVelocityCovariance() const { return velocityCovariance_; }
   const Eigen::Vector3d& getAccelerometerBias() const { return accelerometerBias_; }
   const Eigen::Vector3d& getGyroscopeBias() const { return gyroscopeBias_; }
-  const TransformsDictionary<Eigen::Isometry3d>& getFixedFrameTransforms() const { return fixedFrameTransforms_; }
-  const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& getFixedFrameTransformsCovariance() const {
-    return fixedFrameTransformsCovariance_;
+  const TransformsDictionary<Eigen::Isometry3d>& getReferenceFrameTransforms() const { return referenceFrameTransforms_; }
+  const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& getReferenceFrameTransformsCovariance() const {
+    return referenceFrameTransformsCovariance_;
+  }
+  const TransformsDictionary<Eigen::Isometry3d>& getLandmarkTransforms() const { return landmarkTransforms_; }
+  const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& getLandmarkTransformsCovariance() const {
+    return landmarkTransformsCovariance_;
   }
 
  private:
@@ -158,9 +166,12 @@ class SafeNavStateWithCovarianceAndBias : public NavState {
   // Bias
   Eigen::Vector3d accelerometerBias_;
   Eigen::Vector3d gyroscopeBias_;
-  // Fixed Frame Transforms
-  graph_msf::TransformsDictionary<Eigen::Isometry3d> fixedFrameTransforms_;                      // fixed frame transforms
-  graph_msf::TransformsDictionary<Eigen::Matrix<double, 6, 6>> fixedFrameTransformsCovariance_;  // fixed frame transforms covariance
+  // Reference Frame Transforms
+  graph_msf::TransformsDictionary<Eigen::Isometry3d> referenceFrameTransforms_;
+  graph_msf::TransformsDictionary<Eigen::Matrix<double, 6, 6>> referenceFrameTransformsCovariance_;
+  // Landmark Transforms
+  graph_msf::TransformsDictionary<Eigen::Isometry3d> landmarkTransforms_;
+  graph_msf::TransformsDictionary<Eigen::Matrix<double, 6, 6>> landmarkTransformsCovariance_;
 };
 
 }  // namespace graph_msf

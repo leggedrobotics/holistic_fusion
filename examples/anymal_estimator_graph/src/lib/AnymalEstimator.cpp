@@ -577,8 +577,8 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, legKinematicsFootPositionUnaryNoise_,
-                staticTransformsPtr_->getWorldFrame());
+                graph_msf::RobustNorm::Huber(1), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,
+                legKinematicsFootPositionUnaryNoise_, staticTransformsPtr_->getWorldFrame());
 
             // Add to graph
             this->addUnaryPosition3LandmarkMeasurement(footContactPositionMeasurement, legTotalContactsCounter_[legIndex]);
@@ -586,7 +586,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             // Visualize foot contact in RViz
             visualization_msgs::Marker footContactMarker;
             createContactMarker(leggedOdometryFrameName, anymalStatePtr->header.stamp, B_t_B_foot, "foot_contact", legIndex,
-                                footContactMarker);
+                                Eigen::Vector3d(0.0, 1.0, 0.0), footContactMarker);
             footContactMarkers.markers.push_back(footContactMarker);
           }
         }

@@ -38,11 +38,7 @@ namespace graph_msf {
 
 // Public --------------------------------------------------------------------
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
-    : graphConfigPtr_(std::move(graphConfigPtr)),
-      imuFrame_(std::move(imuFrame)),
-      worldFrame_(std::move(worldFrame)),
-      resultFixedFrameTransformations_(Eigen::Isometry3d::Identity()),
-      resultFixedFrameTransformationsCovariance_(Eigen::Matrix<double, 6, 6>::Zero()) {
+    : graphConfigPtr_(std::move(graphConfigPtr)), imuFrame_(std::move(imuFrame)), worldFrame_(std::move(worldFrame)) {
   // Buffer
   rtFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   batchFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
@@ -535,6 +531,13 @@ void GraphManager::updateGraph() {
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
   // D. FixedFrame Transformations ------------------------------
+  // Containers
+  TransformsDictionary<Eigen::Isometry3d> resultReferenceFrameTransformations(Eigen::Isometry3d::Identity());
+  TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultReferenceFrameTransformationsCovariance(gtsam::Z_6x6);
+  TransformsDictionary<Eigen::Isometry3d> resultLandmarkTransformations(Eigen::Isometry3d::Identity());
+  TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultLandmarkTransformationsCovariance(gtsam::Z_6x6);
+
+  // Actual computation of fixed-frame transformations
   if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex());
@@ -543,6 +546,12 @@ void GraphManager::updateGraph() {
     for (auto& framePairKeyMapIterator : gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getTransformsMap()) {
       // Get Variable Key
       const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
+
+      // Check whether it is landmark state
+      bool isLandmarkState = false;
+      if (framePairKeyMapIterator.second.getVariableTypeEnum() == DynamicVariableTypeEnum::Landmark) {
+        isLandmarkState = true;
+      }
 
       // State Category Character
       const char stateCategory = gtsam::Symbol(gtsamKey).chr();
@@ -573,26 +582,37 @@ void GraphManager::updateGraph() {
             throw std::runtime_error("Key is neither a pose nor a displacement key.");
           }
 
-          // Write to Result Dictionaries
-          //          gtsam::Pose3 T_frame1_frame2_corrected = T_frame1_frame2;
+          // Transform quantities to world frame (instead of keyframe)
           // For correction first have to transform T_W_F to T_F_W, apply correction, and then transform back to T_W_F
           gtsam::Pose3 T_frame2_frame1_corrected = T_frame1_frame2.inverse();
           T_frame2_frame1_corrected =
               gtsam::Pose3(T_frame2_frame1_corrected.rotation(),
                            T_frame2_frame1_corrected.translation() + framePairKeyMapIterator.second.getReferenceFrameKeyframePosition());
           gtsam::Pose3 T_frame1_frame2_corrected = T_frame2_frame1_corrected.inverse();
-          // T_frame1_frame2 = gtsam::Pose3(T_frame1_frame2_matrix);
-          resultFixedFrameTransformations_.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
-                                                               Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
-          resultFixedFrameTransformationsCovariance_.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
-                                                                         framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
+          // Write to container
+          if (isLandmarkState) {
+            resultLandmarkTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
+                                                              Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
+            resultLandmarkTransformationsCovariance.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
+                                                                        framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
+          } else {
+            resultReferenceFrameTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
+                                                                    framePairKeyMapIterator.first.second,
+                                                                    Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
+            resultReferenceFrameTransformationsCovariance.set_T_frame1_frame2(
+                framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
+          }
 
           // Mark that this key has at least been optimized once
-          if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0 && graphConfigPtr_->verboseLevel_ > 1) {
-            REGULAR_COUT << GREEN_START << " Fixed-frame Transformation between " << framePairKeyMapIterator.first.first << " and "
-                         << framePairKeyMapIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
-            REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
-                         << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
+          if (framePairKeyMapIterator.second.getNumberStepsOptimized() == 0) {
+            if (graphConfigPtr_->verboseLevel_ >= VerbosityLevels::kFunctioningAndStateMachine1) {
+              REGULAR_COUT << " Fixed-frame Transformation between " << framePairKeyMapIterator.first.first << " and "
+                           << framePairKeyMapIterator.first.second << " optimized for the first time." << COLOR_END << std::endl;
+            }
+            if (graphConfigPtr_->verboseLevel_ >= VerbosityLevels::kOperationInformation3) {
+              REGULAR_COUT << GREEN_START << " Result, RPY (deg): " << T_frame1_frame2.rotation().rpy().transpose() * (180.0 / M_PI)
+                           << ", t (x, y, z): " << T_frame1_frame2.translation().transpose() << COLOR_END << std::endl;
+            }
           }
           // Increase Counter
           framePairKeyMapIterator.second.incrementNumberStepsOptimized();
@@ -650,9 +670,9 @@ void GraphManager::updateGraph() {
                                                                                           framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
-            else if (graphConfigPtr_->verboseLevel_ > 1) {
+            else if (graphConfigPtr_->verboseLevel_ >= 1) {
               REGULAR_COUT
-                  << GREEN_START << " Tried to query the transformation and/or covariance for frame pair "
+                  << YELLOW_START << " Tried to query the transformation and/or covariance for frame pair "
                   << framePairKeyMapIterator.first.first << " to " << framePairKeyMapIterator.first.second
                   << ", at key: " << gtsam::Symbol(gtsamKey)
                   << ". Not yet available, as it was not yet optimized. Waiting for next optimization iteration until publishing it. "
@@ -669,21 +689,26 @@ void GraphManager::updateGraph() {
   {
     // Lock
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
-    // Optimized Graph State Status
+
+    // 1. Optimized Graph State Status
     optimizedGraphState_.setIsOptimized();
     // Update Optimized Graph State
     optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState,
                                                resultBias.correctGyroscope(currentAngularVelocity), resultBias);
-    optimizedGraphState_.updateFixedFrameTransforms(resultFixedFrameTransformations_);
-    optimizedGraphState_.updateFixedFrameTransformsCovariance(resultFixedFrameTransformationsCovariance_);
+    optimizedGraphState_.updateReferenceFrameTransforms(resultReferenceFrameTransformations);
+    optimizedGraphState_.updateReferenceFrameTransformsCovariance(resultReferenceFrameTransformationsCovariance);
+    optimizedGraphState_.updateLandmarkTransforms(resultLandmarkTransformations);
+    optimizedGraphState_.updateLandmarkTransformsCovariance(resultLandmarkTransformationsCovariance);
     optimizedGraphState_.updateCovariances(resultPoseCovarianceWorldFrame, resultVelocityCovariance);
-    // Predict from solution to obtain refined propagated state
+
+    // 2. State in World: Predict from solution to obtain refined propagated state
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, optimizedGraphState_.imuBias());
     } else {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
     }
 
+    // 3. State in Odom
     // Correct rotation only for roll and pitch, keep integrated yaw
     gtsam::Rot3 R_O_I_rp_corrected =
         gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
@@ -692,6 +717,8 @@ void GraphManager::updateGraph() {
     gtsam::Vector3 O_v_O_I = R_O_I_rp_corrected * W_imuPropagatedState_.bodyVelocity();
     // Update the NavState
     O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
+
+    // 4. Transformation between World and Odom
     T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
 
     // Update the time of the last optimized state
@@ -842,7 +869,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
     // Otherwise: Undefined --> throw error
     else {
-      throw std::runtime_error(stateCategoryString + " is an unknown 6D state category. Check the admissible GTSAM symbols in the config.");
+      throw std::logic_error(stateCategoryString + " is an unknown 6D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
@@ -927,7 +954,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     }
     // Otherwise: Undefined --> throw error
     else {
-      throw std::runtime_error(stateCategoryString + " is an unknown 3D state category. Check the admissible GTSAM symbols in the config.");
+      throw std::logic_error(stateCategoryString + " is an unknown 3D state category. Check the admissible GTSAM symbols in the config.");
     }
     // Put together the identifier
     std::string transformIdentifier = stateCategoryString + frameInformation;
@@ -1038,7 +1065,7 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
   }
 
   // Logging
-  if (graphConfigPtr->verboseLevel_ > 0) {
+  if (graphConfigPtr->verboseLevel_ >= VerbosityLevels::kOptimizationEffort2) {
     endLoopTime = std::chrono::high_resolution_clock::now();
     REGULAR_COUT << GREEN_START << " Whole optimization loop took "
                  << std::chrono::duration_cast<std::chrono::milliseconds>(endLoopTime - startLoopTime).count() << " milliseconds."

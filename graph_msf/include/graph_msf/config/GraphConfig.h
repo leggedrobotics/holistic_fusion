@@ -12,6 +12,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+enum VerbosityLevels {
+  kDefault0 = 0,
+  kFunctioningAndStateMachine1 = 1,
+  kOptimizationEffort2 = 2,
+  kOperationInformation3 = 3,
+  kFactorAdding4 = 4
+};
+
 struct GraphConfig {
   GraphConfig() {}
 
