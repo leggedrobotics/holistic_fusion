@@ -740,6 +740,7 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
     double optimizationDuration =
         std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
     std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
+    std::cout << "Number of optimization variables: " << optimizedStateValues.size() << std::endl;
 
     // Save Optimized Result
     saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath, saveCovarianceFlag);
