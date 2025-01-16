@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
 
 // Package
 #include "graph_msf/config/GraphConfig.h"
@@ -39,8 +40,8 @@ class GraphMsf {
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Initialization Interface
-  bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2,
-                                 const std::string& frame1, const std::string& frame2);
+  bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2, const std::string& frame1,
+                                 const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
 
   // Trigger offline smoother optimization
@@ -104,6 +105,9 @@ class GraphMsf {
   // Initialization
   void pretendFirstMeasurementReceived();
 
+  // Check whether measurement violated covariance, if yes, add to set and print once, if not, remove from set and print that returned
+  bool checkAndPrintCovarianceViolation_(const std::string& measurementName, const bool violatedFlag);
+
   // Members
   // Graph Config
   std::shared_ptr<GraphConfig> graphConfigPtr_ = nullptr;
@@ -130,6 +134,9 @@ class GraphMsf {
 
   // Counter
   long imuCallbackCounter_ = 0;
+
+  // Set of measurements that have violated the covariance
+  std::unordered_set<std::string> measurementsWithViolatedCovariance_;
 
  private:
   /// Worker functions

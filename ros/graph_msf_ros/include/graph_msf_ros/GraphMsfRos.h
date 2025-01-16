@@ -69,7 +69,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
       const geometry_msgs::PoseWithCovarianceStampedPtr& msgPtr, const std::string& frameName, const ros::Time& stamp,
       const Eigen::Isometry3d& T, const Eigen::Matrix<double, 6, 6>& transformCovariance = Eigen::Matrix<double, 6, 6>::Zero());
   static void addToLandmarkMarkerArrayMsg(const visualization_msgs::MarkerArrayPtr& markerArrayPtr, const std::string& referenceFrameName,
-                                  const ros::Time& stamp, const Eigen::Isometry3d& T_R_L, const std::string& transformName);
+                                          const ros::Time& stamp, const Eigen::Isometry3d& T_R_L, const std::string& transformName);
 
   // Extract from State
   static void extractCovariancesFromOptimizedState(
@@ -77,9 +77,10 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
       const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   // Markers
   static void createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
-                                   visualization_msgs::Marker& marker);
+                                   const Eigen::Vector3d& colorRgb, visualization_msgs::Marker& marker);
   static void createContactMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& position,
-                           const std::string& nameSpace, const int id, const Eigen::Vector3d& colorRgb, visualization_msgs::Marker& marker);
+                                  const std::string& nameSpace, const int id, const Eigen::Vector3d& colorRgb,
+                                  visualization_msgs::Marker& marker);
 
   // Callbacks
   virtual void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr);

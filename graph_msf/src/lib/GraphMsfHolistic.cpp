@@ -48,8 +48,7 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
   } else {  // Graph initialized
     // Check for covariance violation
     bool covarianceViolatedFlag = isCovarianceViolated_<6>(R_T_R_S.unaryMeasurementNoiseDensity(), R_T_R_S.covarianceViolationThreshold());
-    if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Pose covariance violated. Not adding factor." << COLOR_END << std::endl;
+    if (checkAndPrintCovarianceViolation_(R_T_R_S.measurementName(), covarianceViolatedFlag)) {
       return;
     }
 
@@ -86,9 +85,7 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
     // Check for covariance violation
     bool covarianceViolatedFlag = isCovarianceViolated_<3>(fixedFrame_t_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
                                                            fixedFrame_t_fixedFrame_sensorFrame.covarianceViolationThreshold());
-    if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " " << fixedFrame_t_fixedFrame_sensorFrame.measurementName()
-                   << " covariance violated. Not adding factor." << COLOR_END << std::endl;
+    if (checkAndPrintCovarianceViolation_(fixedFrame_t_fixedFrame_sensorFrame.measurementName(), covarianceViolatedFlag)) {
       return;
     }
 
@@ -141,8 +138,7 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
   } else {  // Case 2: Graph Initialized
     // Check for covariance violation
     bool covarianceViolatedFlag = isCovarianceViolated_<3>(S_v_F_S.unaryMeasurementNoiseDensity(), S_v_F_S.covarianceViolationThreshold());
-    if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Velocity covariance violated. Not adding factor." << COLOR_END << std::endl;
+    if (checkAndPrintCovarianceViolation_(S_v_F_S.measurementName(), covarianceViolatedFlag)) {
       return;
     }
 
@@ -178,8 +174,7 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLa
   } else {  // Case 2: Graph Initialized
     // Check for covariance violation
     bool covarianceViolatedFlag = isCovarianceViolated_<3>(S_t_S_L.unaryMeasurementNoiseDensity(), S_t_S_L.covarianceViolationThreshold());
-    if (covarianceViolatedFlag) {
-      REGULAR_COUT << RED_START << " Position covariance violated. Not adding factor." << COLOR_END << std::endl;
+    if (checkAndPrintCovarianceViolation_(S_t_S_L.measurementName(), covarianceViolatedFlag)) {
       return;
     }
 

@@ -388,4 +388,22 @@ void GraphMsf::pretendFirstMeasurementReceived() {
   validFirstMeasurementReceivedFlag_ = true;
 }
 
+// Check whether measurement violated covariance, if yes, add to set and print once, if not, remove from set and print that returned
+bool GraphMsf::checkAndPrintCovarianceViolation_(const std::string& measurementName, const bool violatedFlag) {
+  if (violatedFlag) {
+    if (measurementsWithViolatedCovariance_.find(measurementName) == measurementsWithViolatedCovariance_.end()) {
+      measurementsWithViolatedCovariance_.insert(measurementName);
+      REGULAR_COUT << RED_START << " " << measurementName << " covariance violated. Not adding factor until not violated anymore."
+                   << COLOR_END << std::endl;
+    }
+    return true;
+  } else {
+    if (measurementsWithViolatedCovariance_.find(measurementName) != measurementsWithViolatedCovariance_.end()) {
+      measurementsWithViolatedCovariance_.erase(measurementName);
+      REGULAR_COUT << GREEN_START << " " << measurementName << " covariance not violated anymore." << COLOR_END << std::endl;
+    }
+    return false;
+  }
+}
+
 }  // namespace graph_msf

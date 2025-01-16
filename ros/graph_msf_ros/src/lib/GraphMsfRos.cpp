@@ -248,7 +248,7 @@ void GraphMsfRos::extractCovariancesFromOptimizedState(
 
 // Markers
 void GraphMsfRos::createVelocityMarker(const std::string& referenceFrameName, const ros::Time& stamp, const Eigen::Vector3d& velocity,
-                                       visualization_msgs::Marker& marker) {
+                                       const Eigen::Vector3d& colorRgb, visualization_msgs::Marker& marker) {
   // Arrow
   marker.header.frame_id = referenceFrameName;
   marker.header.stamp = stamp;
@@ -261,9 +261,9 @@ void GraphMsfRos::createVelocityMarker(const std::string& referenceFrameName, co
   marker.scale.y = 0.2;  // head diameter
   marker.scale.z = 0.2;  // head length
   marker.color.a = 1.0;
-  marker.color.r = 1.0;
-  marker.color.g = 0.0;
-  marker.color.b = 0.0;
+  marker.color.r = colorRgb(0);
+  marker.color.g = colorRgb(1);
+  marker.color.b = colorRgb(2);
   // Define Arrow through start and end point
   geometry_msgs::Point startPoint, endPoint;
   startPoint = geometry_msgs::Point();
@@ -604,9 +604,12 @@ void GraphMsfRos::publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceR
 }
 
 void GraphMsfRos::publishVelocityMarkers(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const {
+  // Color
+  Eigen::Vector3d colorRgb(1.0, 0.0, 0.0);  // Red
   // Velocity in Odom Frame Marker
   visualization_msgs::Marker velocityMarker;
-  createVelocityMarker(staticTransformsPtr_->getImuFrame(), ros::Time(navStatePtr->getTimeK()), navStatePtr->getI_v_W_I(), velocityMarker);
+  createVelocityMarker(staticTransformsPtr_->getImuFrame(), ros::Time(navStatePtr->getTimeK()), navStatePtr->getI_v_W_I(), colorRgb,
+                       velocityMarker);
   // Publish
   if (pubVelocityMarker_.getNumSubscribers() > 0) {
     pubVelocityMarker_.publish(velocityMarker);
