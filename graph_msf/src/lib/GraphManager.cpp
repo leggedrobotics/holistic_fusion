@@ -307,12 +307,15 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
       // Not too far in the future --> add to buffer and add later
       if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
+        return true;
       }
       // Too far in the future --> do not add it
       else {
+        std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
+        std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
         REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
                      << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
-                     << " ms, being larger than admissible deviation of " << 2000 * graphConfigPtr_->maxSearchDeviation_
+                     << " ms, being larger than admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_
                      << " ms. Not adding to graph." << COLOR_END << std::endl;
         return false;
       }
