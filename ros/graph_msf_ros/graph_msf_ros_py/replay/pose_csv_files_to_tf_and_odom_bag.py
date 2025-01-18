@@ -35,15 +35,16 @@ if __name__ == "__main__":
     print(f"Directory path: {dir_path}")
 
     # Process data
-    latest_time_string = get_latest_time_string_in_folder(folder_path=dir_path)
-    input_file_path = os.path.join(
-        dir_path, latest_time_string, "X_state_6D_pose.csv"
-    )
-    output_bag_path = os.path.join(
-        dir_path, latest_time_string, "bag_X_state_6D_pose.bag"
-    )
-    fixed_frame_id = "gt_world"
+    for csv_file_name in ["X_state_6D_pose", "rt_world_x_state_6D_pose"]:
+        latest_time_string = get_latest_time_string_in_folder(folder_path=dir_path)
+        input_file_path = os.path.join(
+            dir_path, latest_time_string, csv_file_name + ".csv"
+        )
+        output_bag_path = os.path.join(
+            dir_path, latest_time_string, csv_file_name + ".bag"
+        )
+        fixed_frame_id = "gt_world"
 
-    # Call main function
-    write_bag(input_file_path=input_file_path, output_bag_path=output_bag_path, fixed_frame_id=fixed_frame_id,
-              child_frame_id=imu_frame_name)
+        # Call main function
+        write_bag(input_file_path=input_file_path, output_bag_path=output_bag_path, fixed_frame_id=fixed_frame_id,
+                  child_frame_id=imu_frame_name)

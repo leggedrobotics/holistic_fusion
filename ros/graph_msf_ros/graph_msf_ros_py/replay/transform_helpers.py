@@ -3,6 +3,7 @@
 # General Packages
 from scipy.spatial.transform import Rotation as R
 import copy
+import os
 
 # ROS
 import rospy
@@ -85,6 +86,11 @@ def create_transform_stamped(
 
 def write_bag(input_file_path, output_bag_path, fixed_frame_id, child_frame_id):
     first_line = True
+    # Check whether input file exists
+    if not os.path.exists(input_file_path):
+        print(f"Input file not found: {input_file_path}")
+        return
+    # Open and write to TF bag
     with open(input_file_path, "r") as file, rosbag.Bag(output_bag_path, "w") as bag:
         for line in file:
             # Header file
