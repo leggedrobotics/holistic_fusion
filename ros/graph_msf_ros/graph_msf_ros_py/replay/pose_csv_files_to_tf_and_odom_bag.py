@@ -41,7 +41,7 @@ if __name__ == "__main__":
             dir_path, latest_time_string, csv_file_name + ".csv"
         )
         output_bag_path = os.path.join(
-            dir_path, latest_time_string, csv_file_name + ".bag"
+            dir_path, latest_time_string, "bag_" + csv_file_name + ".bag"
         )
         fixed_frame_id = "gt_world"
 
