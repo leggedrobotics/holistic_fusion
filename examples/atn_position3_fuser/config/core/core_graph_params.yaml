@@ -1,7 +1,7 @@
 # Sensor Params
 sensor_params:
   imuRate: 100.0                          # Rate of IMU input (Hz)
-  createStateEveryNthImuMeasurement: 2    # Create a new state every n-th IMU measurement
+  createStateEveryNthImuMeasurement: 1    # Create a new state every n-th IMU measurement
   useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
   imuBufferLength: 400
@@ -65,15 +65,15 @@ noise_params:
 
 # Relinearization
 relinearization_params:
-  positionReLinTh: 1.0e-03                 # Letter "x" in GTSAM variables, Position linearization threshold
-  rotationReLinTh: 1.0e-03                 # Letter "x" in GTSAM variables, Rotation linearization threshold
-  velocityReLinTh: 1.0e-03                 # Letter "v" in GTSAM variables, Linear Velocity linearization threshold
-  accBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Accelerometer bias linearization threshold
-  gyrBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Gyroscope bias linearization threshold
-  referenceFrameReLinTh: 1.0e-03           # Letter "r" in GTSAM variables, Reference frame linearization threshold, ONLY IF optimizeReferenceFramePosesWrtWorld
-  calibrationReLinTh: 1.0e-03              # Letter "c" in GTSAM variables, Calibration linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
-  displacementReLinTh: 1.0e-03             # Letter "d" in GTSAM variables, Displacement linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
-  landmarkReLinTh: 1.0e-03                 # Letter "l" in GTSAM variables, Landmark linearization threshold
+  positionReLinTh: 1.0e-02                 # Letter "x" in GTSAM variables, Position linearization threshold
+  rotationReLinTh: 1.0e-02                 # Letter "x" in GTSAM variables, Rotation linearization threshold
+  velocityReLinTh: 1.0e-02                 # Letter "v" in GTSAM variables, Linear Velocity linearization threshold
+  accBiasReLinTh: 1.0e-02                  # Letter "b" in GTSAM variables, Accelerometer bias linearization threshold
+  gyrBiasReLinTh: 1.0e-02                  # Letter "b" in GTSAM variables, Gyroscope bias linearization threshold
+  referenceFrameReLinTh: 1.0e-02           # Letter "r" in GTSAM variables, Reference frame linearization threshold, ONLY IF optimizeReferenceFramePosesWrtWorld
+  calibrationReLinTh: 1.0e-02              # Letter "c" in GTSAM variables, Calibration linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
+  displacementReLinTh: 1.0e-02             # Letter "d" in GTSAM variables, Displacement linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
+  landmarkReLinTh: 1.0e-02                 # Letter "l" in GTSAM variables, Landmark linearization threshold
   relinearizeSkip: 1                       # Re-linearization is skipped every n-th step, default: 10
   enableRelinearization: true              # Whether to use relinearization, default: true
   evaluateNonlinearError: true             # Whether to evaluate the nonlinear errorr before and after the update, default: false

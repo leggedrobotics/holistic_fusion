@@ -98,9 +98,13 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
           .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
           .activateVariable();
+      // Set number of steps optimized to zero
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
+          .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
+          .resetNumberStepsOptimized();
       // Print out
       REGULAR_COUT << GREEN_START << " Reactivated old keyframe " << gtsam::Symbol(graphKey.key())
-                   << " as it was deactivated, but is needed again." << COLOR_END << std::endl;
+                   << " as it was deactivated, but is needed again. Also set number of optimization steps to 0." << COLOR_END << std::endl;
 
       // If the old keyframe was not active, then it is not part of the optimization anymore (or has never been) --> prior to online graph
       // Make sure that old key ptr is not null

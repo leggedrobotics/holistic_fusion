@@ -572,13 +572,26 @@ void GraphManager::updateGraph() {
             T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
+            // Update the initial guess for the offline graph
+            if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+              gtsam::Values valuesEstimate;
+              valuesEstimate.insert(gtsamKey, T_frame1_frame2);
+              std::ignore = batchOptimizerPtr_->updateExistingValues(valuesEstimate);
+            }
           }
           // 3D Position3 Vectors
           else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
-            T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), rtOptimizerPtr_->calculateEstimatedPoint3(gtsamKey));
+            gtsam::Point3 point3Estimate = rtOptimizerPtr_->calculateEstimatedPoint3(gtsamKey);
+            T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), point3Estimate);
             T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
+            // Update the initial guess for the offline graph
+            if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+              gtsam::Values valuesEstimate;
+              valuesEstimate.insert(gtsamKey, point3Estimate);
+              std::ignore = batchOptimizerPtr_->updateExistingValues(valuesEstimate);
+            }
           }
           // Only these two types are allowed for dynamic states for now
           else {
