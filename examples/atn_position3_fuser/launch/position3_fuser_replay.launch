@@ -5,7 +5,8 @@
 
     <!-- Arguments -->
     <arg name="publish_static_tf" value="false"/>
-    <arg name="run_elevation_mapping" value="true"/>
+    <arg name="run_elevation_mapping" value="false"/>
+    <arg name="run_rviz" value="false"/>
     <arg name="box_description" default="$(find box_model)/urdf/box/box.urdf.xacro"/>
     <arg name="run_estimator" default="true"/>
     <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"/>
@@ -42,7 +43,7 @@
     </node>
 
     <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)"/>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)"  if="$(arg run_rviz)"/>
 
     <!-- Model of the Box -->
     <param name="box_description" command="$(find xacro)/xacro --inorder $(arg box_description)"/>
