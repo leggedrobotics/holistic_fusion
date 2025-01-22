@@ -26,7 +26,8 @@ class OptimizerLM : public OptimizerBase {
     // Set Custom LM Parameters
     //    lmParams_.setLinearSolverType(
     //        "CHOLMOD");  // "MULTIFRONTAL_CHOLESKY", "MULTIFRONTAL_QR", "SEQUENTIAL_CHOLESKY", "SEQUENTIAL_QR", "ITERATIVE", "CHOLMOD"
-    lmParams_.setRelativeErrorTol(1e-8);
+    lmParams_.setRelativeErrorTol(1e-10);
+    lmParams_.setAbsoluteErrorTol(1e-10);
     //    lmParams_.minModelFidelity = 1e-1;
   }
   ~OptimizerLM() = default;
