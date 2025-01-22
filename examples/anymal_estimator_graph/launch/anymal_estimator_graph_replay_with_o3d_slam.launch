@@ -10,6 +10,8 @@
     <!-- O3D SLAM Config -->
     <arg name="launch_o3d_slam" default="true"/>
     <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
+    <arg name="assumed_external_odometry_tracked_frame" default="imu_link"/>
+    <arg name="odometry_topic" default="/graph_msf/est_odometry_world_imu"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
@@ -24,9 +26,11 @@
     <include file="$(find open3d_slam_ros)/launch/hike_launch.launch" if="$(arg launch_o3d_slam)">
         <arg name="cloud_topic" value="$(arg pointcloud_topic_name)"/>
         <arg name="launch_rviz" value="false"/>
+        <arg name="assumed_external_odometry_tracked_frame" value="$(arg assumed_external_odometry_tracked_frame)"/>
+        <arg name="odometry_topic" value="$(arg odometry_topic)"/>
     </include>
 
-<!--    &lt;!&ndash; TF Tree Connection During Replay &ndash;&gt;-->
+<!--    TF Tree Connection During Replay -->
 <!--    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"-->
 <!--          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>-->
 
