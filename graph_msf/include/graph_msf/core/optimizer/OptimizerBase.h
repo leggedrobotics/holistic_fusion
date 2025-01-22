@@ -29,6 +29,7 @@ class OptimizerBase {
   virtual bool update() = 0;
   virtual bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
                       const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) = 0;
+  virtual bool updateExistingValues(const gtsam::Values& newGraphValues) = 0;
   // Run (Batch) Optimization and get result
   virtual void optimize(int maxIterations) = 0;
   virtual const gtsam::Values& getAllOptimizedStates() = 0;

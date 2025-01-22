@@ -22,8 +22,21 @@ class OptimizerLM : public OptimizerBase {
     // Standard LM Parameters
     lmParams_.setVerbosity("ERROR");
     gtsam::LevenbergMarquardtParams::SetCeresDefaults(&lmParams_);
+
+    // Set Custom LM Parameters
+    //    lmParams_.setLinearSolverType(
+    //        "CHOLMOD");  // "MULTIFRONTAL_CHOLESKY", "MULTIFRONTAL_QR", "SEQUENTIAL_CHOLESKY", "SEQUENTIAL_QR", "ITERATIVE", "CHOLMOD"
+    lmParams_.setRelativeErrorTol(1e-10);
+    lmParams_.setAbsoluteErrorTol(1e-10);
+    //    lmParams_.minModelFidelity = 1e-1;
   }
   ~OptimizerLM() = default;
+
+  // Implementation
+  bool updateExistingValues(const gtsam::Values& newGraphValues) override {
+    // Update Values
+    throw std::logic_error("GraphMSF: OptimizerLM: updateExistingValues: Not implemented.");
+  }
 
  protected:
   // Parameters

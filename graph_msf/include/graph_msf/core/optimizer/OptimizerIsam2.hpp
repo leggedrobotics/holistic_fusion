@@ -88,6 +88,12 @@ class OptimizerIsam2 : public OptimizerBase {
   }
   ~OptimizerIsam2() = default;
 
+  // Implementation
+  bool updateExistingValues(const gtsam::Values& newGraphValues) override {
+    // Update Values
+    throw std::logic_error("GraphMSF: OptimizerIsam2: updateExistingValues: Not implemented.");
+  }
+
  protected:
   // Parameters
   gtsam::ISAM2Params isam2Params_;

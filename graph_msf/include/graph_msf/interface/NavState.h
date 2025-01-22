@@ -155,9 +155,7 @@ class SafeNavStateWithCovarianceAndBias : public NavState {
     return referenceFrameTransformsCovariance_;
   }
   const TransformsDictionary<Eigen::Isometry3d>& getLandmarkTransforms() const { return landmarkTransforms_; }
-  const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& getLandmarkTransformsCovariance() const {
-    return landmarkTransformsCovariance_;
-  }
+  const TransformsDictionary<Eigen::Matrix<double, 6, 6>>& getLandmarkTransformsCovariance() const { return landmarkTransformsCovariance_; }
 
  private:
   // Covariance

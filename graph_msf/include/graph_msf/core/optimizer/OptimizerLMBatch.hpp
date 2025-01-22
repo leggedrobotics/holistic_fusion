@@ -51,6 +51,25 @@ class OptimizerLMBatch : public OptimizerLM {
     return true;
   }
 
+  // Implementation
+  bool updateExistingValues(const gtsam::Values& newGraphValues) override {
+    // Update Values
+    for (const auto& key : newGraphValues.keys()) {
+      // Check whether key is in the batchSmootherValues
+      if (containerBatchSmootherValues_.exists(key)) {
+        // Remove old value
+        containerBatchSmootherValues_.erase(key);
+        // Insert new value
+        containerBatchSmootherValues_.insert(key, newGraphValues.at(key));
+        //        std::cout << "GraphMSF: OptimizerLMBatch: updateExistingValues: Key " << gtsam::Symbol(key) << " updated." << std::endl;
+      } else {
+        throw std::logic_error("GraphMSF: OptimizerLMBatch: updateExistingValues: Key " + gtsam::Symbol(key).string() +
+                               " does not exist in batchSmootherValues.");
+      }
+    }
+    return true;
+  }
+
   // Optimize
   void optimize(int maxIterations) override {
     // Print
@@ -310,7 +329,7 @@ class OptimizerLMBatch : public OptimizerLM {
               continue;  // Skip timestamp of first reference frame key
             } else if (numReferenceFrameKeysInFactor > 1) {
               std::cout << "Found random walk factor with (at least) two reference frame keys (including " << gtsam::Symbol(factorKey)
-                        << ")." << std::endl; // Do not skip
+                        << ")." << std::endl;  // Do not skip
             }
           }
 
