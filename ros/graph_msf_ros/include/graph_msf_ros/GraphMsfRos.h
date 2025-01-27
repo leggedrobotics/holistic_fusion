@@ -88,7 +88,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Services
   virtual bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
                                                   graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res);
-  bool srvLogRealTimeStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+  bool srvLogRealTimeNavStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
   // Publishing -----------------------------------
   // Higher Level Functions
@@ -191,7 +191,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   // Trigger offline smoother optimization
   ros::ServiceServer srvSmootherOptimize_;
   // Log Real-Time States
-  ros::ServiceServer srvLogRealTimeStates_;
+  ros::ServiceServer srvLogRealTimeNavStates_;
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;

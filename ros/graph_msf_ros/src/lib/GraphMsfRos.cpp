@@ -117,7 +117,7 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
   srvSmootherOptimize_ =
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback, this);
   // Real-Time State Logging
-  srvLogRealTimeStates_ = privateNode.advertiseService("/graph_msf/log_real_time_states", &GraphMsfRos::srvLogRealTimeStatesCallback, this);
+  srvLogRealTimeNavStates_ = privateNode.advertiseService("/graph_msf/log_real_time_nav_states", &GraphMsfRos::srvLogRealTimeNavStatesCallback, this);
 }
 
 bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
@@ -137,9 +137,9 @@ bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Offline
   return true;
 }
 
-bool GraphMsfRos::srvLogRealTimeStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+bool GraphMsfRos::srvLogRealTimeNavStatesCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
   // Log real-time states
-  if (GraphMsf::logRealTimeStates(optimizationResultLoggingPath)) {
+  if (GraphMsf::logRealTimeNavStates(optimizationResultLoggingPath)) {
     res.success = true;
     res.message = "Logging real-time states.";
   } else {
@@ -269,7 +269,7 @@ void GraphMsfRos::createVelocityMarker(const std::string& referenceFrameName, co
   startPoint = geometry_msgs::Point();
   startPoint.x = 0.0;  // origin
   startPoint.y = 0.0;  // origin
-  startPoint.z = 1.0;  // 1 meter above origin
+  startPoint.z = 0.0;  // origin
   endPoint = geometry_msgs::Point();
   endPoint.x = startPoint.x + velocity(0);
   endPoint.y = startPoint.y + velocity(1);

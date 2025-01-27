@@ -50,9 +50,6 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
 
   // Noise Parameters ---------------------------------------------------
-  /// Gnss
-  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoiseDensity", privateNode);
-
   /// LiDAR Odometry
   const auto poseUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z

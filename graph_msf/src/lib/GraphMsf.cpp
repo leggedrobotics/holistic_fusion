@@ -54,7 +54,7 @@ bool GraphMsf::optimizeSlowBatchSmoother(int maxIterations, const std::string& s
   return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, savePath, saveCovarianceFlag);
 }
 
-bool GraphMsf::logRealTimeStates(const std::string& savePath) {
+bool GraphMsf::logRealTimeNavStates(const std::string& savePath) {
   // String of time without line breaks: year_month_day_hour_min_sec
   std::ostringstream oss;
   std::time_t now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -63,7 +63,7 @@ bool GraphMsf::logRealTimeStates(const std::string& savePath) {
   // Convert stream to string
   std::string timeString = oss.str();
   // Return
-  return graphMgrPtr_->logRealTimeStates(savePath, timeString);
+  return graphMgrPtr_->logRealTimeNavStates(savePath, timeString);
 }
 
 // Getter functions -----------------------

@@ -12,10 +12,10 @@
 
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
-    <!--    <arg name="lidar_odometry_topic_name"-->
-    <!--         default="/open3d_slam/scan2map_odometry"/>  &lt;!&ndash;/compslam_lio/odom_aft_mapped_to_init_CORRECTED  &ndash;&gt;-->
     <arg name="lidar_odometry_topic_name"
-         default="/open3d_slam/optimized_poses_as_odometry"/>
+         default="/open3d_slam/scan2map_odometry"/>  <!--/compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+    <!--    <arg name="lidar_odometry_topic_name"-->
+    <!--         default="/open3d_slam/optimized_poses_as_odometry"/>-->
 
 
     <!-- Load dumped parameters, mainly for description -->

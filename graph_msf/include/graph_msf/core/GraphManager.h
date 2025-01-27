@@ -92,8 +92,11 @@ class GraphManager {
   // Slow Graph Update (if desired)
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
-  // Logging of real-time states
-  bool logRealTimeStates(const std::string& savePath, const std::string& timeString);
+  // Logging of real-time navigation states
+  bool logRealTimeNavStates(const std::string& savePath, const std::string& timeString);
+
+  // Logging of real-time reference frame states
+  bool logRealTimeReferenceFrameStates(const std::string& savePath, const std::string& timeString);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
@@ -211,6 +214,9 @@ class GraphManager {
   // Real-time Pose Container
   std::map<double, gtsam::Pose3> realTimeWorldPoseContainer_ = {};
   std::map<double, gtsam::Pose3> realTimeOdomPoseContainer_ = {};
+  // Real-time Reference Frame Transformation Container
+  std::map<double, TransformsDictionary<Eigen::Isometry3d>> realTimeReferenceFrameContainer_ = {};
+  std::set<std::pair<std::string, std::string>> realTimeReferenceFrameNamePairs_ = {};
 
   // Member variables
   /// Mutex

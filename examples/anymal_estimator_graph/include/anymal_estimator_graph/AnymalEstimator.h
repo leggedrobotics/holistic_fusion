@@ -109,7 +109,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> lioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
-  double gnssPositionUnaryNoise_ = 1.0;  // in [m]
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
