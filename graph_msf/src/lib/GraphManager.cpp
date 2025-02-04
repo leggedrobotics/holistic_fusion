@@ -859,6 +859,8 @@ bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, 
     for (const std::pair<std::string, std::string>& framePair : realTimeReferenceFrameNamePairs_) {
       // Frame Information
       std::string frameInformation = "_" + framePair.first + "_to_" + framePair.second;
+      // Replace / with underscore
+      std::replace(frameInformation.begin(), frameInformation.end(), '/', '_');
       // Create File Streams
       // CSV
       FileLogger::createPose3CsvFileStream(fileStreams, savePath, stateCategoryString + frameInformation, timeString, false);
@@ -878,6 +880,8 @@ bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, 
         const Eigen::Isometry3d& transform = framePairTransform.second;  // alias
         // Frame Information
         std::string frameInformation = "_" + framePair.first + "_to_" + framePair.second;
+        // Replace / with underscore
+        std::replace(frameInformation.begin(), frameInformation.end(), '/', '_');
         // Write to files
         // CSV
         FileLogger::writePose3ToCsvFile(fileStreams, gtsam::Pose3(transform.matrix()), stateCategoryString + frameInformation, timeStamp,
