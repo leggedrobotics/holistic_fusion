@@ -4,14 +4,18 @@
     <arg name="using_gnss_unary" default="true"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name"             default="/sensors/imu" />
-    <arg name="lidar_odometry_topic_name"  default="/open3d_slam/scan2map_odometry" />  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+    <arg name="imu_topic_name" default="/sensors/imu"/>
+    <arg name="lidar_odometry_topic_name"
+         default="/open3d_slam/scan2map_odometry"/>  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
 
     <!-- O3D SLAM Config -->
     <arg name="launch_o3d_slam" default="true"/>
-    <arg name="pointcloud_topic_name" default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
-    <arg name="assumed_external_odometry_tracked_frame" default="imu_link"/>
-    <arg name="odometry_topic" default="/graph_msf/est_odometry_world_imu"/>
+    <arg name="pointcloud_topic_name"
+         default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
+    <!--    <arg name="assumed_external_odometry_tracked_frame" default="imu_link"/>-->
+    <!--    <arg name="o3d_prior_odometry_topic" default="/graph_msf/est_odometry_world_imu"/>-->
+    <arg name="assumed_external_odometry_tracked_frame" default="base"/>
+    <arg name="o3d_prior_odometry_topic" default="/state_estimator/odometry"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
@@ -27,11 +31,11 @@
         <arg name="cloud_topic" value="$(arg pointcloud_topic_name)"/>
         <arg name="launch_rviz" value="false"/>
         <arg name="assumed_external_odometry_tracked_frame" value="$(arg assumed_external_odometry_tracked_frame)"/>
-        <arg name="odometry_topic" value="$(arg odometry_topic)"/>
+        <arg name="odometry_topic" value="$(arg o3d_prior_odometry_topic)"/>
     </include>
 
-<!--    TF Tree Connection During Replay -->
-<!--    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"-->
-<!--          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>-->
+    <!--    TF Tree Connection During Replay -->
+    <!--    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"-->
+    <!--          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>-->
 
 </launch>

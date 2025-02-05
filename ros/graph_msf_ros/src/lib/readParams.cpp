@@ -121,6 +121,8 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->verboseLevel_ = tryGetParam<int>("common_params/verbosity", privateNode);
   graphConfigPtr_->odomNotJumpAtStartFlag_ = tryGetParam<bool>("common_params/odomNotJumpAtStart", privateNode);
   graphConfigPtr_->logRealTimeStateToMemoryFlag_ = tryGetParam<bool>("common_params/logRealTimeStateToMemory", privateNode);
+  graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_ =
+      tryGetParam<bool>("common_params/logLatencyAndUpdateDurationToMemory", privateNode);
 
   // Set frames
   /// World

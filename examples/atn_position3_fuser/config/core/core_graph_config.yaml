@@ -3,3 +3,4 @@ common_params:
   verbosity: 0                         # Debug Output, 0: only important events, 1: optimization duration, 2: added factors
   odomNotJumpAtStart: true   #Whether the World->Odom transform should be updated in the beginning (odom start at identity)
   logRealTimeStateToMemory: true # Whether the real-time state should be logged to memory (for logging purposes)
+  logLatencyAndUpdateDurationToMemory: false # Whether the latency and update duration should be logged to memory (for logging purposes)

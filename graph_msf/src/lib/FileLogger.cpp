@@ -90,6 +90,21 @@ void FileLogger::createImuBiasCsvFileStream(std::map<std::string, std::ofstream>
     fileStreams[stateCategoryIdentifier] << "time, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z\n";
   }
 }
+
+// Double
+void FileLogger::createDoubleCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                           const std::string& transformIdentifier, const std::string& timeString) {
+  if (fileStreams.find(transformIdentifier) == fileStreams.end()) {
+    // If not, create a new file stream for this category
+    std::string fileName = savePath + timeString + "/" + transformIdentifier + ".csv";
+    REGULAR_COUT << GREEN_START << " Saving double values to CSV-file: " << COLOR_END << fileName << std::endl;
+    // Open for writing and appending
+    fileStreams[transformIdentifier].open(fileName, std::ofstream::out | std::ofstream::app);
+    // Write header
+    fileStreams[transformIdentifier] << "time, value\n";
+  }
+}
+
 // 2. TUM
 // Pose3
 void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
@@ -162,6 +177,12 @@ void FileLogger::writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fil
                                        << imuBias.accelerometer().y() << ", " << imuBias.accelerometer().z() << ", "
                                        << imuBias.gyroscope().x() << ", " << imuBias.gyroscope().y() << ", " << imuBias.gyroscope().z()
                                        << "\n";
+}
+
+// Double
+void FileLogger::writeDoubleToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const double value,
+                                      const std::string& transformIdentifier, const double timeStamp) {
+  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << value << "\n";
 }
 
 // 2. TUM

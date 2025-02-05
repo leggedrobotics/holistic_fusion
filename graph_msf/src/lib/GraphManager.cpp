@@ -195,6 +195,11 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                            const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+  // Logging of latency
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    latencyStartTime_ = std::chrono::high_resolution_clock::now();
+  }
+
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -292,6 +297,14 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
     realTimeWorldPoseContainer_[imuTimeK] = W_imuPropagatedState_.pose();
     realTimeOdomPoseContainer_[imuTimeK] = O_imuPropagatedState_.pose();
+  }
+
+  // Logging of latency
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    latencyEndTime_ = std::chrono::high_resolution_clock::now();
+    // Duration in seconds
+    std::chrono::duration<double> latencyDuration = latencyEndTime_ - latencyStartTime_;
+    latencyContainer_[imuTimeK] = latencyDuration.count();
   }
 }
 
@@ -496,6 +509,11 @@ void GraphManager::updateGraph() {
     }
   }  // end of locking
 
+  // Log Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    updateDurationStartTime_ = std::chrono::high_resolution_clock::now();
+  }
+
   // Graph Update (time consuming) -------------------------------------------
   bool successfulOptimizationFlag = true;
   // Rt Smoother
@@ -511,6 +529,14 @@ void GraphManager::updateGraph() {
         addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, graphConfigPtr_);
   } else if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " No factors present in batch smoother, not optimizing." << std::endl;
+  }
+
+  // Log Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    updateDurationEndTime_ = std::chrono::high_resolution_clock::now();
+    // Duration in seconds
+    std::chrono::duration<double> updateDuration = updateDurationEndTime_ - updateDurationStartTime_;
+    updateDurationContainer_[currentPropagatedTime] = updateDuration.count();
   }
 
   // Return if optimization failed
@@ -895,6 +921,50 @@ bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, 
   }
 }
 
+// Log Latency and Update Duration to Memory
+bool GraphManager::logLatencyAndUpdateDuration(const std::string& savePath, const std::string& timeString) {
+  // Note enabled
+  if (!graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    REGULAR_COUT << RED_START << " Logging of latency and update duration is disabled. " << COLOR_END << std::endl;
+    return false;
+  }
+  // Enabled
+  else {
+    // Main container: map
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Create directory if it does not exist
+    if (!std::filesystem::exists(savePath + timeString)) {
+      std::filesystem::create_directories(savePath + timeString);
+    }
+
+    // Create File Streams
+    // CSV
+    FileLogger::createDoubleCsvFileStream(fileStreams, savePath, "latency", timeString);
+    FileLogger::createDoubleCsvFileStream(fileStreams, savePath, "update_duration", timeString);
+
+    // Iterate through all timestamps and corresponding latency
+    for (const auto& latencyPair : latencyContainer_) {
+      const double& timeStamp = latencyPair.first;  // alias
+      const double& latency = latencyPair.second;   // alias
+      // Write to files
+      // CSV
+      FileLogger::writeDoubleToCsvFile(fileStreams, latency, "latency", timeStamp);
+    }
+
+    // Iterate through all timestamps and corresponding update duration
+    for (const auto& updateDurationPair : updateDurationContainer_) {
+      const double& timeStamp = updateDurationPair.first;        // alias
+      const double& updateDuration = updateDurationPair.second;  // alias
+      // Write to files
+      // CSV
+      FileLogger::writeDoubleToCsvFile(fileStreams, updateDuration, "update_duration", timeStamp);
+    }
+
+    return true;
+  }
+}
+
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath, const bool saveCovarianceFlag) {
@@ -931,6 +1001,11 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     std::ignore = logRealTimeNavStates(savePath, timeString);
     // Real-time Reference Frame States
     std::ignore = logRealTimeReferenceFrameStates(savePath, timeString);
+  }
+
+  // Save Latency and Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    std::ignore = logLatencyAndUpdateDuration(savePath, timeString);
   }
 
   // Save optimized states
