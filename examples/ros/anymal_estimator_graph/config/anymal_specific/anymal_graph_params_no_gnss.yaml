@@ -6,7 +6,7 @@ sensor_params:
   leggedOdometryVelocityRate: 20
   leggedOdometryVelocityDownsampleFactor: 1
   leggedKinematicsRate: 400
-  leggedKinematicsDownsampleFactor: 10
+  leggedKinematicsDownsampleFactor: 1
   gnssRate: 20
 
 # Alignment Parameters
@@ -29,4 +29,4 @@ noise_params:
   ## Velocity Unary Noise
   legVelocityUnaryNoiseDensity: [ 0.1, 0.1, 0.1 ] # StdDev, ORDER XYZ(meters/sec)
   ## LegKinematics Noise
-  legKinematicsFootPositionUnaryNoiseDensity: [ 0.01, 0.01, 0.01 ] # StdDev, XYZ(meters)
+  legKinematicsFootPositionUnaryNoiseDensity: [ 0.2, 0.2, 0.2 ] # StdDev, XYZ(meters)

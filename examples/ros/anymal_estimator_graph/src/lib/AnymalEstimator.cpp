@@ -577,7 +577,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::Huber(1), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, //graph_msf::RobustNorm::Huber(1)
                 legKinematicsFootPositionUnaryNoise_, staticTransformsPtr_->getWorldFrame());
 
             // Add to graph

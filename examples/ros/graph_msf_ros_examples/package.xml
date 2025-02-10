@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-    <name>graph_msf_examples</name>
+    <name>graph_msf_ros_examples</name>
     <version>0.0.0</version>
 
     <description>
