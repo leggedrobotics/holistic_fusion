@@ -1,0 +1,26 @@
+# Doxyfile 1.8.17
+
+#---------------------------------------------------------------------------
+# Project related configuration options
+#---------------------------------------------------------------------------
+
+DOXYFILE_ENCODING     = UTF-8
+PROJECT_NAME          = "My Project"
+PROJECT_NUMBER        = 1.0
+PROJECT_BRIEF         = "Holistic Fusion: A Generic Framework for Multimodal Sensor Fusion"
+OUTPUT_DIRECTORY      = "docs/doxy"
+INPUT                 = "graph_msf",  "ros",  "examples/ros"
+FILE_PATTERNS         = *.cpp *.h *.hpp
+RECURSIVE             = YES
+EXTRACT_ALL           = YES
+EXTRACT_PRIVATE       = YES
+EXTRACT_STATIC        = YES
+EXTRACT_LOCAL_CLASSES = YES
+GENERATE_HTML         = YES
+GENERATE_LATEX        = NO
+GENERATE_XML          = NO
+GENERATE_MAN          = NO
+GENERATE_RTF          = NO
+GENERATE_TREEVIEW     = YES
+SOURCE_BROWSER        = YES
+CREATE_SUBDIRS        = YES

@@ -1,0 +1,10 @@
+<map id="examples/ros/imu_pose3_fuser/include" name="examples/ros/imu_pose3_fuser/include">
+<area shape="rect" id="node2" href="dir_a92ee8ad3b3d81532af0456c47421e8f.html" title="imu_pose3_fuser" alt="" coords="37,63,171,111"/>
+<area shape="rect" id="node3" href="dir_b6bc2876df5f51b64790622082ac4e8d.html" title="ros" alt="" coords="31,159,103,207"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000024_000047.html" title="1" alt="" coords="86,138,95,152"/>
+<area shape="rect" id="node4" href="dir_b35421d7cb684df67fdb7208135c1e57.html" title="graph_msf" alt="" coords="57,255,148,303"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000024_000037.html" title="1" alt="" coords="114,231,124,246"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000047_000037.html" title="8" alt="" coords="91,227,100,242"/>
+<area shape="rect" id="clust2" href="dir_afc03bdf2cb462e2f3ca69cf92bd43b0.html" alt="" coords="27,52,277,121"/>
+<area shape="rect" id="clust1" href="dir_f05c527ad0fe28e8fdadff6955625eb9.html" title="imu_pose3_fuser" alt="" coords="16,16,288,132"/>
+</map>

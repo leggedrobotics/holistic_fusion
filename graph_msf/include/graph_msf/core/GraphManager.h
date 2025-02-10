@@ -41,7 +41,12 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-// Actual Class
+/**
+ * @brief GraphManager class
+ * @details The GraphManager class is the central class of the GraphMSF library. It manages the graph, the optimization, and the
+ *         real-time and batch optimization. It also provides the interface to add measurements to the graph and to retrieve the
+ *         optimized states.
+ */
 class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);

@@ -1,0 +1,6 @@
+<map id="graph_msf::BinaryMeasurementXD&lt; MEASUREMENT_TYPE, DIM &gt;" name="graph_msf::BinaryMeasurementXD&lt; MEASUREMENT_TYPE, DIM &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="5,247,252,288"/>
+<area shape="rect" id="node2" href="$d5/dd1/classgraph__msf_1_1BinaryMeasurement.html" title="Class to represent a binary measurement in the graph." alt="" coords="13,171,244,197"/>
+<area shape="rect" id="node3" href="$d0/d50/classgraph__msf_1_1Measurement.html" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="35,95,223,121"/>
+<area shape="rect" id="node4" href="$d8/d21/structgraph__msf_1_1RobustNorm.html" title="Class to represent a robust norm for a measurement." alt="" coords="39,5,218,32"/>
+</map>
