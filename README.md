@@ -31,13 +31,23 @@ common parent class interface, depending on the measurement type.
 Currently, HF supports three general measurement types: i) absolute measurements, ii) landmark measurements, iii) local &
 relative measurements.
 
+[![Graph MSF Core]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_core.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
+[![Graph MSF ROS]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
+[![Graph MSF ROS2]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros2.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
+[![Graph MSF ROS Examples]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros_examples.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
+[![Graph MSF ROS2 Examples]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros2_examples.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
+
+**Disclaimer:** 
+The framework is still under development and will be updated, extended, and more generalized in the
+future.
+
 ## Resources
 
 **[1] arXiv 2025**
 
 * [project page](https://leggedrobotics.github.io/holistic_fusion)
 * [paper](https://arxiv.org/pdf/)
-* [video](https://youtu.be/leggedrobotics)
+* [video](https://youtube.com/leggedrobotics)
 
 **[2] ICRA2022, Philadelphia**
 
@@ -45,34 +55,21 @@ relative measurements.
 * [paper](https://arxiv.org/pdf/2203.01389.pdf)
 * [video](https://youtu.be/syTV7Ui36jg)
 
-## Overview
-
-The presented framework aims for a flexible and fast fusion of multiple sensor modalities. The state estimate is
-published at **imu frequency** through IMU pre-integration with a multi-threaded implementation and bookkeeping.
-The measurements are added and the graph's optimization are performed in different threads.
-In contrast to classical filtering-based approaches this graph-based structure also allows for a simple incorporation of
-delayed sensor measurements up to the smoothingLag.
-
-There are two intended **use-cases**:
-
-1. Using the dual graph formulation as proposed in [1]. In this part of the implementation, there are hard-coded
-   components for this specific use case.
-2. A more general graph-based multi-sensor fusion. An example for fusing LiDAR odometry and IMU on the dataset of the
-   [ETH Zurich Robotic Summer School](https://ethz-robotx.github.io/SuperMegaBot/) will follow shortly.
-
-**Disclaimer:** The framework is still under development and will be updated, extended, and more generalized in the
-future.
-
 ## Modules and Packages
 
 This repository contains the following modules:
 
-1. [Graph MSF(./graph_msf)]: The core library for the sensor fusion. This library is only dependent on Eigen and GTSAM and can be used with any communication layer (including ROS1 and ROS2).
-2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for using GraphMsf in ROS. It is dependant on GraphMsf and ROS.
+1. [Graph MSF(./graph_msf)]: The core library for the sensor fusion. This library depends only on Eigen and GTSAM and can be used with any communication layer (including ROS1 and ROS2).
+2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for GraphMsf in ROS. It is dependent on GraphMsf and ROS.
 3. [ROS1 Examples](./examples/ros): Examples on how to use GraphMsf and GraphMsfRos.
-    - [](./examples/excavator_dual_graph) from [1]. This is the implementation as
-      presented in the paper.
-    - Single-graph standalone fusion example following soon.
+    - [ANYmal Estimator - Quadrupedal Robot](./examples/ros/anymal_estimator_graph): This is the implementation of the ANYmal quadrupedal robot estimator as presented in [1], including IMU, GNSS, leg odometry, and absolute LiDAR measurements.
+    - [HEAP - Excavator](./examples/ros/excavator_holistic_graph): This is the implementation of the HEAP excavator as presented in [1], including IMU, two GNSS antennas, and absolute LiDAR measurements.
+    - [Grand Tour GT Generation - Leica Total Station Position & GNSS](./examples/ros/atn_position3_fuser): The GT generation estimator aligning two non-drifting trajectories: i) the Leica total station R3 position, and ii) the Novotel offline optimized SE(3) trajectory.
+    - [Super Mega Bot - Robot for Teaching Purposes](./examples/ros/smb_estimator_graph): A wheeled robot integrating IMU, absolute LiDAR poses, and wheel encoders.
+    - [Pure IMU Integration](./examples/ros/pure_imu_integration): A simple example of performing pure IMU integration for dead-reckoning performance testing.
+    - [IMU Pose3 Fuser](./examples/ros/imu_pose3_fuser): A simple example of fusing an IMU and an SE(3) pose measurement.
+    - [Graph MSF ROS Examples](./examples/ros/graph_msf_ros_examples): A meta-package bundling all the aforementioned ROS examples in one package for convenience.
+4. [ROS2 Examples](./examples/ros2): COMING SOON
 
 ## Instructions
 
@@ -80,8 +77,8 @@ Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fu
 
 ## Paper
 
-If you find this code useful, please consider citing:
-
+If you find this code useful or use it in your work, please consider citing:
+**[1]**
 ```
 @inproceedings{nubert2022graph,
   title={Graph-based Multi-sensor Fusion for Consistent Localization of Autonomous Construction Robots},
@@ -92,6 +89,7 @@ If you find this code useful, please consider citing:
 }
 ```
 
+**[2]**
 ```
 @inproceedings{nubert2022graph,
   title={Graph-based Multi-sensor Fusion for Consistent Localization of Autonomous Construction Robots},
@@ -104,5 +102,5 @@ If you find this code useful, please consider citing:
 
 ## Acknowledgements
 
-The authors thank their colleagues at ETH Z\"urich and NASA JPL for their help in conducting the robot experiments and evaluations and for using HF on their robots. 
+The authors thank their colleagues at ETH Z\"urich and NASA JPL for their help in conducting the robot experiments and evaluations and using HF on their robots. 
 Special thanks go to Takahiro Miki and the ANYmal Hike team at the Robotic Systems Lab (RSL), ETH Zurich, Nikita Rudin, and David Hoeller for the ANYmal Parkour experiments, Patrick Spieler for running the deployments on the JPL RACER vehicle, the entire excavation team at RSL and Gravis Robotics, Thomas Mantel and the teaching assistants of the [ETH Robotic Summer School](https://robotics-summerschool.ethz.ch/) for their help on the SuperMegaBot, and Mayank Mittal for his help in generating renderings.
