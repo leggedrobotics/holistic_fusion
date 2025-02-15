@@ -132,6 +132,9 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
     } else {
       REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
     }
+
+    // GNSS Outlier Threshold
+    gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionOutlierThreshold", privateNode);
   }  // End GNSS Unary
 
   // Coordinate Frames ---------------------------------------------------

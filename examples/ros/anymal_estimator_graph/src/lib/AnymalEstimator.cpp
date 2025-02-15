@@ -268,7 +268,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
+        gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
 
