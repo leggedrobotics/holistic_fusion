@@ -1,5 +1,5 @@
 #External Prior/Transform Input
 extrinsics:
   prismPositionMeasFrame: prism
-  gnssPositionMeasFrame: cpt7_antenna_front
+  gnssPositionMeasFrame: cpt7_imu
   gnssOfflinePoseMeasFrame: cpt7_imu
