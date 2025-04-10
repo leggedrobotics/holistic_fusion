@@ -117,7 +117,8 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
   srvSmootherOptimize_ =
       privateNode.advertiseService("/graph_msf/trigger_offline_optimization", &GraphMsfRos::srvOfflineSmootherOptimizeCallback, this);
   // Real-Time State Logging
-  srvLogRealTimeNavStates_ = privateNode.advertiseService("/graph_msf/log_real_time_nav_states", &GraphMsfRos::srvLogRealTimeNavStatesCallback, this);
+  srvLogRealTimeNavStates_ =
+      privateNode.advertiseService("/graph_msf/log_real_time_nav_states", &GraphMsfRos::srvLogRealTimeNavStatesCallback, this);
 }
 
 bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
