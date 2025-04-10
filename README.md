@@ -6,7 +6,7 @@
 
 **Authors:** 
 [Julian Nubert](https://www.linkedin.com/in/juliannubert/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub])),
-[Turcan Tuna](https://www.linkedin.com/in/turcantuna/)),
+[Turcan Tuna](https://www.linkedin.com/in/turcantuna/),
 [Jonas Frey](https://www.linkedin.com/in/jonasfrey96/),
 [Cesar Cadena](https://www.linkedin.com/in/cesar-cadena-204106b/),
 [Katherine J. Kuchenbecker](https://www.linkedin.com/in/katherinekuchenbecker/),
@@ -15,10 +15,10 @@
 
 <h4>
     <a href="https://leggedrobotics.github.io/holistic_fusion/">Homepage</a> |
+    <a href="https://arxiv.org/abs/2504.06479">Paper</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs">Docs</a> |
-    <a href="https://leggedrobotics.github.io/holistic_fusion/doxy">Doxygen</a> |
-    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/examples">Examples</a> |
-    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/contribute">Contribute</a> |
+    <a href="[https://leggedrobotics.github.io/holistic_fusion/doxy/html/">Doxygen</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a> |
     <a href="https://www.youtube.com/leggedrobotics">Video</a> |
 </h4>
 
@@ -31,12 +31,6 @@ common parent class interface, depending on the measurement type.
 Currently, HF supports three general measurement types: i) absolute measurements, ii) landmark measurements, iii) local &
 relative measurements.
 
-[![Graph MSF Core]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_core.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
-[![Graph MSF ROS]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
-[![Graph MSF ROS2]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros2.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
-[![Graph MSF ROS Examples]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros_examples.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
-[![Graph MSF ROS2 Examples]([https://github.com/leggedrobotics/holistic_fusion/actions/workflows/graph_msf_ros2_examples.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion)
-
 **Disclaimer:** 
 The framework is still under development and will be updated, extended, and more generalized in the
 future.
@@ -45,8 +39,8 @@ future.
 
 **[1] arXiv 2025**
 
-* [project page](https://leggedrobotics.github.io/holistic_fusion)
-* [paper](https://arxiv.org/pdf/)
+* [project page](https://leggedrobotics.github.io/holistic_fusion/)
+* [paper](https://arxiv.org/abs/2504.06479)
 * [video](https://youtube.com/leggedrobotics)
 
 **[2] ICRA2022, Philadelphia**
@@ -59,7 +53,7 @@ future.
 
 This repository contains the following modules:
 
-1. [Graph MSF(./graph_msf)]: The core library for the sensor fusion. This library depends only on Eigen and GTSAM and can be used with any communication layer (including ROS1 and ROS2).
+1. [Graph MSF(./graph_msf)]: The core library for the sensor fusion. This library depends mainly on Eigen and GTSAM and can be used with any communication layer (including ROS1 and ROS2).
 2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for GraphMsf in ROS. It is dependent on GraphMsf and ROS.
 3. [ROS1 Examples](./examples/ros): Examples on how to use GraphMsf and GraphMsfRos.
     - [ANYmal Estimator - Quadrupedal Robot](./examples/ros/anymal_estimator_graph): This is the implementation of the ANYmal quadrupedal robot estimator as presented in [1], including IMU, GNSS, leg odometry, and absolute LiDAR measurements.
@@ -73,19 +67,26 @@ This repository contains the following modules:
 
 ## Instructions
 
-Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions.
+Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions regarding installation and usage.
+
+## Code Documentation
+
+Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy/html) for documentation of the code.
 
 ## Paper
 
 If you find this code useful or use it in your work, please consider citing:
+
 **[1]**
 ```
-@inproceedings{nubert2022graph,
-  title={Graph-based Multi-sensor Fusion for Consistent Localization of Autonomous Construction Robots},
-  author={Nubert, Julian and Khattak, Shehryar and Hutter, Marco},
-  booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
-  year={2022},
-  organization={IEEE}
+@misc{nubert2025holisticfusiontasksetupagnostic,
+      title={Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs}, 
+      author={Julian Nubert and Turcan Tuna and Jonas Frey and Cesar Cadena and Katherine J. Kuchenbecker and Shehryar Khattak and Marco Hutter},
+      year={2025},
+      eprint={2504.06479},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2504.06479}, 
 }
 ```
 
@@ -102,5 +103,5 @@ If you find this code useful or use it in your work, please consider citing:
 
 ## Acknowledgements
 
-The authors thank their colleagues at ETH Z\"urich and NASA JPL for their help in conducting the robot experiments and evaluations and using HF on their robots. 
+The authors thank their colleagues at ETH Zuurich and NASA JPL for their help in conducting the robot experiments and evaluations and using HF on their robots. 
 Special thanks go to Takahiro Miki and the ANYmal Hike team at the Robotic Systems Lab (RSL), ETH Zurich, Nikita Rudin, and David Hoeller for the ANYmal Parkour experiments, Patrick Spieler for running the deployments on the JPL RACER vehicle, the entire excavation team at RSL and Gravis Robotics, Thomas Mantel and the teaching assistants of the [ETH Robotic Summer School](https://robotics-summerschool.ethz.ch/) for their help on the SuperMegaBot, and Mayank Mittal for his help in generating renderings.
