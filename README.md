@@ -17,7 +17,7 @@
     <a href="https://leggedrobotics.github.io/holistic_fusion/">Homepage</a> |
     <a href="https://arxiv.org/abs/2504.06479">Paper</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs">Docs</a> |
-    <a href="[https://leggedrobotics.github.io/holistic_fusion/doxy/html/">Doxygen</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/doxy/html/">Doxygen</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a> |
     <a href="https://www.youtube.com/leggedrobotics">Video</a> |
 </h4>
