@@ -66,6 +66,10 @@ void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
   pubMeasWorldGnssPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
 
+  // GNSS
+  pubReferenceNavSatFixCoordinates_ =
+      privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position", ROS_QUEUE_SIZE, true);
+
   // Markers
   pubFootContactMarkers_ = privateNode.advertise<visualization_msgs::MarkerArray>("/graph_msf/foot_contact_markers", ROS_QUEUE_SIZE);
 }
@@ -206,6 +210,15 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
     gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+
+    // Publish the reference coordinates for downstream applications.
+    sensor_msgs::NavSatFix referenceGNSSmsg;
+    referenceGNSSmsg.header = gnssMsgPtr->header;
+    referenceGNSSmsg.latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    referenceGNSSmsg.longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    referenceGNSSmsg.altitude = gnssHandlerPtr_->getGnssReferenceAltitude();
+    pubReferenceNavSatFixCoordinates_.publish(referenceGNSSmsg);
+
     REGULAR_COUT << " GNSS Handler initialized." << std::endl;
     return;
   }
@@ -268,7 +281,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-        gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
+        gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame,
+        staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
 
@@ -577,7 +591,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, //graph_msf::RobustNorm::Huber(1)
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,  // graph_msf::RobustNorm::Huber(1)
                 legKinematicsFootPositionUnaryNoise_, staticTransformsPtr_->getWorldFrame());
 
             // Add to graph

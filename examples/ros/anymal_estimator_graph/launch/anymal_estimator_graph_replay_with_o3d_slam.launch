@@ -6,7 +6,7 @@
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
     <arg name="lidar_odometry_topic_name"
-         default="/open3d_slam/scan2map_odometry"/>  <!-- /open3d_slam/scan2map_odometry  /compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
+         default="/open3d_slam/scan2map_odometry"/> 
 
     <!-- O3D SLAM Config -->
     <arg name="launch_o3d_slam" default="true"/>
@@ -26,16 +26,12 @@
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
 
-    <!-- Launch Compslam -->
-    <include file="$(find open3d_slam_ros)/launch/hike_launch.launch" if="$(arg launch_o3d_slam)">
+    <!-- Launch Open3d SLAM -->
+    <include file="$(find open3d_slam_ros)/launch/arammis.launch" if="$(arg launch_o3d_slam)">
         <arg name="cloud_topic" value="$(arg pointcloud_topic_name)"/>
         <arg name="launch_rviz" value="false"/>
         <arg name="assumed_external_odometry_tracked_frame" value="$(arg assumed_external_odometry_tracked_frame)"/>
         <arg name="odometry_topic" value="$(arg o3d_prior_odometry_topic)"/>
     </include>
-
-    <!--    TF Tree Connection During Replay -->
-    <!--    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher"-->
-    <!--          args="0 0 0 0 0 0 compslam_lio/camera_init_CORRECTED_gmsf compslam_lio/camera_init_CORRECTED 100"/>-->
 
 </launch>
