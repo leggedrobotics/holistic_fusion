@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(graph_msf)
 
 ## Compile as C++17, supported in ROS Noetic and newer
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++17 -O3 -mtune=native -flto -funroll-loops -fopt-info-vec-optimized -fno-math-errno)
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)

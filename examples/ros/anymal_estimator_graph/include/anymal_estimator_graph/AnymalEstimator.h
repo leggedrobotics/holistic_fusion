@@ -159,6 +159,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Path
   ros::Publisher pubMeasMapLioPath_;
   ros::Publisher pubMeasWorldGnssPath_;
+  // GNSS
+  ros::Publisher pubReferenceNavSatFixCoordinates_;
   // Markers
   ros::Publisher pubFootContactMarkers_;
 
