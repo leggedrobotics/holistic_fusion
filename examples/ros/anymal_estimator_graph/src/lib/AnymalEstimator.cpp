@@ -111,7 +111,7 @@ void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   }
   // Kinematics
   if (useLeggedKinematicsFlag_) {
-    subLeggedKinematics_ = privateNode.subscribe<anymal_msgs::AnymalState>(
+    subLeggedKinematics_ = privateNode.subscribe<graph_msf_anymal_msgs::AnymalState>(
         "/anymal_state_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedKinematicsCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Kinematics subscriber with topic: " << subLeggedKinematics_.getTopic() << std::endl;
   }
@@ -268,7 +268,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
-        gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame());
+        gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame,
+        staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
 
@@ -501,7 +502,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   }
 }
 
-void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr) {
+void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr) {
   if (!areRollAndPitchInited()) {
     return;
   }
@@ -577,7 +578,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot, //graph_msf::RobustNorm::Huber(1)
+                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,  // graph_msf::RobustNorm::Huber(1)
                 legKinematicsFootPositionUnaryNoise_, staticTransformsPtr_->getWorldFrame());
 
             // Add to graph

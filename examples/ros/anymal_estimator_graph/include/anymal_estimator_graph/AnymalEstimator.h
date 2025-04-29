@@ -26,7 +26,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <visualization_msgs/MarkerArray.h>
 
 // Custom Messages
-#include "anymal_msgs/AnymalState.h"
+#include "graph_msf_anymal_msgs/AnymalState.h"
 
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
@@ -72,7 +72,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Legged
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
-  void leggedKinematicsCallback_(const anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
+  void leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
