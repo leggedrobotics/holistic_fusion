@@ -12,14 +12,16 @@
     <license>BSD</license>
     <author email="nubertj@ethz.ch">Julian Nubert</author>
 
-    <buildtool_depend>catkin</buildtool_depend>
-    <build_depend>cmake_clang_tools</build_depend>
-    <build_depend>Eigen3</build_depend>
-    <build_depend>GTSAM</build_depend>
-    <build_depend>gtsam_catkin</build_depend>
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
-    <exec_depend>Eigen3</exec_depend>
-    <exec_depend>GTSAM</exec_depend>
-    <exec_depend>gtsam_catkin</exec_depend>
+    <depend>tf2_eigen</depend>
+    <depend>std_srvs</depend>
+    <build_depend>cmake_clang_tools</build_depend>
+    <build_depend>eigen_colcon</build_depend>
+    <build_depend>gtsam</build_depend>
+
+    <exec_depend>eigen_colcon</exec_depend>
+    <exec_depend>gtsam</exec_depend>
 
 </package>
