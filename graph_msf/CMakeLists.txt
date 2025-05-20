@@ -17,29 +17,10 @@ if (NOT WIN32)
     set(Magenta "${Esc}[35m")
 endif ()
 
-# March native check
-#include(CheckCXXCompilerFlag)
-#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
-#if(COMPILER_SUPPORTS_MARCH_NATIVE)
-#    add_compile_options("-march=native")
-#    message("${BoldMagenta}INFO: Using -march=native${ColourReset}")
-#endif()
-
-# Catkin
-set(CATKIN_PACKAGE_DEPENDENCIES
-        gtsam_catkin
-)
-
-find_package(catkin REQUIRED COMPONENTS
-        ${CATKIN_PACKAGE_DEPENDENCIES}
-)
-
-catkin_package(
-        CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-        DEPENDS
-        INCLUDE_DIRS include
-        LIBRARIES ${PROJECT_NAME}
-)
+# Eigen
+find_package(Eigen3 REQUIRED COMPONENTS)
+# GTSAM
+find_package(GTSAM REQUIRED)
 
 ###########
 ## Build ##
@@ -49,10 +30,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(
         include
-        ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
-        #        ${GTSAM_INCLUDE_DIR}
-        ${Python3_INCLUDE_DIRS}
+        ${GTSAM_INCLUDE_DIR}
 )
 
 add_library(${PROJECT_NAME}
@@ -71,9 +50,10 @@ add_library(${PROJECT_NAME}
         src/lib/NavState.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${GTSAM_LIBRARIES}
+)
 
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
@@ -91,11 +71,11 @@ endif (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 #############
 
 install(TARGETS ${PROJECT_NAME}
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
 )
