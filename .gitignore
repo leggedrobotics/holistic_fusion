@@ -68,3 +68,5 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Local directories
+.etc/
