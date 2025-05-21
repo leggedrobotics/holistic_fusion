@@ -47,7 +47,7 @@ add_library(${PROJECT_NAME}
     src/lib/SmbEstimator.cpp
     src/lib/readParams.cpp
     src/lib/SmbStaticTransforms.cpp
-    include/smb_estimator_graph/constants.h
+    include/smb_estimator_graph_ros2/constants.h
 )
 
 target_link_libraries(${PROJECT_NAME}
