@@ -5,32 +5,36 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-// ROS
-#include <ros/ros.h>
+// ROS 2
+#include <rclcpp/rclcpp.hpp>
 
 // Debugging
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+// #include <gflags/gflags.h>
 
 // Local packages
 #include "smb_estimator_graph_ros2/SmbEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {
+  // Initialize ROS 2
+  rclcpp::init(argc, argv);
+
   // Debugging
-  google::InitGoogleLogging(argv[0]);
-  FLAGS_alsologtostderr = true;
-  google::InstallFailureSignalHandler();
+  // FLAGS_alsologtostderr = true;
 
-  // ROS related
-  ros::init(argc, argv, "anymal_estimator_graph");
-  std::shared_ptr<ros::NodeHandle> privateNodePtr = std::make_shared<ros::NodeHandle>("~");
-  /// Do multi-threaded spinner
-  ros::MultiThreadedSpinner spinner(4);
+  // Create Node
+  auto privateNodePtr = std::make_shared<rclcpp::Node>("smb_estimator_node");
 
-  // Create Instance
-  smb_se::SmbEstimator anymalEstimator(privateNodePtr);
-  spinner.spin();
+  // Create Instance of SmbEstimator
+  auto smbEstimator = std::make_shared<smb_se::SmbEstimator>(privateNodePtr);
+
+  // Use Multi-Threaded Executor
+  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 4);
+  executor.add_node(privateNodePtr);
+  executor.spin();
+
+  // Shutdown ROS 2
+  rclcpp::shutdown();
 
   return 0;
 }

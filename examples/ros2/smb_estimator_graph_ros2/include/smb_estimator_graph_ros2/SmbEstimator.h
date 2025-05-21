@@ -5,21 +5,23 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef Smb_Estimator_H
-#define Smb_Estimator_H
+#pragma once
 
 // std
 #include <chrono>
+#include <memory>
 
-// ROS
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <sensor_msgs/Imu.h>
-#include <std_msgs/Float64MultiArray.h>
-#include <tf/transform_listener.h>
+// ROS 2
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 // Workspace
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "graph_msf_ros2/GraphMsfRos2.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -27,22 +29,22 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-class SmbEstimator : public graph_msf::GraphMsfRos {
+class SmbEstimator : public graph_msf::GraphMsfRos2 {
  public:
-  SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
-  // Destructor
-  ~SmbEstimator() = default;
-  // Setup
+  explicit SmbEstimator(std::shared_ptr<rclcpp::Node>& node);
+
+  ~SmbEstimator() override = default;
+
   void setup();
 
  protected:
   // Virtual Functions
-  void readParams(const ros::NodeHandle& privateNode) override;
-  void initializePublishers(ros::NodeHandle& privateNode) override;
-  void initializeSubscribers(ros::NodeHandle& privateNode) override;
-  void initializeMessages(ros::NodeHandle& privateNode) override;
-  void initializeServices(ros::NodeHandle& privateNode) override;
-  void imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr) override;
+  void readParams();
+  void initializePublishers();
+  void initializeSubscribers();
+  void initializeMessages();
+  void initializeServices();
+  void imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr);
 
  private:
   // Time
@@ -76,13 +78,13 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
 
   // Callbacks
   // LiDAR
-  void lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& lidarOdomPtr);
+  void lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarOdomPtr);
   // Wheel Between
-  void wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr& wheelOdomPtr);
+  void wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& wheelOdomPtr);
   // Wheel Linear Velocities
-  void wheelLinearVelocitiesCallback_(const std_msgs::Float64MultiArray::ConstPtr& wheelsSpeedsPtr);
+  void wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64MultiArray::ConstSharedPtr& wheelsSpeedsPtr);
   // VIO
-  void vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
+  void vioOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& vioOdomPtr);
 
   // Callback Members
   int wheelOdometryCallbackCounter_ = -1;
@@ -90,26 +92,18 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   double wheelOdometryTimeKm1_ = 0.0;
 
   // Subscribers
-  // Instances
-  // LIO
-  ros::Subscriber subLioOdometry_;
-  // Wheel Between
-  ros::Subscriber subWheelOdometryBetween_;
-  // Wheel Linear Velocities
-  ros::Subscriber subWheelLinearVelocities_;
-  // VIO
-  ros::Subscriber subVioOdometry_;
-  // TF Listener
-  tf::TransformListener tfListener_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subWheelOdometryBetween_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subWheelLinearVelocities_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subVioOdometry_;
 
   // Publishers
-  // Path
-  ros::Publisher pubMeasMapLioPath_;
-  ros::Publisher pubMeasMapVioPath_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioPath_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapVioPath_;
 
   // Messages
-  nav_msgs::PathPtr measLio_mapImuPathPtr_;
-  nav_msgs::PathPtr measVio_mapImuPathPtr_;
+  std::shared_ptr<nav_msgs::msg::Path> measLio_mapImuPathPtr_;
+  std::shared_ptr<nav_msgs::msg::Path> measVio_mapImuPathPtr_;
 
   // Flags
   bool useLioOdometryFlag_ = true;
@@ -120,5 +114,5 @@ class SmbEstimator : public graph_msf::GraphMsfRos {
   // Wheel Radius
   double wheelRadiusMeter_ = 0.195;
 };
+
 }  // namespace smb_se
-#endif  // end Smb_Estimator_H

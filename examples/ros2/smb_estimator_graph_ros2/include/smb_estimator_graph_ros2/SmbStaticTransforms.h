@@ -5,16 +5,19 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef Smb_Static_Transforms_H
-#define Smb_Static_Transforms_H
+#pragma once
+
 // Workspace
-#include "graph_msf_ros2/extrinsics/StaticTransformsTf.h"
+#include <graph_msf_ros2/extrinsics/StaticTransformsTf.h>
+#include <memory>
+#include <rclcpp/rclcpp.hpp>
 
 namespace smb_se {
 
 class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  SmbStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr);
+  SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr,
+                      const graph_msf::StaticTransforms& staticTransforms);
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
@@ -24,26 +27,21 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   void setVioOdometryFrame(const std::string& s) { vioOdometryFrame_ = s; }
 
   // Getters
-  const std::string& getLioOdometryFrame() { return lidarOdometryFrame_; }
-  const std::string& getWheelOdometryBetweenFrame() { return wheelOdometryBetweenFrame_; }
-  const std::string& getWheelLinearVelocityLeftFrame() { return wheelLinearVelocityLeftFrame_; }
-  const std::string& getWheelLinearVelocityRightFrame() { return wheelLinearVelocityRightFrame_; }
-  const std::string& getVioOdometryFrame() { return vioOdometryFrame_; }
+  const std::string& getLioOdometryFrame() const { return lidarOdometryFrame_; }
+  const std::string& getWheelOdometryBetweenFrame() const { return wheelOdometryBetweenFrame_; }
+  const std::string& getWheelLinearVelocityLeftFrame() const { return wheelLinearVelocityLeftFrame_; }
+  const std::string& getWheelLinearVelocityRightFrame() const { return wheelLinearVelocityRightFrame_; }
+  const std::string& getVioOdometryFrame() const { return vioOdometryFrame_; }
 
  private:
   void findTransformations() override;
 
   // Frames
-  // LiDAR
   std::string lidarOdometryFrame_;
-  // Wheel
-  // Between
   std::string wheelOdometryBetweenFrame_;
-  // Linear Velocities
   std::string wheelLinearVelocityLeftFrame_;
   std::string wheelLinearVelocityRightFrame_;
-  // VIO
   std::string vioOdometryFrame_;
 };
+
 }  // namespace smb_se
-#endif  // end Smb_Static_Transforms_H
