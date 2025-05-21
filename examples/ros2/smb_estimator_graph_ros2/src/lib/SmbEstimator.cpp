@@ -6,16 +6,16 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "smb_estimator_graph/SmbEstimator.h"
+#include "smb_estimator_graph_ros2/SmbEstimator.h"
 
 // Project
-#include "smb_estimator_graph/SmbStaticTransforms.h"
+#include "smb_estimator_graph_ros2/SmbStaticTransforms.h"
 
 // Workspace
-#include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/util/conversions.h"
-#include "smb_estimator_graph/constants.h"
+#include "graph_msf_ros2/measurements/BinaryMeasurementXD.h"
+#include "graph_msf_ros2/measurements/UnaryMeasurementXD.h"
+#include "graph_msf_ros2/util/conversions.h"
+#include "smb_estimator_graph_ros2/constants.h"
 
 namespace smb_se {
 

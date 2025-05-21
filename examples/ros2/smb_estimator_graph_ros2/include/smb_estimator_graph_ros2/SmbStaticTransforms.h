@@ -8,7 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef Smb_Static_Transforms_H
 #define Smb_Static_Transforms_H
 // Workspace
-#include "graph_msf_ros/extrinsics/StaticTransformsTf.h"
+#include "graph_msf_ros2/extrinsics/StaticTransformsTf.h"
 
 namespace smb_se {
 

@@ -6,14 +6,14 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
-#include "smb_estimator_graph/SmbEstimator.h"
+#include "smb_estimator_graph_ros2/SmbEstimator.h"
 
 // Project
-#include "smb_estimator_graph/SmbStaticTransforms.h"
-#include "smb_estimator_graph/constants.h"
+#include "smb_estimator_graph_ros2/SmbStaticTransforms.h"
+#include "smb_estimator_graph_ros2/constants.h"
 
 // GraphMSF ROS
-#include "graph_msf_ros/ros/read_ros_params.h"
+#include "graph_msf_ros2/ros/read_ros_params.h"
 
 namespace smb_se {
 

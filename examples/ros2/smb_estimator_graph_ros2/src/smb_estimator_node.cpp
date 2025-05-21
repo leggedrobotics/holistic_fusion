@@ -13,7 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <glog/logging.h>
 
 // Local packages
-#include "smb_estimator_graph/SmbEstimator.h"
+#include "smb_estimator_graph_ros2/SmbEstimator.h"
 
 // Main node entry point
 int main(int argc, char** argv) {
