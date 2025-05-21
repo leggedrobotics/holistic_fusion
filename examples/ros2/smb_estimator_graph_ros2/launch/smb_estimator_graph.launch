@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Parameters -->
+    <arg name="use_sim_time" default="false"/>
+    <param name="use_sim_time" value="$(arg use_sim_time)"/>
+
+    <!-- GMSF Input Topics -->
+    <arg name="imu_topic_name" default="/imu"/>
+    <arg name="lidar_odometry_topic_name"
+         default="/mapping/scan2map_odometry"/> <!--/compslam_lio/odom_aft_mapped_to_init_CORRECTED" /-->
+    <arg name="wheel_odometry_topic_name" default="/control/smb_diff_drive/odom"/>
+    <arg name="wheel_velocities_topic_name" default="/control/smb_lowlevel_controller/wheelSpeeds"/>
+    <arg name="vio_odometry_topic_name" default="/tracking_camera/odom/sample"/>
+
+    <!-- Config -->
+    <arg name="extrinsics_from_urdf" default="false"/>
+
+    <!-- Config Files -->
+    <arg name="core_graph_config_param_file" default="$(find smb_estimator_graph)/config/core/core_graph_config.yaml"/>
+    <arg name="core_graph_param_file" default="$(find smb_estimator_graph)/config/core/core_graph_params.yaml"/>
+    <arg name="core_extrinsic_param_file" default="$(find smb_estimator_graph)/config/core/core_extrinsic_params.yaml"/>
+    <arg name="smb_graph_param_file" default="$(find smb_estimator_graph)/config/smb_specific/smb_graph_params.yaml"/>
+    <arg name="smb_extrinsic_param_file"
+         default="$(find smb_estimator_graph)/config/smb_specific/smb_extrinsic_params.yaml"/>
+
+    <!-- Logging Location -->
+    <arg name="logging_dir_location" default="$(find smb_estimator_graph)/logging"/>
+
+    <!-- Node -->
+    <node pkg="smb_estimator_graph" type="smb_estimator_graph_node" name="smb_estimator_node"
+          output="screen"> <!-- launch-prefix="gdb -ex run -args" -->
+        <!-- Launch Parameters -->
+        <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
+        <!-- Parameter files -->
+        <rosparam command="load" file="$(arg core_graph_config_param_file)"/>
+        <rosparam command="load" file="$(arg core_graph_param_file)"/>
+        <rosparam command="load" file="$(arg core_extrinsic_param_file)"/>
+        <rosparam command="load" file="$(arg smb_graph_param_file)"/>
+        <rosparam command="load" file="$(arg smb_extrinsic_param_file)"/>
+        <!-- Remapping of topics -->
+        <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
+        <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)"/>
+        <remap from="/wheel_odometry_topic" to="$(arg wheel_odometry_topic_name)"/>
+        <remap from="/wheel_velocities_topic" to="$(arg wheel_velocities_topic_name)"/>
+        <remap from="/vio_odometry_topic" to="$(arg vio_odometry_topic_name)"/>
+    </node>
+
+</launch>
