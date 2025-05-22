@@ -20,10 +20,7 @@ find_package(tf2_ros REQUIRED)
 find_package(graph_msf_ros2 REQUIRED)
 find_package(graph_msf REQUIRED)
 find_package(Glog REQUIRED)
-
-# Display Eigen version and path
-message("Eigen Version: ${EIGEN3_VERSION_STRING}")
-message("Eigen Path: ${Eigen3_DIR}")
+find_package(GTSAM REQUIRED)
 
 # Color
 if(NOT WIN32)
@@ -36,10 +33,8 @@ endif()
 # Define include directories
 include_directories(
     include
-    ${EIGEN3_INCLUDE_DIR}
-    ${GLOG_INCLUDE_DIRS}
-    ${graph_msf_ros2_INCLUDE_DIRS}
-    ${graph_msf_INCLUDE_DIRS}
+    SYSTEM ${GTSAM_INCLUDE_DIR}
+    SYSTEM ${GTSAM_UNSTABLE_INCLUDE_DIR}
 )
 
 # Library
@@ -47,14 +42,6 @@ add_library(${PROJECT_NAME}
     src/lib/SmbEstimator.cpp
     src/lib/readParams.cpp
     src/lib/SmbStaticTransforms.cpp
-    include/smb_estimator_graph_ros2/constants.h
-)
-
-target_link_libraries(${PROJECT_NAME}
-    ${gflags_LIBRARIES}
-    ${GLOG_LIBRARIES}
-    ${graph_msf_LIBRARIES}
-    ${graph_msf_ros2_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME}
@@ -66,6 +53,15 @@ ament_target_dependencies(${PROJECT_NAME}
     tf2_ros
     graph_msf
     graph_msf_ros2
+    Glog
+    gflags
+    GTSAM
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${GLOG_LIBRARIES}
+  ${gflags_LIBRARIES}
+  gtsam gtsam_unstable
 )
 
 # Executable
@@ -74,8 +70,6 @@ target_link_libraries(${PROJECT_NAME}_node
     ${PROJECT_NAME}
     ${gflags_LIBRARIES}
     ${GLOG_LIBRARIES}
-    ${graph_msf_LIBRARIES}
-    ${graph_msf_ros2_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME}_node
