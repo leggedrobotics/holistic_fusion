@@ -16,8 +16,7 @@ namespace smb_se {
 
 class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr,
-                      const graph_msf::StaticTransforms& staticTransforms);
+  SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr);
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
