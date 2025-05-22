@@ -51,7 +51,7 @@ add_library(${PROJECT_NAME} SHARED
 
 # Link dependencies explicitly
 ament_target_dependencies(${PROJECT_NAME} Eigen3 GTSAM GTSAM_UNSTABLE tf2_eigen Python3)
-target_link_libraries( graph_msf gtsam gtsam_unstable)
+target_link_libraries(${PROJECT_NAME} gtsam gtsam_unstable)
 
 # Optional: Clang tooling
 find_package(cmake_clang_tools QUIET)
