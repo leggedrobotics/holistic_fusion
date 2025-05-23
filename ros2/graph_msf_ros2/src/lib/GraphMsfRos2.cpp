@@ -55,7 +55,8 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   node_->declare_parameter("graph_params.optimizeReferenceFramePosesWrtWorld", false);
   node_->declare_parameter("graph_params.optimizeExtrinsicSensorToSensorCorrectedOffset", false);
   node_->declare_parameter("graph_params.referenceFramePosesResetThreshold", 0.0);
-  // node_->declare_parameter("graph_params.centerReferenceFramesAtRobotPositionBeforeAlignment", false);
+  node_->declare_parameter("graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment", false);
+  
   node_->declare_parameter("graph_params.useWindowForMarginalsComputation", false);
   node_->declare_parameter("graph_params.windowSizeSecondsForMarginalsComputation", 0.0);
   node_->declare_parameter("graph_params.createReferenceAlignmentKeyframeEveryNSeconds", 0.0);
@@ -96,6 +97,8 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   // Common Params
   node_->declare_parameter("common_params.verbosity", 0);
   node_->declare_parameter("common_params.odomNotJumpAtStart", false);
+  node_->declare_parameter("common_params.logRealTimeStateToMemory", false);
+  node_->declare_parameter("common_params.logLatencyAndUpdateDurationToMemory", false);
 
   // Extrinsic frames
   node_->declare_parameter("extrinsics.worldFrame", std::string(""));

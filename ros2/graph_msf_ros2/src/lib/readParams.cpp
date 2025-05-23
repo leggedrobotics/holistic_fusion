@@ -80,8 +80,6 @@ void GraphMsfRos2::readParams() {
       tryGetParam<bool>(node_, "graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment");
   graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
       tryGetParam<double>(node_, "graph_params.createReferenceAlignmentKeyframeEveryNSeconds");
-//   graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_ =
-//       tryGetParam<bool>(node_, "graph_params.centerReferenceFramesAtRobotPositionBeforeAlignment");
 
   // Noise Parameters
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>(node_, "noise_params.accNoiseDensity");
