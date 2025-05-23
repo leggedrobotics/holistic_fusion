@@ -7,7 +7,7 @@ import os
 
 def generate_launch_description():
     # Package name
-    pkg_name = 'smb_estimator_graph'
+    pkg_name = 'smb_estimator_graph_ros2'
     
     # Get package share directory
     pkg_dir = get_package_share_directory(pkg_name)
@@ -68,8 +68,8 @@ def generate_launch_description():
 
         # Node
         Node(
-            package='smb_estimator_graph',
-            executable='smb_estimator_graph_node',
+            package='smb_estimator_graph_ros2',
+            executable='smb_estimator_graph_ros2_node',
             name='smb_estimator_node',
             output='screen',
             parameters=[
