@@ -64,6 +64,10 @@ void GraphMsfRos2::readParams() {
       tryGetParam<bool>(node_, "graph_params.slowBatchSmootherUseCholeskyFactorization");
   graphConfigPtr_->usingBiasForPreIntegrationFlag_ =
       tryGetParam<bool>(node_, "graph_params.usingBiasForPreIntegration");
+  graphConfigPtr_->useWindowForMarginalsComputationFlag_ =
+      tryGetParam<bool>(node_, "graph_params.useWindowForMarginalsComputation");
+  graphConfigPtr_->windowSizeSecondsForMarginalsComputation_ =
+      tryGetParam<double>(node_, "graph_params.windowSizeSecondsForMarginalsComputation");
   graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ =
       tryGetParam<bool>(node_, "graph_params.optimizeReferenceFramePosesWrtWorld");
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ =
@@ -72,6 +76,10 @@ void GraphMsfRos2::readParams() {
   // Alignment Parameters
   graphConfigPtr_->referenceFramePosesResetThreshold_ =
       tryGetParam<double>(node_, "graph_params.referenceFramePosesResetThreshold");
+  graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_ =
+      tryGetParam<bool>(node_, "graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment");
+  graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
+      tryGetParam<double>(node_, "graph_params.createReferenceAlignmentKeyframeEveryNSeconds");
 //   graphConfigPtr_->centerReferenceFramesAtRobotPositionBeforeAlignment_ =
 //       tryGetParam<bool>(node_, "graph_params.centerReferenceFramesAtRobotPositionBeforeAlignment");
 
@@ -128,6 +136,9 @@ void GraphMsfRos2::readParams() {
   // Common Parameters
   graphConfigPtr_->verboseLevel_ = tryGetParam<int>(node_, "common_params.verbosity");
   graphConfigPtr_->odomNotJumpAtStartFlag_ = tryGetParam<bool>(node_, "common_params.odomNotJumpAtStart");
+  graphConfigPtr_->logRealTimeStateToMemoryFlag_ = tryGetParam<bool>(node_, "common_params.logRealTimeStateToMemory");
+  graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_ =
+      tryGetParam<bool>(node_, "common_params.logLatencyAndUpdateDurationToMemory");
 
   // Set frames
   staticTransformsPtr_->setWorldFrame(tryGetParam<std::string>(node_, "extrinsics.worldFrame"));
