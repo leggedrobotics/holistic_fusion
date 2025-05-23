@@ -1,30 +1,32 @@
-# Sensor Params
-sensor_params:
-  ## Config
-  useLioOdometry: true
-  useWheelOdometryBetween: false
-  useWheelLinearVelocities: false
-  useVioOdometry: false
-  ## Rates
-  lioOdometryRate: 10
-  wheelOdometryBetweenRate: 50
-  wheelLinearVelocitiesRate: 50
-  vioOdometryRate: 50
-  # Wheel Radius
-  wheelRadius: 0.195 # meters
+/smb_estimator_node:
+  ros__parameters:
+    # Sensor Params
+    sensor_params:
+      ## Config
+      useLioOdometry: true
+      useWheelOdometryBetween: false
+      useWheelLinearVelocities: false
+      useVioOdometry: false
+      ## Rates
+      lioOdometryRate: 10
+      wheelOdometryBetweenRate: 50
+      wheelLinearVelocitiesRate: 50
+      vioOdometryRate: 50
+      # Wheel Radius
+      wheelRadius: 0.195 # meters
 
-# Alignment Parameters
-alignment_params:
-  initialSe3AlignmentNoiseDensity: [ 1.0e-01, 1.0e-01, 1.0e-01, 1.0e-02, 1.0e-02, 1.0e-02 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+    # Alignment Parameters
+    alignment_params:
+      initialSe3AlignmentNoiseDensity: [ 1.0e-01, 1.0e-01, 1.0e-01, 1.0e-02, 1.0e-02, 1.0e-02 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
-# Noise Parameters
-noise_params:
-  ## LiDAR
-  lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  ## Wheel
-  wheelPoseBetweenNoiseDensity: [ 0.1, 0.1, 0.1, 0.06, 0.06, 0.06 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  wheelLinearVelocitiesNoiseDensity: [ 0.3, 0.3, 0.3 ] # StdDev, ORDER VxVyVz(meters/sec)
-  ## VIO
-  vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  vioPoseUnaryNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+    # Noise Parameters
+    noise_params:
+      ## LiDAR
+      lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      ## Wheel
+      wheelPoseBetweenNoiseDensity: [ 0.1, 0.1, 0.1, 0.06, 0.06, 0.06 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      wheelLinearVelocitiesNoiseDensity: [ 0.3, 0.3, 0.3 ] # StdDev, ORDER VxVyVz(meters/sec)
+      ## VIO
+      vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      vioPoseUnaryNoiseDensity: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
