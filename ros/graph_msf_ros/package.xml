@@ -15,7 +15,7 @@
     <buildtool_depend>catkin</buildtool_depend>
     <build_depend>roscpp</build_depend>
     <build_depend>rospy</build_depend>
-    <build_depend>graph_msf</build_depend>
+    <build_depend>graph_msf_catkin</build_depend>
     <build_depend>kdl_parser</build_depend>
     <build_depend>nav_msgs</build_depend>
     <build_depend>geometry_msgs</build_depend>
@@ -26,7 +26,7 @@
     <exec_depend>roscpp</exec_depend>
     <exec_depend>rospy</exec_depend>
     <exec_depend>python3</exec_depend>
-    <exec_depend>graph_msf</exec_depend>
+    <exec_depend>graph_msf_catkin</exec_depend>
     <exec_depend>kdl_parser</exec_depend>
     <exec_depend>nav_msgs</exec_depend>
     <exec_depend>geometry_msgs</exec_depend>

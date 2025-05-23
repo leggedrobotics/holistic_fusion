@@ -21,14 +21,6 @@ if (NOT WIN32)
     set(Magenta "${Esc}[35m")
 endif ()
 
-# March native check
-#include(CheckCXXCompilerFlag)
-#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
-#if(COMPILER_SUPPORTS_MARCH_NATIVE)
-#  add_compile_options("-march=native")
-#  message("${BoldMagenta}INFO: Using -march=native${ColourReset}")
-#endif()
-
 # Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
         graph_msf_ros
@@ -41,12 +33,14 @@ set(CATKIN_PACKAGE_DEPENDENCIES
         graph_msf_anymal_msgs
 )
 
+# CMAKE dependencies --------------------------------------------------------------------------------
 find_package(catkin REQUIRED COMPONENTS
         ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
 find_package(Glog REQUIRED)
 
+# Catkin Package
 catkin_package(
         INCLUDE_DIRS include
         LIBRARIES ${PROJECT_NAME}
@@ -104,6 +98,7 @@ endif (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 #############
 ## Install ##
 #############
+
 install(TARGETS ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
