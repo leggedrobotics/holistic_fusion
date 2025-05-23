@@ -49,12 +49,16 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   node_->declare_parameter("graph_params.additionalOptimizationIterations", 0);
   node_->declare_parameter("graph_params.findUnusedFactorSlots", false);
   node_->declare_parameter("graph_params.enableDetailedResults", false);
-  node_->declare_parameter("graph_params.usingCholeskyFactorization", false);
+  node_->declare_parameter("graph_params.realTimeSmootherUseCholeskyFactorization", false);
+  node_->declare_parameter("graph_params.slowBatchSmootherUseCholeskyFactorization", false);
   node_->declare_parameter("graph_params.usingBiasForPreIntegration", false);
   node_->declare_parameter("graph_params.optimizeReferenceFramePosesWrtWorld", false);
   node_->declare_parameter("graph_params.optimizeExtrinsicSensorToSensorCorrectedOffset", false);
   node_->declare_parameter("graph_params.referenceFramePosesResetThreshold", 0.0);
-  node_->declare_parameter("graph_params.centerReferenceFramesAtRobotPositionBeforeAlignment", false);
+  // node_->declare_parameter("graph_params.centerReferenceFramesAtRobotPositionBeforeAlignment", false);
+  node_->declare_parameter("graph_params.useWindowForMarginalsComputation", false);
+  node_->declare_parameter("graph_params.windowSizeSecondsForMarginalsComputation", 0.0);
+  node_->declare_parameter("graph_params.createReferenceAlignmentKeyframeEveryNSeconds", 0.0);
 
   // Noise Params
   node_->declare_parameter("noise_params.accNoiseDensity", 0.0);
