@@ -129,5 +129,8 @@ install(DIRECTORY launch rviz config
     DESTINATION share/${PROJECT_NAME}
 )
 
+# Export include directories
+ament_export_include_directories(include)
+
 # Finalize ament package
 ament_package()
