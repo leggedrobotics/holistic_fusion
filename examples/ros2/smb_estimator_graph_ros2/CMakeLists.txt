@@ -21,6 +21,11 @@ find_package(graph_msf_ros2 REQUIRED)
 find_package(graph_msf REQUIRED)
 find_package(Glog REQUIRED)
 find_package(GTSAM REQUIRED)
+find_package(GTSAM_UNSTABLE REQUIRED)
+
+# Display Eigen version and path
+message("Eigen Version: ${EIGEN3_VERSION_STRING}")
+message("Eigen Path: ${Eigen3_DIR}")
 
 # Color
 if(NOT WIN32)
@@ -35,6 +40,9 @@ include_directories(
     include
     SYSTEM ${GTSAM_INCLUDE_DIR}
     SYSTEM ${GTSAM_UNSTABLE_INCLUDE_DIR}
+    ${EIGEN3_INCLUDE_DIR}
+    ${graph_msf_ros2_INCLUDE_DIRS}
+    ${graph_msf_INCLUDE_DIRS}
 )
 
 # Library
@@ -42,6 +50,15 @@ add_library(${PROJECT_NAME}
     src/lib/SmbEstimator.cpp
     src/lib/readParams.cpp
     src/lib/SmbStaticTransforms.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}
+    gtsam
+    gtsam_unstable
+    ${graph_msf_LIBRARIES}
+    ${graph_msf_ros2_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${gflags_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME}
@@ -58,18 +75,16 @@ ament_target_dependencies(${PROJECT_NAME}
     GTSAM
 )
 
-target_link_libraries(${PROJECT_NAME}
-  ${GLOG_LIBRARIES}
-  ${gflags_LIBRARIES}
-  gtsam gtsam_unstable
-)
-
 # Executable
 add_executable(${PROJECT_NAME}_node src/smb_estimator_node.cpp)
 target_link_libraries(${PROJECT_NAME}_node
     ${PROJECT_NAME}
-    ${gflags_LIBRARIES}
+    gtsam
+    gtsam_unstable
+    ${graph_msf_LIBRARIES}
+    ${graph_msf_ros2_LIBRARIES}
     ${GLOG_LIBRARIES}
+    ${gflags_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME}_node
