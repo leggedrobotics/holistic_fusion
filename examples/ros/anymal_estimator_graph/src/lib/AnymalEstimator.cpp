@@ -70,6 +70,10 @@ void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   pubReferenceNavSatFixCoordinates_ =
       privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position", ROS_QUEUE_SIZE, true);
 
+  // ENU origin
+  pubReferenceNavSatFixCoordinatesENU_ =
+      privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position_enu", ROS_QUEUE_SIZE, true);
+
   // Markers
   pubFootContactMarkers_ = privateNode.advertise<visualization_msgs::MarkerArray>("/graph_msf/foot_contact_markers", ROS_QUEUE_SIZE);
 }
@@ -209,15 +213,37 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     }
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
+    gnssHandlerPtr_->setUseSicilianEnu(false);
+    // gnssHandlerPtr_->setSicilianEnuAnchor(lat0, lon0, h0, "egm2008-1");
     gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
 
     // Publish the reference coordinates for downstream applications.
     sensor_msgs::NavSatFix referenceGNSSmsg;
     referenceGNSSmsg.header = gnssMsgPtr->header;
-    referenceGNSSmsg.latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
-    referenceGNSSmsg.longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
-    referenceGNSSmsg.altitude = gnssHandlerPtr_->getGnssReferenceAltitude();
+    referenceGNSSmsg.latitude = accumulatedGnssCoordinates_(0);
+    referenceGNSSmsg.longitude = accumulatedGnssCoordinates_(1);
+    referenceGNSSmsg.altitude = accumulatedGnssCoordinates_(2);
+
+    // referenceGNSSmsg.latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    // referenceGNSSmsg.longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    // referenceGNSSmsg.altitude = gnssHandlerPtr_->getGnssReferenceAltitude();
     pubReferenceNavSatFixCoordinates_.publish(referenceGNSSmsg);
+
+    sensor_msgs::NavSatFix referenceGNSSmsgENU;
+    Eigen::Vector3d originAsENU = Eigen::Vector3d::Zero();
+    if (gnssHandlerPtr_->getUseSicilianEnu()) {
+      // Convert to ENU
+      gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, originAsENU);
+    } else  // Convert to ECEF
+    {
+      gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, originAsENU);
+    }
+
+    referenceGNSSmsgENU.header = gnssMsgPtr->header;
+    referenceGNSSmsgENU.latitude = originAsENU(0);
+    referenceGNSSmsgENU.longitude = originAsENU(1);
+    referenceGNSSmsgENU.altitude = originAsENU(2);
+    pubReferenceNavSatFixCoordinatesENU_.publish(referenceGNSSmsgENU);
 
     REGULAR_COUT << " GNSS Handler initialized." << std::endl;
     return;
@@ -226,21 +252,16 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Convert to Cartesian Coordinates
   Eigen::Vector3d W_t_W_Gnss;
   // gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
-  gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
+  if (gnssHandlerPtr_->getUseSicilianEnu()) {
+    // Convert to ENU
+    gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, W_t_W_Gnss);
+  } else  // Convert to ECEF
+  {
+    gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
+  }
+
   std::string fixedFrame = staticTransformsPtr_->getWorldFrame();  // Alias
   // fixedFrame = "east_north_up";
-
-  //  // For Debugging: Add Gaussian Noise with 0.1m std deviation
-  //  // Random number generator
-  //  std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
-  //  // Add noise
-  //  W_t_W_Gnss +=
-  //      Eigen::Vector3d(std::normal_distribution<double>(0.0, 0.1)(generator), std::normal_distribution<double>(0.0, 0.1)(generator),
-  //                      std::normal_distribution<double>(0.0, 0.1)(generator));
-  //  // Add to assumed standard deviation (\sigma_{GNSS+noise} = \sqrt{\sigma_{GNSS}^2 + \sigma_{noise}^2})
-  //  for (int i = 0; i < 3; ++i) {
-  //    estStdDevXYZ(i) = sqrt(estStdDevXYZ(i) * estStdDevXYZ(i) + 0.1 * 0.1);
-  //  }
 
   // Initial world yaw initialization options
   // Case 1: Initialization
@@ -253,8 +274,21 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     }
     // c: From alignment
     else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+      // Only proceed if none of the estimated standard deviations exceed the outlier threshold
+      if (estStdDevXYZ(0) > gnssPositionOutlierThreshold_ * 1.0 || estStdDevXYZ(1) > gnssPositionOutlierThreshold_ * 1.0 ||
+          estStdDevXYZ(2) > gnssPositionOutlierThreshold_ * 2.0) {
+        if (gnssCallbackCounter_ % 10 == 0) {
+          REGULAR_COUT << YELLOW_START << "==================== GNSS measurement rejected ====================" << COLOR_END << std::endl;
+          REGULAR_COUT << YELLOW_START << "Threshold: " << gnssPositionOutlierThreshold_ << COLOR_END << std::endl;
+          REGULAR_COUT << YELLOW_START << "Estimated StdDev: [" << estStdDevXYZ(0) << ", " << estStdDevXYZ(1) << ", " << estStdDevXYZ(2)
+                       << "]" << COLOR_END << std::endl;
+          REGULAR_COUT << YELLOW_START << "==============================================================" << COLOR_END << std::endl;
+        }
+        return;
+      }
       // Adding the GNSS measurement
       trajectoryAlignmentHandler_->addR3Position(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec());
+      // trajectoryAlignmentHandler_->addR3PositionWithStdDev(W_t_W_Gnss, gnssMsgPtr->header.stamp.toSec(), estStdDevXYZ);
       // In radians
       Eigen::Isometry3d T_W_Base = Eigen::Isometry3d::Identity();
       if (!(trajectoryAlignmentHandler_->alignTrajectories(initYaw_W_Base, T_W_Base))) {

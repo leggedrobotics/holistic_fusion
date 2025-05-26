@@ -29,6 +29,7 @@ class TrajectoryAlignmentHandler {
   void initHandler();
   void addSe3Position(Eigen::Vector3d position, double time);
   void addR3Position(Eigen::Vector3d position, double time);
+  void addR3PositionWithStdDev(Eigen::Vector3d position, double time, Eigen::Vector3d stdDev);
   bool alignTrajectories(double& yaw, Eigen::Isometry3d& se3);
 
   // Setters

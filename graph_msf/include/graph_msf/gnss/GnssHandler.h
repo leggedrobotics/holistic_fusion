@@ -21,6 +21,15 @@ class GnssHandler {
  public:
   GnssHandler();
 
+  void setUseSicilianEnu(bool flag) { useSicilianEnu_ = flag; }
+  bool getUseSicilianEnu() const { return useSicilianEnu_; }
+
+  // New: SicilianENU geoid/model setter if you want
+  void setSicilianEnuAnchor(double lat, double lon, double h, const std::string& geoidName = "egm2008-1") {
+    sicilianEnu_ = SicilianENU(lat, lon, h, geoidName);
+    sicilianEnuReady_ = true;
+  }
+
   // Methods
   // Init
   void initHandler(const Eigen::Vector3d& accumulatedLeftCoordinates, const Eigen::Vector3d& accumulatedRightCoordinates);
@@ -79,6 +88,11 @@ class GnssHandler {
   double presetGnssReferenceLongitude_;
   double presetGnssReferenceAltitude_;
   double presetGnssReferenceHeading_;
+
+  SicilianENU sicilianEnu_{0.0, 0.0, 0.0};   // Dummy init, call setSicilianEnuAnchor before use
+  bool useSicilianEnu_ = false;
+  bool sicilianEnuReady_ = false;
+
 };
 
 }  // namespace graph_msf

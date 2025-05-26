@@ -6,6 +6,12 @@ add_compile_options(-std=c++17 -O3 -mtune=native -flto -funroll-loops -fopt-info
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+find_package(GeographicLib REQUIRED)
+if(NOT GeographicLib_FOUND)
+        message(FATAL_ERROR "GeographicLib not found. Try: sudo apt-get install libgeographic-dev")
+endif()
+
 message("Eigen Version::" ${EIGEN3_VERSION_STRING})
 message("Eigen Path::" ${Eigen3_DIR})
 
@@ -52,6 +58,7 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
         #        ${GTSAM_INCLUDE_DIR}
+        ${GeographicLib_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
 )
 
@@ -71,7 +78,7 @@ add_library(${PROJECT_NAME}
         src/lib/NavState.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
 
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 

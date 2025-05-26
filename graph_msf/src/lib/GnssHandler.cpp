@@ -48,20 +48,23 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
   std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Initializing the handler position." << COLOR_END << std::endl;
 
   // Initialize Gnss converter
-  // Case 1: Use pre-defined reference
   if (useGnssReferenceFlag_) {
-    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting GNSS reference frame coordinate origin to pre-defined reference."
-              << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START
+              << " Setting GNSS reference frame coordinate origin to pre-defined reference." << COLOR_END << std::endl;
     gnssSensor_.setReference(presetGnssReferenceLatitude_, presetGnssReferenceLongitude_, presetGnssReferenceAltitude_,
                              presetGnssReferenceHeading_);
-  }
-  // Case 2: Use current position as reference
-  else {
-    std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Setting GNSS reference frame coordinate origin to current position."
-              << COLOR_END << std::endl;
+    if (useSicilianEnu_) {
+      sicilianEnu_.setAnchor(presetGnssReferenceLatitude_, presetGnssReferenceLongitude_, presetGnssReferenceAltitude_);
+    }
+  } else {
+    std::cout << YELLOW_START << "GnssHandler" << GREEN_START
+              << " Setting GNSS reference frame coordinate origin to current position." << COLOR_END << std::endl;
     gnssSensor_.setReference(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2), 0.0);
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
               << std::endl;
+    if (useSicilianEnu_) {
+      sicilianEnu_.setAnchor(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2));
+    }
   }
 }
 
@@ -75,7 +78,16 @@ void GnssHandler::convertNavSatToPositions(const Eigen::Vector3d& leftGnssCoordi
 }
 
 void GnssHandler::convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate, Eigen::Vector3d& position) {
-  position = gnssSensor_.gnssToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
+  if (useSicilianEnu_ && sicilianEnuReady_) {
+    // Use SicilianENU conversion
+    SicilianENU::Result res = sicilianEnu_.forward(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
+    position = Eigen::Vector3d(res.x, res.y, res.zEllip);
+  } else {
+    std::cout << RED_START << "GnssHandler" << RED_START
+          << " ERROR: SicilianENU is not ready but a conversion was requested!" << COLOR_END << std::endl;
+    // Use legacy Gnss
+    position = gnssSensor_.gnssToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
+  }
 }
 
 // Heading is defined as the orthogonal vector pointing from gnssPos2 to gnssPos1, projected to x,y-plane

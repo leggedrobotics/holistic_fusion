@@ -15,7 +15,7 @@
     <!--    <arg name="assumed_external_odometry_tracked_frame" default="imu_link"/>-->
     <!--    <arg name="o3d_prior_odometry_topic" default="/graph_msf/est_odometry_world_imu"/>-->
     <arg name="assumed_external_odometry_tracked_frame" default="base"/>
-    <arg name="o3d_prior_odometry_topic" default="/state_estimator/odometry"/>
+    <arg name="o3d_prior_odometry_topic" default="/state_estimator/pose_in_odom"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">

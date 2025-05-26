@@ -1,6 +1,6 @@
 # Sensor Params
 sensor_params:
-  lioOdometryRate: 5
+  lioOdometryRate: 10
   leggedOdometryBetweenRate: 400
   leggedOdometryPoseDownsampleFactor: 40
   leggedOdometryVelocityRate: 20
@@ -12,13 +12,13 @@ sensor_params:
 # Alignment Parameters
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  lioSe3AlignmentRandomWalk: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioSe3AlignmentRandomWalk: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.015 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   #  lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
 noise_params:
   ## GNSS
-  gnssPositionOutlierThreshold: 1.0 # meters
+  gnssPositionOutlierThreshold: 2.0 # meters
   ## LiDAR Odometry
   ## Unary Noise
   lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
