@@ -73,7 +73,7 @@ add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME}
         gtsam
         gtsam_unstable
-        libmetis-gtsam.so
+        metis-gtsam
 )
 
 # Add clang tooling
