@@ -2,64 +2,102 @@
 
 ## Requirements
 
-#### Eigen3
+### Docker
+
+We recommend using Docker to run the code. This way you can avoid dependency issues and have a clean environment.
+The instructions for building and running the Docker image can be found in the [Docker section](6_docker.md).
+
+### Custom Build
+
+**Note: This is only needed if you are not using Docker.**
+
+The two main dependencies of the `graph_msf` library are Eigen3 and GTSAM.
+For running the ROS and ROS2 examples, you also need to have ROS Noetic and/or ROS2 Humble installed.
+
+#### Graph MSF Core
+
+##### Eigen3
+
 Make sure you have the Eigen3-headers in your include path. This is usually automatically the case if you have ROS installed.
 
-#### GTSAM
-We install the GTSAM fork of RSL from source. We recommend a local installation of GTSAM.
+##### GTSAM
 
-* Version: [GTSAM on branch gtsam_rsl](https://github.com/leggedrobotics/gtsam_fork/tree/gtsam_rsl). 
-* This version has already the latest bug fixes of the CombinedImuFactor. For more information we refer to this [issue](https://github.com/borglab/gtsam/commit/587678e0b761188e33db376cd552c417650c96ee#diff-278a5de28881129d36f253ed7fa64129312e5e1d9a042aa850424c2a93392e1f).
-* Clone and checkout at an arbitrary location.
-```bash
-git clone https://github.com/leggedrobotics/gtsam_fork
-cd gtsam_fork
-git checkout gtsam_rsl
-mkdir build && cd build
-```
+We install GTSAM from source.
+You can also install it locally by adding the `-DCMAKE_INSTALL_PREFIX` option to the CMake command as done in the following.
 
-* Use CMake with the following options. Note that _-DCMAKE_INSTALL_PREFIX:PATH=$HOME/.local_ specifies the location where GTSAM is installed to and can be individually adapted. This flag can also be removed, leading to a global installation.
+* Get the source code and compile it:
 
 ```bash
-cmake -DCMAKE_INSTALL_PREFIX:PATH=$HOME/.local -DCMAKE_BUILD_TYPE=Release -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON -DGTSAM_USE_QUATERNIONS=ON -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..
-``` 
-
-* Compile and install locally:
-
-```bash
-make install -j$(nproc)
-```
+ git clone https://github.com/borglab/gtsam.git \
+    && mkdir -p /software/gtsam/build \
+    && cd /software/gtsam/build \
+    && git checkout 4.2 \
+    && cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+        -DGTSAM_POSE3_EXPMAP=ON \
+        -DGTSAM_ROT3_EXPMAP=ON \
+        -DGTSAM_USE_QUATERNIONS=ON \
+        -DGTSAM_USE_SYSTEM_EIGEN=ON \
+        /software/gtsam \
+    && make install -j$(nproc)
+ ```
 
 * Environment variables (e.g. add to your .bashrc-file):
 
-```
+```bash
 export CMAKE_PREFIX_PATH=$HOME/.local/:$CMAKE_PREFIX_PATH
 export LD_LIBRARY_PATH=$HOME/.local/lib/:$LD_LIBRARY_PATH
 export LIBRARY_PATH=${LIBRARY_PATH}:${LD_LIBRARY_PATH}
 ```
+
 This is usually only needed if you you choose a non-standard (local) install directory.
 
-## graph_msf
-### Workspace
-GraphMsf only has two main dependencies: Eigen3 and GTSAM. These were installed in the last step.
-For compiling graph_msf create a workspace and set it to _Release_-mode.
+## Core Library
+
+The core library can be compile without ROS or ROS2. It is a pure C++ library that can be used in any C++ project with CMake support.
+When using the library with ROS or ROS2, we provide packages called `graph_msf_catkin` and `graph_msf_ament` that are wrapper projects exposing the functionalities to the workspace, which can be used to compile the library with the respective build system.
+
+To build the core library (standalone) you can simply do this using cmake:
+
+**Note: This is only needed if you are not building it with catkin or ament/colcon.**
+
+```bash
+git clone https://github.com/leggedrobotics/holistic_fusion.git
+cd holistic_fusion/graph_msf
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+```
+
+## Catkin Workspace
+
+To use the `graph_msf` library in a ROS workspace, we provide a package called `graph_msf_catkin`.
+To install all dependencies and compile the library, you can follow these steps:
+
+1. Setting up the workspace:
+
 ```bash
 mkdir catkin_ws
 mkdir src
 catkin init
 catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
-cd src && git clone https://github.com/leggedrobotics/graph_msf_dev.git
 ```
 
-### Compiling
-Now the library then can be compiled using:
+2. Cloning the requirements
+
 ```bash
-catkin build graph_msf
+wget -qO - https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs | vcs import src
 ```
 
-## graph_msf_ros
-In contrast to _graph_msf_ this package also depends on standard ROS dependencies. We tested the framework with ROS Noetic on Ubuntu 20.04.
-For compiling the code run:
+3. Compiling the workspace:
+
 ```bash
-catkin build graph_msf_ros
+catkin build graph_msf_ros_examples
 ```
+
+This should build 14 packages, including all ROS1 examples, the core library, the `graph_msf_catkin` package, the `graph_msf_ros` package (commodity package for the ROS examples), and the `graph_msf_ros_examples` package.
+
+## Colcon Workspace
+
+Still under construction.

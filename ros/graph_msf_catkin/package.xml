@@ -1,0 +1,12 @@
+<package format="2">
+  <name>graph_msf_catkin</name>
+  <version>0.0.1</version>
+
+  <description>Catkin wrapper for native CMake project graph_msf</description>
+  
+  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <license>BSD</license>
+  <author email="nubertj@ethz.ch">Julian Nubert</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

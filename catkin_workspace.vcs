@@ -3,10 +3,6 @@ repositories:
     type: git
     url: https://github.com/leggedrobotics/elevation_mapping.git
     version: master
-  gtsam_catkin:
-    type: git
-    url: https://github.com/leggedrobotics/gtsam_catkin.git
-    version: main
   holistic_fusion:
     type: git
     url: git@github.com:leggedrobotics/holistic_fusion.git
