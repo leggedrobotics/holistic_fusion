@@ -63,6 +63,10 @@ void GnssHandler::initHandler(const Eigen::Vector3d& accumulatedCoordinates) {
     std::cout << YELLOW_START << "GnssHandler" << GREEN_START << " Reference: " << accumulatedCoordinates.transpose() << COLOR_END
               << std::endl;
     if (useSicilianEnu_) {
+      std::cout << "\n\n\033[1;95m************************************************************\n"
+           "*                  GnssHandler                             *\n"
+           "*        Setting Sicilian ENU anchor to current position    *\n"
+           "************************************************************\033[0m\n\n" << std::endl;
       sicilianEnu_.setAnchor(accumulatedCoordinates(0), accumulatedCoordinates(1), accumulatedCoordinates(2));
     }
   }

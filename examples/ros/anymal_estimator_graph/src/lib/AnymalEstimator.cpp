@@ -206,6 +206,13 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
   // Initialize GNSS Handler
   if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
+
+    if (estStdDevXYZ(0) > gnssPositionOutlierThreshold_ * 2.0 || estStdDevXYZ(1) > gnssPositionOutlierThreshold_ * 2.0 ||
+        estStdDevXYZ(2) > gnssPositionOutlierThreshold_ * 3.0) {
+      --gnssCallbackCounter_;
+      return;
+    }
+
     // Wait until measurements got accumulated
     accumulatedGnssCoordinates_ += gnssCoord;
     if ((gnssCallbackCounter_ % 10) == 0) {
@@ -214,20 +221,26 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
     gnssHandlerPtr_->setUseSicilianEnu(false);
-    // gnssHandlerPtr_->setSicilianEnuAnchor(lat0, lon0, h0, "egm2008-1");
+
     gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
+    // gnssHandlerPtr_->setSicilianEnuAnchor(lat0, lon0, h0, "egm2008-1");
 
     // Publish the reference coordinates for downstream applications.
     sensor_msgs::NavSatFix referenceGNSSmsg;
     referenceGNSSmsg.header = gnssMsgPtr->header;
-    referenceGNSSmsg.latitude = accumulatedGnssCoordinates_(0);
-    referenceGNSSmsg.longitude = accumulatedGnssCoordinates_(1);
-    referenceGNSSmsg.altitude = accumulatedGnssCoordinates_(2);
 
-    // referenceGNSSmsg.latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
-    // referenceGNSSmsg.longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
-    // referenceGNSSmsg.altitude = gnssHandlerPtr_->getGnssReferenceAltitude();
+    referenceGNSSmsg.latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    referenceGNSSmsg.longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    referenceGNSSmsg.altitude = gnssHandlerPtr_->getGnssReferenceAltitude();
     pubReferenceNavSatFixCoordinates_.publish(referenceGNSSmsg);
+
+    REGULAR_COUT << "\033[1;36m"
+                 << "==================== GNSS REFERENCE ====================\n"
+                 << " LATITUDE : " << referenceGNSSmsg.latitude << "\n"
+                 << " LONGITUDE: " << referenceGNSSmsg.longitude << "\n"
+                 << " ALTITUDE : " << referenceGNSSmsg.altitude << "\n"
+                 << "=======================================================\n"
+                 << "\033[0m";
 
     sensor_msgs::NavSatFix referenceGNSSmsgENU;
     Eigen::Vector3d originAsENU = Eigen::Vector3d::Zero();
@@ -299,6 +312,14 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       }
       REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value of T_W_Base (deg): " << COLOR_END
                    << 180.0 * initYaw_W_Base / M_PI << std::endl;
+
+      REGULAR_COUT << "\033[1;36m" << std::endl
+                   << "==================== GNSS REFERENCE ====================\n"
+                   << " LATITUDE : " << gnssHandlerPtr_->getGnssReferenceLatitude() << "\n"
+                   << " LONGITUDE: " << gnssHandlerPtr_->getGnssReferenceLongitude() << "\n"
+                   << " ALTITUDE : " << gnssHandlerPtr_->getGnssReferenceAltitude() << "\n"
+                   << "=======================================================\n"
+                   << "\033[0m";
     }
 
     // Actual Initialization

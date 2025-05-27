@@ -32,7 +32,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Defined Macros
 #define POS_COVARIANCE_VIOLATION_THRESHOLD 0.2
-#define NUM_GNSS_CALLBACKS_UNTIL_START 20
+#define NUM_GNSS_CALLBACKS_UNTIL_START 40
 #define NUM_GNSS_CALLBACKS_UNTIL_YAW_INIT 300
 
 namespace position3_se {
