@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(excavator_holistic_graph)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf
+  graph_msf_catkin
   graph_msf_ros
   geometry_msgs
   nav_msgs
