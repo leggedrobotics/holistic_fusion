@@ -8,7 +8,6 @@ add_compile_options(-std=c++17)
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
-find_package(ament_cmake REQUIRED)
 find_package(GTSAM REQUIRED)
 find_package(GTSAM_UNSTABLE REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Development)
