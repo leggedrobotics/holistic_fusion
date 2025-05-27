@@ -55,7 +55,7 @@ add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     gtsam
     gtsam_unstable
-    ${graph_msf_LIBRARIES}
+    graph_msf::graph_msf
     ${graph_msf_ros2_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${gflags_LIBRARIES}

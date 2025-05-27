@@ -21,6 +21,13 @@ find_package(std_srvs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(graph_msf REQUIRED)
 
+# Show path of graph_msf
+if (graph_msf_FOUND)
+  message(STATUS "graph_msf was found!")
+else()
+  message(FATAL_ERROR "graph_msf NOT found!")
+endif()
+
 # Color (Optional)
 if (NOT WIN32)
     string(ASCII 27 Esc)
@@ -33,7 +40,6 @@ endif ()
 include_directories(
     include
     ${EIGEN3_INCLUDE_DIR}
-    ${graph_msf_INCLUDE_DIRS}
 )
 
 # Library
@@ -62,6 +68,12 @@ ament_target_dependencies(${PROJECT_NAME}
   graph_msf
   rosidl_default_runtime
 )
+target_link_libraries(${PROJECT_NAME}
+  graph_msf::graph_msf
+)
+# Print the include directories for debugging
+get_target_property(INC_DIR graph_msf::graph_msf INTERFACE_INCLUDE_DIRECTORIES)
+message("Include dir for graph_msf::graph_msf: ${INC_DIR}")
 
 # Python Scripts ----------------------------------------------------------------
 install(PROGRAMS

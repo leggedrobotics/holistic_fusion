@@ -1,24 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(graph_msf)
 
-message("Building graph_msf library -----------------------------")
+message("Building ${PROJECT_NAME} library -----------------------------")
 
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
-
-# If build variables not set, set them to default values
-if (NOT DEFINED CMAKE_BUILD_LIBDIR)
-    set(CMAKE_BUILD_LIBDIR ${CMAKE_BINARY_DIR}/lib)
-endif ()
-if (NOT DEFINED CMAKE_BUILD_BINDIR)
-    set(CMAKE_BUILD_BINDIR ${CMAKE_BINARY_DIR}/bin)
-endif ()
-if (NOT DEFINED CMAKE_BUILD_INCLUDE_DIR)
-    set(CMAKE_BUILD_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
-endif ()
-message("CMAKE_BUILD_LIBDIR: ${CMAKE_BUILD_LIBDIR}")
-message("CMAKE_BUILD_BINDIR: ${CMAKE_BUILD_BINDIR}")
-message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
@@ -85,6 +71,13 @@ target_link_libraries(${PROJECT_NAME}
         metis-gtsam
 )
 
+# Include directories for the library
+target_include_directories(${PROJECT_NAME}
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
 if (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
@@ -96,30 +89,51 @@ if (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
     )
 endif()
 
-# Export the include directories and linked libraries
-install(TARGETS ${PROJECT_NAME}
-        EXPORT ${PROJECT_NAME}-targets  # Export the target for downstream usage
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+#############
+## Install ##
+#############
 
-# Install the export file for downstream projects
-install(EXPORT ${PROJECT_NAME}-targets
-        FILE ${PROJECT_NAME}Config.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+# Export the include directories and linked libraries
+install(
+    TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets  # Export the target for downstream usage
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
 
 # Install the include directory
-install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+install(DIRECTORY include/
+        DESTINATION include
 )
 
-# Add GTSAM include directories to the exported interface
-target_include_directories(${PROJECT_NAME} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
-    ${EIGEN3_INCLUDE_DIR}
+# Install the export file for downstream projects
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-message("Finished building graph_msf library -----------------------------")
+# Version
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  VERSION 1.0.0
+  COMPATIBILITY SameMajorVersion
+)
+
+# Configure
+configure_package_config_file(
+  "${PROJECT_NAME}Config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION share/${PROJECT_NAME}/cmake
+)
+
+# Files
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  DESTINATION share/${PROJECT_NAME}/cmake
+)
+
+message("Finished building ${PROJECT_NAME} library -----------------------------")
