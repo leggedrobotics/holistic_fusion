@@ -22,11 +22,20 @@ message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
-message("Eigen Version::" ${EIGEN3_VERSION_STRING})
-message("Eigen Path::" ${Eigen3_DIR})
+find_package(ament_cmake REQUIRED)
+find_package(GTSAM REQUIRED)
+find_package(GTSAM_UNSTABLE REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Development)
+find_package(tf2_eigen REQUIRED)
 
-# Color
-if (NOT WIN32)
+message("Eigen Version:: ${EIGEN3_VERSION_STRING}")
+message("Eigen Path:: ${EIGEN3_DIR}")
+message("GTSAM Include Path:: ${GTSAM_INCLUDE_DIRS}")
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Color settings for terminal output
+if(NOT WIN32)
     string(ASCII 27 Esc)
     set(ColourReset "${Esc}[m")
     set(BoldMagenta "${Esc}[1;35m")
@@ -80,16 +89,12 @@ target_link_libraries(${PROJECT_NAME}
 find_package(cmake_clang_tools QUIET)
 if (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
     add_clang_tooling(
-            TARGET ${PROJECT_NAME}
-            SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include
-            CT_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-            CF_FIX
+        TARGET ${PROJECT_NAME}
+        SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include
+        CT_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+        CF_FIX
     )
-endif (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
-
-#############
-## Install ##
-#############
+endif()
 
 # Export the include directories and linked libraries
 install(TARGETS ${PROJECT_NAME}
