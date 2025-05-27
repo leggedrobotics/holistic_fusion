@@ -1,0 +1,109 @@
+#Common
+loamVerbosity: 0                         #Debug Output, 0-disable, higher for more verbose output
+scanPeriod: 0.1                          #Expected scan period for input pointcloud in seconds. Used of Distortion correction
+ioRatio: 2                               #Ratio of publish rate of LaserOdometry w.r.t input PCL rate. LO is calculated for each PCL but published at slower rate to Mapping, default 2
+lidarFrame: rslidar                        #LiDAR frame name - used for LiDAR-to-Sensor transform lookup
+rotateInputCloud: false                  #Flag to rotate input cloud before estimating odometry/map so produced resuts are ROS frame aligned irrespective of LiDAR mounting orientation
+inputCloudRotation: [0.0, 0.0, 0.0]      #Rotation applied to input cloud - ORDER YPR(radians) #90 deg = 1.5707963268 rad
+
+#External Prior/Transform Input
+forceExtPriorUseMapping : false          #Flag to force use of FULL external prior instead of LaserOdometry TRANSLATION Only Estimate
+extPriorAvailable: true                  #Flag to check if 'Primary' external prior is available
+extOdomFrame: imu                        #External Prior odometry frame name
+extFixedFrame: odom                      #External Prior fixed frame name
+extSensorFrame: imu_link                 #External Prior sensor frame name
+extOdomTimeOffset : 0.0                  #Timeoffset (seconds) between LiDAR pointcloud and external source
+fallbackExtPriorAvailable: false         #Flag to check if 'Fallback ' external prior is available
+fallbackExtOdomFrame: vio_imu            #Fallback External Prior odometry frame name
+fallbackExtFixedFrame: vio_imu_init      #Fallback External Prior fixed frame name
+fallbackExtSensorFrame: imu_sensor_frame #Fallback External Prior sensor frame name
+fallbackExtOdomTimeOffset: 0.00         #Timeoffset (seconds) between LiDAR pointcloud and Fallbackexternal source
+
+#MultiScanRegistration
+lidar: VLP-16                            #Choose LiDAR type - options: VLP-16  HDL-32  HDL-64E  O1-16 O1-64 Bperl-32
+useCloudIntensityandRingFields : false   #Flag to use input pointcloud intensity or ring fields. Converts to custom PointXYZIR instead of PointXYZ. True for Bpearl
+uniformLidarRingDistance: true           # Whether the LiDAR rings are uniformly distributed in elevation, does not hold for e.g. Helios
+ringAngleTolerance: 0.5                  # [deg], Tolerance up to which angle rays are considered to belong to same ring, only impact if argument before is false
+imuHistorySize: 800                      #IMU Message Buffer Size , default: 200 
+minRange: 0.1                            #Minimum Range of useful points, default: 0.1
+maxRange: 80.0                           #Maximum Range of useful points, default: 80
+featureRegions: 6                        #Number of Azimuth Regions Pointcloud is divided, default:6
+curvatureRegion: 5                       #Number of neigboring points on a scan line on each side of a point used for calculating curvature of that point, default 5
+maxCornerSharp: 2                        #Number of Sharp Features per scan line in each curvatureRegion, default:2
+maxCornerLessSharp: 20                   #Number of Less Sharp Features per scan line in each curvatureRegion, default:10*maxCornerLessSharp
+maxSurfaceFlat: 4                        #Number of FlatFeatures per scan line in each curvatureRegion, default:4
+surfaceCurvatureThreshold: 0.1           #Threshold above which feature is categorized Sharp, default 0.1
+lessFlatFilterSize: 0.2                  #Leaf Size for downsampling remaing pointcloud after feature selection, default 0.2
+checkInvalidFeatureRegions: false
+publishDebugArrowsToRemovedFeatures: false
+azimuthBoundaries: [1.1,1.5,1.7,2.2] #ANYmal
+
+#LaserOdometry
+undistortInputCloud: true                #If true External Prior or Motion Model will be used for LiDAR Ego Motion Compensation of input cloud
+odomMaxIterations: 25                    #Maximum Number of LO optimization iterations, default 25
+odomMinIterations: 1                     #Minimum Number of LO optimization iterations, default 4, (set 0 to perform only first iteration at minimum) 
+odomDeltaTAbort: 0.05                    #Translation threshold for optimization convergence, deafult 0.1 (m) 
+odomDeltaRAbort: 0.05                    #Rotation threshold for optimization convergence, deafult 0.1 (deg)
+odomDegenEigVal: 30                      #Minimum eignevalue threshold for determining degeneracy of LO optimization, default 30
+odomRelativeTranslationMax: 0.8          #Max translation threshold between two pointclouds for external odometry to be considered valid input. Determined w.r.t set max robot movement speed
+odomRelativeRotationMax: 0.1             #Max rotation threshold between two pointclouds from external odometry to be considered valid input. Determined w.r.t set max robot movement speed
+  
+#LaserMapping
+mapMaxIterations: 10                     #Maximum Number of LM optimization iterations, default 10
+mapMinIterations: 1                      #Minimum Number of LM optimization iterations, default 1, (set 0 to perform only first iteration at minimum)
+mapDeltaTAbort: 0.05                     #Translation threshold for optimization convergence, deafult 0.05 (m) 
+mapDeltaRAbort: 0.05                     #Rotation threshold for optimization convergence, deafult 0.05 (deg)
+cornerFilterSize: 0.2                    #Leaf Size for downsampling current CORNER pointcloud before merging in map, default 0.2
+surfaceFilterSize: 0.2                   #Leaf Size for downsampling current FLAT/SURFACE pointcloud before merging in map, default 0.2
+mapVisFilterSize: 0.4                    #Leaf Size for downsampling current visualization Map pointcloud, default 0.5
+rndSampleMapVisNoOfSamples: 100000       #Number of Samples for random sampling of the visualized map cloud, default 100000
+mapCubeSize: 10.0                        #Size of Cube/Voxel used for saving internal map (meters), default 50
+mapDimensionsInCubes: [101,21,101]       #WxHxD of internal map in CUBE UNITS, default:[21,11,21] #Width,Height,Depth
+mapStartLocationInCubes: [50,10,50]      #Robot start position in internal map in CUBE UNITS, default:[10,5,10] #Width,Height,Depth
+numNeighborSubmapCubes: 4                #Number of Neigboring cubes in +/- direction along each axis to build submap for matching 
+mapDegenEigVal: 10                       #Minimum eignevalue threshold for determining degeneracy of LM optimization, default 30
+mapPriorNormThresh: 0.5                  #Max translation threshold between two pointclouds from external odometry to be considered valid input. Determined w.r.t set max robot movement speed
+useSavedSubmapsForInitialization: false  #Use saved submap on disc for initialization
+submapLocalizationInitGuess: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #Initialization guess of robot location in submap - ORDER: XYZ(meters) - YPR(radians)
+waitAndUseExternalSubmapsForInit: false  #Wait for external submaps before initlization. Trigger external submaps through service call
+submapsRequestServiceCall: ""            #Name of service call to request submaps from other node (xyz/share_submaps)
+useExternalSubmapOriginForInit: false    #Use origin of external submaps as initlization guess for co-localization instead of current external pose (default: false)
+forcePathPublishing: true                #Force ROS path message publishing for mapping odometry
+mapPublishRateDivider: 20                #Publishes full map at 1.0/(scanPeriod * ioRatio * mapPublishRateDivider),  default: 20(0.25 Hz)
+useExtRotationAlignment: true            #Use external fixed & map frame to detemine gravity misalignment, default: true
+submapVisCropRange: 0                    #Range of cropping for submap visualization (set 0 to disable)
+
+#Factor Graph
+imuFrame: imu_link                       #Frame of IMU used in integrator - Used for lookup transform with lidarFrame 
+imuRate: 400                             #Rate of IMU input (Hz) used for initialization of gravity, initial Roll/Pitch and gyro bias
+imuTimeForInit: 0.5                      #Time interval of IMU measurements used for initialization
+imuTimeOffset: 0.0 #seconds              #Offset between IMU and LiDAR Measurements - Depending on LiDAR timestamp first(+0.05) or last(-0.05)
+initGraphRollPitchFromIMU: true          #Initialize graph roll/pitch from IMU
+globalZaxisPointsUp: true                #Z-axis of global coordinate system pointing up
+accNoiseDensity:  7.84e-04               #Continuous-time "Covariance" of accelerometer
+accBiasRandomWalk: 1.0e-04               #Continuous-time "Covariance" describing accelerometer bias random walk (biasAccCovariance)
+gyrNoiseDensity:  3.4906585e-5           #Continuous-time "Covariance" of gyroscope measurements
+gyrBiasRandomWalk: 1.0e-04               #Continuous-time "Covariance" describing gyroscope bias random walk (biasOmegaCovariance)
+imuIntegrationCovariance: 1.0e-08        #Continuous-time "Covariance" describing integration uncertainty
+imuBiasAccOmegaInt: 1.0                  #Covariance of bias used for pre-integration
+accBiasPrior: [0.0, 0.0, 0.0]            #Prior/starting value of accelerometer bias
+gyrBiasPrior: [0.0, 0.0, 0.0]            #Prior/starting value of gyroscope bias
+smootherLag: 3.0                         #Lag of fixed lag smoother[seconds]
+additonalIterations: 3                   #Additional iterations of graph optimizer after update with new factors
+positionReLinTh: 0.05                    #Position linearization threshold
+rotationReLinTh: 0.05                    #Rotation linearization threshold
+velocityReLinTh: 0.1                     #Linear Velocity linearization threshold
+accBiasReLinTh: 0.1                      #Accelerometer bias linearization threshold
+gyrBiasReLinTh: 0.1                      #Gyroscope bias linearization threshold
+relinearizeSkip: 1
+enableRelinearization: true
+evaluateNonlinearError: false
+cacheLinearizedFactors: true
+findUnusedFactorSlots: false
+enablePartialRelinearizationCheck: true
+enableDetailedResults: false
+poseBetweenNoise: [0.5, 0.5, 0.05, 0.1, 0.1, 0.1] #Noise of add between factor -ORDER RPY(rad) - XYZ(meters)
+zeroMotionDetection: false                        #Detect and Add Zero Motion Factors(Zero delta Pose and Velocity)
+zeroMotionThreshold: 0.01                         #Zero motion threshold in meters (Currently only motion detection is translation only)
+minZeroMoitionDetections: 10                      #Minimum number of consective zero motions detected before factors are added
+gravityRollPitchFactors: false                    #Add Gravity-aligned Roll-Pitch from IMU when in Zero motion (only works if Zero-Motion Factors are added)

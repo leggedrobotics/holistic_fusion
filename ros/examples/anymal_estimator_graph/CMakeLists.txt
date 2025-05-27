@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
-project(graph_msf_ros)
+project(anymal_estimator_graph)
 
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-# Find dependencies ------------------------------------------------------------
+# For FindGlog.cmake and FindGflags.cmake
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
+
+# Find Dependencies ---------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
 message("Eigen Version:" ${EIGEN3_VERSION_STRING})
 message("Eigen Path:" ${Eigen3_DIR})
@@ -17,45 +21,30 @@ if (NOT WIN32)
     set(Magenta "${Esc}[35m")
 endif ()
 
-# March native check
-#include(CheckCXXCompilerFlag)
-#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
-#if(COMPILER_SUPPORTS_MARCH_NATIVE)
-#  add_compile_options("-march=native")
-#  message("${BoldMagenta}INFO: Using -march=native${ColourReset}")
-#endif()
-
-# Catkin
+# Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
-        roscpp
-        graph_msf_catkin
-        kdl_parser
-        nav_msgs
-        geometry_msgs
-        tf
+        graph_msf_ros
         graph_msf_ros_msgs
+        nav_msgs
+        sensor_msgs
+        roscpp
+        std_msgs
+        tf
+        graph_msf_anymal_msgs
 )
 
+# CMAKE dependencies --------------------------------------------------------------------------------
 find_package(catkin REQUIRED COMPONENTS
         ${CATKIN_PACKAGE_DEPENDENCIES}
-        message_generation
 )
 
-# Python
-catkin_python_setup()
-
-# Message generation
-generate_messages(
-        DEPENDENCIES
-        std_msgs
-)
+find_package(Glog REQUIRED)
 
 # Catkin Package
 catkin_package(
-        CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
-        DEPENDS EIGEN3
         INCLUDE_DIRS include
         LIBRARIES ${PROJECT_NAME}
+        CATKIN_DEPENDS ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
 ###########
@@ -68,20 +57,32 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
-        ${Python3_INCLUDE_DIRS}
+        ${GLOG_INCLUDE_DIRS}
+        ${gflags_INCLUDE_DIRS}
 )
 
 # Library
 add_library(${PROJECT_NAME}
-        src/lib/StaticTransformsTf.cpp
-        src/lib/StaticTransformsUrdf.cpp
-        src/lib/GraphMsfRos.cpp
+        src/lib/AnymalEstimator.cpp
         src/lib/readParams.cpp
-        src/lib/conversions.cpp)
+        src/lib/AnymalStaticTransforms.cpp
+)
+target_link_libraries(${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${gflags_LIBRARIES}
+        ${GLOG_LIBRARIES}
+)
 
-# Link against graph_msf and its dependencies
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+# Executable
+add_executable(${PROJECT_NAME}_node src/anymal_estimator_node.cpp)
+target_link_libraries(${PROJECT_NAME}_node
+        ${PROJECT_NAME}
+        ${gflags_LIBRARIES}
+        ${GLOG_LIBRARIES}
+)
+
+add_dependencies(${PROJECT_NAME}
+        ${catkin_EXPORTED_TARGETS})
 
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
@@ -109,19 +110,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark cpp header files for installation
-install(DIRECTORY config rviz
+install(DIRECTORY config launch rviz
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
-# Python
-catkin_install_python(PROGRAMS
-        graph_msf_ros_py/replay/pose_csv_files_to_tf_and_odom_bag.py
-        graph_msf_ros_py/plotting/plot_latest_quantitites_in_package_dir.py
-        graph_msf_ros_py/bag_filter/remove_tf_from_bag.py
-        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY graph_msf_ros_py
-        DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
-        FILES_MATCHING PATTERN "*.py"
 )
