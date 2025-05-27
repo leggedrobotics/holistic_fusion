@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Exit if a single command fails
+set -e
+
+# Install GTSAM
 mkdir -p /software \
  && cd /software \
  && git clone https://github.com/borglab/gtsam.git \
@@ -15,3 +19,6 @@ mkdir -p /software \
     -DGTSAM_USE_SYSTEM_EIGEN=ON \
     /software/gtsam \
  && make install -j$(nproc)
+
+ # Update library cache
+ ldconfig
