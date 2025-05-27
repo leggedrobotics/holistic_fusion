@@ -33,9 +33,9 @@ class Trajectory {
   void addPoseWithFilter(const Eigen::Vector3d& position,
                          double                time,
                          const Eigen::Vector3d& covariance,
-                         double                timeConstant = 0.5) // [s]
+                         double                timeConstant = 0.5)
   {
-    if (_poses.empty()) {                                // first sample
+    if (_poses.empty()) {
       _filteredPos   = position;
       _filteredCov   = covariance;
       _poses.emplace_back(position, Eigen::Vector4d(0,0,0,1), time);
@@ -43,21 +43,23 @@ class Trajectory {
       return;
     }
 
-    /* --- 1. weights --------------------------------------------------- */
-    double dt        = std::max(1e-6, time - _lastTime);   // avoid 0
-    double alpha_t   = 1.0 - std::exp(-dt / timeConstant); // smoother for slow dt
+    double dt        = std::max(1e-6, time - _lastTime);  
+    double alpha_t   = 1.0 - std::exp(-dt / timeConstant);
 
     double w_new     = 1.0 / (covariance.array().max(1e-6)).mean();
     double w_old     = 1.0 / (_filteredCov.array().max(1e-6)).mean();
-    double alpha_cov = w_new / (w_new + w_old);            // 0-1
+    double alpha_cov = w_new / (w_new + w_old);
 
-    double alpha     = std::clamp(alpha_t * alpha_cov, 0.0, 1.0);
+    double alpha = alpha_t * alpha_cov;
+    if (alpha < 0.0) {
+      alpha = 0.0;
+    } else if (alpha > 1.0) {
+      alpha = 1.0;
+    }
 
-    /* --- 2. exponential update --------------------------------------- */
     _filteredPos = (1.0 - alpha) * _filteredPos + alpha * position;
     _filteredCov = (1.0 - alpha) * _filteredCov + alpha * covariance;
 
-    /* --- 3. store the filtered pose ---------------------------------- */
     _poses.emplace_back(_filteredPos, Eigen::Vector4d(0,0,0,1), time);
     _lastTime = time;
   }
