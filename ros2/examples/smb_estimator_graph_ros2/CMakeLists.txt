@@ -17,11 +17,14 @@ find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(graph_msf_ros2 REQUIRED)
-find_package(graph_msf REQUIRED)
 find_package(Glog REQUIRED)
-find_package(GTSAM REQUIRED)
-find_package(GTSAM_UNSTABLE REQUIRED)
+find_package(graph_msf REQUIRED)
+find_package(graph_msf_ros2 REQUIRED)
+
+# Non propagated ros dependencies
+find_package(std_srvs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
 
 # Display Eigen version and path
 message("Eigen Version: ${EIGEN3_VERSION_STRING}")
@@ -38,11 +41,8 @@ endif()
 # Define include directories
 include_directories(
     include
-    SYSTEM ${GTSAM_INCLUDE_DIR}
-    SYSTEM ${GTSAM_UNSTABLE_INCLUDE_DIR}
-    ${EIGEN3_INCLUDE_DIR}
-    ${graph_msf_ros2_INCLUDE_DIRS}
-    ${graph_msf_INCLUDE_DIRS}
+    ${std_srvs_INCLUDE_DIRS}
+    ${visualization_msgs_INCLUDE_DIRS}
 )
 
 # Library
@@ -52,15 +52,20 @@ add_library(${PROJECT_NAME}
     src/lib/SmbStaticTransforms.cpp
 )
 
+# Link dependencies
 target_link_libraries(${PROJECT_NAME}
-    gtsam
-    gtsam_unstable
-    graph_msf::graph_msf
-    ${graph_msf_ros2_LIBRARIES}
+    graph_msf_ros2::graph_msf_ros2
     ${GLOG_LIBRARIES}
     ${gflags_LIBRARIES}
 )
 
+# Print the include directories for debugging
+get_target_property(INC_DIR graph_msf::graph_msf INTERFACE_INCLUDE_DIRECTORIES)
+message("Include dir for graph_msf::graph_msf: ${INC_DIR}")
+get_target_property(INC_DIR graph_msf_ros2::graph_msf_ros2 INTERFACE_INCLUDE_DIRECTORIES)
+message("Include dir for graph_msf_ros2::graph_msf_ros2: ${INC_DIR}")
+
+# Ament dependencies
 ament_target_dependencies(${PROJECT_NAME}
     rclcpp
     std_msgs
@@ -68,23 +73,14 @@ ament_target_dependencies(${PROJECT_NAME}
     nav_msgs
     tf2
     tf2_ros
-    graph_msf
-    graph_msf_ros2
     Glog
     gflags
-    GTSAM
 )
 
 # Executable
 add_executable(${PROJECT_NAME}_node src/smb_estimator_node.cpp)
 target_link_libraries(${PROJECT_NAME}_node
     ${PROJECT_NAME}
-    gtsam
-    gtsam_unstable
-    ${graph_msf_LIBRARIES}
-    ${graph_msf_ros2_LIBRARIES}
-    ${GLOG_LIBRARIES}
-    ${gflags_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME}_node
@@ -94,8 +90,6 @@ ament_target_dependencies(${PROJECT_NAME}_node
     nav_msgs
     tf2
     tf2_ros
-    graph_msf
-    graph_msf_ros2
 )
 
 # Add clang tooling

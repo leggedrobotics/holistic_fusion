@@ -38,6 +38,7 @@ message("GTSAM Path:" ${GTSAM_DIR})
 ###########
 ## Build ##
 ###########
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -62,6 +63,8 @@ add_library(${PROJECT_NAME} SHARED
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp
 )
+# Exported alias target
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 # Link GTSAM and other dependencies to the graph_msf library
 target_link_libraries(${PROJECT_NAME}
