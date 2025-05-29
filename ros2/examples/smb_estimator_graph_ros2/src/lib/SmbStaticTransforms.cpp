@@ -35,55 +35,62 @@ void SmbStaticTransforms::findTransformations() {
 
   // Temporary variable
   geometry_msgs::msg::TransformStamped transform;
+  Eigen::Isometry3d eigenTransform;
 
   // Imu to LiDAR Link ---
-  REGULAR_COUT << COLOR_END << " Waiting for transform LO for 10 seconds." << std::endl;
-  transform = tf_buffer_->lookupTransform(imuFrame_, lidarOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
-  Eigen::Isometry3d eigenTransform = tf2::transformToEigen(transform.transform);
-  lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_) = eigenTransform;
+  if (useLioOdometryFlag_) {
+    REGULAR_COUT << COLOR_END << " Waiting for transform LO for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, lidarOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    eigenTransform = tf2::transformToEigen(transform.transform);
+    lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_) = eigenTransform;
 
-  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_Lidar: " << imuFrame_ << " " << lidarOdometryFrame_
-            << " " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
-  lv_T_frame1_frame2(lidarOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).inverse();
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_Lidar: " << imuFrame_ << " " << lidarOdometryFrame_
+              << " " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
+    lv_T_frame1_frame2(lidarOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).inverse();
+  }
 
   // Imu to VIO Link ---
-  REGULAR_COUT << COLOR_END << " Waiting for transform VIO for 10 seconds." << std::endl;
-  transform = tf_buffer_->lookupTransform(imuFrame_, vioOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
-  eigenTransform = tf2::transformToEigen(transform.transform);
-  lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_) = eigenTransform;
+  if (useVioOdometryFlag_) {
+    REGULAR_COUT << COLOR_END << " Waiting for transform VIO for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, vioOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    eigenTransform = tf2::transformToEigen(transform.transform);
+    lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_) = eigenTransform;
 
-  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_VIO: " << imuFrame_ << " " << vioOdometryFrame_ << " "
-            << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
-  lv_T_frame1_frame2(vioOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).inverse();
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_VIO: " << imuFrame_ << " " << vioOdometryFrame_ << " "
+              << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
+    lv_T_frame1_frame2(vioOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).inverse();
+  }
 
   // Wheel Frames ---
-  REGULAR_COUT << RED_START
-               << " As the Wheels are turning, we only use the position of the wheels frames and use the orientation of the baseLinkFrame_ frame."
-               << COLOR_END << std::endl;
+  if (useWheelOdometryBetweenFlag_ || useWheelLinearVelocitiesFlag_) {
+    REGULAR_COUT << RED_START
+                 << " As the Wheels are turning, we only use the position of the wheels frames and use the orientation of the baseLinkFrame_ frame."
+                 << COLOR_END << std::endl;
 
-  // Left Wheel
-  REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
-  transform = tf_buffer_->lookupTransform(imuFrame_, wheelLinearVelocityLeftFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
-  Eigen::Isometry3d T_I_WheelLeft = tf2::transformToEigen(transform.transform);
-  T_I_WheelLeft.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
-  lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_) = T_I_WheelLeft;
+    // Left Wheel
+    REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, wheelLinearVelocityLeftFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    Eigen::Isometry3d T_I_WheelLeft = tf2::transformToEigen(transform.transform);
+    T_I_WheelLeft.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
+    lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_) = T_I_WheelLeft;
 
-  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelLeft: "
-            << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).translation()
-            << ", Rotation: " << T_I_WheelLeft.matrix().block<3, 3>(0, 0) << std::endl;
-  lv_T_frame1_frame2(wheelLinearVelocityLeftFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).inverse();
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelLeft: "
+              << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).translation()
+              << ", Rotation: " << T_I_WheelLeft.matrix().block<3, 3>(0, 0) << std::endl;
+    lv_T_frame1_frame2(wheelLinearVelocityLeftFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).inverse();
 
-  // Right Wheel
-  REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
-  transform = tf_buffer_->lookupTransform(imuFrame_, wheelLinearVelocityRightFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
-  Eigen::Isometry3d T_I_WheelRight = tf2::transformToEigen(transform.transform);
-  T_I_WheelRight.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
-  lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_) = T_I_WheelRight;
+    // Right Wheel
+    REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, wheelLinearVelocityRightFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    Eigen::Isometry3d T_I_WheelRight = tf2::transformToEigen(transform.transform);
+    T_I_WheelRight.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
+    lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_) = T_I_WheelRight;
 
-  std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelRight: "
-            << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).translation()
-            << ", Rotation: " << T_I_WheelRight.matrix().block<3, 3>(0, 0) << std::endl;
-  lv_T_frame1_frame2(wheelLinearVelocityRightFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).inverse();
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelRight: "
+              << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).translation()
+              << ", Rotation: " << T_I_WheelRight.matrix().block<3, 3>(0, 0) << std::endl;
+    lv_T_frame1_frame2(wheelLinearVelocityRightFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).inverse();
+  }
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 }

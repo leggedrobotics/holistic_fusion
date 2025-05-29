@@ -32,6 +32,12 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getWheelLinearVelocityRightFrame() const { return wheelLinearVelocityRightFrame_; }
   const std::string& getVioOdometryFrame() const { return vioOdometryFrame_; }
 
+  // Set flags
+  void setUseLioOdometryFlag(bool flag) { useLioOdometryFlag_ = flag; }
+  void setUseVioOdometryFlag(bool flag) { useVioOdometryFlag_ = flag; }
+  void setUseWheelOdometryBetweenFlag(bool flag) { useWheelOdometryBetweenFlag_ = flag; }
+  void setUseWheelLinearVelocitiesFlag(bool flag) { useWheelLinearVelocitiesFlag_ = flag; }
+
  private:
   void findTransformations() override;
 
@@ -41,6 +47,12 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   std::string wheelLinearVelocityLeftFrame_;
   std::string wheelLinearVelocityRightFrame_;
   std::string vioOdometryFrame_;
+
+  // Odometry flags
+  bool useLioOdometryFlag_ = false;
+  bool useVioOdometryFlag_ = false;
+  bool useWheelOdometryBetweenFlag_ = false;
+  bool useWheelLinearVelocitiesFlag_ = false;
 };
 
 }  // namespace smb_se

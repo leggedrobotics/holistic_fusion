@@ -23,6 +23,16 @@ SmbEstimator::SmbEstimator(std::shared_ptr<rclcpp::Node>& node) : graph_msf::Gra
   REGULAR_COUT << GREEN_START << " SmbEstimator-Constructor called." << COLOR_END << std::endl;
 
   staticTransformsPtr_ = std::make_shared<SmbStaticTransforms>(node_);
+  
+  // Set the odometry flags in SmbStaticTransforms
+  auto smbStaticTransforms = std::dynamic_pointer_cast<SmbStaticTransforms>(staticTransformsPtr_);
+  if (smbStaticTransforms) {
+    smbStaticTransforms->setUseLioOdometryFlag(useLioOdometryFlag_);
+    smbStaticTransforms->setUseVioOdometryFlag(useVioOdometryFlag_);
+    smbStaticTransforms->setUseWheelOdometryBetweenFlag(useWheelOdometryBetweenFlag_);
+    smbStaticTransforms->setUseWheelLinearVelocitiesFlag(useWheelLinearVelocitiesFlag_);
+  }
+
   // Call setup after declaring parameters
   SmbEstimator::setup();
 }
