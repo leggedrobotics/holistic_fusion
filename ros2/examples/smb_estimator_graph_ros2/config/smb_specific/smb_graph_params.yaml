@@ -8,7 +8,7 @@
       useWheelLinearVelocities: false
       useVioOdometry: false
       ## Rates
-      lioOdometryRate: 10
+      lioOdometryRate: 100
       wheelOdometryBetweenRate: 50
       wheelLinearVelocitiesRate: 50
       vioOdometryRate: 50
