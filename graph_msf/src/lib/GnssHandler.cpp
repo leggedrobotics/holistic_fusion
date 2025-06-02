@@ -87,10 +87,12 @@ void GnssHandler::convertNavSatToPosition(const Eigen::Vector3d& gnssCoordinate,
     SicilianENU::Result res = sicilianEnu_.forward(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
     position = Eigen::Vector3d(res.x, res.y, res.zEllip);
   } else {
-    std::cout << RED_START << "GnssHandler" << RED_START
-          << " ERROR: SicilianENU is not ready but a conversion was requested!" << COLOR_END << std::endl;
-    // Use legacy Gnss
-    position = gnssSensor_.gnssToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
+    std::cout << "\n\n\033[1;91m************************************************************\n"
+           "*                  GnssHandler ERROR                      *\n"
+           "*  SicilianENU is NOT ready but a conversion was requested!*\n"
+           "************************************************************\033[0m\n\n" << std::endl;
+    // // Use legacy Gnss
+    // position = gnssSensor_.gnssToCartesian(gnssCoordinate(0), gnssCoordinate(1), gnssCoordinate(2));
   }
 }
 

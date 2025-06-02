@@ -9,6 +9,9 @@ sensor_params:
   leggedKinematicsDownsampleFactor: 10
   gnssRate: 20
 
+  #Use sicilian
+  useSicilian: true
+
 # Alignment Parameters
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

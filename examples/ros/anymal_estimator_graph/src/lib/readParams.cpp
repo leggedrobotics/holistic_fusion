@@ -26,6 +26,8 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Sensor Params
   // GNSS
   gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+
+  useSicilianFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useSicilian", privateNode);
   // LIO
   lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
   // Legged Between
@@ -38,6 +40,8 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Legged Kinematics
   leggedKinematicsRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedKinematicsRate", privateNode);
   leggedKinematicsDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedKinematicsDownsampleFactor", privateNode);
+
+  //
 
   // Alignment Parameters
   const auto initialSe3AlignmentNoise =

@@ -95,6 +95,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   double leggedKinematicsRate_ = 400.0;
   int leggedKinematicsDownsampleFactor_ = 10;
   double gnssRate_ = 10.0;
+  bool useSicilianFlag_ = false;  // If true, use Sicilian ENU frame for GNSS measurements
 
   // Flags
   bool useGnssUnaryFlag_ = false;

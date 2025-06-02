@@ -220,10 +220,15 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     }
     return;
   } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {  // Initialize GNSS Handler
-    gnssHandlerPtr_->setUseSicilianEnu(false);
+    gnssHandlerPtr_->setUseSicilianEnu(useSicilianFlag_);
 
-    gnssHandlerPtr_->initHandler(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
-    // gnssHandlerPtr_->setSicilianEnuAnchor(lat0, lon0, h0, "egm2008-1");
+    // Set Sicilian ENU anchor using the averaged accumulated GNSS coordinates
+    Eigen::Vector3d avgGnssCoord = accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START;
+    if (useSicilianFlag_) {
+      gnssHandlerPtr_->setSicilianEnuAnchor(avgGnssCoord(0), avgGnssCoord(1), avgGnssCoord(2), "egm2008-1");
+    }
+
+    gnssHandlerPtr_->initHandler(avgGnssCoord);
 
     // Publish the reference coordinates for downstream applications.
     sensor_msgs::NavSatFix referenceGNSSmsg;
@@ -247,8 +252,7 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     if (gnssHandlerPtr_->getUseSicilianEnu()) {
       // Convert to ENU
       gnssHandlerPtr_->convertNavSatToPosition(gnssCoord, originAsENU);
-    } else  // Convert to ECEF
-    {
+    } else {
       gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, originAsENU);
     }
 
