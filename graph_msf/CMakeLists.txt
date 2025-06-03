@@ -10,7 +10,6 @@ add_compile_options(-std=c++17)
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
 find_package(GTSAM_UNSTABLE REQUIRED)
-find_package(Python3 REQUIRED COMPONENTS Development)
 find_package(tf2_eigen REQUIRED)
 
 message("Eigen Version:: ${EIGEN3_VERSION_STRING}")
