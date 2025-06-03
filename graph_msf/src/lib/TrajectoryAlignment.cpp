@@ -308,11 +308,11 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   // Early exit if not enough data
   const size_t minPoses = 10;
   if (copySe3Trajectory.poses().size() < minPoses || copyR3Trajectory.poses().size() < minPoses) {
-    std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
-              << " Insufficient data for alignment. SE3 poses: " << copySe3Trajectory.poses().size()
-              << ", R3 poses: " << copyR3Trajectory.poses().size()
-              << ". At least " << minPoses << " poses required in each trajectory."
-              << COLOR_END << std::endl;
+    // std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
+    //           << " Insufficient data for alignment. SE3 poses: " << copySe3Trajectory.poses().size()
+    //           << ", R3 poses: " << copyR3Trajectory.poses().size()
+    //           << ". At least " << minPoses << " poses required in each trajectory."
+    //           << COLOR_END << std::endl;
     return false;
   }
 
