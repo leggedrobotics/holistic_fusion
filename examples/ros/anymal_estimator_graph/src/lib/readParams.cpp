@@ -139,6 +139,9 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
 
     // GNSS Outlier Threshold
     gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionOutlierThreshold", privateNode);
+
+    // Sicilian ENU
+    useSicilianENU_ = graph_msf::tryGetParam<bool>("noise_params/useSicilianEnu", privateNode);
   }  // End GNSS Unary
 
   // Coordinate Frames ---------------------------------------------------

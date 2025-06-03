@@ -489,6 +489,10 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
     return;
   }
 
+  if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+    trajectoryAlignmentHandler_->addSe3Position(T_O_Bl_k.translation(), legOdometryTimeK);
+  }
+
   // Frame Name
   const std::string& leggedOdometryFrameName =
       dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();  // alias

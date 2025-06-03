@@ -15,22 +15,23 @@ sensor_params:
 # Alignment Parameters
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  lioSe3AlignmentRandomWalk: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.015 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioSe3AlignmentRandomWalk: [ 0.15, 0.15, 0.15, 0.05, 0.05, 0.015 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   #  lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
 noise_params:
   ## GNSS
-  gnssPositionOutlierThreshold: 2.0 # meters
+  gnssPositionOutlierThreshold: 6.0 # meters
+  useSicilianEnu: true
   ## LiDAR Odometry
   ## Unary Noise
-  lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioPoseUnaryNoiseDensity: [ 0.2, 0.2, 0.2, 0.3, 0.3, 0.3 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Binary Noise
   lioPoseBetweenNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Legged Odometry
   ## Between Noise
   legPoseBetweenNoiseDensity: [ 0.2, 0.2, 0.2, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Velocity Unary Noise
-  legVelocityUnaryNoiseDensity: [ 0.1, 0.1, 0.1 ] # StdDev, ORDER XYZ(meters/sec)
+  legVelocityUnaryNoiseDensity: [ 0.2, 0.2, 0.2 ] # StdDev, ORDER XYZ(meters/sec)
   ## LegKinematics Noise
   legKinematicsFootPositionUnaryNoiseDensity: [ 0.01, 0.01, 0.01 ] # StdDev, XYZ(meters)

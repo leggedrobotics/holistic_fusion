@@ -326,18 +326,18 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
       else {
         std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
         std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
-        REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
-                     << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
-                     << " ms, being larger than admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_
-                     << " ms. Not adding to graph." << COLOR_END << std::endl;
+        // REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
+        //              << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
+        //              << " ms, being larger than admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_
+        //              << " ms. Not adding to graph." << COLOR_END << std::endl;
         return false;
       }
     }
     // Measurement coming from the past, but could not find suitable key
     else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
-                   << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
+      // REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
+      //              << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
+      //              << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
     }
   }

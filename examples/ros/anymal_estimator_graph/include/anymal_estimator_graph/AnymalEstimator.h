@@ -116,6 +116,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
   Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
+  bool useSicilianENU_ = false;  // Use Sicilian ENU coordinates
 
   // Leg Odometry Handling
   static constexpr std::array<const char*, 4> legNames_ = {"LF", "RF", "LH", "RH"};
