@@ -29,8 +29,8 @@ You can also install it locally by adding the `-DCMAKE_INSTALL_PREFIX` option to
 
 ```bash
  git clone https://github.com/borglab/gtsam.git \
-    && mkdir -p /software/gtsam/build \
-    && cd /software/gtsam/build \
+    && mkdir -p ./gtsam/build \
+    && cd ./gtsam/build \
     && git checkout 4.2 \
     && cmake \
         -DCMAKE_BUILD_TYPE=Release \
@@ -39,7 +39,8 @@ You can also install it locally by adding the `-DCMAKE_INSTALL_PREFIX` option to
         -DGTSAM_ROT3_EXPMAP=ON \
         -DGTSAM_USE_QUATERNIONS=ON \
         -DGTSAM_USE_SYSTEM_EIGEN=ON \
-        /software/gtsam \
+        -DCMAKE_INSTALL_PREFIX=$HOME/.local \
+        .. \
     && make install -j$(nproc)
  ```
 
