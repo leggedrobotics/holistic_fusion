@@ -52,7 +52,7 @@ export LD_LIBRARY_PATH=$HOME/.local/lib/:$LD_LIBRARY_PATH
 export LIBRARY_PATH=${LIBRARY_PATH}:${LD_LIBRARY_PATH}
 ```
 
-This is usually only needed if you you choose a non-standard (local) install directory.
+This is usually only needed if you you choose a non-standard (local) install directory (as specified with `-DCMAKE_INSTALL_PREFIX=$HOME/.local \` before).
 
 ## Core Library
 
