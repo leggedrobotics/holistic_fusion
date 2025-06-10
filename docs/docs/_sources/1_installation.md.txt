@@ -35,6 +35,7 @@ You can also install it locally by adding the `-DCMAKE_INSTALL_PREFIX` option to
     && cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+        -DGTSAM_WITH_TBB=OFF \
         -DGTSAM_POSE3_EXPMAP=ON \
         -DGTSAM_ROT3_EXPMAP=ON \
         -DGTSAM_USE_QUATERNIONS=ON \
