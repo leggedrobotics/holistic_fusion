@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -13,13 +13,13 @@
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=88014068"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Building this Documentation" href="8_documentation.html" />
+    <link rel="next" title="Building Documentation" href="8_documentation.html" />
     <link rel="prev" title="Docker" href="6_docker.html" /> 
 </head>
 
@@ -46,26 +46,62 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="1_installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="1_installation.html#requirements">Requirements</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#custom-build">Custom Build</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="1_installation.html#graph-msf-core">Graph MSF Core</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf">graph_msf</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#workspace">Workspace</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#compiling">Compiling</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf-ros">graph_msf_ros</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#core-library">Core Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#catkin-workspace">Catkin Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#colcon-workspace">Colcon Workspace</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="2_system_overview.html">System Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros1-workspace">ROS1 Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros2-workspace">ROS2 Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#core-library-parameters">Core Library Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-extrinsic-parameters">Core Extrinsic Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-config">Core Graph Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-parameters">Core Graph Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#applications-specific-parameters">Applications Specific Parameters</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
-<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building this Documentation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ros1-examples">ROS1 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#anymal-example">ANYmal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#excavator-example">Excavator Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#supermegabot-example">SuperMegaBot Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ground-generation-example">Ground Generation Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#other-examples">Other Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ros2-examples">ROS2 Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
 </ul>
 </li>
 </ul>
@@ -95,7 +131,47 @@
            <div itemprop="articleBody">
              
   <section id="examples">
-<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<h1>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h1>
+<p>We provide several examples for using the holistic fusion library in ROS1 and ROS2 workspaces.</p>
+<section id="ros1-examples">
+<h2>ROS1 Examples<a class="headerlink" href="#ros1-examples" title="Permalink to this heading"></a></h2>
+<p>The majority of the development over the past years has been done in ROS1.
+We provide several examples for using the holistic fusion library in ROS1 workspaces, which can be found in the <a class="reference external" href="https://github.com/leggedrobotics/holistic_fusion/tree/main/ros">ROS1 examples</a>.</p>
+<section id="anymal-example">
+<h3>ANYmal Example<a class="headerlink" href="#anymal-example" title="Permalink to this heading"></a></h3>
+<p>This is the ANYmal example from the holisitic fusion paper.
+The corresponding example is called <code class="docutils literal notranslate"><span class="pre">anymal_estimator_graph</span></code>.</p>
+</section>
+<section id="excavator-example">
+<h3>Excavator Example<a class="headerlink" href="#excavator-example" title="Permalink to this heading"></a></h3>
+<p>This is the excavator example from the holisitic fusion paper.
+The corresponding example is called <code class="docutils literal notranslate"><span class="pre">excavator_holistic_graph</span></code>.</p>
+</section>
+<section id="supermegabot-example">
+<h3>SuperMegaBot Example<a class="headerlink" href="#supermegabot-example" title="Permalink to this heading"></a></h3>
+<p>This is the SuperMegaBot example as used during the ETH Robotics Summer School 2023 and 2024.
+The corresponding example is called <code class="docutils literal notranslate"><span class="pre">smb_estimator_graph</span></code>.</p>
+</section>
+<section id="ground-generation-example">
+<h3>Ground Generation Example<a class="headerlink" href="#ground-generation-example" title="Permalink to this heading"></a></h3>
+<p>This is an example for generating ground truth trajectories from a Leica Total Station and GNSS measurements.
+Note that in this example two non-drifting measurement sources are used, which is not the case in the other examples.
+Holistic fusion is used to align the two reference frames, fuse the measurements and generate a ground truth trajectory.
+The corresponding example is called <code class="docutils literal notranslate"><span class="pre">atn_position3_fuser</span></code>.</p>
+</section>
+<section id="other-examples">
+<h3>Other Examples<a class="headerlink" href="#other-examples" title="Permalink to this heading"></a></h3>
+<p>Some other more simplified examples are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">imu_pose3_fuser</span></code>: Simple example for fusing IMU and pose3 measurements.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pure_imu_integration</span></code>: Simple example for integrating IMU measurements without any fusion.</p></li>
+</ul>
+</section>
+</section>
+<section id="ros2-examples">
+<h2>ROS2 Examples<a class="headerlink" href="#ros2-examples" title="Permalink to this heading"></a></h2>
+<p>Coming soon.</p>
+</section>
 </section>
 
 
@@ -103,7 +179,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="6_docker.html" class="btn btn-neutral float-left" title="Docker" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="8_documentation.html" class="btn btn-neutral float-right" title="Building this Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="8_documentation.html" class="btn btn-neutral float-right" title="Building Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

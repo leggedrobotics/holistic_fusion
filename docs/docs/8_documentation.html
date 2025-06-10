@@ -1,21 +1,21 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Building this Documentation &mdash; Holistic Fusion January 2025 documentation</title>
+  <title>Building Documentation &mdash; Holistic Fusion January 2025 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=88014068"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -45,26 +45,62 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="1_installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="1_installation.html#requirements">Requirements</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#custom-build">Custom Build</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="1_installation.html#graph-msf-core">Graph MSF Core</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf">graph_msf</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#workspace">Workspace</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#compiling">Compiling</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf-ros">graph_msf_ros</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#core-library">Core Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#catkin-workspace">Catkin Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#colcon-workspace">Colcon Workspace</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="2_system_overview.html">System Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros1-workspace">ROS1 Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros2-workspace">ROS2 Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#core-library-parameters">Core Library Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-extrinsic-parameters">Core Extrinsic Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-config">Core Graph Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-parameters">Core Graph Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#applications-specific-parameters">Applications Specific Parameters</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
-<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a></li>
-<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Building this Documentation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros1-examples">ROS1 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#anymal-example">ANYmal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#excavator-example">Excavator Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#supermegabot-example">SuperMegaBot Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#ground-generation-example">Ground Generation Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#other-examples">Other Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros2-examples">ROS2 Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#read-the-docs">Read The Docs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#doxygen">Doxygen</a></li>
 </ul>
 </li>
 </ul>
@@ -83,7 +119,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Building this Documentation</li>
+      <li class="breadcrumb-item active">Building Documentation</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/8_documentation.md.txt" rel="nofollow"> View page source</a>
       </li>
@@ -93,11 +129,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="building-this-documentation">
-<h1>Building this Documentation<a class="headerlink" href="#building-this-documentation" title="Link to this heading"></a></h1>
+  <section id="building-documentation">
+<h1>Building Documentation<a class="headerlink" href="#building-documentation" title="Permalink to this heading"></a></h1>
+<section id="read-the-docs">
+<h2>Read The Docs<a class="headerlink" href="#read-the-docs" title="Permalink to this heading"></a></h2>
 <p>This documentation uses ReadTheDocs and Sphinx.</p>
 <section id="dependencies">
-<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading"></a></h2>
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this heading"></a></h3>
 <p>To build the documentation locally, you need to have Sphinx installed. You can install it via pip:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sphinx
 </pre></div>
@@ -108,6 +146,29 @@
 </div>
 <p>Moreover, to make the documentation look nice, we use the <code class="docutils literal notranslate"><span class="pre">sphinx_rtd_theme</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sphinx_rtd_theme
+</pre></div>
+</div>
+<p>Then, you can build the documentation by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs_src/read_the_docs
+make<span class="w"> </span>html
+</pre></div>
+</div>
+<p>After this, currently we are manually copying the content of the _build folder to the <code class="docutils literal notranslate"><span class="pre">docs</span></code> folder in the root of the
+repository, which is used by the Github pages.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>&lt;repo_root&gt;
+cp<span class="w"> </span>-r<span class="w"> </span>docs_src/read_the_docs/_build/html/*<span class="w"> </span>docs/docs/
+</pre></div>
+</div>
+</section>
+</section>
+<section id="doxygen">
+<h2>Doxygen<a class="headerlink" href="#doxygen" title="Permalink to this heading"></a></h2>
+<p>We also use Doxygen to generate documentation for the C++ code. You can install it via:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>doxygen<span class="w"> </span>graphviz
+</pre></div>
+</div>
+<p>Then, you can generate the documentation by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>doxygen<span class="w"> </span>docs/doxy/Doxyfile
 </pre></div>
 </div>
 </section>
