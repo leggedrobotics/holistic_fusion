@@ -1,8 +1,0 @@
-/smb_estimator_node:
-  ros__parameters:
-    #Common
-    common_params:
-      verbosity: 0                         #Debug Output, 0: only important events, 1: optimization duration, 2: added factors
-      odomNotJumpAtStart: false   #Whether the World->Map transform should be updated in the beginning (odom start at identity)
-      logRealTimeStateToMemory: false  # Whether the real-time state should be logged to memory (for logging purposes)
-      logLatencyAndUpdateDurationToMemory: false # Whether the latency and update duration should be logged to memory (for logging purposes)
