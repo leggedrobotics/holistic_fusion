@@ -12,7 +12,7 @@
 # Authors: Vassilios Tsounis, tsounisv@ethz.ch
 #          Julian Nubert, nubertj@ethz.ch
 #=============================================================================
-figlet m545
+figlet holistic_fusion
 #==
 # Log into the container as the host user
 #==

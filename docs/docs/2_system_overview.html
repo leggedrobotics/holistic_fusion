@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -13,9 +13,9 @@
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=88014068"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -46,26 +46,62 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="1_installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="1_installation.html#requirements">Requirements</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#custom-build">Custom Build</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="1_installation.html#graph-msf-core">Graph MSF Core</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf">graph_msf</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#workspace">Workspace</a></li>
-<li class="toctree-l3"><a class="reference internal" href="1_installation.html#compiling">Compiling</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="1_installation.html#graph-msf-ros">graph_msf_ros</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#core-library">Core Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#catkin-workspace">Catkin Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#colcon-workspace">Colcon Workspace</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">System Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros1-workspace">ROS1 Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros2-workspace">ROS2 Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#core-library-parameters">Core Library Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-extrinsic-parameters">Core Extrinsic Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-config">Core Graph Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-parameters">Core Graph Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#applications-specific-parameters">Applications Specific Parameters</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
-<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a></li>
-<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building this Documentation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros1-examples">ROS1 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#anymal-example">ANYmal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#excavator-example">Excavator Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#supermegabot-example">SuperMegaBot Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#ground-generation-example">Ground Generation Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#other-examples">Other Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros2-examples">ROS2 Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
 </ul>
 </li>
 </ul>
@@ -95,7 +131,7 @@
            <div itemprop="articleBody">
              
   <section id="system-overview">
-<h1>System Overview<a class="headerlink" href="#system-overview" title="Link to this heading"></a></h1>
+<h1>System Overview<a class="headerlink" href="#system-overview" title="Permalink to this heading"></a></h1>
 </section>
 
 
