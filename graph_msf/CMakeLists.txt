@@ -24,7 +24,6 @@ message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
 find_package(GTSAM_UNSTABLE REQUIRED)
-find_package(Python3 REQUIRED COMPONENTS Development)
 find_package(tf2_eigen REQUIRED)
 
 message("Eigen Version:: ${EIGEN3_VERSION_STRING}")
@@ -52,6 +51,7 @@ message("GTSAM Path:" ${GTSAM_DIR})
 ###########
 ## Build ##
 ###########
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -76,6 +76,8 @@ add_library(${PROJECT_NAME} SHARED
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp
 )
+# Exported alias target
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 # Link GTSAM and other dependencies to the graph_msf library
 target_link_libraries(${PROJECT_NAME}

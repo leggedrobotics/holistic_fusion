@@ -16,7 +16,7 @@
 
     # Factor Graph
     graph_params:
-      realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+      realTimeSmootherLag: 10.0                # Lag of real-time fixed lag smoother[seconds]
       realTimeSmootherUseIsam: true
       realTimeSmootherUseCholeskyFactorization: true  # CHOLESKY faster, QR numerically more stable
       useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother

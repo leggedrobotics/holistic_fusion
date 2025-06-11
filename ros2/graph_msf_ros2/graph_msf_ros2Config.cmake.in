@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/graph_msf_ros2Targets.cmake")
+
+# Optionally set legacy-style variables (only if needed)
+# set(graph_msf_INCLUDE_DIRS "@CMAKE_INSTALL_INCLUDEDIR@")
+
+# Set up version compatibility (optional if you use a version file)
+# include("${CMAKE_CURRENT_LIST_DIR}/graph_msfConfigVersion.cmake")

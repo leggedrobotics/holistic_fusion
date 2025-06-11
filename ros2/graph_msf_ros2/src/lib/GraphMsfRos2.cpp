@@ -179,7 +179,7 @@ void GraphMsfRos2::initializeSubscribers() {
 
   // Imu
   subImu_ = node_->create_subscription<sensor_msgs::msg::Imu>(
-      "/imu_broadcaster/imu_bike_base_front_top", rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
+      "/imu_topic", rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
       std::bind(&GraphMsfRos2::imuCallback, this, std::placeholders::_1));
 
   RCLCPP_INFO(node_->get_logger(), "GraphMsfRos2 Initialized main IMU subscriber with topic: %s",
