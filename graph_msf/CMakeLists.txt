@@ -6,6 +6,20 @@ message("Building ${PROJECT_NAME} library -----------------------------")
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
 
+# If build variables not set, set them to default values
+if (NOT DEFINED CMAKE_BUILD_LIBDIR)
+    set(CMAKE_BUILD_LIBDIR ${CMAKE_BINARY_DIR}/lib)
+endif ()
+if (NOT DEFINED CMAKE_BUILD_BINDIR)
+    set(CMAKE_BUILD_BINDIR ${CMAKE_BINARY_DIR}/bin)
+endif ()
+if (NOT DEFINED CMAKE_BUILD_INCLUDE_DIR)
+    set(CMAKE_BUILD_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
+endif ()
+message("CMAKE_BUILD_LIBDIR: ${CMAKE_BUILD_LIBDIR}")
+message("CMAKE_BUILD_BINDIR: ${CMAKE_BUILD_BINDIR}")
+message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
+
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)

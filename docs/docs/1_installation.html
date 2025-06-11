@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -13,9 +13,9 @@
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=88014068"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -46,26 +46,62 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#eigen3">Eigen3</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#gtsam">GTSAM</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-build">Custom Build</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#graph-msf-core">Graph MSF Core</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#eigen3">Eigen3</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#gtsam">GTSAM</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#graph-msf">graph_msf</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#workspace">Workspace</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#compiling">Compiling</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#graph-msf-ros">graph_msf_ros</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#core-library">Core Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#catkin-workspace">Catkin Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#colcon-workspace">Colcon Workspace</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="2_system_overview.html">System Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros1-workspace">ROS1 Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros2-workspace">ROS2 Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#core-library-parameters">Core Library Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-extrinsic-parameters">Core Extrinsic Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-config">Core Graph Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-parameters">Core Graph Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#applications-specific-parameters">Applications Specific Parameters</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
-<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a></li>
-<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building this Documentation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros1-examples">ROS1 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#anymal-example">ANYmal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#excavator-example">Excavator Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#supermegabot-example">SuperMegaBot Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#ground-generation-example">Ground Generation Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#other-examples">Other Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros2-examples">ROS2 Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
 </ul>
 </li>
 </ul>
@@ -95,79 +131,106 @@
            <div itemprop="articleBody">
              
   <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h1>
 <section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
+<section id="docker">
+<h3>Docker<a class="headerlink" href="#docker" title="Permalink to this heading"></a></h3>
+<p>We recommend using Docker to run the code. This way you can avoid dependency issues and have a clean environment.
+The instructions for building and running the Docker image can be found in the <a class="reference internal" href="6_docker.html"><span class="std std-doc">Docker section</span></a>.</p>
+</section>
+<section id="custom-build">
+<h3>Custom Build<a class="headerlink" href="#custom-build" title="Permalink to this heading"></a></h3>
+<p><strong>Note: This is only needed if you are not using Docker.</strong></p>
+<p>The two main dependencies of the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library are Eigen3 and GTSAM.
+For running the ROS and ROS2 examples, you also need to have ROS Noetic and/or ROS2 Humble installed.</p>
+<section id="graph-msf-core">
+<h4>Graph MSF Core<a class="headerlink" href="#graph-msf-core" title="Permalink to this heading"></a></h4>
 <section id="eigen3">
-<h3>Eigen3<a class="headerlink" href="#eigen3" title="Link to this heading"></a></h3>
+<h5>Eigen3<a class="headerlink" href="#eigen3" title="Permalink to this heading"></a></h5>
 <p>Make sure you have the Eigen3-headers in your include path. This is usually automatically the case if you have ROS installed.</p>
 </section>
 <section id="gtsam">
-<h3>GTSAM<a class="headerlink" href="#gtsam" title="Link to this heading"></a></h3>
-<p>We install the GTSAM fork of RSL from source. We recommend a local installation of GTSAM.</p>
+<h5>GTSAM<a class="headerlink" href="#gtsam" title="Permalink to this heading"></a></h5>
+<p>We install GTSAM from source.
+You can also install it locally by adding the <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> option to the CMake command as done in the following.</p>
 <ul class="simple">
-<li><p>Version: <a class="reference external" href="https://github.com/leggedrobotics/gtsam_fork/tree/gtsam_rsl">GTSAM on branch gtsam_rsl</a>.</p></li>
-<li><p>This version has already the latest bug fixes of the CombinedImuFactor. For more information we refer to this <a class="reference external" href="https://github.com/borglab/gtsam/commit/587678e0b761188e33db376cd552c417650c96ee#diff-278a5de28881129d36f253ed7fa64129312e5e1d9a042aa850424c2a93392e1f">issue</a>.</p></li>
-<li><p>Clone and checkout at an arbitrary location.</p></li>
+<li><p>Get the source code and compile it:</p></li>
 </ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/leggedrobotics/gtsam_fork
-<span class="nb">cd</span><span class="w"> </span>gtsam_fork
-git<span class="w"> </span>checkout<span class="w"> </span>gtsam_rsl
-mkdir<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
-</pre></div>
-</div>
-<ul class="simple">
-<li><p>Use CMake with the following options. Note that <em>-DCMAKE_INSTALL_PREFIX:PATH=$HOME/.local</em> specifies the location where GTSAM is installed to and can be individually adapted. This flag can also be removed, leading to a global installation.</p></li>
-</ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>-DCMAKE_INSTALL_PREFIX:PATH<span class="o">=</span><span class="nv">$HOME</span>/.local<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>-DGTSAM_POSE3_EXPMAP<span class="o">=</span>ON<span class="w"> </span>-DGTSAM_ROT3_EXPMAP<span class="o">=</span>ON<span class="w"> </span>-DGTSAM_USE_QUATERNIONS<span class="o">=</span>ON<span class="w"> </span>-DGTSAM_USE_SYSTEM_EIGEN<span class="o">=</span>ON<span class="w"> </span>-DGTSAM_BUILD_WITH_MARCH_NATIVE<span class="o">=</span>OFF<span class="w"> </span>..
-</pre></div>
-</div>
-<ul class="simple">
-<li><p>Compile and install locally:</p></li>
-</ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>install<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/borglab/gtsam.git<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>./gtsam/build<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>./gtsam/build<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="m">4</span>.2<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>cmake<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_BUILD_WITH_MARCH_NATIVE<span class="o">=</span>OFF<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_WITH_TBB<span class="o">=</span>OFF<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_POSE3_EXPMAP<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_ROT3_EXPMAP<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_USE_QUATERNIONS<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGTSAM_USE_SYSTEM_EIGEN<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DCMAKE_INSTALL_PREFIX<span class="o">=</span><span class="nv">$HOME</span>/.local<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>..<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>install<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
 </pre></div>
 </div>
 <ul class="simple">
 <li><p>Environment variables (e.g. add to your .bashrc-file):</p></li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export CMAKE_PREFIX_PATH=$HOME/.local/:$CMAKE_PREFIX_PATH
-export LD_LIBRARY_PATH=$HOME/.local/lib/:$LD_LIBRARY_PATH
-export LIBRARY_PATH=${LIBRARY_PATH}:${LD_LIBRARY_PATH}
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CMAKE_PREFIX_PATH</span><span class="o">=</span><span class="nv">$HOME</span>/.local/:<span class="nv">$CMAKE_PREFIX_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$HOME</span>/.local/lib/:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LIBRARY_PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">LIBRARY_PATH</span><span class="si">}</span>:<span class="si">${</span><span class="nv">LD_LIBRARY_PATH</span><span class="si">}</span>
 </pre></div>
 </div>
-<p>This is usually only needed if you you choose a non-standard (local) install directory.</p>
+<p>This is usually only needed if you you choose a non-standard (local) install directory (as specified with <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX=$HOME/.local</span> <span class="pre">\</span></code> before).</p>
 </section>
 </section>
-<section id="graph-msf">
-<h2>graph_msf<a class="headerlink" href="#graph-msf" title="Link to this heading"></a></h2>
-<section id="workspace">
-<h3>Workspace<a class="headerlink" href="#workspace" title="Link to this heading"></a></h3>
-<p>GraphMsf only has two main dependencies: Eigen3 and GTSAM. These were installed in the last step.
-For compiling graph_msf create a workspace and set it to <em>Release</em>-mode.</p>
+</section>
+</section>
+<section id="core-library">
+<h2>Core Library<a class="headerlink" href="#core-library" title="Permalink to this heading"></a></h2>
+<p>The core library can be compile without ROS or ROS2. It is a pure C++ library that can be used in any C++ project with CMake support.
+When using the library with ROS or ROS2, we provide packages called <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code> and <code class="docutils literal notranslate"><span class="pre">graph_msf_ament</span></code> that are wrapper projects exposing the functionalities to the workspace, which can be used to compile the library with the respective build system.</p>
+<p>To build the core library (standalone) you can simply do this using cmake:</p>
+<p><strong>Note: This is only needed if you are not building it with catkin or ament/colcon.</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/leggedrobotics/holistic_fusion.git
+<span class="nb">cd</span><span class="w"> </span>holistic_fusion/graph_msf
+mkdir<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
+cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
+make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+</pre></div>
+</div>
+</section>
+<section id="catkin-workspace">
+<h2>Catkin Workspace<a class="headerlink" href="#catkin-workspace" title="Permalink to this heading"></a></h2>
+<p>To use the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library in a ROS workspace, we provide a package called <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code>.
+To install all dependencies and compile the library, you can follow these steps:</p>
+<ol class="arabic simple">
+<li><p>Setting up the workspace:</p></li>
+</ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>catkin_ws
 mkdir<span class="w"> </span>src
 catkin<span class="w"> </span>init
 catkin<span class="w"> </span>config<span class="w"> </span>--cmake-args<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
-<span class="nb">cd</span><span class="w"> </span>src<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/leggedrobotics/graph_msf_dev.git
 </pre></div>
 </div>
-</section>
-<section id="compiling">
-<h3>Compiling<a class="headerlink" href="#compiling" title="Link to this heading"></a></h3>
-<p>Now the library then can be compiled using:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>catkin<span class="w"> </span>build<span class="w"> </span>graph_msf
+<ol class="arabic simple" start="2">
+<li><p>Cloning the requirements</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>-qO<span class="w"> </span>-<span class="w"> </span>https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs<span class="w"> </span><span class="p">|</span><span class="w"> </span>vcs<span class="w"> </span>import<span class="w"> </span>src
 </pre></div>
 </div>
-</section>
-</section>
-<section id="graph-msf-ros">
-<h2>graph_msf_ros<a class="headerlink" href="#graph-msf-ros" title="Link to this heading"></a></h2>
-<p>In contrast to <em>graph_msf</em> this package also depends on standard ROS dependencies. We tested the framework with ROS Noetic on Ubuntu 20.04.
-For compiling the code run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>catkin<span class="w"> </span>build<span class="w"> </span>graph_msf_ros
+<ol class="arabic simple" start="3">
+<li><p>Compiling the workspace:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>catkin<span class="w"> </span>build<span class="w"> </span>graph_msf_ros_examples
 </pre></div>
 </div>
+<p>This should build 14 packages, including all ROS1 examples, the core library, the <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code> package, the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros</span></code> package (commodity package for the ROS examples), and the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros_examples</span></code> package.</p>
+</section>
+<section id="colcon-workspace">
+<h2>Colcon Workspace<a class="headerlink" href="#colcon-workspace" title="Permalink to this heading"></a></h2>
+<p>Still under construction.</p>
 </section>
 </section>
 
