@@ -27,12 +27,17 @@ pip install sphinx_rtd_theme
 Then, you can build the documentation by running:
 
 ```bash
-cd docs
+cd docs_src/read_the_docs
 make html
 ```
 
 After this, currently we are manually copying the content of the _build folder to the `docs` folder in the root of the
 repository, which is used by the Github pages.
+
+```bash
+cd <repo_root>
+cp -r docs_src/read_the_docs/_build/html/* docs/docs/
+```
 
 ## Doxygen
 
