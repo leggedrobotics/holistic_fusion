@@ -8,5 +8,10 @@
   <license>BSD</license>
   <author email="nubertj@ethz.ch">Julian Nubert</author>
 
+  <!-- Required for any ROS 1 catkin-cmake package -->
   <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Optional: list native dependencies here if you want ROS 2 to manage them -->
+  <depend>gtsam</depend>
+  <depend>eigen</depend>
 </package>
