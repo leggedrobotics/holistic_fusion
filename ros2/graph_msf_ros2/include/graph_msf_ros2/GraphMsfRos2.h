@@ -110,6 +110,9 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
   // Node
   std::shared_ptr<rclcpp::Node> node_;
 
+  // Clock
+  rclcpp::Clock::SharedPtr clock_;
+
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
