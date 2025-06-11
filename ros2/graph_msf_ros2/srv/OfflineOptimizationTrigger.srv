@@ -1,0 +1,4 @@
+int64 max_optimization_iterations
+---
+bool success
+string message

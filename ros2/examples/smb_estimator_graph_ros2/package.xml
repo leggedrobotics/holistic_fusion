@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>smb_estimator_graph_ros2</name>
+    <version>0.0.0</version>
+
+    <description>
+        State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry
+        and GNSS estimates.
+    </description>
+
+    <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+    <license>BSD-3-Clause</license>
+    <author email="nubertj@ethz.ch">Julian Nubert</author>
+
+    <!-- Build tool dependencies -->
+    <buildtool_depend>ament_cmake</buildtool_depend>
+
+    <!-- Dependencies -->
+    <depend>graph_msf_ros2</depend>
+    <depend>nav_msgs</depend>
+    <depend>std_msgs</depend>
+    <depend>sensor_msgs</depend>
+    <depend>tf2</depend>
+    <depend>tf2_ros</depend>
+    <depend>rclcpp</depend>
+    <depend>graph_msf</depend>
+    <depend>glog</depend>
+
+    <!-- Test dependencies -->
+    <test_depend>ament_cmake_gtest</test_depend>
+    <test_depend>rosbag2</test_depend>
+
+    <!-- Export launch files -->
+    <export>
+        <build_type>ament_cmake</build_type>
+    </export>
+</package>
