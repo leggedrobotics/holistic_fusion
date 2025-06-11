@@ -18,8 +18,7 @@ namespace graph_msf {
 
 class StaticTransformsTf : public StaticTransforms {
  public:
-  explicit StaticTransformsTf(const rclcpp::Node::SharedPtr& node,
-                              const graph_msf::StaticTransforms& staticTransforms);
+  explicit StaticTransformsTf(const rclcpp::Node::SharedPtr& node);
 
   virtual ~StaticTransformsTf() = default;
 

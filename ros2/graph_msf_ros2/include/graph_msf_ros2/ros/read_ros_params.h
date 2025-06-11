@@ -29,17 +29,16 @@ inline void printKey(const std::string& key, std::vector<double> vector) {
 template <typename T>
 T tryGetParam(std::shared_ptr<rclcpp::Node> node, const std::string& key) {
   T value;
-  RCLCPP_INFO(node->get_logger(), "Attempting to retrieve parameter: %s", key.c_str());
 
   if (node->get_parameter(key, value)) {
     printKey(key, value);
-    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter: %s", key.c_str());
+    // RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter: %s", key.c_str());
     return value;
   }
 
   if (node->get_parameter("/" + key, value)) {
     printKey("/" + key, value);
-    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter with absolute key: %s", ("/" + key).c_str());
+    // RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter with absolute key: %s", ("/" + key).c_str());
     return value;
   }
 

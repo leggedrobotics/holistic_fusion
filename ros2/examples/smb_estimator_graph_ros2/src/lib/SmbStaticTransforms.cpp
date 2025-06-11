@@ -19,9 +19,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr)
-    : graph_msf::StaticTransformsTf(nodePtr, *this) {
-  REGULAR_COUT << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
+SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr) : graph_msf::StaticTransformsTf(nodePtr) {
+  REGULAR_COUT << GREEN_START << " Initializing smb static transforms..." << COLOR_END << std::endl;
 }
 
 void SmbStaticTransforms::findTransformations() {
@@ -56,16 +55,17 @@ void SmbStaticTransforms::findTransformations() {
     eigenTransform = tf2::transformToEigen(transform.transform);
     lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_) = eigenTransform;
 
-    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_VIO: " << imuFrame_ << " " << vioOdometryFrame_ << " "
-              << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_VIO: " << imuFrame_ << " " << vioOdometryFrame_
+              << " " << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
     lv_T_frame1_frame2(vioOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).inverse();
   }
 
   // Wheel Frames ---
   if (useWheelOdometryBetweenFlag_ || useWheelLinearVelocitiesFlag_) {
-    REGULAR_COUT << RED_START
-                 << " As the Wheels are turning, we only use the position of the wheels frames and use the orientation of the baseLinkFrame_ frame."
-                 << COLOR_END << std::endl;
+    REGULAR_COUT
+        << RED_START
+        << " As the Wheels are turning, we only use the position of the wheels frames and use the orientation of the baseLinkFrame_ frame."
+        << COLOR_END << std::endl;
 
     // Left Wheel
     REGULAR_COUT << COLOR_END << " Waiting for transform for 10 seconds." << std::endl;
@@ -74,8 +74,8 @@ void SmbStaticTransforms::findTransformations() {
     T_I_WheelLeft.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
     lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_) = T_I_WheelLeft;
 
-    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelLeft: "
-              << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).translation()
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
+              << " Translation I_WheelLeft: " << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).translation()
               << ", Rotation: " << T_I_WheelLeft.matrix().block<3, 3>(0, 0) << std::endl;
     lv_T_frame1_frame2(wheelLinearVelocityLeftFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_).inverse();
 
@@ -86,8 +86,8 @@ void SmbStaticTransforms::findTransformations() {
     T_I_WheelRight.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
     lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_) = T_I_WheelRight;
 
-    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_WheelRight: "
-              << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).translation()
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
+              << " Translation I_WheelRight: " << rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).translation()
               << ", Rotation: " << T_I_WheelRight.matrix().block<3, 3>(0, 0) << std::endl;
     lv_T_frame1_frame2(wheelLinearVelocityRightFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).inverse();
   }

@@ -18,8 +18,14 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Glog REQUIRED)
-find_package(graph_msf REQUIRED)
-find_package(graph_msf_ros2 REQUIRED)
+
+# Check if the target from graph_msf is already defined
+if(NOT TARGET graph_msf::graph_msf)
+  find_package(graph_msf REQUIRED)
+endif()
+if(NOT TARGET graph_msf_ros2::graph_msf_ros2)
+  find_package(graph_msf_ros2 REQUIRED)
+endif()
 
 # Non propagated ros dependencies
 find_package(std_srvs REQUIRED)

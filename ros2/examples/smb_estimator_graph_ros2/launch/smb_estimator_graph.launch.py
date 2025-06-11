@@ -72,6 +72,9 @@ def generate_launch_description():
             executable='smb_estimator_graph_ros2_node',
             name='smb_estimator_node',
             output='screen',
+            # prefix='gdb -ex run --args',
+            # prefix='xterm -e gdb -ex run --args',
+            # emulate_tty=True,
             parameters=[
                 {'use_sim_time': use_sim_time},
                 {'launch/optimizationResultLoggingPath': logging_dir_location},
