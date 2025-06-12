@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros/util/conversions.h"
 
 // Macro Constant
-#define TF_WAIT_TIME 3.0
+#define TF_WAIT_TIME 30.0
 
 namespace anymal_se {
 
