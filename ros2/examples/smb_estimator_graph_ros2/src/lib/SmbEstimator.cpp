@@ -149,11 +149,25 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
 
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& odomLidarPtr) {
   static int lidarOdometryCallbackCounter__ = -1;
+  static double lastLidarOdometryTimeK_ = 0.0;
+  static constexpr double lioOdometryRate_ = 10.0;  // Hz
+
+  // Timestamp
+  double lidarOdometryTimeK = odomLidarPtr->header.stamp.sec + odomLidarPtr->header.stamp.nanosec * 1e-9;
+
+  // Check whether the callback rate is not exceeded
+  if (lidarOdometryCallbackCounter__ >= 0 && lidarOdometryTimeK - lastLidarOdometryTimeK_ < (1.0 / lioOdometryRate_)) {
+    return;  // Skip this callback if the rate is exceeded
+  } else {
+    lastLidarOdometryTimeK_ = lidarOdometryTimeK;  // Update the last timestamp
+  }
+
+  // Update the callback counter
   ++lidarOdometryCallbackCounter__;
 
   Eigen::Isometry3d lio_T_M_Lk;
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-  double lidarOdometryTimeK = odomLidarPtr->header.stamp.sec + odomLidarPtr->header.stamp.nanosec * 1e-9;
+  
 
   const std::string& lioOdometryFrame = dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();
 
@@ -170,7 +184,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     this->initYawAndPosition(unary6DMeasurement);
   }
 
-  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id, odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id  + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
                (lio_T_M_Lk * staticTransformsPtr_->rv_T_frame1_frame2(lioOdometryFrame, staticTransformsPtr_->getImuFrame()).matrix())
                    .block<3, 1>(0, 3),
                graphConfigPtr_->imuBufferLength_ * 4);

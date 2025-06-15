@@ -80,6 +80,8 @@ Visualization Manager:
           Value: true
         odom_graph_msf:
           Value: true
+        odom_graph_msf_aligned:
+          Value: true
         rgb_camera_link:
           Value: true
         rgb_camera_optical_link:
@@ -122,7 +124,8 @@ Visualization Manager:
                 {}
               odom_graph_msf:
                 world_graph_msf:
-                  {}
+                  odom_graph_msf_aligned:
+                    {}
               rgb_camera_link:
                 rgb_camera_optical_link:
                   {}
@@ -135,7 +138,7 @@ Visualization Manager:
                   {}
       Update Interval: 0
       Value: true
-    - Angle Tolerance: 0.10000000149011612
+    - Angle Tolerance: 0
       Class: rviz_default_plugins/Odometry
       Covariance:
         Orientation:
@@ -153,9 +156,9 @@ Visualization Manager:
           Value: true
         Value: true
       Enabled: true
-      Keep: 100
+      Keep: 1
       Name: OdometryInOdom
-      Position Tolerance: 0.10000000149011612
+      Position Tolerance: 0
       Shape:
         Alpha: 1
         Axes Length: 1
@@ -304,22 +307,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 9.480110168457031
+      Distance: 14.281952857971191
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.9547891616821289
-        Y: -2.3312158584594727
-        Z: -0.17786170542240143
+        X: -2.2798728942871094
+        Y: -1.0027551651000977
+        Z: -0.8153277635574341
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38039833307266235
+      Pitch: 0.5053982138633728
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
       Yaw: 0.9203998446464539
@@ -340,5 +343,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 3659
+  X: 3633
   Y: 29
