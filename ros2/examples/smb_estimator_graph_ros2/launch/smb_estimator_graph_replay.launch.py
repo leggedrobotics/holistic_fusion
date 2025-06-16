@@ -47,7 +47,7 @@ def generate_launch_description():
             ),
             # B. Topics
             DeclareLaunchArgument(
-                "imu_topic_name", default_value="/imu", description="IMU topic name"
+                "imu_topic_name", default_value="/imu/data_raw", description="IMU topic name"
             ),
             DeclareLaunchArgument(
                 "lidar_odometry_topic_name",

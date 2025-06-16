@@ -173,7 +173,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::None(), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
+      graph_msf::RobustNorm::Huber(1), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
