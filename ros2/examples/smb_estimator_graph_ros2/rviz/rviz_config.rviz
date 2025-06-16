@@ -6,7 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-      Splitter Ratio: 0.5
+        - /TF1
+        - /TF1/Frames1
+      Splitter Ratio: 0.6352941393852234
     Tree Height: 1031
   - Class: rviz_common/Selection
     Name: Selection
@@ -102,40 +104,41 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
+        base_link:
+          LF_WHEEL:
+            {}
+          LH_WHEEL:
+            {}
+          RF_WHEEL:
+            {}
+          RH_WHEEL:
+            {}
+          base_footprint:
+            {}
+          base_inertia:
+            {}
+          imu_link:
+            imu_sensor:
+              {}
+          lidar_mount_link:
+            {}
+          odom_graph_msf:
+            world_graph_msf:
+              odom_graph_msf_aligned:
+                {}
+          rgb_camera_link:
+            rgb_camera_optical_link:
+              {}
+          rslidar:
+            {}
+          top:
+            {}
+          tracking_camera_link:
+            tracking_camera_pose_frame:
+              {}
         map:
           odom:
-            base_link:
-              LF_WHEEL:
-                {}
-              LH_WHEEL:
-                {}
-              RF_WHEEL:
-                {}
-              RH_WHEEL:
-                {}
-              base_footprint:
-                {}
-              base_inertia:
-                {}
-              imu_link:
-                imu_sensor:
-                  {}
-              lidar_mount_link:
-                {}
-              odom_graph_msf:
-                world_graph_msf:
-                  odom_graph_msf_aligned:
-                    {}
-              rgb_camera_link:
-                rgb_camera_optical_link:
-                  {}
-              rslidar:
-                {}
-              top:
-                {}
-              tracking_camera_link:
-                tracking_camera_pose_frame:
-                  {}
+            {}
       Update Interval: 0
       Value: true
     - Angle Tolerance: 0
@@ -204,6 +207,34 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /graph_msf/est_path_odom_imu
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 85; 170; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: PathInWorld
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /graph_msf/est_path_world_imu
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -307,25 +338,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.281952857971191
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.2798728942871094
-        Y: -1.0027551651000977
-        Z: -0.8153277635574341
-      Focal Shape Fixed Size: true
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5053982138633728
+      Pitch: 0.7853981852531433
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.9203998446464539
+      Yaw: 0.7853981852531433
     Saved: ~
 Window Geometry:
   Displays:
@@ -343,5 +374,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 3633
+  X: 3914
   Y: 29

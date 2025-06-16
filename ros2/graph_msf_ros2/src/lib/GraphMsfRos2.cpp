@@ -549,15 +549,15 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         std::string mapFrameName;
         const std::string& worldFrameName = staticTransformsPtr_->getWorldFrame();
 
-        // If world is first, then map is second
-        if (framePairTransformMapIterator.first.first == worldFrameName) {
+        // If world is second, then map is first
+        if (framePairTransformMapIterator.first.second == worldFrameName) {
           T_W_M = framePairTransformMapIterator.second.inverse();
-          mapFrameName = framePairTransformMapIterator.first.second;
+          mapFrameName = framePairTransformMapIterator.first.first;
         }
         // If world is second, then map is first, this is the case for holistic alignment
         else {
           T_W_M = framePairTransformMapIterator.second;
-          mapFrameName = framePairTransformMapIterator.first.first;
+          mapFrameName = framePairTransformMapIterator.first.second;
 
           // B. Publish TransformStamped for Aligned Frames
           std::string transformTopic =

@@ -2,7 +2,7 @@
   ros__parameters:
     #External Prior/Transform Input
     extrinsics:
-      lidarOdometryFrame: "rslidar"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+      lidarOdometryFrame: "base_link"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
       wheelOdometryBetweenFrame: "base_link"      #Wheel odometry frame name - used to lookup Wheel-to-ExternalSensor Frame
       wheelLinearVelocityLeftFrame: "LH_WHEEL"  #Wheel linear velocity left frame name - used to lookup Wheel-to-ExternalSensor Frame
       wheelLinearVelocityRightFrame: "RH_WHEEL" #Wheel linear velocity right frame name - used to lookup Wheel-to-ExternalSensor Frame
