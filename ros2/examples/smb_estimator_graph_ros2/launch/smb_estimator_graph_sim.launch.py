@@ -37,12 +37,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'imu_topic_name',
-            default_value='/imu',
+            default_value='/imu/data_raw',
             description='IMU topic name'
         ),
         DeclareLaunchArgument(
             'lidar_odometry_topic_name',
-            default_value='/dlio/odom_node/odom',
+            default_value='/open3d/scan2map_odometry',
             description='Lidar odometry topic name'
         ),
         DeclareLaunchArgument(
