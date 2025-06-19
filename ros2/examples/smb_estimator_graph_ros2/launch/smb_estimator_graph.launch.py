@@ -47,7 +47,7 @@ def generate_launch_description():
                 "use_sim_time", default_value=use_sim_time, description="Use simulation time"
             ),
             DeclareLaunchArgument(
-                "imu_topic_name", default_value="/imu", description="IMU topic name"
+                "imu_topic_name", default_value="/imu/data_raw", description="IMU topic name"
             ),
             DeclareLaunchArgument(
                 "lidar_odometry_topic_name",

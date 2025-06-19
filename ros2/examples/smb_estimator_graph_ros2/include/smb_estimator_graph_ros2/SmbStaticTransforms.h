@@ -39,7 +39,7 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   void setUseWheelLinearVelocitiesFlag(bool flag) { useWheelLinearVelocitiesFlag_ = flag; }
 
  private:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Frames
   std::string lidarOdometryFrame_;

@@ -23,7 +23,7 @@ class StaticTransformsTf : public StaticTransforms {
   virtual ~StaticTransformsTf() = default;
 
  protected:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Members
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;

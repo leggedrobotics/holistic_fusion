@@ -23,13 +23,16 @@ SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& no
   REGULAR_COUT << GREEN_START << " Initializing smb static transforms..." << COLOR_END << std::endl;
 }
 
-void SmbStaticTransforms::findTransformations() {
+bool SmbStaticTransforms::findTransformations() {
   // Super Method
-  graph_msf::StaticTransformsTf::findTransformations();
+  // Need to find the transformations in the TF-tree
+  if (!graph_msf::StaticTransformsTf::findTransformations()) {
+    REGULAR_COUT << RED_START << " Failed to find transformations in TF-tree." << COLOR_END << std::endl;
+    return false;
+  }
 
   // Print to console
   REGULAR_COUT << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
-  REGULAR_COUT << COLOR_END << " Transforms between the following frames are required:" << std::endl;
   REGULAR_COUT << COLOR_END << " Waiting for up to 100 seconds until they arrive..." << std::endl;
 
   // Temporary variable
@@ -38,7 +41,7 @@ void SmbStaticTransforms::findTransformations() {
 
   // Imu to LiDAR Link ---
   if (useLioOdometryFlag_) {
-    REGULAR_COUT << COLOR_END << " Waiting for transform LO for 10 seconds." << std::endl;
+    REGULAR_COUT << COLOR_END << " Waiting for transform between " << imuFrame_ << " and " << lidarOdometryFrame_ << " for 10 seconds." << std::endl;
     transform = tf_buffer_->lookupTransform(imuFrame_, lidarOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
     eigenTransform = tf2::transformToEigen(transform.transform);
     lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_) = eigenTransform;
@@ -50,7 +53,7 @@ void SmbStaticTransforms::findTransformations() {
 
   // Imu to VIO Link ---
   if (useVioOdometryFlag_) {
-    REGULAR_COUT << COLOR_END << " Waiting for transform VIO for 10 seconds." << std::endl;
+    REGULAR_COUT << COLOR_END << " Waiting for transform between " << imuFrame_ << " and " << vioOdometryFrame_ << " for 10 seconds." << std::endl;
     transform = tf_buffer_->lookupTransform(imuFrame_, vioOdometryFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
     eigenTransform = tf2::transformToEigen(transform.transform);
     lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_) = eigenTransform;
@@ -93,6 +96,7 @@ void SmbStaticTransforms::findTransformations() {
   }
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
+  return true;
 }
 
 }  // namespace smb_se

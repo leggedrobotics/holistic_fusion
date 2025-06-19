@@ -27,7 +27,7 @@ StaticTransformsTf::StaticTransformsTf(const rclcpp::Node::SharedPtr& node)
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "StaticTransformsTf - Initializing static transforms...");
 }
 
-void StaticTransformsTf::findTransformations() {
+bool StaticTransformsTf::findTransformations() {
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "Looking up transforms in TF-tree.");
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "Transforms between the following frames are required: %s, %s",
               imuFrame_.c_str(), baseLinkFrame_.c_str());
@@ -40,24 +40,22 @@ void StaticTransformsTf::findTransformations() {
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "Looking up transform from %s to %s", imuFrame_.c_str(),
               baseLinkFrame_.c_str());
   try {
+    REGULAR_COUT << COLOR_END << " Waiting for transform between " << imuFrame_ << " and " << baseLinkFrame_ << " for 10 seconds." << std::endl;
     transform_stamped =
         tf_buffer_->lookupTransform(imuFrame_, baseLinkFrame_, rclcpp::Time(0), rclcpp::Duration::from_seconds(100.0));
-    tf2::Transform tf_transform;
-    graph_msf::transformStampedToIsometry3(transform_stamped.transform, lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
-
-    // graph_msf::tfToIsometry3(tf_transform, lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
-    // graph_msf::tfToIsometry3(transform, lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
-    // RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "Translation I_Base: %s",
-    //             lv_T_frame1_frame2(imuFrame_, baseLinkFrame_)
-    //                 .translation()
-    //                 .format(Eigen::IOFormat(Eigen::StreamPrecision))
-    //                 .c_str());
-    lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = lv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
+    Eigen::Isometry3d eigenTransform = tf2::transformToEigen(transform_stamped.transform);
+    lv_T_frame1_frame2(imuFrame_, baseLinkFrame_) = eigenTransform;
+    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_B: " << imuFrame_ << " " << baseLinkFrame_
+              << " " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
+    lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
   } catch (const tf2::TransformException& ex) {
     RCLCPP_ERROR(rclcpp::get_logger("graph_msf"), "Transform lookup failed: %s", ex.what());
+    REGULAR_COUT << RED_START << " Transform lookup failed: " << ex.what() << COLOR_END << std::endl;
+    return false;
   }
-
+  // Wrap up
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "Transforms looked up successfully.");
+  return true;
 }
 
 }  // namespace graph_msf
