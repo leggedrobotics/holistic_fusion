@@ -13,6 +13,8 @@ Please see the LICENSE file that has been included as part of node_ package.
 
 // Workspace
 #include "graph_msf_ros2/ros/read_ros_params.h"
+// Constants
+#include "graph_msf_ros2/constants.h"
 
 namespace graph_msf {
 
@@ -160,6 +162,17 @@ void GraphMsfRos2::readParams() {
     if (!std::filesystem::exists(optimizationResultLoggingPath)) {
       std::filesystem::create_directories(optimizationResultLoggingPath);
     }
+
+    // TODO: Remove hard coded path
+    optimizationResultLoggingPath = "/smb_ros2_workspace/logging/";
+
+    // Print the logging path
+    std::cout << "-------------------------------------------------" << std::endl;
+    RCLCPP_INFO(node_->get_logger(), "Optimization results will be logged to: %s",
+                optimizationResultLoggingPath.c_str());
+    REGULAR_COUT << GREEN_START << " Optimization results will be logged to: "
+                 << optimizationResultLoggingPath << COLOR_END << std::endl;
+    std::cout << "-------------------------------------------------" << std::endl;
   }
 }
 

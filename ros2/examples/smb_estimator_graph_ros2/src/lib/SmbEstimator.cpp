@@ -148,6 +148,14 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
     graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
   }
+  // Remove if norm is larger than 100
+  if (std::sqrt(imuPtr->linear_acceleration.x * imuPtr->linear_acceleration.x +
+                imuPtr->linear_acceleration.y * imuPtr->linear_acceleration.y +
+                imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z) >
+      100.0) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100, skipping this measurement." << COLOR_END << std::endl;
+    return;
+  }
 
   graph_msf::GraphMsfRos2::imuCallback(imuPtr);
 }
@@ -178,7 +186,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::None(), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
+      graph_msf::RobustNorm::Huber(3.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {

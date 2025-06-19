@@ -23,7 +23,7 @@
     # Noise Parameters
     noise_params:
       ## LiDAR
-      lioPoseUnaryNoiseDensity: [ 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioPoseUnaryNoiseDensity: [ 0.02, 0.02, 0.02, 0.002, 0.002, 0.002 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       ## Wheel
       wheelPoseBetweenNoiseDensity: [ 0.1, 0.1, 0.1, 0.06, 0.06, 0.06 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       wheelLinearVelocitiesNoiseDensity: [ 0.3, 0.3, 0.3 ] # StdDev, ORDER VxVyVz(meters/sec)

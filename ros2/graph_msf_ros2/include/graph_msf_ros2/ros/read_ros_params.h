@@ -8,6 +8,7 @@
 
 // Workspace
 #include "graph_msf/interface/Terminal.h"
+#include "graph_msf_ros2/constants.h"
 
 namespace graph_msf {
 
@@ -32,13 +33,15 @@ T tryGetParam(std::shared_ptr<rclcpp::Node> node, const std::string& key) {
 
   if (node->get_parameter(key, value)) {
     printKey(key, value);
-    // RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter: %s", key.c_str());
+    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter: %s", key.c_str());
+    // std::cout << YELLOW_START << "GraphMsfRos2 " << COLOR_END << key.c_str() << " set to: " << value << std::endl;
     return value;
   }
 
   if (node->get_parameter("/" + key, value)) {
     printKey("/" + key, value);
-    // RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter with absolute key: %s", ("/" + key).c_str());
+    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter with absolute key: %s", ("/" + key).c_str());
+    // std::cout << YELLOW_START << "GraphMsfRos2 " << COLOR_END << key.c_str() << " set to: " << value << std::endl;
     return value;
   }
 

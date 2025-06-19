@@ -26,6 +26,9 @@
     <depend>graph_msf</depend>
     <depend>glog</depend>
 
+    <!-- Run Dependencies -->
+    <exec_depend>smb_description</exec_depend>
+
     <!-- Test dependencies -->
     <test_depend>ament_cmake_gtest</test_depend>
     <test_depend>rosbag2</test_depend>

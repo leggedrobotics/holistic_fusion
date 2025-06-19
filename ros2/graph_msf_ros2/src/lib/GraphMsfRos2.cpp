@@ -135,7 +135,7 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
   // Services ----------------------------
-  //   GraphMsfRos::initializeServices(*node_);
+  GraphMsfRos2::initializeServices(*node_);
 
   // Time
   startTime = std::chrono::high_resolution_clock::now();
@@ -211,32 +211,32 @@ void GraphMsfRos2::initializeMessages() {
   gyroBiasMsgPtr_ = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
 }
 
-// void GraphMsfRos2::initializeServices(rclcpp::Node& node) {
-//   RCLCPP_INFO(node.get_logger(), "Initializing services.");
+void GraphMsfRos2::initializeServices(rclcpp::Node& node) {
+  RCLCPP_INFO(node.get_logger(), "Initializing services.");
 
-//   // Trigger offline smoother optimization
-//   srvSmootherOptimize_ = node.create_service<graph_msf_ros::srv::OfflineOptimizationTrigger>(
-//       "/graph_msf/trigger_offline_optimization",
-//       std::bind(&GraphMsfRos::srvOfflineSmootherOptimizeCallback, this, std::placeholders::_1,
-//       std::placeholders::_2));
-// }
+  // Trigger offline smoother optimization
+  srvSmootherOptimize_ = node.create_service<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger>(
+      "/graph_msf/trigger_offline_optimization",
+      std::bind(&GraphMsfRos2::srvOfflineSmootherOptimizeCallback, this, std::placeholders::_1,
+      std::placeholders::_2));
+}
 
-// bool GraphMsfRos2::srvOfflineSmootherOptimizeCallback(
-//     const std::shared_ptr<graph_msf_ros::srv::OfflineOptimizationTrigger::Request> req,
-//     std::shared_ptr<graph_msf_ros::srv::OfflineOptimizationTrigger::Response> res) {
-//   // Max Iterations from service call
-//   int maxIterations = req->max_optimization_iterations;
+bool GraphMsfRos2::srvOfflineSmootherOptimizeCallback(
+  const std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Request> req,
+    std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Response> res) {
+  // Max Iterations from service call
+  int maxIterations = req->max_optimization_iterations;
 
-//   // Trigger offline smoother optimization and create response
-//   if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath)) {
-//     res->success = true;
-//     res->message = "Optimization successful.";
-//   } else {
-//     res->success = false;
-//     res->message = "Optimization failed.";
-//   }
-//   return true;
-// }
+  // Trigger offline smoother optimization and create response
+  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, false)) {
+    res->success = true;
+    res->message = "Optimization successful.";
+  } else {
+    res->success = false;
+    res->message = "Optimization failed.";
+  }
+  return true;
+}
 
 void GraphMsfRos2::addToPathMsg(const nav_msgs::msg::Path::SharedPtr& pathPtr, const std::string& fixedFrameName,
                                 const rclcpp::Time& stamp, const Eigen::Vector3d& t, const int maxBufferLength) {
