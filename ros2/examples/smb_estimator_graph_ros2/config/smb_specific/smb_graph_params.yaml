@@ -8,7 +8,7 @@
       useWheelLinearVelocities: false
       useVioOdometry: false
       ## Rates
-      lioOdometryRate: 100
+      lioOdometryRate: 10
       wheelOdometryBetweenRate: 50
       wheelLinearVelocitiesRate: 50
       vioOdometryRate: 50
@@ -23,7 +23,7 @@
     # Noise Parameters
     noise_params:
       ## LiDAR
-      lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioPoseUnaryNoiseDensity: [ 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       ## Wheel
       wheelPoseBetweenNoiseDensity: [ 0.1, 0.1, 0.1, 0.06, 0.06, 0.06 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       wheelLinearVelocitiesNoiseDensity: [ 0.3, 0.3, 0.3 ] # StdDev, ORDER VxVyVz(meters/sec)
