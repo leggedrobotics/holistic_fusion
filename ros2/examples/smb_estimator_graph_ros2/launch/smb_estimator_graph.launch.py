@@ -51,7 +51,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "lidar_odometry_topic_name",
-                default_value="/mapping/scan2map_odometry",
+                default_value="/open3d/scan2map_odometry",
                 description="Lidar odometry topic name",
             ),
             DeclareLaunchArgument(
