@@ -25,9 +25,13 @@ void SmbEstimator::readParams() {
 
   // Flags
   useLioOdometryFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useLioOdometry");
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->setUseLioOdometryFlag(useLioOdometryFlag_);
   useWheelOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useWheelOdometryBetween");
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->setUseWheelOdometryBetweenFlag(useWheelOdometryBetweenFlag_);
   useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useWheelLinearVelocities");
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->setUseWheelLinearVelocitiesFlag(useWheelLinearVelocitiesFlag_);
   useVioOdometryFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useVioOdometry");
+  dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryFlag(useVioOdometryFlag_);
 
   // Sensor Params
   lioOdometryRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.lioOdometryRate");
