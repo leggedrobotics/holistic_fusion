@@ -90,7 +90,8 @@ class SmbEstimator : public graph_msf::GraphMsfRos2 {
   int wheelOdometryCallbackCounter_ = -1;
   Eigen::Isometry3d T_O_Bw_km1_;
   double wheelOdometryTimeKm1_ = 0.0;
-  rclcpp::Time last_imu_timestamp = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  int num_imu_errors_ = 0;
+  rclcpp::Time last_imu_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   // Subscribers
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;

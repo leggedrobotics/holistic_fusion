@@ -126,6 +126,18 @@ void SmbEstimator::initializeServices() {
 }
 
 void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
+  const rclcpp::Time new_imu_timestamp{imuPtr->header.stamp};
+//   const rclcpp::Time arrival_time = this->node_->get_clock()->now();
+//   const rclcpp::Duration delay = arrival_time - new_imu_timestamp;
+//   if (delay < rclcpp::Duration(0, 0)) {
+//     REGULAR_COUT << RED_START << " IMU message arrived at " << std::fixed << delay.seconds() << " before the message "
+//                 "timestamp. The messages should not be stamped with a time in the future." << COLOR_END << std::endl;
+//   } else if (delay > rclcpp::Duration(0, 100000000)) {
+//     REGULAR_COUT << RED_START << " IMU message arrival was delayed by " << std::fixed << delay.seconds() << "." << COLOR_END << std::endl;
+//   } else {
+//     REGULAR_COUT << " IMU message arrival was ok. Delay: " << delay.seconds() << "." << COLOR_END << std::endl;
+//   }
+
   if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
       !useWheelOdometryBetweenFlag_ && !useWheelLinearVelocitiesFlag_ && !useVioOdometryFlag_) {
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
@@ -148,23 +160,26 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
                 imuPtr->linear_acceleration.y * imuPtr->linear_acceleration.y +
                 imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z);
   if (angular_velocity_norm > 10) {
-    REGULAR_COUT << RED_START << " IMU angular velocity is larger than 10 rad/s, skipping this measurement." << COLOR_END << std::endl;
+    ++num_imu_errors_;
+    REGULAR_COUT << RED_START << " IMU angular velocity is larger than 10 rad/s, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
     return;
   } else if (linear_acceleration_norm > 100.0) {
-    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100 m/s^2, skipping this measurement." << COLOR_END << std::endl;
+    ++num_imu_errors_;
+    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100 m/s^2, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
     return;
   }
   // Check timestamps strictly increase
-  rclcpp::Time new_imu_timestamp{imuPtr->header.stamp};
-  if (new_imu_timestamp == last_imu_timestamp) {
-    REGULAR_COUT << RED_START << " IMU timestamp " << new_imu_timestamp.seconds() << " was duplicated, skipping this measurement." << COLOR_END << std::endl;
+  if (new_imu_timestamp == last_imu_timestamp_) {
+    ++num_imu_errors_;
+    REGULAR_COUT << RED_START << " IMU timestamp " << new_imu_timestamp.seconds() << " was duplicated, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
     return;
-  } else if (new_imu_timestamp < last_imu_timestamp) {
+  } else if (new_imu_timestamp < last_imu_timestamp_) {
+    ++num_imu_errors_;
     REGULAR_COUT << RED_START << " IMU timestamp " << new_imu_timestamp.seconds() << " was before last included IMU measurement "
-        " at time" << last_imu_timestamp.seconds() << ", skipping this measurement." << COLOR_END << std::endl;
+        " at time" << last_imu_timestamp_.seconds() << ", skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
     return;
   }
-  last_imu_timestamp = new_imu_timestamp;
+  last_imu_timestamp_ = new_imu_timestamp;
 
   graph_msf::GraphMsfRos2::imuCallback(imuPtr);
 }
