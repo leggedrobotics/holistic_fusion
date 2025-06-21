@@ -141,13 +141,30 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
   }
   // Remove if norm is larger than 100
-  if (std::sqrt(imuPtr->linear_acceleration.x * imuPtr->linear_acceleration.x +
+  const double angular_velocity_norm = std::sqrt(imuPtr->angular_velocity.x * imuPtr->angular_velocity.x +
+                imuPtr->angular_velocity.y * imuPtr->angular_velocity.y +
+                imuPtr->angular_velocity.z * imuPtr->angular_velocity.z);
+  const double linear_acceleration_norm = std::sqrt(imuPtr->linear_acceleration.x * imuPtr->linear_acceleration.x +
                 imuPtr->linear_acceleration.y * imuPtr->linear_acceleration.y +
-                imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z) >
-      100.0) {
-    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100, skipping this measurement." << COLOR_END << std::endl;
+                imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z);
+  if (angular_velocity_norm > 10) {
+    REGULAR_COUT << RED_START << " IMU angular velocity is larger than 10 rad/s, skipping this measurement." << COLOR_END << std::endl;
+    return;
+  } else if (linear_acceleration_norm > 100.0) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100 m/s^2, skipping this measurement." << COLOR_END << std::endl;
     return;
   }
+  // Check timestamps strictly increase
+  rclcpp::Time new_imu_timestamp{imuPtr->header.stamp};
+  if (new_imu_timestamp == last_imu_timestamp) {
+    REGULAR_COUT << RED_START << " IMU timestamp " << new_imu_timestamp.seconds() << " was duplicated, skipping this measurement." << COLOR_END << std::endl;
+    return;
+  } else if (new_imu_timestamp < last_imu_timestamp) {
+    REGULAR_COUT << RED_START << " IMU timestamp " << new_imu_timestamp.seconds() << " was before last included IMU measurement "
+        " at time" << last_imu_timestamp.seconds() << ", skipping this measurement." << COLOR_END << std::endl;
+    return;
+  }
+  last_imu_timestamp = new_imu_timestamp;
 
   graph_msf::GraphMsfRos2::imuCallback(imuPtr);
 }
