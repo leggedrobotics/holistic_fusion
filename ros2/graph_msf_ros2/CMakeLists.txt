@@ -146,6 +146,7 @@ install(FILES
 # Export ament package
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
+ament_export_targets(${PROJECT_NAME}Targets)
 ament_export_dependencies(
   geometry_msgs
   nav_msgs
