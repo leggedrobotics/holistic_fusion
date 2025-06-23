@@ -9,8 +9,8 @@
       useVioOdometry: false
       ## Rates
       lioOdometryRate: 10
-      wheelOdometryBetweenRate: 50
-      wheelLinearVelocitiesRate: 50
+      wheelOdometryBetweenRate: 100
+      wheelLinearVelocitiesRate: 100
       vioOdometryRate: 50
       # Wheel Radius
       wheelRadius: 0.195 # meters
