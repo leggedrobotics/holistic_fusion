@@ -47,12 +47,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'wheel_odometry_topic_name',
-            default_value='/control/smb_diff_drive/odom',
+            default_value='/wheel_odometry',
             description='Wheel odometry topic name'
         ),
         DeclareLaunchArgument(
             'wheel_velocities_topic_name',
-            default_value='/control/smb_lowlevel_controller/wheelSpeeds',
+            default_value='/wheel_velocities',
             description='Wheel velocities topic name'
         ),
         DeclareLaunchArgument(
