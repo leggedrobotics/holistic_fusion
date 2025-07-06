@@ -67,6 +67,7 @@ install(DIRECTORY ${CATKIN_DEVEL_PREFIX}/.private/graph_msf_catkin/lib
 catkin_package(
     INCLUDE_DIRS
         ${CATKIN_DEVEL_PREFIX}/include
+        ${GTSAM_INCLUDE_DIR}
     LIBRARIES
         ${CATKIN_DEVEL_PREFIX}/lib/libgraph_msf.so
         ${CS_PROJECT_LIBRARIES}
