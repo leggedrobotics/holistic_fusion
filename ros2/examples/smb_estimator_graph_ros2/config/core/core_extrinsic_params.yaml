@@ -1,0 +1,16 @@
+/smb_estimator_node:
+  ros__parameters:
+    #External Prior/Transform Input
+    extrinsics:
+      # Published by GMSF
+      worldFrame: "world_graph_msf"
+      odomFrame: "odom_graph_msf"
+      # Used for estimation
+      imuFrame: "imu_link"
+      baseLinkFrame: "base_link"
+      initializeZeroYawAndPositionOfFrame: "base_link" # Initialize the yaw and position of the base frame to zero
+      # this is just meant to avoid any jump after getting the first true measurements
+
+    name_ids:
+      referenceFrameAligned: "_graph_msf_aligned"  # Specifies what is the suffix of the aligned published fixed frames
+      sensorFrameCorrected: "_graph_msf_corrected" # Specifies what is the suffix of the corrected published sensor frames

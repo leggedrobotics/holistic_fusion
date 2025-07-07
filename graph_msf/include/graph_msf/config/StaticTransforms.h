@@ -38,7 +38,7 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
   const std::string& getInitializationFrame() { return initializationFrame_; }
 
   // Functionality ------------------------------------------------------------
-  virtual void findTransformations() = 0;
+  virtual bool findTransformations() = 0;
 
  protected:
   // Required frames
