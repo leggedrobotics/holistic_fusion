@@ -697,13 +697,13 @@ void GraphMsfRos2::publishVelocityMarkers(
 void GraphMsfRos2::publishImuPaths(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const {
   // odom->imu
   addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), rclcpp::Time(navStatePtr->getTimeK() * 1e9),
-               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength_ * 20);
+               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength_ * 4);
   if (pubEstOdomImuPath_->get_subscription_count() > 0) {
     pubEstOdomImuPath_->publish(*estOdomImuPathPtr_);
   }
   // world->imu
   addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), rclcpp::Time(navStatePtr->getTimeK() * 1e9),
-               navStatePtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 20);
+               navStatePtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 4);
   if (pubEstWorldImuPath_->get_subscription_count() > 0) {
     pubEstWorldImuPath_->publish(*estWorldImuPathPtr_);
   }

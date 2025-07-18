@@ -18,12 +18,9 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-find_package(graph_msf_ros2_msgs REQUIRED
-  COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
-)
 
-
-# Check if the target from graph_msf is already defined
+# Same Workspace --------------------
+# Graph MSF
 if(NOT TARGET graph_msf::graph_msf)
   find_package(graph_msf REQUIRED)
 endif()
@@ -65,7 +62,6 @@ ament_target_dependencies(${PROJECT_NAME}
     std_srvs
     visualization_msgs
     rosidl_default_runtime
-    graph_msf_ros2_msgs
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
@@ -76,6 +72,16 @@ target_link_libraries(${PROJECT_NAME}
     tf2_eigen::tf2_eigen
     graph_msf::graph_msf
 )
+# Graph MSF ROS2 MSGS
+if (NOT TARGET graph_msf_ros2_msgs)
+  find_package(graph_msf_ros2_msgs REQUIRED
+    COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
+  )
+  ament_target_dependencies(${PROJECT_NAME}
+    PUBLIC
+      graph_msf_ros2_msgs
+  )
+endif()
 
 # Include directories for the library
 target_include_directories(${PROJECT_NAME}
