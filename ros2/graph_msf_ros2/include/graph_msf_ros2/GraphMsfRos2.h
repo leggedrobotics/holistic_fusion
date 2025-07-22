@@ -90,10 +90,10 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr);
   void publishOptimizedStateAndBias(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
-      const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
+      const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos, const double timeStamp);
 
   void publishTfTreeTransform(const std::string& frameName, const std::string& childFrameName, double timeStamp,
-                              const Eigen::Isometry3d& T_frame_childFrame);
+                              const Eigen::Isometry3d& T_frame_childFrame) const;
   void publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos,
                        const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
@@ -167,6 +167,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
+  double lastIntegratedStateTimestamp_ = 0.0;
 
   // Mutex
   std::mutex rosPublisherMutex_;
