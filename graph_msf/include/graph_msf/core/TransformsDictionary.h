@@ -23,6 +23,13 @@ class TransformsDictionary {
   // Constructor
   TransformsDictionary(TRANSFORM_TYPE identityObject) : identity_(identityObject) {}
 
+  // Copy Constructor
+  TransformsDictionary(const TransformsDictionary& other) {
+    T_frame1_frame2_map_ = other.T_frame1_frame2_map_;
+    identity_ = other.identity_;
+    numStoredTransforms_ = other.numStoredTransforms_;
+  }
+
   // Getters ------------------------------------------------------------
   // Check for specific transformation pair
   bool isFramePairInDictionary(const std::string& frame1, const std::string& frame2) {

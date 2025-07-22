@@ -48,7 +48,7 @@ class GraphMsf {
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
   // Logging of the real-time states
-  bool logRealTimeStates(const std::string& savePath);
+  bool logRealTimeNavStates(const std::string& savePath);
 
   // Getter functions
   bool areYawAndPositionInited() const;

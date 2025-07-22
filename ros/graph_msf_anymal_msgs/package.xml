@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<package format="2">
+
+  <name>graph_msf_anymal_msgs</name>
+  <version>0.6.13</version>
+  <description>Messages and services for ANYmal</description>
+
+  <license>Proprietary</license>
+  <author email="cgehring@anybotics.com">Remo Diethelm</author>
+  <author email="rdiethelm@anybotics.com">Christian Gehring</author>
+  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+
+</package>
+

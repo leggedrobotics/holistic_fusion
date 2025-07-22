@@ -28,7 +28,7 @@ endif ()
 # Catkin
 set(CATKIN_PACKAGE_DEPENDENCIES
         roscpp
-        graph_msf
+        graph_msf_catkin
         kdl_parser
         nav_msgs
         geometry_msgs
@@ -78,8 +78,9 @@ add_library(${PROJECT_NAME}
         src/lib/GraphMsfRos.cpp
         src/lib/readParams.cpp
         src/lib/conversions.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
+# Link against graph_msf and its dependencies
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 # Add clang tooling

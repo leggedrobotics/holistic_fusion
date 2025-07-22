@@ -45,6 +45,9 @@ class FileLogger {
   // Imu Bias
   static void createImuBiasCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
                                          const std::string& stateCategoryIdentifier, const std::string& timeString);
+  // Double
+  static void createDoubleCsvFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
+                                        const std::string& transformIdentifier, const std::string& timeString);
   // 2. TUM
   // Pose3
   static void createPose3TumFileStream(std::map<std::string, std::ofstream>& fileStreams, const std::string& savePath,
@@ -65,6 +68,9 @@ class FileLogger {
   // Imu Bias
   static void writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,
                                     const std::string& stateCategoryIdentifier, const double timeStamp);
+  // Double
+  static void writeDoubleToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const double value,
+                                   const std::string& transformIdentifier, const double timeStamp);
   // 2. TUM
   // Pose3
   static void writePose3ToTumFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,

@@ -1,95 +1,112 @@
-# Graph-MSF: Graph-based State Multi-sensor Fusion for Consistent Localization and State Estimation
+<p align="center">
+<img src="docs_src/img/logo.png" width="60%" height="60%">
+</p>
 
-**Authors:** [Julian Nubert](https://juliannubert.com/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub]))
-, [Shehryar Khattak](https://www.linkedin.com/in/shehryar-khattak/)
-, [Marco Hutter](https://rsl.ethz.ch/the-lab/people/person-detail.MTIxOTEx.TGlzdC8yNDQxLC0xNDI1MTk1NzM1.html)
+# Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs
 
-<img src="doc/graph_msf.gif" width="100%" height="60%">
+**Authors:**
+[Julian Nubert](https://www.linkedin.com/in/juliannubert/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub])),
+[Turcan Tuna](https://www.linkedin.com/in/turcantuna/),
+[Jonas Frey](https://www.linkedin.com/in/jonasfrey96/),
+[Cesar Cadena](https://www.linkedin.com/in/cesar-cadena-204106b/),
+[Katherine J. Kuchenbecker](https://www.linkedin.com/in/katherinekuchenbecker/),
+[Shehryar Khattak](https://www.linkedin.com/in/shehryar-khattak/),
+[Marco Hutter](https://www.linkedin.com/in/marco-hutter/)
 
-## Resources
+<h4>
+    <a href="https://leggedrobotics.github.io/holistic_fusion/">Homepage</a> |
+    <a href="https://arxiv.org/abs/2504.06479">Paper</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/docs">Docs</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/doxy/html/">Doxygen</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a> |
+    <a href="https://www.youtube.com/leggedrobotics">Video</a> |
+</h4>
 
-**[1] ICRA2022, Philadelphia**
+Holistic Fusion (HF) is an open-source library for flexible task and setup-agnostic robot localization and state
+estimation.
+It provides a wide range of features that are very useful in common robotic workflows, including online sensor fusion,
+offline batch optimization and calibration. While it already supports a set of measurement factors quite common in
+field robotic applications, a core purpose of HF is to simplify the process of integrating new measurement types without
+manually deriving Jacobians by i) utilizing GTSAM expression factors and ii) following a specific structure to follow a
+common parent class interface, depending on the measurement type.
+Currently, HF supports three general measurement types: i) absolute measurements, ii) landmark measurements, iii)
+local &
+relative measurements.
 
-* [project page](https://sites.google.com/leggedrobotics.com/gmfcl).
-* [paper](https://arxiv.org/pdf/2203.01389.pdf)
-* [video](https://youtu.be/syTV7Ui36jg)
-
-## Overview
-
-The presented framework aims for a flexible and fast fusion of multiple sensor modalities. The state estimate is
-published at **imu frequency** through IMU pre-integration with a multi-threaded implementation and book-keeping.
-The adding of the measurements and the optimization of the graph are performed in different threads.
-In contrast to classical filtering-based approaches this graph-based structure also allows for a simple incorporation of
-delayed sensor measurements up to the smoothingLag.
-
-There are two intended **use-cases**:
-
-1. Using the dual graph formulation as proosed in [1]. In this part of the implementation there are hard-coded
-   components for this specific use-case.
-2. A more general graph-based multi-sensor fusion. An example for fusing LiDAR odometry and IMU on the dataset of the
-   [ETH Zurich Robotic Summer School](https://ethz-robotx.github.io/SuperMegaBot/) will follow shortly.
-
-<img src="doc/titleimg.png" width="50%" height="50%">**Copyright IEEE**
-
-**Disclaimer:** The framework is still under development and will be updated, extended, and more generalized in the
+**Disclaimer:**
+The framework is still under development and will be updated, extended, and more generalized in the
 future.
+**More instructions will be added to the ReadTheDocs page soon.**
+
+<p align="center">
+<img src="docs_src/img/hf_illustration.png" width="100%" height="60%">
+</p>
 
 ## Modules and Packages
 
 This repository contains the following modules:
 
-1. _graph_msf_: The core library for the sensor fusion. This library is only dependant on Eigen and GTSAM.
-2. _graph_msf_ros_: This package provides a basic class for using GraphMsf in ROS. It is dependant on GraphMsf and ROS.
-3. _examples_: Examples on how to use GraphMsf and GraphMsfRos.
-    - [./examples/excavator_dual_graph](./examples/excavator_dual_graph) from [1]. This is the implementation as
-      presented in the paper.
-    - Single-graph standalone fusion example following soon.
+1. [Graph MSF](./graph_msf): The core library for the sensor fusion. This library depends mainly on Eigen and GTSAM and
+   can be used with any communication layer (including ROS1 and ROS2).
+2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for GraphMsf in ROS. It is dependent on
+   GraphMsf and ROS.
+3. [ROS1 Examples](./examples/ros): Examples on how to use GraphMsf and GraphMsfRos.
+    - [ANYmal Estimator - Quadrupedal Robot](./examples/ros/anymal_estimator_graph): This is the implementation of the
+      ANYmal quadrupedal robot estimator as presented in [1], including IMU, GNSS, leg odometry, and absolute LiDAR
+      measurements.
+    - [HEAP - Excavator](./examples/ros/excavator_holistic_graph): This is the implementation of the HEAP excavator as
+      presented in [1], including IMU, two GNSS antennas, and absolute LiDAR measurements.
+    - [Grand Tour GT Generation - Leica Total Station Position & GNSS](./examples/ros/atn_position3_fuser): The GT
+      generation estimator aligning two non-drifting trajectories: i) the Leica total station R3 position, and ii) the
+      Novotel offline optimized SE(3) trajectory.
+    - [Super Mega Bot - Robot for Teaching Purposes](./examples/ros/smb_estimator_graph): A wheeled robot integrating
+      IMU, absolute LiDAR poses, and wheel encoders.
+    - [Pure IMU Integration](./examples/ros/pure_imu_integration): A simple example of performing pure IMU integration
+      for dead-reckoning performance testing.
+    - [IMU Pose3 Fuser](./examples/ros/imu_pose3_fuser): A simple example of fusing an IMU and an SE(3) pose
+      measurement.
+    - [Graph MSF ROS Examples](./examples/ros/graph_msf_ros_examples): A meta-package bundling all the aforementioned
+      ROS examples in one package for convenience.
+4. [ROS2 Examples](./examples/ros2): COMING SOON
 
-## Installation
+## Instructions
 
-For the installation instructions please refer to the [./doc/installation.md](./doc/installation.md).
+Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions
+regarding installation and usage.
 
-## Example Usage
+***Note that the documentation is still under construction and will be updated soon.**
 
-Instructions on how to use and run the examples can be found in the [./examples/README.md](./examples/README.md).
+## Code Documentation
 
-## Data
-
-We provide some example datasets from our excavator HEAP. The data contains
-
-* IMU measurements,
-* LiDAR odometry from CompSLAM,
-* Left and Right GNSS measurements,
-* and an (arm-)filtered point cloud.
-
-The datasets can be found
-here: [Google Drive Link](https://drive.google.com/drive/folders/1qZg_DNH3wXnQu4tNIcqY925KZFDu8y0M?usp=sharing).
-
-## Custom Usage
-
-For custom usage, such as the fusion of more sensor measurements, an own class with the desired functionality can be
-implemented.
-This class only has to inherit from the **GraphMsfInterface** base-class.
-
-For usage three functionalities have to be implemented by the user:
-
-1. (ROS)-callbacks or other code snippets can be used to add measurements through the given interface as
-   specified [here](graph_msf/include/graph_msf/GraphMsfInterface.h). Examples for this can be seen in the
-   [excavator_dual_graph](./examples/excavator_dual_graph), where ROS subscribers are used to add the measurements to
-   the graph.
-2. Furthermore, the purely virtual functions _publishState_ needs to be implemented. This method is called after each
-   arrival of an IMU measurement to publish the state in the desired format.
-3. Lastly, _readParams__ is called during initialization, and is needed to load extrinsic parameters inside the
-   [StaticTransforms](graph_msf/include/graph_msf/StaticTransforms.h) required for coordinate transformations.
-   Note that the _StaticTransforms_ class can contain arbitrary extrinsic transformation pairs.
-
-The measurements can be passed to the interface using the _measurements_ specified in
-[./graph_msf/include/measurements](./graph_msf/include/measurements). More measurements can be easily added for
-custom usage.
+Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy/html) for documentation of the code.
 
 ## Paper
 
-If you find this code useful, please consider citing
+If you find this code useful or use it in your work, please consider citing:
+
+**[1] arXiv 2025**
+
+* [Project Page](https://leggedrobotics.github.io/holistic_fusion/)
+* [Paper](https://arxiv.org/abs/2504.06479)
+* [Video](https://youtube.com/leggedrobotics)
+
+```
+@misc{nubert2025holisticfusiontasksetupagnostic,
+      title={Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs}, 
+      author={Julian Nubert and Turcan Tuna and Jonas Frey and Cesar Cadena and Katherine J. Kuchenbecker and Shehryar Khattak and Marco Hutter},
+      year={2025},
+      eprint={2504.06479},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2504.06479}, 
+}
+```
+
+**[2] ICRA2022, Philadelphia**
+
+* [Project Page](https://sites.google.com/leggedrobotics.com/gmfcl).
+* [Paper](https://arxiv.org/pdf/2203.01389.pdf)
+* [Video](https://youtu.be/syTV7Ui36jg)
 
 ```
 @inproceedings{nubert2022graph,
@@ -101,7 +118,12 @@ If you find this code useful, please consider citing
 }
 ```
 
-## Acknowledgements
+## Acknowledgments
 
-The authors thank Gabriel Waibel, Marco Tranzatto, Simon Kerscher, Dominic Jud, Lorenzo Terenzi, Timo Schoenegg and the
-remaining HEAP team for patiently testing parts of this framework during their experiments. 
+The authors thank their colleagues at ETH Zurich and NASA JPL for their help in conducting the robot experiments and
+evaluations and using HF on their robots.
+Special thanks go to Takahiro Miki and the ANYmal Hike team at the Robotic Systems Lab (RSL), ETH Zurich, Nikita Rudin,
+and David Hoeller for the ANYmal Parkour experiments, Patrick Spieler for running the deployments on the JPL RACER
+vehicle, the entire excavation team at RSL and Gravis Robotics, Thomas Mantel and the teaching assistants of
+the [ETH Robotic Summer School](https://robotics-summerschool.ethz.ch/) for their help on the SuperMegaBot, and Mayank
+Mittal for his help in generating renderings.

@@ -1,0 +1,9 @@
+<map id="graph_msf::UnaryMeasurement" name="graph_msf::UnaryMeasurement">
+<area shape="rect" id="node1" title="Class to represent a unary measurement in the graph." alt="" coords="241,78,468,105"/>
+<area shape="rect" id="node3" href="$d9/dc2/classgraph__msf_1_1UnaryMeasurementAbsolute.html" title="Class to represent an absolute unary measurement in the graph. Exact dimension is not known." alt="" coords="526,5,753,47"/>
+<area shape="rect" id="node5" href="$df/d6e/classgraph__msf_1_1UnaryMeasurementLandmark.html" title=" " alt="" coords="526,136,753,177"/>
+<area shape="rect" id="node7" href="$d5/d08/classgraph__msf_1_1UnaryMeasurementXD.html" title="Class to represent x&#45;dimensional unary measurement in the graph." alt="" coords="516,71,763,112"/>
+<area shape="rect" id="node2" href="$d0/d50/classgraph__msf_1_1Measurement.html" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="5,78,193,105"/>
+<area shape="rect" id="node4" href="$de/dae/classgraph__msf_1_1UnaryMeasurementXDAbsolute.html" title="Class to represent x&#45;dimensional absolute unary measurement in the graph." alt="" coords="811,11,1037,67"/>
+<area shape="rect" id="node6" href="$d0/d16/classgraph__msf_1_1UnaryMeasurementXDLandmark.html" title="Class to represent x&#45;dimensional landmark unary measurement in the graph." alt="" coords="811,103,1037,159"/>
+</map>

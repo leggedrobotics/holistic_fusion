@@ -1,0 +1,6 @@
+<map id="graph_msf::UnaryMeasurementAbsolute" name="graph_msf::UnaryMeasurementAbsolute">
+<area shape="rect" id="node1" title="Class to represent an absolute unary measurement in the graph. Exact dimension is not known." alt="" coords="5,155,232,196"/>
+<area shape="rect" id="node4" href="$de/dae/classgraph__msf_1_1UnaryMeasurementXDAbsolute.html" title="Class to represent x&#45;dimensional absolute unary measurement in the graph." alt="" coords="5,244,232,300"/>
+<area shape="rect" id="node2" href="$d0/da5/classgraph__msf_1_1UnaryMeasurement.html" title="Class to represent a unary measurement in the graph." alt="" coords="5,80,232,107"/>
+<area shape="rect" id="node3" href="$d0/d50/classgraph__msf_1_1Measurement.html" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="25,5,213,32"/>
+</map>

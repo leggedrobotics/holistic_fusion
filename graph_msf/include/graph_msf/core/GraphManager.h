@@ -41,7 +41,12 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-// Actual Class
+/**
+ * @brief GraphManager class
+ * @details The GraphManager class is the central class of the GraphMSF library. It manages the graph, the optimization, and the
+ *         real-time and batch optimization. It also provides the interface to add measurements to the graph and to retrieve the
+ *         optimized states.
+ */
 class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
@@ -92,8 +97,14 @@ class GraphManager {
   // Slow Graph Update (if desired)
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
-  // Logging of real-time states
-  bool logRealTimeStates(const std::string& savePath, const std::string& timeString);
+  // Logging of real-time navigation states
+  bool logRealTimeNavStates(const std::string& savePath, const std::string& timeString);
+
+  // Logging of real-time reference frame states
+  bool logRealTimeReferenceFrameStates(const std::string& savePath, const std::string& timeString);
+
+  // Logging of Latency and Update Duration
+  bool logLatencyAndUpdateDuration(const std::string& savePath, const std::string& timeString);
 
   // Save Variables to File
   void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
@@ -211,6 +222,19 @@ class GraphManager {
   // Real-time Pose Container
   std::map<double, gtsam::Pose3> realTimeWorldPoseContainer_ = {};
   std::map<double, gtsam::Pose3> realTimeOdomPoseContainer_ = {};
+  // Real-time Reference Frame Transformation Container
+  std::map<double, TransformsDictionary<Eigen::Isometry3d>> realTimeReferenceFrameContainer_ = {};
+  std::set<std::pair<std::string, std::string>> realTimeReferenceFrameNamePairs_ = {};
+  // Latency Start and End Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> latencyStartTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> latencyEndTime_;
+  // Latency Container
+  std::map<double, double> latencyContainer_ = {};
+  // Update Duration Start and End Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> updateDurationStartTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> updateDurationEndTime_;
+  // Update Duration Container
+  std::map<double, double> updateDurationContainer_ = {};
 
   // Member variables
   /// Mutex

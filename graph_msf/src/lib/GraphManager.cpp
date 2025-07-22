@@ -195,6 +195,11 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                            const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+  // Logging of latency
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    latencyStartTime_ = std::chrono::high_resolution_clock::now();
+  }
+
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
@@ -292,6 +297,14 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
     realTimeWorldPoseContainer_[imuTimeK] = W_imuPropagatedState_.pose();
     realTimeOdomPoseContainer_[imuTimeK] = O_imuPropagatedState_.pose();
+  }
+
+  // Logging of latency
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    latencyEndTime_ = std::chrono::high_resolution_clock::now();
+    // Duration in seconds
+    std::chrono::duration<double> latencyDuration = latencyEndTime_ - latencyStartTime_;
+    latencyContainer_[imuTimeK] = latencyDuration.count();
   }
 }
 
@@ -496,6 +509,11 @@ void GraphManager::updateGraph() {
     }
   }  // end of locking
 
+  // Log Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    updateDurationStartTime_ = std::chrono::high_resolution_clock::now();
+  }
+
   // Graph Update (time consuming) -------------------------------------------
   bool successfulOptimizationFlag = true;
   // Rt Smoother
@@ -511,6 +529,14 @@ void GraphManager::updateGraph() {
         addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, graphConfigPtr_);
   } else if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " No factors present in batch smoother, not optimizing." << std::endl;
+  }
+
+  // Log Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    updateDurationEndTime_ = std::chrono::high_resolution_clock::now();
+    // Duration in seconds
+    std::chrono::duration<double> updateDuration = updateDurationEndTime_ - updateDurationStartTime_;
+    updateDurationContainer_[currentPropagatedTime] = updateDuration.count();
   }
 
   // Return if optimization failed
@@ -533,7 +559,7 @@ void GraphManager::updateGraph() {
   gtsam::Matrix33 resultVelocityCovariance =
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
 
-  // D. FixedFrame Transformations ------------------------------
+  // D. Reference Frame Transformations ------------------------------
   // Containers
   TransformsDictionary<Eigen::Isometry3d> resultReferenceFrameTransformations(Eigen::Isometry3d::Identity());
   TransformsDictionary<Eigen::Matrix<double, 6, 6>> resultReferenceFrameTransformationsCovariance(gtsam::Z_6x6);
@@ -547,6 +573,9 @@ void GraphManager::updateGraph() {
 
     // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
     for (auto& framePairKeyMapIterator : gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getTransformsMap()) {
+      // Frame Pair
+      const std::pair<std::string, std::string>& framePair = framePairKeyMapIterator.first;  // alias
+
       // Get Variable Key
       const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
 
@@ -606,17 +635,30 @@ void GraphManager::updateGraph() {
                            T_frame2_frame1_corrected.translation() + framePairKeyMapIterator.second.getReferenceFrameKeyframePosition());
           gtsam::Pose3 T_frame1_frame2_corrected = T_frame2_frame1_corrected.inverse();
           // Write to container
+          // 1: For Landmark States
           if (isLandmarkState) {
+            // Write to landmark container
             resultLandmarkTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
                                                               Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
             resultLandmarkTransformationsCovariance.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                         framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
-          } else {
+          }
+          // 2: For Reference Frame States
+          else {
+            // Write to reference frame container
             resultReferenceFrameTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                     framePairKeyMapIterator.first.second,
                                                                     Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
             resultReferenceFrameTransformationsCovariance.set_T_frame1_frame2(
                 framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
+            // Potentially fill in existing pairs for logging
+            if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+              if (realTimeReferenceFrameNamePairs_.find(framePair) == realTimeReferenceFrameNamePairs_.end()) {
+                realTimeReferenceFrameNamePairs_.insert(framePair);
+                REGULAR_COUT << " Added frame pair: " << framePair.first << " to " << framePair.second << " to real-time logging."
+                             << std::endl;
+              }
+            }
           }
 
           // Mark that this key has at least been optimized once
@@ -740,6 +782,11 @@ void GraphManager::updateGraph() {
     // Update the time of the last optimized state
     lastOptimizedStateTime_ = currentPropagatedTime;
   }  // end of locking
+
+  // Potentially log real-time state to container
+  if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    realTimeReferenceFrameContainer_.emplace(currentPropagatedTime, resultReferenceFrameTransformations);
+  }
 }
 
 bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag) {
@@ -768,8 +815,8 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
   }
 }
 
-// Logging of the real-time states
-bool GraphManager::logRealTimeStates(const std::string& savePath, const std::string& timeString) {
+// Logging of the real-time navigation states
+bool GraphManager::logRealTimeNavStates(const std::string& savePath, const std::string& timeString) {
   // Note enabled
   if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
     REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
@@ -777,7 +824,7 @@ bool GraphManager::logRealTimeStates(const std::string& savePath, const std::str
   }
   // Enabled
   else {
-    // Main container: map, although only one element
+    // Main container: map
     std::map<std::string, std::ofstream> fileStreams;
 
     // Create directory if it does not exist
@@ -814,6 +861,110 @@ bool GraphManager::logRealTimeStates(const std::string& savePath, const std::str
   }
 }
 
+// Logging of real-time reference frame states
+bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, const std::string& timeString) {
+  // Note enabled
+  if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
+    REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
+    return false;
+  }
+  // Enabled
+  else {
+    // Main container: map
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Create directory if it does not exist
+    if (!std::filesystem::exists(savePath + timeString)) {
+      std::filesystem::create_directories(savePath + timeString);
+    }
+
+    // State Category String
+    std::string stateCategoryString = "rt_R_6D_transform";
+
+    // Go through all reference frame states that have been logged
+    for (const std::pair<std::string, std::string>& framePair : realTimeReferenceFrameNamePairs_) {
+      // Frame Information
+      std::string frameInformation = "_" + framePair.first + "_to_" + framePair.second;
+      // Replace / with underscore
+      std::replace(frameInformation.begin(), frameInformation.end(), '/', '_');
+      // Create File Streams
+      // CSV
+      FileLogger::createPose3CsvFileStream(fileStreams, savePath, stateCategoryString + frameInformation, timeString, false);
+      // TUM
+      FileLogger::createPose3TumFileStream(fileStreams, savePath, stateCategoryString + frameInformation + "_tum", timeString);
+    }
+
+    // Iterate through all timestamps and corresponding transform maps
+    for (const auto& mapPair : realTimeReferenceFrameContainer_) {
+      const double& timeStamp = mapPair.first;  // alias
+      const TransformsDictionary<Eigen::Isometry3d>& referenceFrameTransforms = mapPair.second;
+      // Iterate through all transforms for this time stamp
+      for (const auto& framePairTransform : referenceFrameTransforms.getTransformsMap()) {
+        // Frame Pair
+        const std::pair<std::string, std::string>& framePair = framePairTransform.first;  // alias
+        // Transform
+        const Eigen::Isometry3d& transform = framePairTransform.second;  // alias
+        // Frame Information
+        std::string frameInformation = "_" + framePair.first + "_to_" + framePair.second;
+        // Replace / with underscore
+        std::replace(frameInformation.begin(), frameInformation.end(), '/', '_');
+        // Write to files
+        // CSV
+        FileLogger::writePose3ToCsvFile(fileStreams, gtsam::Pose3(transform.matrix()), stateCategoryString + frameInformation, timeStamp,
+                                        false);
+        // TUM
+        FileLogger::writePose3ToTumFile(fileStreams, gtsam::Pose3(transform.matrix()), stateCategoryString + frameInformation + "_tum",
+                                        timeStamp);
+      }
+    }
+    return true;
+  }
+}
+
+// Log Latency and Update Duration to Memory
+bool GraphManager::logLatencyAndUpdateDuration(const std::string& savePath, const std::string& timeString) {
+  // Note enabled
+  if (!graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    REGULAR_COUT << RED_START << " Logging of latency and update duration is disabled. " << COLOR_END << std::endl;
+    return false;
+  }
+  // Enabled
+  else {
+    // Main container: map
+    std::map<std::string, std::ofstream> fileStreams;
+
+    // Create directory if it does not exist
+    if (!std::filesystem::exists(savePath + timeString)) {
+      std::filesystem::create_directories(savePath + timeString);
+    }
+
+    // Create File Streams
+    // CSV
+    FileLogger::createDoubleCsvFileStream(fileStreams, savePath, "latency", timeString);
+    FileLogger::createDoubleCsvFileStream(fileStreams, savePath, "update_duration", timeString);
+
+    // Iterate through all timestamps and corresponding latency
+    for (const auto& latencyPair : latencyContainer_) {
+      const double& timeStamp = latencyPair.first;  // alias
+      const double& latency = latencyPair.second;   // alias
+      // Write to files
+      // CSV
+      FileLogger::writeDoubleToCsvFile(fileStreams, latency, "latency", timeStamp);
+    }
+
+    // Iterate through all timestamps and corresponding update duration
+    for (const auto& updateDurationPair : updateDurationContainer_) {
+      const double& timeStamp = updateDurationPair.first;        // alias
+      const double& updateDuration = updateDurationPair.second;  // alias
+      // Write to files
+      // CSV
+      FileLogger::writeDoubleToCsvFile(fileStreams, updateDuration, "update_duration", timeStamp);
+    }
+
+    return true;
+  }
+}
+
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath, const bool saveCovarianceFlag) {
@@ -846,7 +997,15 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
   // Save real-time states
   if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
-    std::ignore = logRealTimeStates(savePath, timeString);
+    // Real-time states
+    std::ignore = logRealTimeNavStates(savePath, timeString);
+    // Real-time Reference Frame States
+    std::ignore = logRealTimeReferenceFrameStates(savePath, timeString);
+  }
+
+  // Save Latency and Update Duration
+  if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
+    std::ignore = logLatencyAndUpdateDuration(savePath, timeString);
   }
 
   // Save optimized states
