@@ -4,6 +4,7 @@
 // ROS2
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <std_srvs/srv/trigger.hpp>
 
 // Workspace
 #include "graph_msf_ros2/constants.h"
@@ -210,19 +211,19 @@ void GraphMsfRos2::initializeServices(rclcpp::Node& node) {
   RCLCPP_INFO(node.get_logger(), "Initializing services.");
 
   // Trigger offline smoother optimization
-  srvSmootherOptimize_ = node.create_service<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger>(
+  srvSmootherOptimize_ = node.create_service<std_srvs::srv::Trigger>(
       "/graph_msf/trigger_offline_optimization",
       std::bind(&GraphMsfRos2::srvOfflineSmootherOptimizeCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 bool GraphMsfRos2::srvOfflineSmootherOptimizeCallback(
-    const std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Request> req,
-    std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Response> res) {
-  // Max Iterations from service call
-  int maxIterations = req->max_optimization_iterations;
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> res) {
+  // Hardcode max iterations (you can make this configurable via parameter if needed)  
+  int maxIterations = 100;
 
   // Trigger offline smoother optimization and create response
-  if (GraphMsf::optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, false)) {
+  if (optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, false)) {
     res->success = true;
     res->message = "Optimization successful.";
   } else {

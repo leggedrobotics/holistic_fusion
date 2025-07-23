@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find dependencies
+find_dependency(nav_msgs)
+find_dependency(std_msgs)
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/graph_msf_ros2_msgsTargets.cmake")
+
+check_required_components(graph_msf_ros2_msgs)

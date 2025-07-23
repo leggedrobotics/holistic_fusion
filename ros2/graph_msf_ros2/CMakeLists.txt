@@ -71,17 +71,10 @@ target_link_libraries(${PROJECT_NAME}
     tf2_ros::tf2_ros
     tf2_eigen::tf2_eigen
     graph_msf::graph_msf
+    # graph_msf_ros2_msgs::graph_msf_ros2_msgs
+    # rosidl_typesupport_cpp::rosidl_typesupport_cpp
+    # rosidl_service_type_support_t::rosidl_service_type_support_t
 )
-# Graph MSF ROS2 MSGS
-if (NOT TARGET graph_msf_ros2_msgs)
-  find_package(graph_msf_ros2_msgs REQUIRED
-    COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
-  )
-  ament_target_dependencies(${PROJECT_NAME}
-    PUBLIC
-      graph_msf_ros2_msgs
-  )
-endif()
 
 # Include directories for the library
 target_include_directories(${PROJECT_NAME}

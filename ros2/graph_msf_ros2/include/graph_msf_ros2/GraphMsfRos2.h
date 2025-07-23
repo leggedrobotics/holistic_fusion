@@ -22,7 +22,6 @@
 #include "graph_msf/interface/GraphMsf.h"
 #include "graph_msf/interface/GraphMsfClassic.h"
 #include "graph_msf/interface/GraphMsfHolistic.h"
-#include "graph_msf_ros2_msgs/srv/offline_optimization_trigger.hpp"
 
 // Macros
 #define ROS_QUEUE_SIZE 1
@@ -76,8 +75,8 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
 
   // Services
   bool srvOfflineSmootherOptimizeCallback(
-    const std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Request> req,
-    std::shared_ptr<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger::Response> res);
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
   // Publishing -----------------------------------
   virtual void publishState(
@@ -163,7 +162,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
   geometry_msgs::msg::Vector3Stamped::SharedPtr gyroBiasMsgPtr_;
 
   // Services
-  rclcpp::Service<graph_msf_ros2_msgs::srv::OfflineOptimizationTrigger>::SharedPtr srvSmootherOptimize_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srvSmootherOptimize_;
 
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
