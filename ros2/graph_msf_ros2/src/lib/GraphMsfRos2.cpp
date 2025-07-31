@@ -479,7 +479,7 @@ void GraphMsfRos2::publishNonTimeCriticalData(
 void GraphMsfRos2::publishOptimizedStateAndBias(
     const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
     const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos, const double timeStamp) {
-  // A: Publish Odometry and IMU Biases
+  // A: Publish Odometry and IMU Biases at update rate
   if (optimizedStateWithCovarianceAndBiasPtr != nullptr &&
       optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
     // Time of this optimized state
@@ -527,7 +527,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
     }
   }  // Publishing odometry and biases
 
-  // B: Publish Transforms
+  // B: Publish Transforms at imu rate
   if (optimizedStateWithCovarianceAndBiasPtr != nullptr && timeStamp - lastIntegratedStateTimestamp_ > 1e-03) {
     lastIntegratedStateTimestamp_ = timeStamp;
     // TFs in Optimized State
@@ -550,30 +550,29 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         else {
           T_W_M = framePairTransformMapIterator.second;
           mapFrameName = framePairTransformMapIterator.first.second;
+        }
 
-          // B. Publish TransformStamped for Aligned Frames
-          std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + referenceFrameAlignedNameId;
-          auto poseWithCovarianceStampedMsgPtr = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
-          addToPoseWithCovarianceStampedMsg(
-              poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
-              rclcpp::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK() * 1e9), T_W_M,
-              optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(
-                  framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
-          // Check whether publisher already exists
-          if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
-            pubPoseStampedByTopicMap_[transformTopic] =
-                node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
-            RCLCPP_INFO(node_->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
-          }
-          if (pubPoseStampedByTopicMap_[transformTopic]->get_subscription_count() > 0) {
-            pubPoseStampedByTopicMap_[transformTopic]->publish(*poseWithCovarianceStampedMsgPtr);
-          }
+        // B. Publish TransformStamped for Aligned Frames
+        std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + referenceFrameAlignedNameId;
+        auto poseWithCovarianceStampedMsgPtr = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+        addToPoseWithCovarianceStampedMsg(
+            poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
+            rclcpp::Time(timeStamp * 1e9), T_W_M,
+            optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(
+                framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
+        // Check whether publisher already exists
+        if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
+          pubPoseStampedByTopicMap_[transformTopic] =
+              node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
+          RCLCPP_INFO(node_->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
+        }
+        if (pubPoseStampedByTopicMap_[transformTopic]->get_subscription_count() > 0) {
+          pubPoseStampedByTopicMap_[transformTopic]->publish(*poseWithCovarianceStampedMsgPtr);
         }
 
         // C. Publish TF Tree
         publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId,
-                               optimizedStateWithCovarianceAndBiasPtr->getTimeK(), T_W_M);
-
+                               timeStamp, T_W_M);
       }
       // Case 2: Other transformations
       else {
@@ -585,7 +584,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         std::string transformTopic = "/graph_msf/transform_" + sensorFrameName + "_to_" + sensorFrameNameCorrected;
         auto poseWithCovarianceStampedMsgPtr = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
         addToPoseWithCovarianceStampedMsg(
-            poseWithCovarianceStampedMsgPtr, sensorFrameName, rclcpp::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK() * 1e9),
+            poseWithCovarianceStampedMsgPtr, sensorFrameName, rclcpp::Time(timeStamp * 1e9),
             T_sensor_sensorCorrected,
             optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(sensorFrameName,
                                                                                                                sensorFrameNameCorrected));
@@ -600,10 +599,10 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         }
 
         // B. Publish TF Tree
-        publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, optimizedStateWithCovarianceAndBiasPtr->getTimeK(),
+        publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, timeStamp,
                                T_sensor_sensorCorrected);
       }
-    }
+    } // for each frame pair transform
   }  // Publishing of Transforms
 }
 

@@ -163,9 +163,6 @@ void GraphMsfRos2::readParams() {
       std::filesystem::create_directories(optimizationResultLoggingPath);
     }
 
-    // TODO: Remove hard coded path
-    optimizationResultLoggingPath = "/smb_ros2_workspace/logging/";
-
     // Print the logging path
     std::cout << "-------------------------------------------------" << std::endl;
     RCLCPP_INFO(node_->get_logger(), "Optimization results will be logged to: %s",
