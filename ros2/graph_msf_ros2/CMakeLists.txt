@@ -143,21 +143,4 @@ install(FILES
 )
 
 # Export ament package
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME})
-ament_export_targets(${PROJECT_NAME}Targets)
-ament_export_dependencies(
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
-  std_msgs
-  tf2
-  tf2_ros
-  tf2_eigen
-  std_srvs
-  visualization_msgs
-  rosidl_default_runtime
-  graph_msf_ros2_msgs
-)
-
 ament_package()
