@@ -4,7 +4,7 @@
     sensor_params:
       imuRate: 200.0                          # Rate of IMU input (Hz)
       createStateEveryNthImuMeasurement: 5    # Create a new state every n-th IMU measurement
-      useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
+      useImuSignalLowPassFilter: true        # If true, a low pass filter is applied to the IMU measurements
       imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
       imuBufferLength: 800
       imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
