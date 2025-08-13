@@ -1,0 +1,9 @@
+/b2w_estimator_node:
+  ros__parameters:
+    #External Prior/Transform Input
+    extrinsics:
+      lidarOdometryFrame: "lidar"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+      wheelOdometryBetweenFrame: "base"      #Wheel odometry frame name - used to lookup Wheel-to-ExternalSensor Frame
+      wheelLinearVelocityLeftFrame: "LH_WHEEL"  #Wheel linear velocity left frame name - used to lookup Wheel-to-ExternalSensor Frame
+      wheelLinearVelocityRightFrame: "RH_WHEEL" #Wheel linear velocity right frame name - used to lookup Wheel-to-ExternalSensor Frame
+      vioOdometryFrame: "base"        #VIO odometry frame name - used to lookup VIO-to-ExternalSensor Frame

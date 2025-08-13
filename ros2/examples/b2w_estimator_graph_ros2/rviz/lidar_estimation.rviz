@@ -567,7 +567,7 @@ Visualization Manager:
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
         Value: Arrow
-      Topic: /control/smb_diff_drive/odom
+      Topic: /control/b2w_diff_drive/odom
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -656,7 +656,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: smb_description
+      Robot Description: b2w_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
