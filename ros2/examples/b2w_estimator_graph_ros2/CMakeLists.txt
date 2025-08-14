@@ -18,6 +18,7 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Glog REQUIRED)
+find_package(graph_msf_ros2)
 find_package(graph_msf_ros2_msgs REQUIRED
   COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
 )
@@ -85,6 +86,7 @@ ament_target_dependencies(${PROJECT_NAME}
     tf2_ros
     Glog
     gflags
+    graph_msf_ros2
     graph_msf_ros2_msgs
 )
 
