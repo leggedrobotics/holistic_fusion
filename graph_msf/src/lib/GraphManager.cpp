@@ -450,7 +450,7 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
     navState = optionalNavState.value();
   } else {
     gtsam::Pose3 resultPose = graphPtr->calculateEstimatedPose3(graphKey);  // auto result = mainGraphPtr_->estimate();
-    gtsam::Point3 resultVelocity = gtsam::Point3::Identity();  // Assume Zero Velocity, but adjoint below is still fine to map to world
+    gtsam::Point3 resultVelocity = gtsam::Point3(0, 0, 0);  // Assume Zero Velocity, but adjoint below is still fine to map to world
     navState = gtsam::NavState(resultPose, resultVelocity);
   }
   // Compute adjoint matrix

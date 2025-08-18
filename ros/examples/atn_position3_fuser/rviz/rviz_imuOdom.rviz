@@ -6,8 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-      Splitter Ratio: 0.6512300968170166
-    Tree Height: 2738
+      Splitter Ratio: 0.7493796348571777
+    Tree Height: 733
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -23,9 +23,10 @@ Panels:
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
+    Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2_hesai_raw
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -160,11 +161,97 @@ Visualization Manager:
       Value: true
     - Class: rviz/TF
       Enabled: true
-      Filter (blacklist): ""
-      Filter (whitelist): ""
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        LF_FOOT:
+          Value: true
+        LF_HAA_drive:
+          Value: true
+        LF_HFE_drive:
+          Value: true
+        LF_HFE_output:
+          Value: true
+        LF_HIP:
+          Value: true
+        LF_KFE_drive:
+          Value: true
+        LF_SHANK:
+          Value: true
+        LF_THIGH:
+          Value: true
+        LF_hip_fixed:
+          Value: true
+        LF_shank_fixed:
+          Value: true
+        LF_thigh_fixed:
+          Value: true
+        LH_FOOT:
+          Value: true
+        LH_HAA_drive:
+          Value: true
+        LH_HFE_drive:
+          Value: true
+        LH_HFE_output:
+          Value: true
+        LH_HIP:
+          Value: true
+        LH_KFE_drive:
+          Value: true
+        LH_SHANK:
+          Value: true
+        LH_THIGH:
+          Value: true
+        LH_hip_fixed:
+          Value: true
+        LH_shank_fixed:
+          Value: true
+        LH_thigh_fixed:
+          Value: true
+        RF_FOOT:
+          Value: true
+        RF_HAA_drive:
+          Value: true
+        RF_HFE_drive:
+          Value: true
+        RF_HFE_output:
+          Value: true
+        RF_HIP:
+          Value: true
+        RF_KFE_drive:
+          Value: true
+        RF_SHANK:
+          Value: true
+        RF_THIGH:
+          Value: true
+        RF_hip_fixed:
+          Value: true
+        RF_shank_fixed:
+          Value: true
+        RF_thigh_fixed:
+          Value: true
+        RH_FOOT:
+          Value: true
+        RH_HAA_drive:
+          Value: true
+        RH_HFE_drive:
+          Value: true
+        RH_HFE_output:
+          Value: true
+        RH_HIP:
+          Value: true
+        RH_KFE_drive:
+          Value: true
+        RH_SHANK:
+          Value: true
+        RH_THIGH:
+          Value: true
+        RH_hip_fixed:
+          Value: true
+        RH_shank_fixed:
+          Value: true
+        RH_thigh_fixed:
+          Value: true
         adis16475_imu:
           Value: true
         alphasense_base:
@@ -175,9 +262,13 @@ Visualization Manager:
           Value: true
         alphasense_front_right:
           Value: true
+        alphasense_imu:
+          Value: true
         alphasense_left:
           Value: true
         alphasense_right:
+          Value: true
+        anymal_imu:
           Value: true
         ap20_imu:
           Value: true
@@ -199,9 +290,27 @@ Visualization Manager:
           Value: true
         cpt7_antenna_back:
           Value: true
+        cpt7_antenna_back_model:
+          Value: true
         cpt7_antenna_front:
           Value: true
         cpt7_imu:
+          Value: true
+        depth_camera_front_lower:
+          Value: true
+        depth_camera_front_upper:
+          Value: true
+        depth_camera_left:
+          Value: true
+        depth_camera_rear_lower:
+          Value: true
+        depth_camera_rear_upper:
+          Value: true
+        depth_camera_right:
+          Value: true
+        dlio_map:
+          Value: true
+        dlio_odom:
           Value: true
         enu_origin:
           Value: true
@@ -219,6 +328,8 @@ Visualization Manager:
           Value: true
         imu_sensor_frame:
           Value: true
+        leica_total_station_graph_msf_aligned:
+          Value: true
         livox_imu:
           Value: true
         livox_lidar:
@@ -231,19 +342,31 @@ Visualization Manager:
           Value: true
         prism_model:
           Value: true
+        spider:
+          Value: true
         stim320_imu:
           Value: true
+        velodyne_lidar:
+          Value: true
         world:
+          Value: true
+        zed2i_base:
           Value: true
         zed2i_base_link:
           Value: true
         zed2i_camera_center:
           Value: true
+        zed2i_imu:
+          Value: true
         zed2i_imu_link:
+          Value: true
+        zed2i_left:
           Value: true
         zed2i_left_camera_frame:
           Value: true
         zed2i_left_camera_optical_frame:
+          Value: true
+        zed2i_right:
           Value: true
         zed2i_right_camera_frame:
           Value: true
@@ -259,6 +382,56 @@ Visualization Manager:
       Show Names: true
       Tree:
         base:
+          LF_HAA_drive:
+            LF_HIP:
+              LF_hip_fixed:
+                LF_HFE_output:
+                  LF_THIGH:
+                    LF_HFE_drive:
+                      LF_thigh_fixed:
+                        LF_KFE_drive:
+                          LF_SHANK:
+                            LF_shank_fixed:
+                              LF_FOOT:
+                                {}
+          LH_HAA_drive:
+            LH_HIP:
+              LH_hip_fixed:
+                LH_HFE_output:
+                  LH_THIGH:
+                    LH_HFE_drive:
+                      LH_thigh_fixed:
+                        LH_KFE_drive:
+                          LH_SHANK:
+                            LH_shank_fixed:
+                              LH_FOOT:
+                                {}
+          RF_HAA_drive:
+            RF_HIP:
+              RF_hip_fixed:
+                RF_HFE_output:
+                  RF_THIGH:
+                    RF_HFE_drive:
+                      RF_thigh_fixed:
+                        RF_KFE_drive:
+                          RF_SHANK:
+                            RF_shank_fixed:
+                              RF_FOOT:
+                                {}
+          RH_HAA_drive:
+            RH_HIP:
+              RH_hip_fixed:
+                RH_HFE_output:
+                  RH_THIGH:
+                    RH_HFE_drive:
+                      RH_thigh_fixed:
+                        RH_KFE_drive:
+                          RH_SHANK:
+                            RH_shank_fixed:
+                              RH_FOOT:
+                                {}
+          anymal_imu:
+            {}
           box_base:
             adis16475_imu:
               {}
@@ -278,15 +451,19 @@ Visualization Manager:
               cam5_sensor_frame:
                 alphasense_right:
                   {}
+            alphasense_imu:
+              {}
             ap20_imu:
+              {}
+            box_base_model:
               {}
             cpt7_imu:
               cpt7_antenna_back:
                 {}
               cpt7_antenna_front:
                 {}
-            enu_origin:
-              {}
+              enu_origin:
+                {}
             hdr_base:
               hdr_front:
                 {}
@@ -295,6 +472,10 @@ Visualization Manager:
               hdr_right:
                 {}
             hesai_lidar:
+              dlio_map:
+                {}
+              dlio_odom:
+                {}
               hesai_model:
                 {}
             imu_sensor_frame:
@@ -306,12 +487,22 @@ Visualization Manager:
                 {}
             odom:
               world:
-                {}
+                leica_total_station_graph_msf_aligned:
+                  {}
             prism:
-              prism_model:
-                {}
+              {}
+            prism_model:
+              {}
+            spider:
+              {}
             stim320_imu:
-              box_base_model:
+              {}
+            zed2i_base:
+              zed2i_imu:
+                {}
+              zed2i_left:
+                {}
+              zed2i_right:
                 {}
             zed_base_link:
               zed2i_base_link:
@@ -323,6 +514,22 @@ Visualization Manager:
                       zed2i_right_camera_optical_frame:
                         zed2i_right_camera_frame:
                           {}
+          cpt7_antenna_back_model:
+            {}
+          depth_camera_front_lower:
+            {}
+          depth_camera_front_upper:
+            {}
+          depth_camera_left:
+            {}
+          depth_camera_rear_lower:
+            {}
+          depth_camera_rear_upper:
+            {}
+          depth_camera_right:
+            {}
+          velodyne_lidar:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -482,27 +689,6 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Class: grid_map_rviz_plugin/GridMap
-      Color: 200; 200; 200
-      Color Layer: elevation
-      Color Transformer: GridMapLayer
-      Enabled: false
-      Height Layer: elevation
-      Height Transformer: GridMapLayer
-      History Length: 1
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 10
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: GridMap
-      Show Grid Lines: true
-      Topic: /elevation_mapping/elevation_map
-      Unreliable: false
-      Use Rainbow: true
-      Value: false
-    - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -581,6 +767,11 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        cpt7_antenna_back_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         cpt7_antenna_front:
           Alpha: 1
           Show Axes: false
@@ -613,7 +804,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         imu_sensor_frame:
           Alpha: 1
           Show Axes: false
@@ -630,12 +820,16 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         prism:
           Alpha: 1
           Show Axes: false
           Show Trail: false
         prism_model:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        spider:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -677,14 +871,14 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: box_description
+      Robot Description: boxi_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
       Visual Enabled: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 0; 0; 0
     Default Light: true
     Fixed Frame: world
     Frame Rate: 30
@@ -710,7 +904,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10
+      Distance: 73.76211547851562
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -718,17 +912,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 8.493669509887695
+        Y: 1.4364337921142578
+        Z: -6.739999771118164
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7853981852531433
+      Pitch: 1.5697963237762451
       Target Frame: cpt7_imu
-      Yaw: 0.7853981852531433
+      Yaw: 3.661741256713867
     Saved:
       - Class: rviz/Orbit
         Distance: 35.76002883911133
@@ -753,10 +947,10 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 3248
+  Height: 1022
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000002b500000baafc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000087b000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e00000baa0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000b4afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e00000b4a0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000011420000005efc0100000002fb0000000800540069006d0065010000000000001142000006dc00fffffffb0000000800540069006d0065010000000000000450000000000000000000000e8100000baa00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000156000003a4fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073020000087b000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000003a4000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f00000b4afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e00000b4a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000005efc0100000002fb0000000800540069006d0065000000000000000a00000004f300fffffffb0000000800540069006d00650100000000000004500000000000000000000005ee000003a400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -765,6 +959,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 4418
-  X: 0
-  Y: 54
+  Width: 1866
+  X: 694
+  Y: 44

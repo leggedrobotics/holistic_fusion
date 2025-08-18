@@ -4,7 +4,8 @@ project(atn_position3_fuser)
 ## Compile as C++17, supported in ROS Noetic and newer
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++17 -O3 -mtune=native -flto -funroll-loops -fopt-info-vec-optimized -fno-math-errno)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
