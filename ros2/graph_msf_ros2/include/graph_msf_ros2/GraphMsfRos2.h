@@ -28,9 +28,9 @@
 
 namespace graph_msf {
 
-class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
+class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rclcpp::Node {
  public:
-  GraphMsfRos2(std::shared_ptr<rclcpp::Node>& node);
+  GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOptions& options);
   // Destructor
   ~GraphMsfRos2() override = default;
 
@@ -105,9 +105,6 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
   // Measure time
   long secondsSinceStart();
 
-  // Node
-  std::shared_ptr<rclcpp::Node> node_;
-
   // Clock
   rclcpp::Clock::SharedPtr clock_;
 
@@ -137,9 +134,6 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic {
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubOptWorldImuPath_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubAccelBias_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubGyroBias_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasWorldGnssLPath_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasWorldGnssRPath_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasWorldLidarPath_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pubAddedImuMeas_;
 
   std::map<std::string, rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr>

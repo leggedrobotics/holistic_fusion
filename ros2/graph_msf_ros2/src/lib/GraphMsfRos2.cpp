@@ -12,15 +12,16 @@
 
 namespace graph_msf {
 
-GraphMsfRos2::GraphMsfRos2(std::shared_ptr<rclcpp::Node>& node) : node_(node) {
-  RCLCPP_INFO(node_->get_logger(), "GraphMsfRos2-Constructor called.");
+GraphMsfRos2::GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOptions& options) : Node(nodeName, options) {
+  RCLCPP_INFO(this->get_logger(), "GraphMsfRos2-Constructor called.");
+
   // Configurations ----------------------------
   // Graph Config
   graphConfigPtr_ = std::make_shared<GraphConfig>();
 }
 
 void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) {
-  RCLCPP_INFO(node_->get_logger(), "GraphMsfRos2-Setup called.");
+  RCLCPP_INFO(this->get_logger(), "GraphMsfRos2-Setup called.");
 
   // Check
   if (staticTransformsPtr == nullptr) {
@@ -28,95 +29,95 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   }
 
   // Clock
-  clock_ = node_->get_clock();
+  clock_ = this->get_clock();
 
   // Sensor Params
-  node_->declare_parameter("sensor_params.imuRate", 0.0);
-  node_->declare_parameter("sensor_params.createStateEveryNthImuMeasurement", 25);
-  node_->declare_parameter("sensor_params.useImuSignalLowPassFilter", false);
-  node_->declare_parameter("sensor_params.imuLowPassFilterCutoffFreq", 0.0);
-  node_->declare_parameter("sensor_params.imuBufferLength", 800);
-  node_->declare_parameter("sensor_params.imuTimeOffset", 0.0);
+  this->declare_parameter("sensor_params.imuRate", 0.0);
+  this->declare_parameter("sensor_params.createStateEveryNthImuMeasurement", 25);
+  this->declare_parameter("sensor_params.useImuSignalLowPassFilter", false);
+  this->declare_parameter("sensor_params.imuLowPassFilterCutoffFreq", 0.0);
+  this->declare_parameter("sensor_params.imuBufferLength", 800);
+  this->declare_parameter("sensor_params.imuTimeOffset", 0.0);
 
   // Initialization Params
-  node_->declare_parameter("initialization_params.estimateGravityFromImu", false);
-  node_->declare_parameter("initialization_params.gravityMagnitude", 9.80665);
+  this->declare_parameter("initialization_params.estimateGravityFromImu", false);
+  this->declare_parameter("initialization_params.gravityMagnitude", 9.80665);
 
   // Graph Params
-  node_->declare_parameter("graph_params.realTimeSmootherUseIsam", false);
-  node_->declare_parameter("graph_params.realTimeSmootherLag", 0.0);
-  node_->declare_parameter("graph_params.useAdditionalSlowBatchSmoother", false);
-  node_->declare_parameter("graph_params.slowBatchSmootherUseIsam", false);
-  node_->declare_parameter("graph_params.gaussNewtonWildfireThreshold", 0.0);
-  node_->declare_parameter("graph_params.minOptimizationFrequency", 0.0);
-  node_->declare_parameter("graph_params.maxOptimizationFrequency", 0.0);
-  node_->declare_parameter("graph_params.additionalOptimizationIterations", 0);
-  node_->declare_parameter("graph_params.findUnusedFactorSlots", false);
-  node_->declare_parameter("graph_params.enableDetailedResults", false);
-  node_->declare_parameter("graph_params.realTimeSmootherUseCholeskyFactorization", false);
-  node_->declare_parameter("graph_params.slowBatchSmootherUseCholeskyFactorization", false);
-  node_->declare_parameter("graph_params.usingBiasForPreIntegration", false);
-  node_->declare_parameter("graph_params.optimizeReferenceFramePosesWrtWorld", false);
-  node_->declare_parameter("graph_params.optimizeExtrinsicSensorToSensorCorrectedOffset", false);
-  node_->declare_parameter("graph_params.referenceFramePosesResetThreshold", 0.0);
-  node_->declare_parameter("graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment", false);
+  this->declare_parameter("graph_params.realTimeSmootherUseIsam", false);
+  this->declare_parameter("graph_params.realTimeSmootherLag", 0.0);
+  this->declare_parameter("graph_params.useAdditionalSlowBatchSmoother", false);
+  this->declare_parameter("graph_params.slowBatchSmootherUseIsam", false);
+  this->declare_parameter("graph_params.gaussNewtonWildfireThreshold", 0.0);
+  this->declare_parameter("graph_params.minOptimizationFrequency", 0.0);
+  this->declare_parameter("graph_params.maxOptimizationFrequency", 0.0);
+  this->declare_parameter("graph_params.additionalOptimizationIterations", 0);
+  this->declare_parameter("graph_params.findUnusedFactorSlots", false);
+  this->declare_parameter("graph_params.enableDetailedResults", false);
+  this->declare_parameter("graph_params.realTimeSmootherUseCholeskyFactorization", false);
+  this->declare_parameter("graph_params.slowBatchSmootherUseCholeskyFactorization", false);
+  this->declare_parameter("graph_params.usingBiasForPreIntegration", false);
+  this->declare_parameter("graph_params.optimizeReferenceFramePosesWrtWorld", false);
+  this->declare_parameter("graph_params.optimizeExtrinsicSensorToSensorCorrectedOffset", false);
+  this->declare_parameter("graph_params.referenceFramePosesResetThreshold", 0.0);
+  this->declare_parameter("graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment", false);
 
-  node_->declare_parameter("graph_params.useWindowForMarginalsComputation", false);
-  node_->declare_parameter("graph_params.windowSizeSecondsForMarginalsComputation", 0.0);
-  node_->declare_parameter("graph_params.createReferenceAlignmentKeyframeEveryNSeconds", 0.0);
+  this->declare_parameter("graph_params.useWindowForMarginalsComputation", false);
+  this->declare_parameter("graph_params.windowSizeSecondsForMarginalsComputation", 0.0);
+  this->declare_parameter("graph_params.createReferenceAlignmentKeyframeEveryNSeconds", 0.0);
 
   // Noise Params
-  node_->declare_parameter("noise_params.accNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.integrationNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.use2ndOrderCoriolis", false);
-  node_->declare_parameter("noise_params.gyrNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.omegaCoriolis", 0.0);
-  node_->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.biasAccOmegaInit", 0.0);
-  node_->declare_parameter("noise_params.accBiasPrior", 0.0);
-  node_->declare_parameter("noise_params.gyrBiasPrior", 0.0);
-  node_->declare_parameter("noise_params.initialPositionNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.initialOrientationNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.initialVelocityNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.initialAccBiasNoiseDensity", 0.0);
-  node_->declare_parameter("noise_params.initialGyroBiasNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.accNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.integrationNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.use2ndOrderCoriolis", false);
+  this->declare_parameter("noise_params.gyrNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.omegaCoriolis", 0.0);
+  this->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.biasAccOmegaInit", 0.0);
+  this->declare_parameter("noise_params.accBiasPrior", 0.0);
+  this->declare_parameter("noise_params.gyrBiasPrior", 0.0);
+  this->declare_parameter("noise_params.initialPositionNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.initialOrientationNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.initialVelocityNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.initialAccBiasNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.initialGyroBiasNoiseDensity", 0.0);
 
   // Re-linearization Params
-  node_->declare_parameter("relinearization_params.positionReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.rotationReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.velocityReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.accBiasReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.gyrBiasReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.referenceFrameReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.calibrationReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.displacementReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.landmarkReLinTh", 0.0);
-  node_->declare_parameter("relinearization_params.relinearizeSkip", 0);
-  node_->declare_parameter("relinearization_params.enableRelinearization", false);
-  node_->declare_parameter("relinearization_params.evaluateNonlinearError", false);
-  node_->declare_parameter("relinearization_params.cacheLinearizedFactors", false);
-  node_->declare_parameter("relinearization_params.enablePartialRelinearizationCheck", false);
+  this->declare_parameter("relinearization_params.positionReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.rotationReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.velocityReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.accBiasReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.gyrBiasReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.referenceFrameReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.calibrationReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.displacementReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.landmarkReLinTh", 0.0);
+  this->declare_parameter("relinearization_params.relinearizeSkip", 0);
+  this->declare_parameter("relinearization_params.enableRelinearization", false);
+  this->declare_parameter("relinearization_params.evaluateNonlinearError", false);
+  this->declare_parameter("relinearization_params.cacheLinearizedFactors", false);
+  this->declare_parameter("relinearization_params.enablePartialRelinearizationCheck", false);
 
   // Common Params
-  node_->declare_parameter("common_params.verbosity", 0);
-  node_->declare_parameter("common_params.odomNotJumpAtStart", false);
-  node_->declare_parameter("common_params.logRealTimeStateToMemory", false);
-  node_->declare_parameter("common_params.logLatencyAndUpdateDurationToMemory", false);
+  this->declare_parameter("common_params.verbosity", 0);
+  this->declare_parameter("common_params.odomNotJumpAtStart", false);
+  this->declare_parameter("common_params.logRealTimeStateToMemory", false);
+  this->declare_parameter("common_params.logLatencyAndUpdateDurationToMemory", false);
 
   // Extrinsic frames
-  node_->declare_parameter("extrinsics.worldFrame", std::string(""));
-  node_->declare_parameter("extrinsics.odomFrame", std::string(""));
-  node_->declare_parameter("extrinsics.imuFrame", std::string(""));
-  node_->declare_parameter("extrinsics.initializeZeroYawAndPositionOfFrame", std::string(""));
-  node_->declare_parameter("extrinsics.baseLinkFrame", std::string(""));
+  this->declare_parameter("extrinsics.worldFrame", std::string(""));
+  this->declare_parameter("extrinsics.odomFrame", std::string(""));
+  this->declare_parameter("extrinsics.imuFrame", std::string(""));
+  this->declare_parameter("extrinsics.initializeZeroYawAndPositionOfFrame", std::string(""));
+  this->declare_parameter("extrinsics.baseLinkFrame", std::string(""));
 
   // Name IDs
-  node_->declare_parameter("name_ids.referenceFrameAligned", std::string(""));
-  node_->declare_parameter("name_ids.sensorFrameCorrected", std::string(""));
+  this->declare_parameter("name_ids.referenceFrameAligned", std::string(""));
+  this->declare_parameter("name_ids.sensorFrameCorrected", std::string(""));
 
   // Logging path
-  node_->declare_parameter("launch.optimizationResultLoggingPath", std::string(""));
+  this->declare_parameter("launch.optimizationResultLoggingPath", std::string(""));
 
   // Read parameters ----------------------------
   GraphMsfRos2::readParams();
@@ -133,60 +134,60 @@ void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) 
   // Messages ----------------------------
   GraphMsfRos2::initializeMessages();
 
-  tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+  tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
   // Services ----------------------------
-  GraphMsfRos2::initializeServices(*node_);
+  GraphMsfRos2::initializeServices(*this);
 
   // Time
   startTime = std::chrono::high_resolution_clock::now();
 
   // Wrap up
-  RCLCPP_INFO(node_->get_logger(), "Set up successfully.");
+  RCLCPP_INFO(this->get_logger(), "Set up successfully.");
 }
 
 void GraphMsfRos2::initializePublishers() {
-  RCLCPP_INFO(node_->get_logger(), "Initializing publishers.");
+  RCLCPP_INFO(this->get_logger(), "Initializing publishers.");
 
   // Odometry
-  pubEstOdomImu_ = node_->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
-  pubEstWorldImu_ = node_->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
-  pubOptWorldImu_ = node_->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImu_ = this->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/est_odometry_odom_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImu_ = this->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImu_ = this->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
 
   // Vector3 Variances
   pubEstWorldPosVariance_ =
-      node_->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_pos_variance", ROS_QUEUE_SIZE);
+      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_pos_variance", ROS_QUEUE_SIZE);
   pubEstWorldRotVariance_ =
-      node_->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_rot_variance", ROS_QUEUE_SIZE);
+      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_rot_variance", ROS_QUEUE_SIZE);
 
   // Velocity Marker
-  pubVelocityMarker_ = node_->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/velocity_marker", ROS_QUEUE_SIZE);
+  pubVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/velocity_marker", ROS_QUEUE_SIZE);
 
   // Paths
-  pubEstOdomImuPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstWorldImuPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
-  pubOptWorldImuPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
+  pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
+  pubOptWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
 
   // Imu Bias
-  pubAccelBias_ = node_->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
-  pubGyroBias_ = node_->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
+  pubAccelBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
+  pubGyroBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
 
   // Added Imu Measurements
-  pubAddedImuMeas_ = node_->create_publisher<sensor_msgs::msg::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
+  pubAddedImuMeas_ = this->create_publisher<sensor_msgs::msg::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
 }
 
 void GraphMsfRos2::initializeSubscribers() {
-  RCLCPP_INFO(node_->get_logger(), "Initializing subscribers.");
+  RCLCPP_INFO(this->get_logger(), "Initializing subscribers.");
 
   // Imu
-  subImu_ = node_->create_subscription<sensor_msgs::msg::Imu>("/imu_topic", rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
+  subImu_ = this->create_subscription<sensor_msgs::msg::Imu>("/imu_topic", rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
                                                               std::bind(&GraphMsfRos2::imuCallback, this, std::placeholders::_1));
 
-  RCLCPP_INFO(node_->get_logger(), "GraphMsfRos2 Initialized main IMU subscriber with topic: %s", subImu_->get_topic_name());
+  RCLCPP_INFO(this->get_logger(), "GraphMsfRos2 Initialized main IMU subscriber with topic: %s", subImu_->get_topic_name());
 }
 
 void GraphMsfRos2::initializeMessages() {
-  RCLCPP_INFO(node_->get_logger(), "Initializing messages.");
+  RCLCPP_INFO(this->get_logger(), "Initializing messages.");
 
   // Odometry
   estOdomImuMsgPtr_ = std::make_shared<nav_msgs::msg::Odometry>();
@@ -400,11 +401,11 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
     auto now = clock_->now();
     auto delay = now.seconds() - preIntegratedNavStatePtr->getTimeK();
     if (delay > 0.5) {
-      RCLCPP_WARN(node_->get_logger(), "Encountered delay of %.14f seconds.", delay);
+      RCLCPP_WARN(this->get_logger(), "Encountered delay of %.14f seconds.", delay);
       // Print now vs chrono time
       auto currentChronoTime = std::chrono::high_resolution_clock::now();
       auto chronoTimeSinceEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(currentChronoTime.time_since_epoch()).count();
-      RCLCPP_WARN(node_->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
+      RCLCPP_WARN(this->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
     }
 
     // Publish Odometry
@@ -413,7 +414,7 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
     // Publish Filtered Imu Measurements (uncomment if needed)
     // this->publishAddedImuMeas_(addedImuMeasurements, imuMsgPtr->header.stamp);
   } else if (GraphMsf::isGraphInited()) {
-    RCLCPP_WARN(node_->get_logger(), "Could not add IMU measurement.");
+    RCLCPP_WARN(this->get_logger(), "Could not add IMU measurement.");
   }
 }
 
@@ -563,8 +564,8 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         // Check whether publisher already exists
         if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
           pubPoseStampedByTopicMap_[transformTopic] =
-              node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
-          RCLCPP_INFO(node_->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
+              this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
+          RCLCPP_INFO(this->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
         }
         if (pubPoseStampedByTopicMap_[transformTopic]->get_subscription_count() > 0) {
           pubPoseStampedByTopicMap_[transformTopic]->publish(*poseWithCovarianceStampedMsgPtr);
@@ -591,8 +592,8 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         // Check whether publisher already exists
         if (pubPoseStampedByTopicMap_.find(transformTopic) == pubPoseStampedByTopicMap_.end()) {
           pubPoseStampedByTopicMap_[transformTopic] =
-              node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
-          RCLCPP_INFO(node_->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
+              this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(transformTopic, 1);
+          RCLCPP_INFO(this->get_logger(), "Initialized publisher for %s", transformTopic.c_str());
         }
         if (pubPoseStampedByTopicMap_[transformTopic]->get_subscription_count() > 0) {
           pubPoseStampedByTopicMap_[transformTopic]->publish(*poseWithCovarianceStampedMsgPtr);
