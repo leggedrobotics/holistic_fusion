@@ -17,7 +17,7 @@ namespace graph_msf {
 enum class MeasurementTypeEnum { Unary, Binary };
 
 // Enum that defines whether robust norm should be used
-enum class RobustNormEnum { None, Huber, Cauchy, Tukey };
+enum class RobustNormEnum { None, Huber, Cauchy, Tukey, GemanMcClure };
 
 /**
  * @class RobustNorm
@@ -34,6 +34,7 @@ struct RobustNorm {
   static RobustNorm Huber(const double& robustNormConstant) { return RobustNorm(RobustNormEnum::Huber, robustNormConstant); }
   static RobustNorm Cauchy(const double& robustNormConstant) { return RobustNorm(RobustNormEnum::Cauchy, robustNormConstant); }
   static RobustNorm Tukey(const double& robustNormConstant) { return RobustNorm(RobustNormEnum::Tukey, robustNormConstant); }
+  static RobustNorm GemanMcClure(const double& robustNormConstant) { return RobustNorm(RobustNormEnum::GemanMcClure, robustNormConstant); }
 
   // Getters
   [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNormEnum_; }

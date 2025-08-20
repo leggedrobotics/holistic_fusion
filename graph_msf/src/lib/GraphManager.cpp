@@ -385,6 +385,9 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
     case RobustNormEnum::Tukey:
       robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noise);
       break;
+    case RobustNormEnum::GemanMcClure:
+      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noise);
+      break;
   }
 
   // Create pose between factor and add it
