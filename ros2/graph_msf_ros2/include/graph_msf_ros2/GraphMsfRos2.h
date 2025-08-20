@@ -68,6 +68,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
                            visualization_msgs::msg::Marker& marker);
 
   // Parameter Loading -----------------------------------
+  virtual void declareRosParams();
   virtual void readParams();
 
   // Callbacks

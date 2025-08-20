@@ -167,8 +167,24 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
     return false;
   }
 
+  // Potentially convert to m/s^2
+  Eigen::Vector3d linearAccInMps2 = linearAcc;
+  if (graphConfigPtr_->isImuAccInG_) {
+    constexpr double gravityConst = 9.80665;
+    linearAccInMps2 *= gravityConst;
+  }
+
+  // Check the norm and spit out warning in case the acceleration is either too small or too big
+  if (linearAccInMps2.norm() < 2) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration is too small: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to false." << COLOR_END << std::endl;
+  } else if (linearAccInMps2.norm() > 90) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration is too big: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to true." << COLOR_END << std::endl;
+  }
+
   // Add measurement to buffer
-  returnAddedImuMeasurements = coreImuBufferPtr_->addToImuBuffer(imuTimeK, linearAcc, angularVel);
+  returnAddedImuMeasurements = coreImuBufferPtr_->addToImuBuffer(imuTimeK, linearAccInMps2, angularVel);
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);

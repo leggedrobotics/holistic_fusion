@@ -37,6 +37,7 @@ void GraphMsfRos2::readParams() {
       1.0 / (graphConfigPtr_->imuRate_ / graphConfigPtr_->createStateEveryNthImuMeasurement_);
   graphConfigPtr_->imuBufferLength_ = tryGetParam<int>(this, "sensor_params.imuBufferLength");
   graphConfigPtr_->imuTimeOffset_ = tryGetParam<double>(this, "sensor_params.imuTimeOffset");
+  graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>(this, "sensor_params.isImuAccInG");
 
   // Initialization Params
   graphConfigPtr_->estimateGravityFromImuFlag_ =

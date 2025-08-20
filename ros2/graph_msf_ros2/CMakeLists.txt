@@ -46,6 +46,7 @@ include_directories(
 add_library(${PROJECT_NAME} SHARED
   src/lib/StaticTransformsTf.cpp
   src/lib/GraphMsfRos2.cpp
+  src/lib/declareRosParams.cpp
   src/lib/readParams.cpp
   src/lib/conversions.cpp
 )
@@ -114,11 +115,11 @@ install(DIRECTORY include/
 )
 
 # Install the export file for downstream projects
-install(EXPORT ${PROJECT_NAME}Targets
-    FILE ${PROJECT_NAME}Targets.cmake
-    NAMESPACE ${PROJECT_NAME}::
-    DESTINATION share/${PROJECT_NAME}/cmake
-)
+# install(EXPORT ${PROJECT_NAME}Targets
+#     FILE ${PROJECT_NAME}Targets.cmake
+#     NAMESPACE ${PROJECT_NAME}::
+#     DESTINATION share/${PROJECT_NAME}/cmake
+# )
 
 # Version
 include(CMakePackageConfigHelpers)
@@ -135,12 +136,20 @@ configure_package_config_file(
   INSTALL_DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-# Files
+# Cmake Files
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-# Export ament package
+##
+# ROS2 Ament Package
+##
+
+# Export the package for ament
+ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+ament_export_dependencies()
+
+# Finish ament package setup
 ament_package()
