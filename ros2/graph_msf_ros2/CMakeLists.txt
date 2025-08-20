@@ -115,11 +115,11 @@ install(DIRECTORY include/
 )
 
 # Install the export file for downstream projects
-# install(EXPORT ${PROJECT_NAME}Targets
-#     FILE ${PROJECT_NAME}Targets.cmake
-#     NAMESPACE ${PROJECT_NAME}::
-#     DESTINATION share/${PROJECT_NAME}/cmake
-# )
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION share/${PROJECT_NAME}/cmake
+)
 
 # Version
 include(CMakePackageConfigHelpers)
