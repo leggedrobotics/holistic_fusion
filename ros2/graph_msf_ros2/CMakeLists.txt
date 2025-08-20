@@ -148,7 +148,7 @@ install(FILES
 ##
 
 # Export the package for ament
-ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+# ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
 ament_export_dependencies()
 
 # Finish ament package setup
