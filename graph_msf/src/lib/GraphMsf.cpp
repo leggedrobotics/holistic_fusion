@@ -147,13 +147,16 @@ bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>
 // Adders --------------------------------
 /// Main: IMU -----------------------
 bool GraphMsf::addCoreImuMeasurementAndGetState(
-    const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+    const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, double imuTimeK,
     std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements) {
   // Setup -------------------------
   // Increase counter
   ++imuCallbackCounter_;
+
+  // Adapt time stamp
+  imuTimeK += graphConfigPtr_->imuTimeOffset_;
 
   // First Iteration
   if (preIntegratedNavStatePtr_ == nullptr) {
