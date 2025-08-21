@@ -100,18 +100,23 @@ install(PROGRAMS
 ## Install ##
 #############
 
+# Set standard installation directories
+include(GNUInstallDirs)
+
 # Export the include directories and linked libraries
 install(
     TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets  # Export the target for downstream usage
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+    INCLUDES DESTINATION include
 )
 
 # Install the include directory
-install(DIRECTORY include/
-        DESTINATION include
+install(
+  DIRECTORY include/
+  DESTINATION include
 )
 
 # Install the export file for downstream projects
@@ -149,7 +154,9 @@ install(FILES
 
 # Export the package for ament
 # ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
-ament_export_dependencies()
+ament_export_dependencies(
+  graph_msf
+)
 
 # Finish ament package setup
 ament_package()
