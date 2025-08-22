@@ -246,11 +246,13 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                                                  graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
                                                     .finished());  // acc, acc, acc, gyro, gyro, gyro
 
-        // Call update function to fix it
-        gtsam::NonlinearFactorGraph newFactorGraph = gtsam::NonlinearFactorGraph();
-        newFactorGraph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(key), this->latestImuBias_, priorBiasNoise));
+        // Add additional factor for bias
+        gtsam::NonlinearFactorGraph newGraphFactorsExtended = newGraphFactors;
+        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(key, this->latestImuBias_, priorBiasNoise));
+        // Copy back
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         // Recursion
-        return update(newFactorGraph, newGraphValues, newGraphKeysTimeStampMap);
+        return update(newGraphFactorsExtended, newGraphValues, newGraphKeysTimeStampMap);
       } else {
         return false;
       }
