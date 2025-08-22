@@ -2,10 +2,14 @@
 #define GRAPHMSFROS_H
 
 // std
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
+#include <thread>
 
 // ROS2
 #include <tf2_ros/transform_broadcaster.h>
@@ -28,11 +32,34 @@
 
 namespace graph_msf {
 
+// Structure to hold non-time-critical data for worker thread processing
+struct NonTimeCriticalData {
+  Eigen::Matrix<double, 6, 6> poseCovarianceRos;
+  Eigen::Matrix<double, 6, 6> twistCovarianceRos;
+  Eigen::Vector3d positionVarianceRos;
+  Eigen::Vector3d orientationVarianceRos;
+  std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedNavStatePtr;
+  std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
+
+  NonTimeCriticalData(const Eigen::Matrix<double, 6, 6>& poseCovariance,
+                      const Eigen::Matrix<double, 6, 6>& twistCovariance,
+                      const Eigen::Vector3d& positionVariance,
+                      const Eigen::Vector3d& orientationVariance,
+                      std::shared_ptr<const graph_msf::SafeIntegratedNavState> integratedState,
+                      std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedState)
+      : poseCovarianceRos(poseCovariance),
+        twistCovarianceRos(twistCovariance),
+        positionVarianceRos(positionVariance),
+        orientationVarianceRos(orientationVariance),
+        integratedNavStatePtr(integratedState),
+        optimizedStateWithCovarianceAndBiasPtr(optimizedState) {}
+};
+
 class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rclcpp::Node {
  public:
   GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOptions& options);
   // Destructor
-  ~GraphMsfRos2() override = default;
+  ~GraphMsfRos2() override;
 
   // Setup
   void setup(std::shared_ptr<StaticTransforms> staticTransformsPtr);
@@ -162,6 +189,15 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
   double lastIntegratedStateTimestamp_ = 0.0;
+
+  // Worker thread pool for non-time-critical publishing
+  std::queue<NonTimeCriticalData> nonTimeCriticalQueue_;
+  std::mutex queueMutex_;
+  std::condition_variable queueCondition_;
+  std::thread workerThread_;
+  std::atomic<bool> shutdownRequested_{false};
+  
+  void workerThreadFunction();
 
   // Mutex
   std::mutex rosPublisherMutex_;

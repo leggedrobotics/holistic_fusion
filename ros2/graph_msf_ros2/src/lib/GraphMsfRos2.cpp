@@ -18,6 +18,22 @@ GraphMsfRos2::GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOption
   // Configurations ----------------------------
   // Graph Config
   graphConfigPtr_ = std::make_shared<GraphConfig>();
+  
+  // Start worker thread for non-time-critical publishing
+  workerThread_ = std::thread(&GraphMsfRos2::workerThreadFunction, this);
+}
+
+GraphMsfRos2::~GraphMsfRos2() {
+  RCLCPP_INFO(this->get_logger(), "GraphMsfRos2-Destructor called.");
+  
+  // Signal worker thread to shutdown
+  shutdownRequested_ = true;
+  queueCondition_.notify_all();
+  
+  // Wait for worker thread to finish
+  if (workerThread_.joinable()) {
+    workerThread_.join();
+  }
 }
 
 void GraphMsfRos2::setup(std::shared_ptr<StaticTransforms> staticTransformsPtr) {
@@ -69,26 +85,32 @@ void GraphMsfRos2::initializePublishers() {
   pubEstWorldImu_ = this->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/est_odometry_world_imu", ROS_QUEUE_SIZE);
   pubOptWorldImu_ = this->create_publisher<nav_msgs::msg::Odometry>("/graph_msf/opt_odometry_world_imu", ROS_QUEUE_SIZE);
 
+  // Non-time-critical publishers with best-effort and larger queue
+  auto best_effort_qos = rclcpp::QoS(100)
+                             .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT)
+                             .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE)
+                             .history(RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+
   // Vector3 Variances
   pubEstWorldPosVariance_ =
-      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_pos_variance", ROS_QUEUE_SIZE);
+      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_pos_variance", best_effort_qos);
   pubEstWorldRotVariance_ =
-      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_rot_variance", ROS_QUEUE_SIZE);
+      this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_rot_variance", best_effort_qos);
 
   // Velocity Marker
-  pubVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/velocity_marker", ROS_QUEUE_SIZE);
+  pubVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/velocity_marker", best_effort_qos);
 
   // Paths
-  pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", ROS_QUEUE_SIZE);
-  pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", ROS_QUEUE_SIZE);
-  pubOptWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", ROS_QUEUE_SIZE);
+  pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", best_effort_qos);
+  pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", best_effort_qos);
+  pubOptWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", best_effort_qos);
 
   // Imu Bias
-  pubAccelBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/accel_bias", ROS_QUEUE_SIZE);
-  pubGyroBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/gyro_bias", ROS_QUEUE_SIZE);
+  pubAccelBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/accel_bias", best_effort_qos);
+  pubGyroBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/gyro_bias", best_effort_qos);
 
   // Added Imu Measurements
-  pubAddedImuMeas_ = this->create_publisher<sensor_msgs::msg::Imu>("/graph_msf/added_imu_meas", ROS_QUEUE_SIZE);
+  pubAddedImuMeas_ = this->create_publisher<sensor_msgs::msg::Imu>("/graph_msf/added_imu_meas", best_effort_qos);
 }
 
 void GraphMsfRos2::initializeSubscribers() {
@@ -96,7 +118,7 @@ void GraphMsfRos2::initializeSubscribers() {
 
   // Imu
   subImu_ = this->create_subscription<sensor_msgs::msg::Imu>("/imu_topic", rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
-                                                              std::bind(&GraphMsfRos2::imuCallback, this, std::placeholders::_1));
+                                                             std::bind(&GraphMsfRos2::imuCallback, this, std::placeholders::_1));
 
   RCLCPP_INFO(this->get_logger(), "GraphMsfRos2 Initialized main IMU subscriber with topic: %s", subImu_->get_topic_name());
 }
@@ -343,18 +365,21 @@ void GraphMsfRos2::publishState(
   graph_msf::GraphMsfRos2::extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos,
                                                                 optimizedStateWithCovarianceAndBiasPtr);
 
-  // Odometry messages
+  // Odometry messages - publish immediately (time-critical)
   publishImuOdoms(integratedNavStatePtr, poseCovarianceRos, twistCovarianceRos);
 
   // Variances (only diagonal elements)
   Eigen::Vector3d positionVarianceRos = poseCovarianceRos.block<3, 3>(0, 0).diagonal();
   Eigen::Vector3d orientationVarianceRos = poseCovarianceRos.block<3, 3>(3, 3).diagonal();
 
-  // Publish non-time critical data in a separate thread
-  std::thread publishNonTimeCriticalDataThread(&GraphMsfRos2::publishNonTimeCriticalData, this, poseCovarianceRos, twistCovarianceRos,
-                                               positionVarianceRos, orientationVarianceRos, integratedNavStatePtr,
-                                               optimizedStateWithCovarianceAndBiasPtr);
-  publishNonTimeCriticalDataThread.detach();
+  // Queue non-time critical data for worker thread processing
+  {
+    std::lock_guard<std::mutex> lock(queueMutex_);
+    nonTimeCriticalQueue_.emplace(poseCovarianceRos, twistCovarianceRos,
+                                  positionVarianceRos, orientationVarianceRos,
+                                  integratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  }
+  queueCondition_.notify_one();
 }
 
 // Copy the arguments in order to be thread safe
@@ -472,8 +497,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         std::string transformTopic = "/graph_msf/transform_" + worldFrameName + "_to_" + mapFrameName + referenceFrameAlignedNameId;
         auto poseWithCovarianceStampedMsgPtr = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
         addToPoseWithCovarianceStampedMsg(
-            poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(),
-            rclcpp::Time(timeStamp * 1e9), T_W_M,
+            poseWithCovarianceStampedMsgPtr, staticTransformsPtr_->getWorldFrame(), rclcpp::Time(timeStamp * 1e9), T_W_M,
             optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(
                 framePairTransformMapIterator.first.first, framePairTransformMapIterator.first.second));
         // Check whether publisher already exists
@@ -487,8 +511,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         }
 
         // C. Publish TF Tree
-        publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId,
-                               timeStamp, T_W_M);
+        publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId, timeStamp, T_W_M);
       }
       // Case 2: Other transformations
       else {
@@ -500,8 +523,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         std::string transformTopic = "/graph_msf/transform_" + sensorFrameName + "_to_" + sensorFrameNameCorrected;
         auto poseWithCovarianceStampedMsgPtr = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
         addToPoseWithCovarianceStampedMsg(
-            poseWithCovarianceStampedMsgPtr, sensorFrameName, rclcpp::Time(timeStamp * 1e9),
-            T_sensor_sensorCorrected,
+            poseWithCovarianceStampedMsgPtr, sensorFrameName, rclcpp::Time(timeStamp * 1e9), T_sensor_sensorCorrected,
             optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance().rv_T_frame1_frame2(sensorFrameName,
                                                                                                                sensorFrameNameCorrected));
         // Check whether publisher already exists
@@ -515,11 +537,10 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
         }
 
         // B. Publish TF Tree
-        publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, timeStamp,
-                               T_sensor_sensorCorrected);
+        publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, timeStamp, T_sensor_sensorCorrected);
       }
-    } // for each frame pair transform
-  }  // Publishing of Transforms
+    }  // for each frame pair transform
+  }    // Publishing of Transforms
 }
 
 // Lower Level Functions
@@ -625,6 +646,33 @@ void GraphMsfRos2::publishAddedImuMeas(const Eigen::Matrix<double, 6, 1>& addedI
     addedImuMeasMsg.angular_velocity.y = addedImuMeas(4);
     addedImuMeasMsg.angular_velocity.z = addedImuMeas(5);
     pubAddedImuMeas_->publish(addedImuMeasMsg);
+  }
+}
+
+void GraphMsfRos2::workerThreadFunction() {
+  while (!shutdownRequested_) {
+    std::unique_lock<std::mutex> lock(queueMutex_);
+    
+    // Wait for work or shutdown signal
+    queueCondition_.wait(lock, [this] { return !nonTimeCriticalQueue_.empty() || shutdownRequested_; });
+    
+    // Process all queued work
+    while (!nonTimeCriticalQueue_.empty() && !shutdownRequested_) {
+      // Get the data from the queue
+      NonTimeCriticalData data = std::move(nonTimeCriticalQueue_.front());
+      nonTimeCriticalQueue_.pop();
+      
+      // Unlock while processing to avoid blocking the main thread
+      lock.unlock();
+      
+      // Process the non-time-critical data
+      publishNonTimeCriticalData(data.poseCovarianceRos, data.twistCovarianceRos,
+                                 data.positionVarianceRos, data.orientationVarianceRos,
+                                 data.integratedNavStatePtr, data.optimizedStateWithCovarianceAndBiasPtr);
+      
+      // Re-lock for the next iteration
+      lock.lock();
+    }
   }
 }
 
