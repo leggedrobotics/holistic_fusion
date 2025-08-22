@@ -248,7 +248,7 @@ void GraphMsfRos2::createVelocityMarker(const std::string& referenceFrameName, c
   geometry_msgs::msg::Point startPoint, endPoint;
   startPoint.x = 0.0;  // origin
   startPoint.y = 0.0;  // origin
-  startPoint.z = 1.0;  // 1 meter above origin
+  startPoint.z = 0.0;  // 0 meter above origin
   endPoint.x = startPoint.x + velocity(0);
   endPoint.y = startPoint.y + velocity(1);
   endPoint.z = startPoint.z + velocity(2);
