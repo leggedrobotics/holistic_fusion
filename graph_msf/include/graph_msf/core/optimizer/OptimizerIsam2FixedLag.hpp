@@ -234,10 +234,16 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       const gtsam::Symbol symbol(key);
       const char stateCategory = symbol.chr();
       if (stateCategory == 'b') {
-        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Last estimated bias for key " << gtsam::Symbol(key) << ": "
+        const gtsam::Key& biasKey = key;  // Alias
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Latest estimated bias for key " << symbol << ": "
                   << this->latestImuBias_ << std::endl;
+        // Get number component of symbol
+        const int symbolNumber = symbol.index();
+        gtsam::Key poseKey = gtsam::symbol_shorthand::X(symbolNumber);
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Latest estimated pose for key " << gtsam::Symbol(poseKey) << ": "
+                  << this->latestPose_ << std::endl;
         // Uncertainty
-        auto priorBiasNoise =
+        const auto priorBiasNoise =
             gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasNoiseDensity_,  // m/s^2
                                                  graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
                                                  graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
@@ -246,14 +252,27 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                                                  graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
                                                     .finished());  // acc, acc, acc, gyro, gyro, gyro
 
+        const auto priorPoseNoise =
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialOrientationNoiseDensity_,  // rad
+                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
+                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
+                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
+                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
+                                                 graphConfigPtr_->initialPositionNoiseDensity_)                         // m
+                                                    .finished());
         // Add additional factor for bias
         gtsam::NonlinearFactorGraph newGraphFactorsExtended = newGraphFactors;
-        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(key, this->latestImuBias_, priorBiasNoise));
+        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(biasKey, this->latestImuBias_, priorBiasNoise));
+        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey, this->latestPose_, priorPoseNoise));
         // Copy back
         *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         // Recursion
         return update(newGraphFactorsExtended, newGraphValues, newGraphKeysTimeStampMap);
       } else {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                  << " The key causing the issue is not a bias key. Currently, only bias keys can be fixed automatically. Aborting "
+                     "optimization."
+                  << COLOR_END << std::endl;
         return false;
       }
       throw std::runtime_error(indeterminantLinearSystemException.what());

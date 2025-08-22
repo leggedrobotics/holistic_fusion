@@ -352,7 +352,6 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
                                               const double timeKm1, const double timeK, const double rate,
                                               const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
   // Find corresponding keys in graph
-  // Find corresponding keys in graph
   const double maxLidarTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance{0.0};
@@ -552,6 +551,7 @@ void GraphManager::updateGraph() {
   // A. NavState ------------------------------
   gtsam::NavState resultNavState =
       calculateNavStateAtGeneralKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
+  rtOptimizerPtr_->addLatestPoseBelief(resultNavState.pose());
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);

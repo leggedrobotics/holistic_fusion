@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
+#include <gtsam/geometry/Pose3.h>
 
 // Workspace
 #include "graph_msf/config/GraphConfig.h"
@@ -53,12 +54,18 @@ class OptimizerBase {
     latestImuBias_ = imuBias;
   }
 
+  // Add latest pose before optimization
+  virtual void addLatestPoseBelief(const gtsam::Pose3& pose) {
+    latestPose_ = pose;
+  }
+
  protected:
   // Config
   std::shared_ptr<GraphConfig> graphConfigPtr_;
 
   // Latest IMU bias
   gtsam::imuBias::ConstantBias latestImuBias_;
+  gtsam::Pose3 latestPose_;
 };
 
 }  // namespace graph_msf
