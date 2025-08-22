@@ -48,9 +48,17 @@ class OptimizerBase {
   // Marginal Covariance
   virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
 
+  // Add latest IMU bias before optimization
+  virtual void addLatestImuBiasBelief(const gtsam::imuBias::ConstantBias& imuBias) {
+    latestImuBias_ = imuBias;
+  }
+
  protected:
   // Config
   std::shared_ptr<GraphConfig> graphConfigPtr_;
+
+  // Latest IMU bias
+  gtsam::imuBias::ConstantBias latestImuBias_;
 };
 
 }  // namespace graph_msf

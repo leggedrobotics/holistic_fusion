@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_ISAM2_FIXED_LAG_HPP
 
 // GTSAM
+#include <gtsam/linear/linearExceptions.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
@@ -216,6 +217,46 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
     }
+    // Case 5: Typical indeterminant linear system
+    catch (const gtsam::IndeterminantLinearSystemException& indeterminantLinearSystemException) {
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminantLinearSystem exception while optimizing graph: '"
+                << indeterminantLinearSystemException.what() << "'" << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
+                << " This happens if the linear system is indeterminant, which usually indicates that there are not enough constraints to "
+                   "solve for all variables."
+                << std::endl;
+
+      // Get key
+      gtsam::Key key = indeterminantLinearSystemException.nearbyVariable();
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " The key causing the issue is: " << gtsam::Symbol(key) << std::endl;
+
+      // If bias --> fix graph
+      const gtsam::Symbol symbol(key);
+      const char stateCategory = symbol.chr();
+      if (stateCategory == 'b') {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Last estimated bias for key " << gtsam::Symbol(key) << ": "
+                  << this->latestImuBias_ << std::endl;
+        // Uncertainty
+        auto priorBiasNoise =
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasNoiseDensity_,  // m/s^2
+                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
+                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
+                                                    .finished());  // acc, acc, acc, gyro, gyro, gyro
+
+        // Call update function to fix it
+        gtsam::NonlinearFactorGraph newFactorGraph = gtsam::NonlinearFactorGraph();
+        newFactorGraph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(key), this->latestImuBias_, priorBiasNoise));
+        // Recursion
+        return update(newFactorGraph, newGraphValues, newGraphKeysTimeStampMap);
+      } else {
+        return false;
+      }
+      throw std::runtime_error(indeterminantLinearSystemException.what());
+    }
+
     if (!optimizedAtLeastOnceFlag_) {
       optimizedAtLeastOnceFlag_ = true;
     }
