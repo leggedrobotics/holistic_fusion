@@ -43,6 +43,14 @@ class PitchFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @brief vector of errors
    */
   gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
+    // If close to singularity, do not add measurement
+    if (std::abs(robotPose.rotation().pitch()) >= M_PI / 2.0 - 0.1) {
+      if (H_Ptr) {
+        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+      }
+      return gtsam::Vector1::Zero();
+    }
+
     // calculate error
     double pitchError = robotPose.rotation().pitch(H_Ptr) - pitch_;
 
