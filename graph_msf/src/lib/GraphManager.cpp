@@ -555,6 +555,7 @@ void GraphManager::updateGraph() {
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);
+  // gtsam::Matrix resultAccBiasCov = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::B(currentPropagatedKey));
   // C. Compute & Transform Covariances ------------------------------
   // Pose Covariance in World Frame
   gtsam::Matrix66 resultPoseCovarianceWorldFrame =

@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef GRAPH_MSF_HEADING_FACTOR_H
-#define GRAPH_MSF_HEADING_FACTOR_H
+#ifndef GRAPH_MSF_ROLL_FACTOR_H
+#define GRAPH_MSF_ROLL_FACTOR_H
 
 // CPP
 #include <boost/none.hpp>
@@ -23,20 +23,20 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 /**
- * Factor to estimate rotation given gnss robot heading
+ * Factor to estimate rotation given robot roll
  */
-class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
   /**
    * Constructor of factor that estimates nav to body rotation bRn
    * @param key of the unknown rotation bRn in the factor graph
-   * @param measured magnetometer reading, a 3-vector
+   * @param measured roll reading
    * @param model of the additive Gaussian noise that is assumed
    */
-  YawFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), yaw_(yaw) {}
+  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), roll_(roll) {}
 
   // Destructor
-  virtual ~YawFactor() {}
+  virtual ~RollFactor() {}
 
   /**
    * Evaluate error function
@@ -44,24 +44,24 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    */
   gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
     // calculate error
-    double yawError = robotPose.rotation().yaw(H_Ptr) - yaw_;
+    double rollError = robotPose.rotation().roll(H_Ptr) - roll_;
 
     // Smaller half circle
-    while (yawError < -M_PI) yawError += 2 * M_PI;
-    while (yawError > M_PI) yawError -= 2 * M_PI;
+    while (rollError < -M_PI) rollError += 2 * M_PI;
+    while (rollError > M_PI) rollError -= 2 * M_PI;
 
     // Jacobian
     if (H_Ptr) {
       (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
     }
 
-    return gtsam::Vector1(yawError);
+    return gtsam::Vector1(rollError);
   }
 
  private:
-  double yaw_;  // yaw measurement
+  double roll_;  // roll measurement
 };
 
 }  // namespace graph_msf
 
-#endif  // GRAPH_MSF_HEADING_FACTOR_H
+#endif  // GRAPH_MSF_ROLL_FACTOR_H

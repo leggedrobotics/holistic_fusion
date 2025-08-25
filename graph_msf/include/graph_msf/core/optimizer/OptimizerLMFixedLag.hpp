@@ -41,7 +41,7 @@ class OptimizerLMFixedLag : public OptimizerLM {
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) override {
     // Try to update
     try {
       fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);

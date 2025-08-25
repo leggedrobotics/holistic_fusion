@@ -43,7 +43,15 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) {
+    // Limit recursion depth to prevent infinite loops
+    if (depth > 5) {
+      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START 
+                << " Maximum recursion depth reached (" << depth << "). Aborting optimization." 
+                << COLOR_END << std::endl;
+      return false;
+    }
+
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
     gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
 
@@ -267,7 +275,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         // Copy back
         *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         // Recursion
-        return update(newGraphFactorsExtended, newGraphValues, newGraphKeysTimeStampMap);
+        return update(newGraphFactorsExtended, newGraphValues, newGraphKeysTimeStampMap, depth + 1);
       } else {
         std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                   << " The key causing the issue is not a bias key. Currently, only bias keys can be fixed automatically. Aborting "

@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Transformation Functions ---------------------------------------------------
+// Remove roll and pitch
 void inPlaceRemoveRollPitch(Eigen::Isometry3d& T) {
   // Extract the rotation matrix
   gtsam::Rot3 R(T.rotation());
@@ -25,6 +26,11 @@ void inPlaceRemoveRollPitch(Eigen::Isometry3d& T) {
   R = gtsam::Rot3::Ypr(R.yaw(), 0.0, 0.0);
   // Set the rotation matrix
   T.linear() = R.matrix();
+}
+// Calculate yaw from Isometry
+double getYawFromIsometry(const Eigen::Isometry3d& T) {
+  gtsam::Rot3 R(T.rotation());
+  return R.yaw();
 }
 
 // Creation of Files -----------------------------------------------------------
