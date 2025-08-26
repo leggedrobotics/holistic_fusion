@@ -43,6 +43,7 @@ class GraphMsf {
   bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2, const std::string& frame1,
                                  const std::string& frame2);
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
+  bool initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
 
   // Trigger offline smoother optimization
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);

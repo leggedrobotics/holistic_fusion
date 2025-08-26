@@ -308,6 +308,15 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   }
 }
 
+// Set T_W_F
+bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
+  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>()
+          .setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
+  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix()
+            << std::endl;
+  return true;
+}
+
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
@@ -385,7 +394,8 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
       robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noise);
       break;
     case RobustNormEnum::GemanMcClure:
-      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noise);
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noise);
       break;
   }
 
@@ -555,9 +565,9 @@ void GraphManager::updateGraph() {
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);
-  // gtsam::Matrix resultAccBiasCov = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::B(currentPropagatedKey));
-  // C. Compute & Transform Covariances ------------------------------
-  // Pose Covariance in World Frame
+  // gtsam::Matrix resultAccBiasCov =
+  // rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::B(currentPropagatedKey)); C. Compute & Transform
+  // Covariances ------------------------------ Pose Covariance in World Frame
   gtsam::Matrix66 resultPoseCovarianceWorldFrame =
       calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
   // Velocity Covariance

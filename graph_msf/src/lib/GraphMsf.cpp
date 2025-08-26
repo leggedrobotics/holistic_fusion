@@ -144,6 +144,13 @@ bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>
                                    unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
 }
 
+bool GraphMsf::initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
+  // Set the initial transform
+  std::cout << "Setting initial transform from world frame to " << fixedFrame << " frame: " << T_W_F.matrix() << std::endl;
+  // Actually set the transform
+  return graphMgrPtr_->setInitialWorldFrameToFixedFrameTransform(T_W_F, fixedFrame);
+}
+
 // Adders --------------------------------
 /// Main: IMU -----------------------
 bool GraphMsf::addCoreImuMeasurementAndGetState(
