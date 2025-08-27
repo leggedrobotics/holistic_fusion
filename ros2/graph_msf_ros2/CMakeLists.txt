@@ -148,15 +148,15 @@ install(FILES
   DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-##
-# ROS2 Ament Package
-##
+# ##
+# # ROS2 Ament Package
+# ##
 
-# Export the package for ament
-ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
-ament_export_dependencies(
-  graph_msf
-)
+# # Export the package for ament
+# ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+# ament_export_dependencies(
+#   graph_msf
+# )
 
-# Finish ament package setup
-ament_package()
+# # Finish ament package setup
+# ament_package()
