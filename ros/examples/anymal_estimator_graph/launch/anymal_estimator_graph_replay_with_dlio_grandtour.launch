@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Config -->
+    <arg name="using_gnss_unary" default="true"/>
+
+    <!-- Input Topics -->
+    <arg name="imu_topic_name" default="/boxi/cpt7/imu"/>
+
+    <arg name="legged_odometry_pose_topic_name" default="/anymal/state_estimator/pose"/>
+    <arg name="legged_odometry_odom_topic_name" default="/anymal/state_estimator/odometry"/>
+
+    <arg name="gnss_topic_name" default="/boxi/inertial_explorer/tc/navsatfix"/>
+    <arg name="lidar_odometry_topic_name" default="/boxi/dlio/lidar_map_odometry"/>
+
+    <!-- Launch Stack -->
+    <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
+        <!-- Config -->
+        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <!-- Input Topics -->
+        <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
+        <arg name="legged_odometry_pose_topic_name" value="$(arg legged_odometry_pose_topic_name)"/>
+        <arg name="legged_odometry_odom_topic_name" value="$(arg legged_odometry_odom_topic_name)"/>
+        <arg name="gnss_topic_name" value="$(arg gnss_topic_name)"/>
+        <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
+    </include>
+
+
+    <!-- Launch Box Model -->
+    <!-- <include file="$(find box_model)/launch/boxi_standalone.launch"/> -->
+
+
+
+</launch>
