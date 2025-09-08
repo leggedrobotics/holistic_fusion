@@ -61,7 +61,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 1: Catching the failure of marginalization (as some states which should be marginalized have not been optimized before)
     catch (const std::out_of_range& outOfRangeException) {
-      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Out of Range exception while optimizing graph: '"
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " OutOfRange-Exception while optimizing graph: '"
                 << outOfRangeException.what() << "'." << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                 << " This happens if the FixedLagSmoother tries to marginalize out states that have never been optimized before. This e.g. "

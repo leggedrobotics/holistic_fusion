@@ -725,7 +725,7 @@ void GraphManager::updateGraph() {
         catch (const std::out_of_range& exception) {
           // Only remove/deactivate measurements that are still active and have been optimized before
           if (framePairKeyMapIterator.second.getNumberStepsOptimized() > 0) {
-            REGULAR_COUT << RED_START << " OutOfRange-exception while querying the active transformation and/or covariance at key "
+            REGULAR_COUT << RED_START << " OutOfRange-Exception while querying the active transformation and/or covariance at key "
                          << gtsam::Symbol(gtsamKey) << ", for frame pair " << framePairKeyMapIterator.first.first << ","
                          << framePairKeyMapIterator.first.second << std::endl
                          << " This happens if the requested variable is outside of the smoother window (e.g. because corresponding "
