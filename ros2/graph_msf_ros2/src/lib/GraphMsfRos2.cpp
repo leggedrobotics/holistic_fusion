@@ -397,15 +397,15 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
                                                  imuMsgPtr->header.stamp.sec + 1e-9 * imuMsgPtr->header.stamp.nanosec,
                                                  preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // Encountered Delay
-    auto now = clock_->now();
-    auto delay = now.seconds() - preIntegratedNavStatePtr->getTimeK();
-    if (delay > 0.5) {
-      RCLCPP_WARN(node_->get_logger(), "Encountered delay of %.14f seconds.", delay);
-      // Print now vs chrono time
-      auto currentChronoTime = std::chrono::high_resolution_clock::now();
-      auto chronoTimeSinceEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(currentChronoTime.time_since_epoch()).count();
-      RCLCPP_WARN(node_->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
-    }
+    // auto now = clock_->now();
+    // auto delay = now.seconds() - preIntegratedNavStatePtr->getTimeK();
+    // if (delay > 0.5) {
+    //   RCLCPP_WARN(node_->get_logger(), "Encountered delay of %.14f seconds.", delay);
+    //   // Print now vs chrono time
+    //   auto currentChronoTime = std::chrono::high_resolution_clock::now();
+    //   auto chronoTimeSinceEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(currentChronoTime.time_since_epoch()).count();
+    //   RCLCPP_WARN(node_->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
+    // }
 
     // Publish Odometry
     this->publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);

@@ -38,6 +38,10 @@ void TrajectoryAlignmentHandler::addR3Position(Eigen::Vector3d position, double 
   trajectoryAlignment_.addR3Position(position, time);
 }
 
+void TrajectoryAlignmentHandler::addR3PositionWithStdDev(Eigen::Vector3d position, double time, Eigen::Vector3d stdDev) {
+  trajectoryAlignment_.addR3PositionWithStdDev(position, time, stdDev);
+}
+
 void TrajectoryAlignmentHandler::setR3Rate(const double& r3Rate) {
   trajectoryAlignment_.setR3Rate(r3Rate);
 }

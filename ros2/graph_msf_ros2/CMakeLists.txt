@@ -2,7 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 project(graph_msf_ros2)
 
 # Compile as C++17
-add_compile_options(-std=c++17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+## Compile as C++17, supported in ROS Noetic and newer
+# add_compile_options(-std=c++17)
+
+add_compile_options(
+  -O3 -mtune=native -flto -funroll-loops
+  -fno-math-errno)
 
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)

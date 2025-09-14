@@ -50,6 +50,30 @@ bool B2WStaticTransforms::findTransformations() {
               << " " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
     lv_T_frame1_frame2(lidarOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).inverse();
   }
+  
+  // Imu to GNSS Link ---
+  if (useGnssFlag_) {
+    REGULAR_COUT << COLOR_END << " Waiting for transform between " << imuFrame_ << " and " << gnssFrame_ << " for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, gnssFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    eigenTransform = tf2::transformToEigen(transform.transform);
+    lv_T_frame1_frame2(imuFrame_, gnssFrame_) = eigenTransform;
+
+    std::cout << YELLOW_START << "B2W-StaticTransforms" << COLOR_END << " Translation I_GNSS: " << imuFrame_ << " " << gnssFrame_
+              << " " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).translation() << std::endl;
+    lv_T_frame1_frame2(gnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssFrame_).inverse();
+  }
+
+  if (useLioBetweenOdometryFlag_) {
+    REGULAR_COUT << COLOR_END << " Waiting for transform between " << imuFrame_ << " and " << lidarBetweenFrame_ << " for 10 seconds." << std::endl;
+    transform = tf_buffer_->lookupTransform(imuFrame_, lidarBetweenFrame_, tf2::TimePointZero, tf2::durationFromSec(1.0));
+    eigenTransform = tf2::transformToEigen(transform.transform);
+    lv_T_frame1_frame2(imuFrame_, lidarBetweenFrame_) = eigenTransform;
+
+    std::cout << YELLOW_START << "B2W-StaticTransforms" << COLOR_END << " Translation I_Lidar: " << imuFrame_ << " " << lidarBetweenFrame_
+              << " " << rv_T_frame1_frame2(imuFrame_, lidarBetweenFrame_).translation() << std::endl;
+    lv_T_frame1_frame2(lidarBetweenFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lidarBetweenFrame_).inverse();
+  }
+
 
   // Imu to VIO Link ---
   if (useVioOdometryFlag_) {

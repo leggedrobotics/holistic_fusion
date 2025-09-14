@@ -107,9 +107,17 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
 
     // Transform position to imu frame
     Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
+
+    // Print the rotation matrix from world frame to IMU frame
+    REGULAR_COUT << GREEN_START << " R_W_I0: \n" << R_W_I0 << COLOR_END << std::endl;
+
     // TODO: fixedFrame not necessarily world
     Eigen::Vector3d W_t_W_I0 =
         W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
+
+
+    
+
     // Set Position
     preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStartFlag_);
 
@@ -373,6 +381,36 @@ Eigen::Vector3d GraphMsf::W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W
   // Static transforms
   const Eigen::Isometry3d& T_frame2_frame1 = staticTransformsPtr_->rv_T_frame1_frame2(frame2, frame1);
   const Eigen::Vector3d& frame1_t_frame1_frame2 = staticTransformsPtr_->rv_T_frame1_frame2(frame1, frame2).translation();
+
+  // Debug prints for transforms
+  REGULAR_COUT << "W_t_W_Frame1_to_W_t_W_Frame2_ inputs:" << std::endl;
+  REGULAR_COUT << "W_t_W_frame1: " << W_t_W_frame1.transpose() << std::endl;
+  REGULAR_COUT << "T_frame2_frame1: \n" << T_frame2_frame1.matrix() << std::endl;
+  REGULAR_COUT << "frame1_t_frame1_frame2: " << frame1_t_frame1_frame2.transpose() << std::endl;
+  REGULAR_COUT << "R_W_frame2: \n" << R_W_frame2 << std::endl;
+
+  // Check for NaN values
+  bool hasNan = false;
+  if (W_t_W_frame1.array().isNaN().any()) {
+    REGULAR_COUT << RED_START << "WARNING: W_t_W_frame1 contains NaN values!" << COLOR_END << std::endl;
+    hasNan = true;
+  }
+  if (T_frame2_frame1.matrix().array().isNaN().any()) {
+    REGULAR_COUT << RED_START << "WARNING: T_frame2_frame1 contains NaN values!" << COLOR_END << std::endl;
+    hasNan = true;
+  }
+  if (frame1_t_frame1_frame2.array().isNaN().any()) {
+    REGULAR_COUT << RED_START << "WARNING: frame1_t_frame1_frame2 contains NaN values!" << COLOR_END << std::endl;
+    hasNan = true;
+  }
+  if (R_W_frame2.array().isNaN().any()) {
+    REGULAR_COUT << RED_START << "WARNING: R_W_frame2 contains NaN values!" << COLOR_END << std::endl;
+    hasNan = true;
+  }
+
+  if (hasNan) {
+    REGULAR_COUT << RED_START << "NaN values detected in transform calculation!" << COLOR_END << std::endl;
+  }
 
   /// Global rotation
   Eigen::Matrix3d R_W_frame1 = R_W_frame2 * T_frame2_frame1.rotation();

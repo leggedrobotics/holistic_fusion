@@ -20,6 +20,8 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }
+  void setGnssFrame(const std::string& s) { gnssFrame_ = s; }
+  void setLidarBetweenFrame(const std::string& s) { lidarBetweenFrame_ = s; }
   void setWheelOdometryBetweenFrame(const std::string& s) { wheelOdometryBetweenFrame_ = s; }
   void setWheelLinearVelocityLeftFrame(const std::string& s) { wheelLinearVelocityLeftFrame_ = s; }
   void setWheelLinearVelocityRightFrame(const std::string& s) { wheelLinearVelocityRightFrame_ = s; }
@@ -27,6 +29,8 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Getters
   const std::string& getLioOdometryFrame() const { return lidarOdometryFrame_; }
+  const std::string& getGnssFrame() const { return gnssFrame_; }
+  const std::string& getLidarBetweenFrame() const { return lidarBetweenFrame_; }
   const std::string& getWheelOdometryBetweenFrame() const { return wheelOdometryBetweenFrame_; }
   const std::string& getWheelLinearVelocityLeftFrame() const { return wheelLinearVelocityLeftFrame_; }
   const std::string& getWheelLinearVelocityRightFrame() const { return wheelLinearVelocityRightFrame_; }
@@ -35,6 +39,8 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   // Set flags
   void setUseLioOdometryFlag(bool flag) { useLioOdometryFlag_ = flag; }
   void setUseVioOdometryFlag(bool flag) { useVioOdometryFlag_ = flag; }
+  void setUseGnssFlag(bool flag) { useGnssFlag_ = flag; }
+  void setUseLioBetweenOdometryFlag(bool flag) { useLioBetweenOdometryFlag_ = flag; }
   void setUseWheelOdometryBetweenFlag(bool flag) { useWheelOdometryBetweenFlag_ = flag; }
   void setUseWheelLinearVelocitiesFlag(bool flag) { useWheelLinearVelocitiesFlag_ = flag; }
 
@@ -43,6 +49,8 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Frames
   std::string lidarOdometryFrame_;
+  std::string gnssFrame_;
+  std::string lidarBetweenFrame_;
   std::string wheelOdometryBetweenFrame_;
   std::string wheelLinearVelocityLeftFrame_;
   std::string wheelLinearVelocityRightFrame_;
@@ -50,6 +58,8 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
 
   // Odometry flags
   bool useLioOdometryFlag_ = false;
+  bool useGnssFlag_ = false;
+  bool useLioBetweenOdometryFlag_ = false;
   bool useVioOdometryFlag_ = false;
   bool useWheelOdometryBetweenFlag_ = false;
   bool useWheelLinearVelocitiesFlag_ = false;
