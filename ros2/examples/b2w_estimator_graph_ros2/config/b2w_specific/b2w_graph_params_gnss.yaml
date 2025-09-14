@@ -22,7 +22,7 @@
     # Alignment Parameters
     alignment_params:
       initialSe3AlignmentNoiseDensity: [ 1.0e-01, 1.0e-01, 1.0e-01, 1.0e-01, 1.0e-01, 1.0e-01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-      lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioSe3AlignmentRandomWalk: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
     # Noise Parameters
     noise_params:
