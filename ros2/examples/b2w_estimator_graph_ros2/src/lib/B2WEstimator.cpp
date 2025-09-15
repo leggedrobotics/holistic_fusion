@@ -147,14 +147,31 @@ void B2WEstimator::initializePublishers() {
     REGULAR_COUT << COLOR_END << " Initialized GNSS Path publisher" << std::endl;
   
 
-    // GNSS - with latching behavior (TransientLocal durability)
-    auto qos_latched = rclcpp::QoS(ROS_QUEUE_SIZE).transient_local();
-    
+    // Create GNSS publishers with reliable QoS settings
+    // - Reliability: RELIABLE ensures delivery of messages
+    // - Durability: TRANSIENT_LOCAL (latching) keeps messages for late subscribers
+    // - History: KEEP_LAST with depth 10 stores recent messages
+    auto qos_reliable_latched = rclcpp::QoS(10)
+      .transient_local()  // Latching behavior for late subscribers
+      .reliable()         // Guaranteed delivery
+      .keep_last(1);     // Store last 1 message
+
     pubReferenceNavSatFixCoordinates_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>(
-      "/graph_msf/reference_gnss_position", qos_latched);
-    // ENU origin - with latching behavior
-    pubReferenceNavSatFixCoordinatesENU_ = 
-      node_->create_publisher<sensor_msgs::msg::NavSatFix>("/graph_msf/reference_gnss_position_enu", qos_latched);
+      "/graph_msf/reference_gnss_position", qos_reliable_latched);
+    
+    // ENU origin with same reliable QoS settings
+    pubReferenceNavSatFixCoordinatesENU_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>(
+      "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
+
+  }
+
+}
+
+void B2WEstimator::initializeSubscribers() {
+
+  if (useGnssFlag_) {
+      node_->create_publisher<sensor_msgs::msg::NavSatFix>(
+      "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
 
   }
 
@@ -398,7 +415,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     double timestampSec = navSatFixPtr->header.stamp.sec + navSatFixPtr->header.stamp.nanosec * 1e-9;
     // Measurement
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
-        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::Huber(3.0),
+        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
         timestampSec, gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame,
         staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
