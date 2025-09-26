@@ -6,11 +6,14 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-        - /OdomImuEstimated1
+        - /WorldImuEstimated1
+        - /WorldImuOptimized1
         - /MapLidarMeasured1
+        - /GnssPath1
         - /WorldImuOdometry1/Shape1
         - /WorldImuOdometry1/Covariance1/Position1
         - /WorldImuOdometry1/Covariance1/Orientation1
+        - /O3D1
       Splitter Ratio: 0.5794117450714111
     Tree Height: 1087
   - Class: rviz/Selection
@@ -31,7 +34,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: AnymalPointCloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -41,12 +44,12 @@ Visualization Manager:
   Displays:
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Axes_world
       Radius: 0.10000000149011612
       Reference Frame: world_graph_msf
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
       Enabled: false
@@ -73,17 +76,17 @@ Visualization Manager:
       Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Axes_map_o3d
       Radius: 0.10000000149011612
       Reference Frame: map_o3d_graph_msf_aligned
-      Value: true
+      Value: false
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
@@ -96,9 +99,9 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Class: rviz/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: false
@@ -111,7 +114,7 @@ Visualization Manager:
       Tree:
         {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -140,12 +143,12 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 114; 159; 207
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.009999999776482582
+      Line Width: 0.05000000074505806
       Name: WorldImuEstimated
       Offset:
         X: 0
@@ -159,17 +162,17 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /graph_msf/est_path_world_imu
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 191; 64; 170
+      Color: 239; 41; 41
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.009999999776482582
+      Line Width: 0.07999999821186066
       Name: WorldImuOptimized
       Offset:
         X: 0
@@ -187,13 +190,13 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 25; 255; 0
+      Color: 52; 101; 164
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.009999999776482582
+      Line Width: 0.07999999821186066
       Name: MapLidarMeasured
       Offset:
         X: 0
@@ -211,13 +214,13 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 252; 233; 79
+      Color: 136; 138; 133
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.05999999865889549
+      Line Width: 0.07999999821186066
       Name: GnssPath
       Offset:
         X: 0
@@ -272,7 +275,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 16.27729034423828
@@ -289,7 +292,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -302,7 +305,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -317,7 +320,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -330,7 +333,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -345,7 +348,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -591,11 +594,27 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        depth_camera_front_lower_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_front_lower_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         depth_camera_front_upper_camera:
           Alpha: 1
           Show Axes: false
           Show Trail: false
         depth_camera_front_upper_camera_parent:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_front_upper_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_front_upper_depth_optical_frame:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -607,11 +626,27 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        depth_camera_left_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_left_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         depth_camera_rear_lower_camera:
           Alpha: 1
           Show Axes: false
           Show Trail: false
         depth_camera_rear_lower_camera_parent:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_rear_lower_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_rear_lower_depth_optical_frame:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -623,11 +658,27 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        depth_camera_rear_upper_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_rear_upper_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         depth_camera_right_camera:
           Alpha: 1
           Show Axes: false
           Show Trail: false
         depth_camera_right_camera_parent:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_right_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        depth_camera_right_depth_optical_frame:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -650,11 +701,6 @@ Visualization Manager:
           Show Trail: false
           Value: true
         face_shell_rear:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        hatch_shell:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -755,7 +801,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 1
       Name: WorldImuOdometry
       Position Tolerance: 0
@@ -772,7 +818,7 @@ Visualization Manager:
         Value: Arrow
       Topic: /graph_msf/est_odometry_odom_imu
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -836,13 +882,13 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /graph_msf/velocity_marker
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /graph_msf/foot_contact_markers
@@ -859,11 +905,39 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: true
+    - Alpha: 0.5
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 5.672662734985352
+        Min Value: -4.288963317871094
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 100
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: O3D
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 2
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic: /open3d_slam/registered_cloud
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
-    Background Color: 0; 0; 0
+    Background Color: 255; 255; 255
     Default Light: true
-    Fixed Frame: odom_graph_msf_
+    Fixed Frame: world_graph_msf_
     Frame Rate: 30
   Name: root
   Tools:
@@ -887,7 +961,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.382321834564209
+      Distance: 29.39398956298828
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -895,17 +969,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.7580190300941467
-        Y: 0.5109997987747192
-        Z: -0.2778182625770569
+        X: -1.5170005559921265
+        Y: 8.961732864379883
+        Z: -1.4058804512023926
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5903981328010559
+      Pitch: 0.37979769706726074
       Target Frame: lidar
-      Yaw: 5.733582973480225
+      Yaw: 4.545417308807373
     Saved: ~
 Window Geometry:
   Displays:

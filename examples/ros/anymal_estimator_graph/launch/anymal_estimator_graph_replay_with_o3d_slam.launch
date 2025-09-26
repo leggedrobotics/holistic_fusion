@@ -26,6 +26,33 @@
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
 
+
+    <!-- Name of the robot description parameter -->
+    <arg name="description_name"         default="anymal_description"/>
+    <!-- Set robot description path -->
+    <arg name="description_file"         default="$(find anymal_d_simple_description)/urdf/anymal.urdf"/>
+    <!-- Joint state topic name -->
+    <arg name="joint_states_topic"       default="/joint_states"/>
+
+    <!-- Load robot description -->
+    <include file="$(find anymal_d_simple_description)/launch/load.launch">
+        <arg name="description_name" value="$(arg description_name)"/>
+        <arg name="description_file" value="$(arg description_file)"/>
+    </include>
+
+    <!-- Robot state publisher -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
+        <param name="publish_frequency" value="100"/>
+        <param name="use_tf_static"     value="true"/>
+        <remap from="robot_description" to="$(arg description_name)"/>
+        <remap from="joint_states"      to="$(arg joint_states_topic)"/>
+    </node>
+
+    <!-- Launch anymal_tf_pub -->
+    <include file="$(find anymal_estimator_graph)/launch/anymal_tf_publisher.launch">
+
+    </include>
+
     <!-- Launch Open3d SLAM -->
     <include file="$(find open3d_slam_ros)/launch/arammis.launch" if="$(arg launch_o3d_slam)">
         <arg name="cloud_topic" value="$(arg pointcloud_topic_name)"/>
