@@ -167,15 +167,6 @@ void B2WEstimator::initializePublishers() {
 
 }
 
-void B2WEstimator::initializeSubscribers() {
-
-  if (useGnssFlag_) {
-      node_->create_publisher<sensor_msgs::msg::NavSatFix>(
-      "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
-
-  }
-
-}
 
 void B2WEstimator::initializeSubscribers() {
 
