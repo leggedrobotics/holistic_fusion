@@ -231,7 +231,14 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   const gtsam::Pose3 T_W_I_afterInt = W_imuPropagatedState_.pose();
   const gtsam::Pose3 T_Ikm1_Ik = T_W_I_beforeInt.between(T_W_I_afterInt);
   // Pose of IMU in Odom
-  const gtsam::Pose3 T_O_I = O_imuPropagatedState_.pose() * T_Ikm1_Ik;
+  gtsam::Pose3 T_O_I = O_imuPropagatedState_.pose() * T_Ikm1_Ik;
+  // Get Gravity Alignment right also in Odom frame
+  const Eigen::Matrix3d& R_W_I = T_W_I_afterInt.rotation().matrix();
+  Eigen::Matrix3d R_O_I = T_O_I.rotation().matrix();
+  R_O_I.row(2) = R_W_I.row(2);  // Copy gravity direction
+  R_O_I.row(1) = R_O_I.row(2).cross(R_O_I.row(0)).normalized();
+  R_O_I.row(0) = R_O_I.row(1).cross(R_O_I.row(2)).normalized();
+  T_O_I = gtsam::Pose3(gtsam::Rot3(R_O_I), T_O_I.translation());
   // Velocity
   gtsam::Vector3 O_v_O_I = T_O_I.rotation() * W_imuPropagatedState_.bodyVelocity();
   // Update the NavState
