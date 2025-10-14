@@ -29,7 +29,10 @@ int main(int argc, char** argv) {
   auto b2wEstimator = std::make_shared<b2w_se::B2WEstimator>(privateNodePtr);
 
   // Use Multi-Threaded Executor
-  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 4);
+  rclcpp::NodeOptions opts;
+  opts.use_intra_process_comms(true);
+  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), /*num_threads=*/4);
+
   executor.add_node(privateNodePtr);
   executor.spin();
 

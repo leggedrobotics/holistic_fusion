@@ -169,40 +169,66 @@ void B2WEstimator::initializePublishers() {
 
 
 void B2WEstimator::initializeSubscribers() {
+  // Per-stream groups so different sensors run concurrently on a MultiThreadedExecutor.
+  auto cb_gnss  = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_lidar = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_wheel = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_vio   = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+  rclcpp::SubscriptionOptions so_gnss;  so_gnss.callback_group  = cb_gnss;
+  rclcpp::SubscriptionOptions so_lidar; so_lidar.callback_group = cb_lidar;
+  rclcpp::SubscriptionOptions so_wheel; so_wheel.callback_group = cb_wheel;
+  rclcpp::SubscriptionOptions so_vio;   so_vio.callback_group   = cb_vio;
+
+  // Low-latency QoS: drop instead of backlog.
+  const auto qos1 = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
+  const auto qos3 = rclcpp::QoS(rclcpp::KeepLast(3)).best_effort().durability_volatile();
 
   if (useGnssFlag_) {
     subGnssNavSatFix_ = node_->create_subscription<sensor_msgs::msg::NavSatFix>(
-        "/gnss_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1));
+        "/gnss_topic", qos1,
+        std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1),
+        so_gnss);
     REGULAR_COUT << COLOR_END << " Initialized GNSS NavSatFix subscriber with topic: /gnss_topic" << std::endl;
   }
 
   if (useLioBetweenOdometryFlag_) {
     subLioBetweenOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/between_lidar_odometry_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::lidarBetweenOdometryCallback_, this, std::placeholders::_1));
+        "/between_lidar_odometry_topic", qos1,
+        std::bind(&B2WEstimator::lidarBetweenOdometryCallback_, this, std::placeholders::_1),
+        so_lidar);
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Between Odometry subscriber with topic: /between_lidar_odometry_topic" << std::endl;
   }
 
   if (useLioOdometryFlag_) {
     subLioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/lidar_odometry_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::lidarOdometryCallback_, this, std::placeholders::_1));
+        "/lidar_odometry_topic", qos1,
+        std::bind(&B2WEstimator::lidarOdometryCallback_, this, std::placeholders::_1),
+        so_lidar);
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: /lidar_odometry_topic" << std::endl;
   }
 
   if (useWheelOdometryBetweenFlag_) {
     subWheelOdometryBetween_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/wheel_odometry_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::wheelOdometryPoseCallback_, this, std::placeholders::_1));
+        "/wheel_odometry_topic", qos1,
+        std::bind(&B2WEstimator::wheelOdometryPoseCallback_, this, std::placeholders::_1),
+        so_wheel);
     REGULAR_COUT << COLOR_END << " Initialized Wheel Odometry subscriber with topic: /wheel_odometry_topic" << std::endl;
   }
 
   if (useWheelLinearVelocitiesFlag_) {
     subWheelLinearVelocities_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
-        "/wheel_velocities_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::wheelLinearVelocitiesCallback_, this, std::placeholders::_1));
+        "/wheel_velocities_topic", qos1,
+        std::bind(&B2WEstimator::wheelLinearVelocitiesCallback_, this, std::placeholders::_1),
+        so_wheel);
     REGULAR_COUT << COLOR_END << " Initialized Wheel Linear Velocities subscriber with topic: /wheel_velocities_topic" << std::endl;
   }
 
   if (useVioOdometryFlag_) {
     subVioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/vio_odometry_topic", ROS_QUEUE_SIZE, std::bind(&B2WEstimator::vioOdometryCallback_, this, std::placeholders::_1));
+        "/vio_odometry_topic", qos3,  // small cushion for VIO bursts
+        std::bind(&B2WEstimator::vioOdometryCallback_, this, std::placeholders::_1),
+        so_vio);
     REGULAR_COUT << COLOR_END << " Initialized VIO Odometry subscriber with topic: /vio_odometry_topic" << std::endl;
   }
 }
@@ -530,15 +556,12 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
 
   // Update the callback counter
   ++lidarUnaryCallbackCounter_;
-
-
   
   const std::string& lioOdometryFrame = dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();
 
-  // const std::string& lioOdomFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::None(), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
+      graph_msf::RobustNorm::Tukey(1.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, lioOdometryFrame,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
@@ -552,12 +575,12 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }
 
-  addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id  + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapImuPathPtr_, lioOdometryFrame  + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
                (lio_T_M_Lk * staticTransformsPtr_->rv_T_frame1_frame2(lioOdometryFrame, staticTransformsPtr_->getImuFrame()).matrix())
                    .block<3, 1>(0, 3),
                graphConfigPtr_->imuBufferLength_ * 4);
 
-  addToPathMsg(measLio_mapLidarPathPtr_, odomLidarPtr->header.frame_id + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
+  addToPathMsg(measLio_mapLidarPathPtr_, lioOdometryFrame + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
                lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_ * 4);
 
   pubMeasMapLioLidarPath_->publish(*measLio_mapLidarPathPtr_);
