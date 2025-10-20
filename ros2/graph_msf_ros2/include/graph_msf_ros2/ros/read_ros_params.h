@@ -26,6 +26,48 @@ inline void printKey(const std::string& key, std::vector<double> vector) {
   std::cout << std::endl;
 }
 
+/// Dump all declared parameters for the node
+/// Dump all declared parameters for the node, including hidden ones
+inline void dumpAllParams(std::shared_ptr<rclcpp::Node> node) {
+  auto result = node->list_parameters({}, 10);  // depth = 10
+
+  if (result.names.empty()) {
+    RCLCPP_WARN(node->get_logger(),
+                "No parameter is present in node %s",
+                node->get_fully_qualified_name());
+    return;
+  }
+
+  RCLCPP_INFO(node->get_logger(),
+              "Listing %zu parameters for node %s (including hidden)",
+              result.names.size(),
+              node->get_fully_qualified_name());
+
+  for (const auto &name : result.names) {
+    rclcpp::Parameter param;
+    if (node->get_parameter(name, param)) {
+      RCLCPP_INFO(node->get_logger(),
+                  "  %s = %s",
+                  name.c_str(),
+                  param.value_to_string().c_str());
+    } else {
+      // Try hidden parameters explicitly
+      auto hidden = node->list_parameters({name}, 0);
+      if (!hidden.names.empty() && node->get_parameter(name, param)) {
+        RCLCPP_INFO(node->get_logger(),
+                    "  %s (hidden) = %s",
+                    name.c_str(),
+                    param.value_to_string().c_str());
+      } else {
+        RCLCPP_INFO(node->get_logger(),
+                    "  %s (declared, no value)",
+                    name.c_str());
+      }
+    }
+  }
+}
+
+
 // Implementation of Templating
 template <typename T>
 T tryGetParam(const rclcpp::Node* node, const std::string& key) {
@@ -46,6 +88,10 @@ T tryGetParam(const rclcpp::Node* node, const std::string& key) {
   }
 
   RCLCPP_ERROR(node->get_logger(), "Parameter not found: %s", key.c_str());
+
+  dumpAllParams(node);
+
+  
   throw std::runtime_error("GraphMsfRos2 - " + key + " not specified.");
 }
 

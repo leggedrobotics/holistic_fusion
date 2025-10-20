@@ -3,8 +3,13 @@ project(graph_msf)
 
 message("Building ${PROJECT_NAME} library -----------------------------")
 
-## Compile as C++17, supported in ROS Noetic and newer
-add_compile_options(-std=c++17)
+# Build config
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+add_compile_options(
+  -O3 -mtune=native -flto -funroll-loops
+  -std=c++17 -fno-math-errno)
 
 # If build variables not set, set them to default values
 if (NOT DEFINED CMAKE_BUILD_LIBDIR)
@@ -68,13 +73,6 @@ add_library(${PROJECT_NAME} SHARED
 # Exported alias target
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-# Link GTSAM and other dependencies to the graph_msf library
-target_link_libraries(${PROJECT_NAME}
-        gtsam
-        gtsam_unstable
-        metis-gtsam
-)
-
 # Include directories for the library
 target_include_directories(${PROJECT_NAME}
         PUBLIC
@@ -82,7 +80,23 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:include>
 )
 
-# Add clang tooling
+# -------------------------------------------------------------------------------------------------
+# Always propagate Eigen via its imported target.
+target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
+
+if(TARGET gtsam AND TARGET gtsam_unstable) 
+  message(STATUS "Linking GTSAM via imported targets: ${_gtsam_tgt}, ${_gtsam_unstable_tgt}")
+  target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+      gtsam
+      gtsam_unstable
+  )
+else()
+    message(WARNING "GTSAM imported targets not found! Using legacy variables which is not recommended with modern CMake.")
+endif()
+
+# -------------------------------------------------------------------------------------------------
+# Clang tooling (optional)
 find_package(cmake_clang_tools QUIET)
 if (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
     add_clang_tooling(

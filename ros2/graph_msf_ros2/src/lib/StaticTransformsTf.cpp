@@ -45,8 +45,10 @@ bool StaticTransformsTf::findTransformations() {
         tf_buffer_->lookupTransform(imuFrame_, baseLinkFrame_, rclcpp::Time(0), rclcpp::Duration::from_seconds(100.0));
     Eigen::Isometry3d eigenTransform = tf2::transformToEigen(transform_stamped.transform);
     lv_T_frame1_frame2(imuFrame_, baseLinkFrame_) = eigenTransform;
-    std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END << " Translation I_B: " << imuFrame_ << " " << baseLinkFrame_
-              << " " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
+    std::cout << YELLOW_START << "Ros2-StaticTransforms" << COLOR_END << " Translation I_B: " << imuFrame_ << " " << baseLinkFrame_
+          << " " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
+    std::cout << YELLOW_START << "Ros2-StaticTransforms" << COLOR_END << " Rotation I_B: " << imuFrame_ << " " << baseLinkFrame_
+          << " " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).rotation() << std::endl;
     lv_T_frame1_frame2(baseLinkFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).inverse();
   } catch (const tf2::TransformException& ex) {
     RCLCPP_ERROR(rclcpp::get_logger("graph_msf"), "Transform lookup failed: %s", ex.what());
