@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(b2w_estimator_graph_ros2)
 
 ## Compile as C++17
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++17 -O3 -mtune=native -funroll-loops -fopenmp -fopt-info-vec-optimized)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # For FindGlog.cmake and FindGflags.cmake

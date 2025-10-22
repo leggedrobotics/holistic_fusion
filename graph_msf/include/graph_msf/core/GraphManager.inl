@@ -104,6 +104,10 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
       robustErrorFunction =
           gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noiseModel);
       break;
+    case RobustNormEnum::DCS:
+      // robustNormConstant is the DCS parameter c (a.k.a. k in GTSAM)
+      robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::DCS::Create(robustNormConstant), noiseModel);
+      break;
     case RobustNormEnum::None:
       unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
           noiseModel, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);

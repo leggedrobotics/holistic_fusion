@@ -118,6 +118,9 @@ void GraphMsfRos2::initializePublishers() {
   pubLinVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/lin_velocity_marker", best_effort_qos);
   pubAngularVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/angular_velocity_marker", best_effort_qos);
 
+  // QoS profile for paths to be visualized in RViz (latching)
+  // auto rviz_path_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+
   // Paths
   pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", best_effort_qos);
   pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", best_effort_qos);
@@ -408,16 +411,16 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
   if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel,
                                                  imuMsgPtr->header.stamp.sec + 1e-9 * imuMsgPtr->header.stamp.nanosec,
                                                  preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
-    // Encountered Delay
-    auto now = clock_->now();
-    auto delay = now.seconds() - preIntegratedNavStatePtr->getTimeK();
-    if (delay > 0.5) {
-      RCLCPP_WARN(this->get_logger(), "Encountered delay of %.14f seconds.", delay);
-      // Print now vs chrono time
-      auto currentChronoTime = std::chrono::high_resolution_clock::now();
-      auto chronoTimeSinceEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(currentChronoTime.time_since_epoch()).count();
-      RCLCPP_WARN(this->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
-    }
+    // // Encountered Delay
+    // auto now = clock_->now();
+    // auto delay = now.seconds() - preIntegratedNavStatePtr->getTimeK();
+    // if (delay > 0.5) {
+    //   RCLCPP_WARN(this->get_logger(), "Encountered delay of %.14f seconds.", delay);
+    //   // Print now vs chrono time
+    //   auto currentChronoTime = std::chrono::high_resolution_clock::now();
+    //   auto chronoTimeSinceEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(currentChronoTime.time_since_epoch()).count();
+    //   RCLCPP_WARN(this->get_logger(), "Now: %.14f, Std chrono time: %.14f", now.seconds(), chronoTimeSinceEpoch);
+    // }
 
     // Publish Odometry
     this->publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
@@ -468,7 +471,7 @@ void GraphMsfRos2::publishState(
       optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
     addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(),
                  rclcpp::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK() * 1e9),
-                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 20);
+                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_);
 
     // Queue non-time critical data for non-time-critical thread processing
     {

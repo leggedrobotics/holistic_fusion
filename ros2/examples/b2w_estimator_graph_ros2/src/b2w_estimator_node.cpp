@@ -19,22 +19,15 @@ int main(int argc, char** argv) {
   // Initialize ROS 2
   rclcpp::init(argc, argv);
 
-  // Debugging
-  // FLAGS_alsologtostderr = true;
-
-  // Create Node
-  auto privateNodePtr = std::make_shared<rclcpp::Node>("b2w_estimator_node");
-
-  // Create Instance of B2WEstimator
-  auto b2wEstimator = std::make_shared<b2w_se::B2WEstimator>(privateNodePtr);
-
-  // Use Multi-Threaded Executor
   rclcpp::NodeOptions opts;
   opts.use_intra_process_comms(true);
-  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), /*num_threads=*/4);
 
-  executor.add_node(privateNodePtr);
-  executor.spin();
+  auto node = std::make_shared<b2w_se::B2WEstimator>("b2w_estimator_node", opts);
+  node->setup(node);
+
+  rclcpp::executors::MultiThreadedExecutor exec(rclcpp::ExecutorOptions(), /*num_threads=*/4);
+  exec.add_node(node);  // add the B2WEstimator itself
+  exec.spin();
 
   // Shutdown ROS 2
   rclcpp::shutdown();

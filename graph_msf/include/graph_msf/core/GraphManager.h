@@ -30,6 +30,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurement.h"
 #include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
+#include <gtsam/nonlinear/ExpressionFactor.h>
+#include <gtsam/linear/LossFunctions.h>
 
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"

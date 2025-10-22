@@ -2,7 +2,7 @@
   ros__parameters:
     #External Prior/Transform Input
     extrinsics:
-      gnssFrame: "swiftnav-gnss"            #GNSS frame name - used to lookup GNSS-to-ExternalSensor Frame
+      gnssFrame: "gnss"            #GNSS frame name - used to lookup GNSS-to-ExternalSensor Frame
       lidarOdometryFrame: "base"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
       lidarBetweenFrame: "base"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
       wheelOdometryBetweenFrame: "base"      #Wheel odometry frame name - used to lookup Wheel-to-ExternalSensor Frame

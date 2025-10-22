@@ -16,7 +16,8 @@ namespace b2w_se {
 
 class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
  public:
-  B2WStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr);
+  explicit B2WStaticTransforms(const rclcpp::Node::SharedPtr& nodePtr);
+
 
   // Setters
   void setLioOdometryFrame(const std::string& s) { lidarOdometryFrame_ = s; }

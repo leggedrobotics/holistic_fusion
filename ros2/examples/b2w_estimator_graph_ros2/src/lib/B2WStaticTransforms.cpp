@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace b2w_se {
 
-B2WStaticTransforms::B2WStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr) : graph_msf::StaticTransformsTf(nodePtr) {
+B2WStaticTransforms::B2WStaticTransforms(const rclcpp::Node::SharedPtr& nodePtr) : graph_msf::StaticTransformsTf(nodePtr) {
   REGULAR_COUT << GREEN_START << " Initializing b2w static transforms..." << COLOR_END << std::endl;
 }
 

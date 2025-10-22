@@ -24,74 +24,74 @@ void B2WEstimator::readParams() {
   }
 
   // Flags
-  useGnssFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useGnss");
+  useGnssFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useGnss");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseGnssFlag(useGnssFlag_);
 
-  useLioOdometryFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useLioOdometry");
+  useLioOdometryFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useLioOdometry");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseLioOdometryFlag(useLioOdometryFlag_);
 
-  useLioBetweenOdometryFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useLioBetweenOdometry");
+  useLioBetweenOdometryFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useLioBetweenOdometry");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseLioBetweenOdometryFlag(useLioBetweenOdometryFlag_);
 
-  useWheelOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useWheelOdometryBetween");
+  useWheelOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useWheelOdometryBetween");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseWheelOdometryBetweenFlag(useWheelOdometryBetweenFlag_);
 
-  useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useWheelLinearVelocities");
+  useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useWheelLinearVelocities");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseWheelLinearVelocitiesFlag(useWheelLinearVelocitiesFlag_);
-  useVioOdometryFlag_ = graph_msf::tryGetParam<bool>(node_, "sensor_params.useVioOdometry");
+  useVioOdometryFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useVioOdometry");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryFlag(useVioOdometryFlag_);
 
     // Print sensor flags in bright green
-    RCLCPP_INFO(node_->get_logger(), "\033[92m=== B2W Estimator Configuration ===\033[0m");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use GNSS: %s\033[0m", useGnssFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use LIO Odometry: %s\033[0m", useLioOdometryFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use LIO Between Odometry: %s\033[0m", useLioBetweenOdometryFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use Wheel Odometry Between: %s\033[0m", useWheelOdometryBetweenFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use Wheel Linear Velocities: %s\033[0m", useWheelLinearVelocitiesFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m- Use VIO Odometry: %s\033[0m", useVioOdometryFlag_ ? "true" : "false");
-    RCLCPP_INFO(node_->get_logger(), "\033[92m===============================\033[0m");
+    RCLCPP_INFO(this->get_logger(), "\033[92m=== B2W Estimator Configuration ===\033[0m");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use GNSS: %s\033[0m", useGnssFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use LIO Odometry: %s\033[0m", useLioOdometryFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use LIO Between Odometry: %s\033[0m", useLioBetweenOdometryFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use Wheel Odometry Between: %s\033[0m", useWheelOdometryBetweenFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use Wheel Linear Velocities: %s\033[0m", useWheelLinearVelocitiesFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use VIO Odometry: %s\033[0m", useVioOdometryFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m===============================\033[0m");
 
   // Sensor Param as
-  lioOdometryRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.lioOdometryRate");
-  gnssRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.gnssRate");
-  lioBetweenOdometryRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.lioBetweenOdometryRate");
-  wheelOdometryBetweenRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.wheelOdometryBetweenRate");
-  wheelLinearVelocitiesRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.wheelLinearVelocitiesRate");
-  vioOdometryRate_ = graph_msf::tryGetParam<int>(node_, "sensor_params.vioOdometryRate");
+  lioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioOdometryRate");
+  gnssRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.gnssRate");
+  lioBetweenOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioBetweenOdometryRate");
+  wheelOdometryBetweenRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.wheelOdometryBetweenRate");
+  wheelLinearVelocitiesRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.wheelLinearVelocitiesRate");
+  vioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryRate");
 
   // Alignment Parameters
   const auto initialSe3AlignmentNoiseDensity =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "alignment_params.initialSe3AlignmentNoiseDensity");
+      graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.initialSe3AlignmentNoiseDensity");
   initialSe3AlignmentNoise_ << initialSe3AlignmentNoiseDensity[0], initialSe3AlignmentNoiseDensity[1], initialSe3AlignmentNoiseDensity[2],
       initialSe3AlignmentNoiseDensity[3], initialSe3AlignmentNoiseDensity[4], initialSe3AlignmentNoiseDensity[5];
   const auto lioSe3AlignmentRandomWalk =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "alignment_params.lioSe3AlignmentRandomWalk");
+      graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.lioSe3AlignmentRandomWalk");
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
 
   // Noise Parameters
   /// LiDAR Odometry
   const auto lidarUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "noise_params.lioPoseUnaryNoiseDensity");  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseUnaryNoiseDensity");  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << lidarUnaryNoise[0], lidarUnaryNoise[1], lidarUnaryNoise[2], lidarUnaryNoise[3], lidarUnaryNoise[4], lidarUnaryNoise[5];
 
   const auto lidarBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "noise_params.lioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
   lioBetweenNoise_ << lidarBetweenNoise[0], lidarBetweenNoise[1], lidarBetweenNoise[2], lidarBetweenNoise[3], lidarBetweenNoise[4], lidarBetweenNoise[5];
 
   /// Wheel Odometry
   /// Between
   const auto wheelPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "noise_params.wheelPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.wheelPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
   wheelPoseBetweenNoise_ << wheelPoseBetweenNoise[0], wheelPoseBetweenNoise[1], wheelPoseBetweenNoise[2], wheelPoseBetweenNoise[3],
       wheelPoseBetweenNoise[4], wheelPoseBetweenNoise[5];
   /// Linear Velocities
   const auto wheelLinearVelocitiesNoise =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "noise_params.wheelLinearVelocitiesNoiseDensity");  // left,right
+      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.wheelLinearVelocitiesNoiseDensity");  // left,right
   wheelLinearVelocitiesNoise_ << wheelLinearVelocitiesNoise[0], wheelLinearVelocitiesNoise[1], wheelLinearVelocitiesNoise[2];
   /// VIO Odometry
   const auto vioPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>(node_, "noise_params.vioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.vioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
   vioPoseBetweenNoise_ << vioPoseBetweenNoise[0], vioPoseBetweenNoise[1], vioPoseBetweenNoise[2], vioPoseBetweenNoise[3],
       vioPoseBetweenNoise[4], vioPoseBetweenNoise[5];
 
@@ -102,8 +102,8 @@ if (useGnssFlag_) {
     gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
     // Read Yaw initial guess options
-    gnssHandlerPtr_->setUseYawInitialGuessFromFile(graph_msf::tryGetParam<bool>(node_, "gnss_params.useYawInitialGuessFromFile"));
-    gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(graph_msf::tryGetParam<bool>(node_, "gnss_params.yawInitialGuessFromAlignment"));
+    gnssHandlerPtr_->setUseYawInitialGuessFromFile(graph_msf::tryGetParam<bool>(this, "gnss_params.useYawInitialGuessFromFile"));
+    gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(graph_msf::tryGetParam<bool>(this, "gnss_params.yawInitialGuessFromAlignment"));
 
     // Alignment options
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
@@ -111,67 +111,64 @@ if (useGnssFlag_) {
     gnssHandlerPtr_->setUseYawInitialGuessFromFile(false);
     trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
 
-    trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>(node_, "trajectoryAlignment.lidarRate"));
-    trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>(node_, "trajectoryAlignment.gnssRate"));
+    trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.lidarRate"));
+    trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.gnssRate"));
 
     trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
-        graph_msf::tryGetParam<double>(node_, "trajectoryAlignment.minimumDistanceHeadingInit"));
+        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumDistanceHeadingInit"));
     trajectoryAlignmentHandler_->setNoMovementDistance(
-        graph_msf::tryGetParam<double>(node_, "trajectoryAlignment.noMovementDistance"));
-    trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>(node_, "trajectoryAlignment.noMovementTime"));
+        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementDistance"));
+    trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementTime"));
     } else if (!gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
-    gnssHandlerPtr_->setGlobalYawDegFromFile(graph_msf::tryGetParam<double>(node_, "gnss_params.initYaw"));
+    gnssHandlerPtr_->setGlobalYawDegFromFile(graph_msf::tryGetParam<double>(this, "gnss_params.initYaw"));
     }
 
     // GNSS Reference
-    gnssHandlerPtr_->setUseGnssReferenceFlag(graph_msf::tryGetParam<bool>(node_, "gnss_params.useGnssReference"));
+    gnssHandlerPtr_->setUseGnssReferenceFlag(graph_msf::tryGetParam<bool>(this, "gnss_params.useGnssReference"));
 
     if (gnssHandlerPtr_->getUseGnssReferenceFlag()) {
-    RCLCPP_INFO(node_->get_logger(), "Using GNSS reference from parameters.");
-    gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>(node_, "gnss_params.referenceLatitude"));
-    gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>(node_, "gnss_params.referenceLongitude"));
-    gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>(node_, "gnss_params.referenceAltitude"));
-    gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>(node_, "gnss_params.referenceHeading"));
+    RCLCPP_INFO(this->get_logger(), "Using GNSS reference from parameters.");
+    gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>(this, "gnss_params.referenceLatitude"));
+    gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>(this, "gnss_params.referenceLongitude"));
+    gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>(this, "gnss_params.referenceAltitude"));
+    gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>(this, "gnss_params.referenceHeading"));
     } else {
-    RCLCPP_INFO(node_->get_logger(), "Will wait for GNSS measurements to initialize reference coordinates.");
+    RCLCPP_INFO(this->get_logger(), "Will wait for GNSS measurements to initialize reference coordinates.");
     }
 
     // GNSS Outlier Threshold
-    gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>(node_, "noise_params.gnssPositionOutlierThreshold");
-    
+    gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>(this, "noise_params.gnssPositionOutlierThreshold");
 }
 
-
-      
   // Set frames
 
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setGnssFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.gnssFrame"));
+      ->setGnssFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.gnssFrame"));
 
   /// LiDAR odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.lidarOdometryFrame"));
+      ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarOdometryFrame"));
       
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.betweenLidarOdometryFrame"));
+      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.betweenLidarOdometryFrame"));
 
   /// Wheel Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.wheelOdometryBetweenFrame"));
+      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelOdometryBetweenFrame"));
   /// Whel Linear Velocities frames
   /// Left
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelLinearVelocityLeftFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.wheelLinearVelocityLeftFrame"));
+      ->setWheelLinearVelocityLeftFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelLinearVelocityLeftFrame"));
   /// Right
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelLinearVelocityRightFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.wheelLinearVelocityRightFrame"));
+      ->setWheelLinearVelocityRightFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelLinearVelocityRightFrame"));
 
   /// VIO Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>(node_, "extrinsics.vioOdometryFrame"));
+      ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.vioOdometryFrame"));
 
   // Wheel Radius
-  wheelRadiusMeter_ = graph_msf::tryGetParam<double>(node_, "sensor_params.wheelRadius");
+  wheelRadiusMeter_ = graph_msf::tryGetParam<double>(this, "sensor_params.wheelRadius");
 }
 
 }  // namespace b2w_se

@@ -38,11 +38,12 @@ namespace b2w_se {
 
 class B2WEstimator : public graph_msf::GraphMsfRos2 {
  public:
-  explicit B2WEstimator(std::shared_ptr<rclcpp::Node>& node);
+  explicit B2WEstimator(const std::string& node_name,
+                        const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
   ~B2WEstimator() override = default;
 
-  void setup();
+  void setup(const rclcpp::Node::SharedPtr& self);
 
  protected:
   // Virtual Functions

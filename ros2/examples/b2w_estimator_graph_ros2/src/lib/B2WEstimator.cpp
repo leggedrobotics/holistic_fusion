@@ -22,88 +22,82 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace b2w_se {
 
-B2WEstimator::B2WEstimator(std::shared_ptr<rclcpp::Node>& node) : graph_msf::GraphMsfRos2(node) {
-  REGULAR_COUT << GREEN_START << " B2WEstimator-Constructor called." << COLOR_END << std::endl;
-
-  // Call setup after declaring parameters
-  B2WEstimator::setup();
+B2WEstimator::B2WEstimator(const std::string& node_name,
+                           const rclcpp::NodeOptions& options)
+: graph_msf::GraphMsfRos2(node_name, options)
+{
+  RCLCPP_INFO(this->get_logger(), "B2WEstimator-Constructor called.");
+  // setup();
 }
 
-void B2WEstimator::setup() {
+void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   REGULAR_COUT << GREEN_START << " B2WEstimator-Setup called." << COLOR_END << std::endl;
 
   // Boolean flags
-  node_->declare_parameter("sensor_params.useGnss", false);
-  node_->declare_parameter("sensor_params.useLioOdometry", false);
-  node_->declare_parameter("sensor_params.useLioBetweenOdometry", false);
-  node_->declare_parameter("sensor_params.useWheelOdometryBetween", false);
-  node_->declare_parameter("sensor_params.useWheelLinearVelocities", false);
-  node_->declare_parameter("sensor_params.useVioOdometry", false);
+  this->declare_parameter("sensor_params.useGnss", false);
+  this->declare_parameter("sensor_params.useLioOdometry", false);
+  this->declare_parameter("sensor_params.useLioBetweenOdometry", false);
+  this->declare_parameter("sensor_params.useWheelOdometryBetween", false);
+  this->declare_parameter("sensor_params.useWheelLinearVelocities", false);
+  this->declare_parameter("sensor_params.useVioOdometry", false);
 
 
   // GNSS parameters
-  node_->declare_parameter("gnss_params.initYaw", 90.0);
-  node_->declare_parameter("gnss_params.useYawInitialGuessFromFile", false);
-  node_->declare_parameter("gnss_params.yawInitialGuessFromAlignment", true);
-  node_->declare_parameter("gnss_params.useGnssReference", false);
-  node_->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
-  node_->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
-  node_->declare_parameter("gnss_params.referenceAltitude", 565.0);
-  node_->declare_parameter("gnss_params.referenceHeading", 0.0);
+  this->declare_parameter("gnss_params.initYaw", 90.0);
+  this->declare_parameter("gnss_params.useYawInitialGuessFromFile", false);
+  this->declare_parameter("gnss_params.yawInitialGuessFromAlignment", true);
+  this->declare_parameter("gnss_params.useGnssReference", false);
+  this->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
+  this->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
+  this->declare_parameter("gnss_params.referenceAltitude", 565.0);
+  this->declare_parameter("gnss_params.referenceHeading", 0.0);
 
 
   // Trajectory Alignment parameters
-  node_->declare_parameter("trajectoryAlignment.gnssRate", 10.0); // [Hz], rate of gnss measurements
-  node_->declare_parameter("trajectoryAlignment.lidarRate", 10.0); // [Hz], rate of lidar odometry
-  node_->declare_parameter("trajectoryAlignment.minimumDistanceHeadingInit", 3.0); // [m], minimal length of trajectory to get yaw between GNSS and Lidar trajectory
-  node_->declare_parameter("trajectoryAlignment.noMovementDistance", 0.1); // [m], if measurements are below this distance and in time range, robot is considered standing
-  node_->declare_parameter("trajectoryAlignment.noMovementTime", 1.0); // [s], if measurements is time range and below distance, robot is considered standing
+  this->declare_parameter("trajectoryAlignment.gnssRate", 10.0); // [Hz], rate of gnss measurements
+  this->declare_parameter("trajectoryAlignment.lidarRate", 10.0); // [Hz], rate of lidar odometry
+  this->declare_parameter("trajectoryAlignment.minimumDistanceHeadingInit", 3.0); // [m], minimal length of trajectory to get yaw between GNSS and Lidar trajectory
+  this->declare_parameter("trajectoryAlignment.noMovementDistance", 0.1); // [m], if measurements are below this distance and in time range, robot is considered standing
+  this->declare_parameter("trajectoryAlignment.noMovementTime", 1.0); // [s], if measurements is time range and below distance, robot is considered standing
   
   // Sensor parameters (int)
-  node_->declare_parameter("sensor_params.lioOdometryRate", 0);
-  node_->declare_parameter("sensor_params.lioBetweenRate", 0);
-  node_->declare_parameter("sensor_params.gnssRate", 0);
+  this->declare_parameter("sensor_params.lioOdometryRate", 0);
+  this->declare_parameter("sensor_params.lioBetweenRate", 0);
+  this->declare_parameter("sensor_params.gnssRate", 0);
   
-  node_->declare_parameter("sensor_params.lioBetweenOdometryRate", 0);
-  node_->declare_parameter("sensor_params.wheelOdometryBetweenRate", 0);
-  node_->declare_parameter("sensor_params.wheelLinearVelocitiesRate", 0);
-  node_->declare_parameter("sensor_params.vioOdometryRate", 0);
+  this->declare_parameter("sensor_params.lioBetweenOdometryRate", 0);
+  this->declare_parameter("sensor_params.wheelOdometryBetweenRate", 0);
+  this->declare_parameter("sensor_params.wheelLinearVelocitiesRate", 0);
+  this->declare_parameter("sensor_params.vioOdometryRate", 0);
 
   // Alignment parameters (vector of double)
-  node_->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-
-
-  // // Trajectory Alignment parameters (double)
-  // node_->declare_parameter("trajectoryAlignment.gnssRate", 10);
-  // node_->declare_parameter("trajectoryAlignment.lidarRate", 10);
-  // node_->declare_parameter("trajectoryAlignment.minimumDistanceHeadingInit", 3.0);
-  // node_->declare_parameter("trajectoryAlignment.noMovementDistance", 0.1);
-  // node_->declare_parameter("trajectoryAlignment.noMovementTime", 1.0);
+  this->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
   // Noise parameters (vectors of double)
-  node_->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.lioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.gnssPositionOutlierThreshold", 1.0);
+  this->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.lioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.gnssPositionOutlierThreshold", 1.0);
 
   // Extrinsic frames (string)
-  node_->declare_parameter("extrinsics.lidarOdometryFrame", std::string(""));
-  node_->declare_parameter("extrinsics.betweenLidarOdometryFrame", std::string(""));
-  node_->declare_parameter("extrinsics.gnssFrame", std::string(""));
-  node_->declare_parameter("extrinsics.lidarBetweenFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelOdometryBetweenFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelLinearVelocityLeftFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelLinearVelocityRightFrame", std::string(""));
-  node_->declare_parameter("extrinsics.vioOdometryFrame", std::string(""));
+  this->declare_parameter("extrinsics.lidarOdometryFrame", std::string(""));
+  this->declare_parameter("extrinsics.betweenLidarOdometryFrame", std::string(""));
+  this->declare_parameter("extrinsics.gnssFrame", std::string(""));
+  this->declare_parameter("extrinsics.lidarBetweenFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelOdometryBetweenFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelLinearVelocityLeftFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelLinearVelocityRightFrame", std::string(""));
+  this->declare_parameter("extrinsics.vioOdometryFrame", std::string(""));
 
   // Wheel Radius (double)
-  node_->declare_parameter("sensor_params.wheelRadius", 0.0);
+  this->declare_parameter("sensor_params.wheelRadius", 0.0);
 
   // Create B2WStaticTransforms
-  staticTransformsPtr_ = std::make_shared<B2WStaticTransforms>(node_);
+  // staticTransformsPtr_ = std::make_shared<B2WStaticTransforms>(this);
+  staticTransformsPtr_ = std::make_shared<B2WStaticTransforms>(this->shared_from_this());
 
 
   REGULAR_COUT << RED_START << " PARAMETER READING NOT STARTED" << COLOR_END << std::endl;
@@ -138,12 +132,17 @@ void B2WEstimator::setup() {
 }
 
 void B2WEstimator::initializePublishers() {
-  pubMeasMapLioLidarPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
-  pubMeasMapLioPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapVioPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_imu", ROS_QUEUE_SIZE);
+  // Non-time-critical publishers with best-effort and larger queue
+  auto best_effort_qos = rclcpp::QoS(100)
+                             .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT)
+                             .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE)
+                             .history(RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+
+  pubMeasMapLioLidarPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_lidar", best_effort_qos);
+  pubMeasMapVioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_imu", best_effort_qos);
 
   if (useGnssFlag_) {
-    pubMeasGNSSPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measGNSS_path", ROS_QUEUE_SIZE);
+    pubMeasGNSSPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measGNSS_path", best_effort_qos);
     REGULAR_COUT << COLOR_END << " Initialized GNSS Path publisher" << std::endl;
   
 
@@ -156,11 +155,11 @@ void B2WEstimator::initializePublishers() {
       .reliable()         // Guaranteed delivery
       .keep_last(1);     // Store last 1 message
 
-    pubReferenceNavSatFixCoordinates_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>(
+    pubReferenceNavSatFixCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position", qos_reliable_latched);
     
     // ENU origin with same reliable QoS settings
-    pubReferenceNavSatFixCoordinatesENU_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>(
+    pubReferenceNavSatFixCoordinatesENU_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
 
   }
@@ -170,10 +169,10 @@ void B2WEstimator::initializePublishers() {
 
 void B2WEstimator::initializeSubscribers() {
   // Per-stream groups so different sensors run concurrently on a MultiThreadedExecutor.
-  auto cb_gnss  = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto cb_lidar = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto cb_wheel = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto cb_vio   = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_gnss  = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_lidar = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_wheel = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  auto cb_vio   = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   rclcpp::SubscriptionOptions so_gnss;  so_gnss.callback_group  = cb_gnss;
   rclcpp::SubscriptionOptions so_lidar; so_lidar.callback_group = cb_lidar;
@@ -181,35 +180,36 @@ void B2WEstimator::initializeSubscribers() {
   rclcpp::SubscriptionOptions so_vio;   so_vio.callback_group   = cb_vio;
 
   // Low-latency QoS: drop instead of backlog.
+  const auto qosReliable = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
   const auto qos1 = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
   const auto qos3 = rclcpp::QoS(rclcpp::KeepLast(3)).best_effort().durability_volatile();
 
   if (useGnssFlag_) {
-    subGnssNavSatFix_ = node_->create_subscription<sensor_msgs::msg::NavSatFix>(
-        "/gnss_topic", qos1,
+    subGnssNavSatFix_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+        "/gnss_topic", qosReliable,
         std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1),
         so_gnss);
     REGULAR_COUT << COLOR_END << " Initialized GNSS NavSatFix subscriber with topic: /gnss_topic" << std::endl;
   }
 
+  if (useLioOdometryFlag_) {
+    subLioOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        "/lidar_odometry_topic", qosReliable,
+        std::bind(&B2WEstimator::lidarOdometryCallback_, this, std::placeholders::_1),
+        so_lidar);
+    REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: /lidar_odometry_topic" << std::endl;
+  }
+
   if (useLioBetweenOdometryFlag_) {
-    subLioBetweenOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subLioBetweenOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/between_lidar_odometry_topic", qos1,
         std::bind(&B2WEstimator::lidarBetweenOdometryCallback_, this, std::placeholders::_1),
         so_lidar);
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Between Odometry subscriber with topic: /between_lidar_odometry_topic" << std::endl;
   }
 
-  if (useLioOdometryFlag_) {
-    subLioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/lidar_odometry_topic", qos1,
-        std::bind(&B2WEstimator::lidarOdometryCallback_, this, std::placeholders::_1),
-        so_lidar);
-    REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: /lidar_odometry_topic" << std::endl;
-  }
-
   if (useWheelOdometryBetweenFlag_) {
-    subWheelOdometryBetween_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subWheelOdometryBetween_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/wheel_odometry_topic", qos1,
         std::bind(&B2WEstimator::wheelOdometryPoseCallback_, this, std::placeholders::_1),
         so_wheel);
@@ -217,7 +217,7 @@ void B2WEstimator::initializeSubscribers() {
   }
 
   if (useWheelLinearVelocitiesFlag_) {
-    subWheelLinearVelocities_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+    subWheelLinearVelocities_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
         "/wheel_velocities_topic", qos1,
         std::bind(&B2WEstimator::wheelLinearVelocitiesCallback_, this, std::placeholders::_1),
         so_wheel);
@@ -225,7 +225,7 @@ void B2WEstimator::initializeSubscribers() {
   }
 
   if (useVioOdometryFlag_) {
-    subVioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subVioOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/vio_odometry_topic", qos3,  // small cushion for VIO bursts
         std::bind(&B2WEstimator::vioOdometryCallback_, this, std::placeholders::_1),
         so_vio);
@@ -313,12 +313,32 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
   addToPathMsg(measLio_mapLidarPathPtr_, staticTransformsPtr_->getWorldFrame(), lidarBetweenOdomPtr->header.stamp, lio_T_M_Lk.translation(),
                graphConfigPtr_->imuBufferLength_ * 4);
 
-  // Publish Path
-  pubMeasMapLioPath_->publish(*measLio_mapLidarPathPtr_);
-
+  if (pubMeasMapLioPath_->get_subscription_count() > 0) {
+    // Publish Path
+    pubMeasMapLioPath_->publish(*measLio_mapLidarPathPtr_);
+  }
 }
 
 void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr) {
+
+  // 0) Fast validity checks
+  if (navSatFixPtr->status.status == sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX) {
+    RCLCPP_WARN(this->get_logger(), "GNSS message has no fix. Skipping.");
+    return;
+  }
+  if (navSatFixPtr->position_covariance_type != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_KNOWN) {
+    RCLCPP_WARN(this->get_logger(), "GNSS message has unknown covariance type. Skipping.");
+    return;
+  }
+  if (navSatFixPtr->position_covariance[0] < 0.0) {  // driver sets -1 on invalid
+    RCLCPP_WARN(this->get_logger(), "GNSS message has invalid covariance. Skipping.");
+    return;
+  }
+  if (!std::isfinite(navSatFixPtr->latitude) || !std::isfinite(navSatFixPtr->longitude) || !std::isfinite(navSatFixPtr->altitude)) {
+    RCLCPP_WARN(this->get_logger(), "GNSS message contains non-finite values. Skipping.");
+    return;
+  }
+
   // Counter
   ++gnssCallbackCounter_;
 
@@ -444,14 +464,16 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
   }
 
   // Add GNSS to Path
-  addToPathMsg(measGnssPathPtr_, fixedFrame, navSatFixPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength_ * 4);
-  // Publish path
-  pubMeasGNSSPath_->publish(*measGnssPathPtr_);
+  addToPathMsg(measGnssPathPtr_, fixedFrame, navSatFixPtr->header.stamp, W_t_W_Gnss, graphConfigPtr_->imuBufferLength_);
+  // Publish path if there are subscribers
+  if (pubMeasGNSSPath_->get_subscription_count() > 0) {
+    pubMeasGNSSPath_->publish(*measGnssPathPtr_);
+  }
 }
 
 void B2WEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
   const rclcpp::Time new_imu_timestamp{imuPtr->header.stamp};
-//   const rclcpp::Time arrival_time = this->node_->get_clock()->now();
+//   const rclcpp::Time arrival_time = this->this->get_clock()->now();
 //   const rclcpp::Duration delay = arrival_time - new_imu_timestamp;
 //   if (delay < rclcpp::Duration(0, 0)) {
 //     REGULAR_COUT << RED_START << " IMU message arrived at " << std::fixed << delay.seconds() << " before the message "
@@ -476,22 +498,22 @@ void B2WEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
     graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
     graph_msf::GraphMsf::pretendFirstMeasurementReceived();
   }
-  // Remove if norm is larger than 100
-  const double angular_velocity_norm = std::sqrt(imuPtr->angular_velocity.x * imuPtr->angular_velocity.x +
-                imuPtr->angular_velocity.y * imuPtr->angular_velocity.y +
-                imuPtr->angular_velocity.z * imuPtr->angular_velocity.z);
-  const double linear_acceleration_norm = std::sqrt(imuPtr->linear_acceleration.x * imuPtr->linear_acceleration.x +
-                imuPtr->linear_acceleration.y * imuPtr->linear_acceleration.y +
-                imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z);
-  if (angular_velocity_norm > 10) {
-    ++num_imu_errors_;
-    REGULAR_COUT << RED_START << " IMU angular velocity is larger than 10 rad/s, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
-    return;
-  } else if (linear_acceleration_norm > 100.0) {
-    ++num_imu_errors_;
-    REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100 m/s^2, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
-    return;
-  }
+  // // Remove if norm is larger than 100
+  // const double angular_velocity_norm = std::sqrt(imuPtr->angular_velocity.x * imuPtr->angular_velocity.x +
+  //               imuPtr->angular_velocity.y * imuPtr->angular_velocity.y +
+  //               imuPtr->angular_velocity.z * imuPtr->angular_velocity.z);
+  // const double linear_acceleration_norm = std::sqrt(imuPtr->linear_acceleration.x * imuPtr->linear_acceleration.x +
+  //               imuPtr->linear_acceleration.y * imuPtr->linear_acceleration.y +
+  //               imuPtr->linear_acceleration.z * imuPtr->linear_acceleration.z);
+  // if (angular_velocity_norm > 10) {
+  //   ++num_imu_errors_;
+  //   REGULAR_COUT << RED_START << " IMU angular velocity is larger than 10 rad/s, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
+  //   return;
+  // } else if (linear_acceleration_norm > 100.0) {
+  //   ++num_imu_errors_;
+  //   REGULAR_COUT << RED_START << " IMU linear acceleration norm is larger than 100 m/s^2, skipping this measurement. Total error count = " << num_imu_errors_ << COLOR_END << std::endl;
+  //   return;
+  // }
   // Check timestamps strictly increase
   if (new_imu_timestamp == last_imu_timestamp_) {
     ++num_imu_errors_;
@@ -520,24 +542,24 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   Eigen::Isometry3d lio_T_M_Lk;
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
 
-    // Check for NaN values in the transformation matrix
-    bool hasNaN = false;
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < 4; ++j) {
-        if (std::isnan(lio_T_M_Lk.matrix()(i, j))) {
-          hasNaN = true;
-        }
-      }
-    }
+  // // Check for NaN values in the transformation matrix
+  // bool hasNaN = false;
+  // for (int i = 0; i < 4; ++i) {
+  //   for (int j = 0; j < 4; ++j) {
+  //     if (std::isnan(lio_T_M_Lk.matrix()(i, j))) {
+  //       hasNaN = true;
+  //     }
+  //   }
+  // }
 
-    // Print the full transformation matrix
-    // REGULAR_COUT << "LiDAR odometry transformation matrix:" << std::endl;
-    // REGULAR_COUT << lio_T_M_Lk.matrix() << std::endl;
+  // Print the full transformation matrix
+  // REGULAR_COUT << "LiDAR odometry transformation matrix:" << std::endl;
+  // REGULAR_COUT << lio_T_M_Lk.matrix() << std::endl;
 
-    if (hasNaN) {
-      // REGULAR_COUT << RED_START << " ERROR: LiDAR odometry contains NaN values! Skipping initialization." << COLOR_END << std::endl;
-      return;
-    }
+  // if (hasNaN) {
+  //   // REGULAR_COUT << RED_START << " ERROR: LiDAR odometry contains NaN values! Skipping initialization." << COLOR_END << std::endl;
+  //   return;
+  // }
 
 
   // Timestamp
@@ -561,7 +583,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::Tukey(1.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, lioOdometryFrame,
+      graph_msf::RobustNorm::DCS(2.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, lioOdometryFrame,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
@@ -575,17 +597,12 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }
 
-  addToPathMsg(measLio_mapImuPathPtr_, lioOdometryFrame  + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
-               (lio_T_M_Lk * staticTransformsPtr_->rv_T_frame1_frame2(lioOdometryFrame, staticTransformsPtr_->getImuFrame()).matrix())
-                   .block<3, 1>(0, 3),
-               graphConfigPtr_->imuBufferLength_ * 4);
-
   addToPathMsg(measLio_mapLidarPathPtr_, lioOdometryFrame + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
-               lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_ * 4);
+               lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_);
 
+  if (pubMeasMapLioLidarPath_->get_subscription_count() > 0) {
   pubMeasMapLioLidarPath_->publish(*measLio_mapLidarPathPtr_);
-
-  pubMeasMapLioPath_->publish(*measLio_mapImuPathPtr_);
+  }
 }
 
 void B2WEstimator::wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& wheelOdometryKPtr) {
