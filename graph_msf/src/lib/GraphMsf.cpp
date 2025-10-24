@@ -185,13 +185,27 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
   }
 
   // Check the norm and spit out warning in case the acceleration is either too small or too big
-  if (linearAccInMps2.norm() < 2) {
+  const double accNorm = linearAccInMps2.norm();
+  if (accNorm < 2) {
     REGULAR_COUT << RED_START << " IMU linear acceleration is too small: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
     REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to false." << COLOR_END << std::endl;
-  } else if (linearAccInMps2.norm() > 90) {
+  } else if (accNorm > 90) {
     REGULAR_COUT << RED_START << " IMU linear acceleration is too big: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
     REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to true." << COLOR_END << std::endl;
   }
+
+  // Clamp linear acceleration to 60 m/s^2 to avoid outliers
+  // constexpr double maxAcc = 60.0;
+  // if (accNorm > maxAcc) {
+  //   // Iterate through each element and scale
+  //   for (int i = 0; i < 3; ++i) {
+  //     // If element is too big, clamp
+  //     if (std::abs(linearAccInMps2(i)) > maxAcc) {
+  //       linearAccInMps2(i) = (linearAccInMps2(i) > 0 ? maxAcc : -maxAcc);
+  //     }
+  //   }
+  //   REGULAR_COUT << YELLOW_START << " Clamped IMU linear acceleration to: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+  // }
 
   // Add measurement to buffer
   returnAddedImuMeasurements = coreImuBufferPtr_->addToImuBuffer(imuTimeK, linearAccInMps2, angularVel);
