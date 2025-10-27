@@ -15,17 +15,21 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <std_msgs/msg/bool.hpp>
 
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
+#include "graph_msf/gnss/GnssCovariance.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros2/GraphMsfRos2.h"
@@ -127,6 +131,8 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subVioOdometry_;
 
   // Publishers
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pubGnssPoseWithCov;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pubStatus_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasGNSSPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioLidarPath_;

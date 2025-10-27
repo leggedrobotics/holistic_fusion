@@ -434,13 +434,6 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   copySe3Trajectory = newSe3Trajectory;
   copyR3Trajectory = newR3Trajectory;
   Eigen::Isometry3d alignmentTransform;
-  // // Trajectory Alignment
-  // if (!trajectoryAlignment(newR3Trajectory, newSe3Trajectory, alignmentTransform)) {
-  //   std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;
-  //   return false;
-  // } else {
-  //   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories Aligned." << COLOR_END << std::endl;
-  // }
 
   Eigen::Isometry3d att;
   bool ok = trajectoryAlignmentRobust(newR3Trajectory, newSe3Trajectory, alignmentTransform,

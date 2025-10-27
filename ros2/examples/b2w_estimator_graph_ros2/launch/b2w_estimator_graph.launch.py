@@ -87,6 +87,12 @@ def generate_launch_description():
             output="log",
         ),
 
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            output="screen",
+            arguments=["-0.49", "0.0", "0.14", "0", "0", "0", "lidar", "gnss"],
+        )
 
         # Main Node with GNSS
         # Node(

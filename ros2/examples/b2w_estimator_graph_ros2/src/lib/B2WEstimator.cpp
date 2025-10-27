@@ -142,6 +142,7 @@ void B2WEstimator::initializePublishers() {
   pubMeasMapVioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_imu", best_effort_qos);
 
   if (useGnssFlag_) {
+    pubGnssPoseWithCov = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/graph_msf/gnss_pose_with_covariance", best_effort_qos);
     pubMeasGNSSPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measGNSS_path", best_effort_qos);
     REGULAR_COUT << COLOR_END << " Initialized GNSS Path publisher" << std::endl;
   
@@ -154,6 +155,8 @@ void B2WEstimator::initializePublishers() {
       .transient_local()  // Latching behavior for late subscribers
       .reliable()         // Guaranteed delivery
       .keep_last(1);     // Store last 1 message
+
+    pubStatus_ = this->create_publisher<std_msgs::msg::Bool>("/graph_msf/alignment_status", qos_reliable_latched);
 
     pubReferenceNavSatFixCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position", qos_reliable_latched);
@@ -322,20 +325,23 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
 void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr) {
 
   // 0) Fast validity checks
-  if (navSatFixPtr->status.status == sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX) {
-    RCLCPP_WARN(this->get_logger(), "GNSS message has no fix. Skipping.");
-    return;
-  }
+  // if (navSatFixPtr->status.status == sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX) {
+  //   RCLCPP_WARN(this->get_logger(), "GNSS message has no fix. Skipping.");
+  //   return;
+  // }
   if (navSatFixPtr->position_covariance_type != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_KNOWN) {
-    RCLCPP_WARN(this->get_logger(), "GNSS message has unknown covariance type. Skipping.");
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                        "GNSS message has unknown covariance type. Skipping.");
     return;
   }
   if (navSatFixPtr->position_covariance[0] < 0.0) {  // driver sets -1 on invalid
-    RCLCPP_WARN(this->get_logger(), "GNSS message has invalid covariance. Skipping.");
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                        "GNSS message has invalid covariance. Skipping.");
     return;
   }
   if (!std::isfinite(navSatFixPtr->latitude) || !std::isfinite(navSatFixPtr->longitude) || !std::isfinite(navSatFixPtr->altitude)) {
-    RCLCPP_WARN(this->get_logger(), "GNSS message contains non-finite values. Skipping.");
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                        "GNSS message contains non-finite values. Skipping.");
     return;
   }
 
@@ -344,10 +350,37 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
   // Convert to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(navSatFixPtr->latitude, navSatFixPtr->longitude, navSatFixPtr->altitude);
-  Eigen::Vector3d estStdDevXYZ(
-      sqrt(navSatFixPtr->position_covariance[0]), 
-      sqrt(navSatFixPtr->position_covariance[4]),
-      sqrt(navSatFixPtr->position_covariance[8]));
+  // Eigen::Vector3d estStdDevXYZ(
+  //     sqrt(navSatFixPtr->position_covariance[0]), 
+  //     sqrt(navSatFixPtr->position_covariance[4]),
+  //     sqrt(navSatFixPtr->position_covariance[8]));
+
+  //   Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> P_enu_map(navSatFixPtr->position_covariance.data());
+  //   Eigen::Matrix3d P_lv03 = P_enu_map;
+
+  Eigen::Map<const Eigen::Matrix<double,3,3,Eigen::RowMajor>> Penu_map(navSatFixPtr->position_covariance.data());
+  Eigen::Matrix3d P_enu = 0.5 * (Penu_map + Penu_map.transpose()); // symmetrize defensively
+
+  Eigen::Matrix3d P_lv03 = graph_msf::gnss_cov::rotateCov_ENU_to_LV03(
+    *gnssHandlerPtr_, navSatFixPtr->latitude, navSatFixPtr->longitude, navSatFixPtr->altitude, P_enu);
+
+
+  // RCLCPP_INFO_STREAM(this->get_logger(), "P_enu (3x3):\n" << P_enu);
+  // RCLCPP_INFO_STREAM(this->get_logger(), "P_lv03 (3x3):\n" << P_lv03);
+
+  Eigen::Vector3d estStdDevXYZ(std::sqrt(P_lv03(0,0)),
+                              std::sqrt(P_lv03(1,1)),
+                              std::sqrt(P_lv03(2,2)));
+
+  // bool ok = graph_msf::gnss_cov::selfCheckA(*gnssHandlerPtr_, gnssHandlerPtr_->getGnssReferenceLatitude(),
+  //                     gnssHandlerPtr_->getGnssReferenceLongitude(),
+  //                     gnssHandlerPtr_->getGnssReferenceAltitude());
+
+  // if (!ok) {
+  //   RCLCPP_WARN(this->get_logger(), "GNSS covariance Jacobian self-check failed; verify LV03 converter.");
+  // }
+
+
 
   // Initialize GNSS Handler
   if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {  // Accumulate measurements
@@ -404,6 +437,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
     REGULAR_COUT << " GNSS Handler initialized." << COLOR_END << std::endl;
     // return;
+    pubStatus_->publish(std_msgs::msg::Bool().set__data(false));
   }
 
   // Convert to Cartesian Coordinates
@@ -435,6 +469,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
         }
         return;
       }
+      pubStatus_->publish(std_msgs::msg::Bool().set__data(true));
       REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. Obtained Yaw Value of T_W_Base (deg): " << COLOR_END
                    << 180.0 * initYaw_W_Base / M_PI << std::endl;
     }
@@ -461,6 +496,35 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
   // Add _gmsf to the frame
   if (fixedFrame != staticTransformsPtr_->getWorldFrame()) {
     fixedFrame += referenceFrameAlignedNameId;
+  }
+
+  {
+    geometry_msgs::msg::PoseWithCovarianceStamped pwc;
+    pwc.header.frame_id = fixedFrame;
+    pwc.header.stamp = navSatFixPtr->header.stamp;
+    pwc.pose.pose.position.x = W_t_W_Gnss.x();
+    pwc.pose.pose.position.y = W_t_W_Gnss.y();
+    pwc.pose.pose.position.z = W_t_W_Gnss.z();
+    // Unknown orientation -> identity quaternion
+    pwc.pose.pose.orientation.w = 1.0;
+    pwc.pose.pose.orientation.x = 0.0;
+    pwc.pose.pose.orientation.y = 0.0;
+    pwc.pose.pose.orientation.z = 0.0;
+
+    // Fill 6x6 covariance (row-major). Top-left 3x3 = P_lv03. Orientation variances set large (unknown).
+    for (double &v : pwc.pose.covariance) v = 0.0;
+    pwc.pose.covariance[0]  = P_lv03(0,0); pwc.pose.covariance[1]  = P_lv03(0,1); pwc.pose.covariance[2]  = P_lv03(0,2);
+    pwc.pose.covariance[6]  = P_lv03(1,0); pwc.pose.covariance[7]  = P_lv03(1,1); pwc.pose.covariance[8]  = P_lv03(1,2);
+    pwc.pose.covariance[12] = P_lv03(2,0); pwc.pose.covariance[13] = P_lv03(2,1); pwc.pose.covariance[14] = P_lv03(2,2);
+
+    const double big_var = 1e6; // unknown roll/pitch/yaw
+    pwc.pose.covariance[21] = big_var; // roll
+    pwc.pose.covariance[28] = big_var; // pitch
+    pwc.pose.covariance[35] = big_var; // yaw
+
+    if (pubGnssPoseWithCov->get_subscription_count() > 0) {
+      pubGnssPoseWithCov->publish(pwc);
+    }
   }
 
   // Add GNSS to Path
@@ -583,10 +647,10 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::DCS(2.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, lioOdometryFrame,
+      graph_msf::RobustNorm::DCS(1.0), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, lioOdometryFrame,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
-  if (lidarUnaryCallbackCounter_ <= 2) {
+  if (lidarUnaryCallbackCounter_ <= 2) { //graph_msf::RobustNorm::DCS(2.0)
     return;
   } else if (!areYawAndPositionInited()) {  // Initializing if no GNSS
     if (!useGnssFlag_) {
