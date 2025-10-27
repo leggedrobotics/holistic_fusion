@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Parameters -->
-    <arg name="use_sim_time" default="false"/>
+    <arg name="use_sim_time" default="true"/>
     <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <!-- Input Topics -->
-    <arg name="imu_topic_name" default="/gt_box/ap20/imu"/>
-    <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
+    <arg name="imu_topic_name" default="/boxi/cpt7/imu"/>
+    <arg name="prism_position_topic_name" default="/boxi/ap20/prism_position"/>
     <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
-    <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>
+    <arg name="gnss_offline_pose_topic_name" default="/boxi/inertial_explorer/tc/odometry"/>
 
     <!-- Config Files -->
     <arg name="core_graph_config_file" default="$(find atn_position3_fuser)/config/core/core_graph_config.yaml"/>

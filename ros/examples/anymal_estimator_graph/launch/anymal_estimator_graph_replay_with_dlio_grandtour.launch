@@ -25,9 +25,4 @@
     </include>
 
 
-    <!-- Launch Box Model -->
-    <!-- <include file="$(find box_model)/launch/boxi_standalone.launch"/> -->
-
-
-
 </launch>
