@@ -174,6 +174,9 @@ bool GraphMsfRos2::srvOfflineSmootherOptimizeCallback(const std::shared_ptr<std_
   // Hardcode max iterations (you can make this configurable via parameter if needed)
   int maxIterations = 100;
 
+  // Printout
+  std::cout << "Received request for offline smoother optimization with max iterations: " << maxIterations << std::endl;
+
   // Trigger offline smoother optimization and create response
   if (optimizeSlowBatchSmoother(maxIterations, optimizationResultLoggingPath, false)) {
     res->success = true;
