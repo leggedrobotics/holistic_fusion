@@ -141,6 +141,12 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_ =
       tryGetParam<bool>(this, "common_params.logLatencyAndUpdateDurationToMemory");
 
+  // Topics
+  imuTopic_ = tryGetParam<std::string>(this, "topics.imu");
+  if (imuTopic_.empty() || imuTopic_ == "__REQUIRED__" || imuTopic_ == "TODO") {
+    throw std::runtime_error("GraphMsfRos2: topics.imu must be set (empty/placeholder).");
+  }
+
   // Set frames
   staticTransformsPtr_->setWorldFrame(tryGetParam<std::string>(this, "extrinsics.worldFrame"));
   staticTransformsPtr_->setOdomFrame(tryGetParam<std::string>(this, "extrinsics.odomFrame"));

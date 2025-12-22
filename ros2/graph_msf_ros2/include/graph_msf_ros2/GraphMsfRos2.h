@@ -160,6 +160,9 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   std::string optimizationResultLoggingPath = "";
 
  private:
+  // Topics
+  std::string imuTopic_ = "";
+
   // Publishers
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubEstOdomImu_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubEstWorldImu_;

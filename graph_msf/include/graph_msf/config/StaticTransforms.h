@@ -10,6 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Eigen
 #include <Eigen/Eigen>
+#include <shared_mutex>
 
 // Workspace
 #include "graph_msf/core/TransformsDictionary.h"
@@ -36,6 +37,7 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
   const std::string& getOdomFrame() { return odomFrame_; }
   const std::string& getBaseLinkFrame() { return baseLinkFrame_; }
   const std::string& getInitializationFrame() { return initializationFrame_; }
+  std::shared_mutex& mutex() const { return transformsMutex_; }
 
   // Functionality ------------------------------------------------------------
   virtual bool findTransformations() = 0;
@@ -47,6 +49,9 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
   std::string imuFrame_;
   std::string baseLinkFrame_;
   std::string initializationFrame_;
+
+ private:
+  mutable std::shared_mutex transformsMutex_;
 };
 
 }  // namespace graph_msf

@@ -28,6 +28,9 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("sensor_params.imuTimeOffset", 0.0);
   this->declare_parameter("sensor_params.isImuAccInG", false);  // If true, the IMU acceleration is in g, otherwise in m/s^2
 
+  // Topics
+  this->declare_parameter("topics.imu", std::string(""));
+
   // Initialization Params
   this->declare_parameter("initialization_params.estimateGravityFromImu", false);
   this->declare_parameter("initialization_params.gravityMagnitude", 9.80665);
