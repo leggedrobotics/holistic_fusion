@@ -10,6 +10,9 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_CONSTANTS_H
 #define GRAPH_MSF_CONSTANTS_H
 
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GraphMsf" << COLOR_END
 
 #endif  // GRAPH_MSF_CONSTANTS_H

@@ -9,4 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 #pragma once
 
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GraphMsfRos2" << COLOR_END

@@ -32,6 +32,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/optimizer/OptimizerLMBatch.hpp"
 #include "graph_msf/core/optimizer/OptimizerLMFixedLag.hpp"
 
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 
 namespace graph_msf {
@@ -225,7 +228,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
                                                      gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector_);
   }
-  
+
   // 1.4 Propagate to state in odom
   // Delta pose
   const gtsam::Pose3 T_W_I_afterInt = W_imuPropagatedState_.pose();
@@ -327,10 +330,8 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 
 // Set T_W_F
 bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
-  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>()
-          .setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
-  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix()
-            << std::endl;
+  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
+  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix() << std::endl;
   return true;
 }
 
@@ -775,8 +776,8 @@ void GraphManager::updateGraph() {
             }
           }
         }  // catch statement
-      }    // end: if active statement
-    }      // for loop over all transforms
+      }  // end: if active statement
+    }  // for loop over all transforms
   }
 
   // Mutex block 2 ------------------
