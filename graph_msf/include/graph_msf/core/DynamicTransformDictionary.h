@@ -9,6 +9,9 @@ Please see the LICENSE file that has been included as part of this package.
 #define TRANSFORMS_EXPRESSION_KEYS_H
 
 // Output
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
 // Workspace

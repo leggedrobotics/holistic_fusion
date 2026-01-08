@@ -87,7 +87,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Robust Error Function?
   const RobustNormEnum robustNormEnum(gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormEnum());
   const double robustNormConstant = gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr()->robustNormConstant();
-  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  std::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
     case RobustNormEnum::Huber:

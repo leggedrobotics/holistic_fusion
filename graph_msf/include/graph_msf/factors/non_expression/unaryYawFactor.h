@@ -8,9 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_HEADING_FACTOR_H
 #define GRAPH_MSF_HEADING_FACTOR_H
 
-// CPP
-#include <boost/none.hpp>
-#include <boost/shared_ptr.hpp>
+// STD
+#include <cmath>
 
 // GTSAM
 #include <gtsam/base/OptionalJacobian.h>
@@ -23,51 +22,75 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 /**
- * Factor to estimate rotation given gnss robot heading
+ * Factor to estimate rotation given GNSS robot heading.
+ *
+ * Unary factor on Pose3 that constrains yaw to a measured value.
  */
 class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
-  /**
-   * Constructor of factor that estimates nav to body rotation bRn
-   * @param key of the unknown rotation bRn in the factor graph
-   * @param measured magnetometer reading, a 3-vector
-   * @param model of the additive Gaussian noise that is assumed
-   */
-  YawFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), yaw_(yaw) {}
-
-  // Destructor
-  virtual ~YawFactor() {}
+  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
   /**
-   * Evaluate error function
-   * @brief vector of errors
+   * Constructor of factor that estimates nav-to-body rotation bRn
+   * @param key     key of the unknown pose in the factor graph
+   * @param yaw     measured yaw [rad] in the navigation frame
+   * @param model   additive Gaussian noise model on yaw
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
-    // If close to singularity, do not add measurement
-    if (std::abs(robotPose.rotation().pitch()) >= M_PI / 2.0 - 0.1 || std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
-      if (H_Ptr) {
-        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+  YawFactor(gtsam::Key key, double yaw, const gtsam::SharedNoiseModel& model)
+      : Base(model, key), yaw_(yaw) {}
+
+  ~YawFactor() override = default;
+
+  /**
+   * Evaluate error function.
+   *
+   * @param robotPose  current pose estimate
+   * @param H          optional 1x6 Jacobian wrt Pose3 (rot-then-trans order)
+   * @return 1x1 vector containing yaw error
+   */
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose,
+                              gtsam::Matrix* H = nullptr) const override {
+    const auto& R = robotPose.rotation();
+
+    // If close to singularity, do not add measurement (zero error and Jacobian)
+    if (std::abs(R.pitch()) >= M_PI / 2.0 - 0.1 ||
+        std::abs(R.roll())  >= M_PI / 2.0 - 0.1) {
+      if (H) {
+        *H = gtsam::Matrix::Zero(1, 6);
       }
       return gtsam::Vector1::Zero();
     }
 
-    // calculate error
-    double yawError = robotPose.rotation().yaw(H_Ptr) - yaw_;
+    double yaw_pred;
+    Eigen::Matrix<double, 1, 3> Hyaw_rot;
 
-    // Smaller half circle
-    while (yawError < -M_PI) yawError += 2 * M_PI;
-    while (yawError > M_PI) yawError -= 2 * M_PI;
+    if (H) {
+      // Jacobian of yaw w.r.t. rotation tangent (3-dof)
+      gtsam::OptionalJacobian<1, 3> Hyaw(Hyaw_rot);
+      yaw_pred = R.yaw(Hyaw);
+    } else {
+      yaw_pred = R.yaw();
+    }
 
-    // Jacobian
-    if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+    double yawError = yaw_pred - yaw_;
+
+    // Wrap into (-pi, pi]
+    while (yawError < -M_PI) yawError += 2.0 * M_PI;
+    while (yawError >  M_PI) yawError -= 2.0 * M_PI;
+
+    // Fill full Pose3 Jacobian: [d yaw / d rot(3) , d yaw / d trans(3) = 0]
+    if (H) {
+      H->resize(1, 6);
+      H->setZero();
+      H->block<1, 3>(0, 0) = Hyaw_rot;  // rotation part
+      // translation part already zero
     }
 
     return gtsam::Vector1(yawError);
   }
 
  private:
-  double yaw_;  // yaw measurement
+  double yaw_;  // yaw measurement [rad]
 };
 
 }  // namespace graph_msf

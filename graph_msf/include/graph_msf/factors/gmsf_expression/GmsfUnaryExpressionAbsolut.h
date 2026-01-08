@@ -127,7 +127,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Container for belief of old keyframe
       gtsam::Pose3 T_W_fixedFrameOld;
       // Noise model container
-      boost::shared_ptr<gtsam::noiseModel::Base> noiseModelPtr;
+      std::shared_ptr<gtsam::noiseModel::Base> noiseModelPtr;
       // Case 1: Has been optimized before
       if (oldKeyPtr->getNumberStepsOptimized() > 0) {
         T_W_fixedFrameOld = oldKeyPtr->getTransformationAfterOptimization();
@@ -219,7 +219,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
         // a): Random Walk between the two
         if (gmsfUnaryAbsoluteMeasurementPtr_->modelAsRandomWalkFlag()) {
-          boost::shared_ptr<gtsam::noiseModel::Diagonal> noiseModelPtr =
+          std::shared_ptr<gtsam::noiseModel::Diagonal> noiseModelPtr =
               gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
           this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
 
@@ -237,7 +237,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         }
         // b): Deterministic displacement modelled as equality constraint
         else {
-          boost::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr =
+          std::shared_ptr<gtsam::noiseModel::Constrained> noiseModelPtr =
               gtsam::noiseModel::Constrained::MixedSigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
           this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
 

@@ -32,6 +32,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/optimizer/OptimizerLMBatch.hpp"
 #include "graph_msf/core/optimizer/OptimizerLMFixedLag.hpp"
 
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 
 namespace graph_msf {
@@ -398,7 +401,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   // Create noise model
   assert(poseBetweenNoiseDensity.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  std::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
     case RobustNormEnum::Huber:

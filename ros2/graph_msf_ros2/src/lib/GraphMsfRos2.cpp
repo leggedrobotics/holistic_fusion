@@ -4,6 +4,7 @@
 // ROS2
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <shared_mutex>
 #include <std_srvs/srv/trigger.hpp>
 
 // Workspace
@@ -488,6 +489,8 @@ void GraphMsfRos2::publishState(
 void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr) {
   // Time
   const double& timeK = integratedNavStatePtr->getTimeK();  // Alias
+
+  std::shared_lock<std::shared_mutex> lock(staticTransformsPtr_->mutex());
 
   // B_O
   Eigen::Isometry3d T_B_Ok =

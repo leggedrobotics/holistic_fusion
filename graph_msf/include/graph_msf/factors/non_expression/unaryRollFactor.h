@@ -8,9 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_ROLL_FACTOR_H
 #define GRAPH_MSF_ROLL_FACTOR_H
 
-// CPP
-#include <boost/none.hpp>
-#include <boost/shared_ptr.hpp>
+// STD
+#include <cmath>
 
 // GTSAM
 #include <gtsam/base/OptionalJacobian.h>
@@ -27,47 +26,64 @@ namespace graph_msf {
  */
 class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
+  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
+
   /**
    * Constructor of factor that estimates nav to body rotation bRn
-   * @param key of the unknown rotation bRn in the factor graph
-   * @param measured roll reading
-   * @param model of the additive Gaussian noise that is assumed
+   * @param j      key of the unknown rotation bRn in the factor graph
+   * @param roll   measured roll reading [rad]
+   * @param model  additive Gaussian noise model
    */
-  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), roll_(roll) {}
+  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model)
+      : Base(model, j), roll_(roll) {}
 
-  // Destructor
-  virtual ~RollFactor() {}
+  ~RollFactor() override = default;
 
   /**
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
-        // If close to singularity, do not add measurement
-    if (std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
-      if (H_Ptr) {
-        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose,
+                              gtsam::Matrix* H = nullptr) const override {
+    const auto& R = robotPose.rotation();
+
+    // If close to singularity, do not add measurement
+    if (std::abs(R.roll()) >= M_PI / 2.0 - 0.1) {
+      if (H) {
+        *H = gtsam::Matrix::Zero(1, 6);
       }
       return gtsam::Vector1::Zero();
     }
 
-    // calculate error
-    double rollError = robotPose.rotation().roll(H_Ptr) - roll_;
+    double roll_pred;
+    Eigen::Matrix<double, 1, 3> Hroll_rot;
 
-    // Smaller half circle
-    while (rollError < -M_PI) rollError += 2 * M_PI;
-    while (rollError > M_PI) rollError -= 2 * M_PI;
+    if (H) {
+      gtsam::OptionalJacobian<1, 3> Hroll(Hroll_rot);
+      roll_pred = R.roll(Hroll);
+    } else {
+      roll_pred = R.roll();
+    }
 
-    // Jacobian
-    if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+    double rollError = roll_pred - roll_;
+
+    // Wrap into (-pi, pi]
+    while (rollError < -M_PI) rollError += 2.0 * M_PI;
+    while (rollError >  M_PI) rollError -= 2.0 * M_PI;
+
+    // Jacobian: [d roll / d rot(3), 0 0 0]
+    if (H) {
+      H->resize(1, 6);
+      H->setZero();
+      H->block<1, 3>(0, 0) = Hroll_rot;  // rotation part
+      // translation part remains zero
     }
 
     return gtsam::Vector1(rollError);
   }
 
  private:
-  double roll_;  // roll measurement
+  double roll_;  // roll measurement [rad]
 };
 
 }  // namespace graph_msf

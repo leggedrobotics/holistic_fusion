@@ -187,7 +187,7 @@ class GraphManager {
   FileLogger fileLogger_;
 
   // Objects
-  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   graph_msf::GraphState optimizedGraphState_;
   /// Propagated state (at IMU frequency)
