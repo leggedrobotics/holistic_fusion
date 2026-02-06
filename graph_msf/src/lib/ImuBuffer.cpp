@@ -282,8 +282,7 @@ gtsam::NavState ImuBuffer::integrateNavStateFromTimestamp(const double& tsStart,
 
     // Update propagated state
     Eigen::Vector3d i_gravityVector = propagatedState.R().transpose() * W_gravityVector;
-    propagatedState =
-        propagatedState.update(i_gravityVector + i_measAcceleration, i_measAngularVelocity, dt, boost::none, boost::none, boost::none);
+    propagatedState = propagatedState.update(i_gravityVector + i_measAcceleration, i_measAngularVelocity, dt);
   }
   return propagatedState;
 }

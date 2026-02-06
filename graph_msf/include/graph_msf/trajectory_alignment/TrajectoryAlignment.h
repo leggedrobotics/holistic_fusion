@@ -25,19 +25,19 @@ namespace graph_msf {
 
 class TrajectoryAlignment {
  public:
+  template <typename Vec, typename T>
+  inline Vec lerp(const Vec& a, const Vec& b, T t) {
+    return a + t * (b - a);
+  }
 
-  template<typename Vec, typename T>
-  inline Vec lerp(const Vec& a, const Vec& b, T t) { return a + t*(b - a); }
-
-  Trajectory resample(const Trajectory& src, double t0, double dt, size_t N)
-  {
+  Trajectory resample(const Trajectory& src, double t0, double dt, size_t N) {
     Trajectory dst;
     size_t i = 0;
     for (size_t k = 0; k < N; ++k) {
-      double tk = t0 + k*dt;
-      while (i+1 < src.poses().size() && src.poses()[i+1].time() < tk) ++i;
+      double tk = t0 + k * dt;
+      while (i + 1 < src.poses().size() && src.poses()[i + 1].time() < tk) ++i;
       const auto& p0 = src.poses()[i];
-      const auto& p1 = src.poses()[i+1];
+      const auto& p1 = src.poses()[i + 1];
       double u = (tk - p0.time()) / (p1.time() - p0.time());
       dst.addPose(lerp(p0.position(), p1.position(), u), tk);
     }
@@ -51,7 +51,7 @@ class TrajectoryAlignment {
   void addR3Position(Eigen::Vector3d position, double time);
   void addR3PositionWithStdDev(Eigen::Vector3d position, double time, Eigen::Vector3d stdDev);
   bool alignTrajectories(double& yaw, Eigen::Isometry3d& returnTransform);
-  
+
   // Setters
   void setR3Rate(const double r3Rate) { r3Rate_ = r3Rate; }
   void setSe3Rate(const double se3Rate) { se3Rate_ = se3Rate; }
@@ -65,17 +65,12 @@ class TrajectoryAlignment {
 
  private:
   // Member methods
-  bool associateTrajectories(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Trajectory& newTrajectoryA, Trajectory& newTrajectoryB);
+  bool associateTrajectories(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Trajectory& newTrajectoryA,
+                             Trajectory& newTrajectoryB);
   bool hasMinimumSpatialSpread(const std::vector<Pose>& poses, double kMinSpread);
   bool trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform);
-  bool trajectoryAlignmentRobust(
-          const Trajectory&  trajectoryA,
-          const Trajectory&  trajectoryB,
-          Eigen::Isometry3d& returnTransform,
-          double             inlierThreshold,
-          double             ransacConfidence,
-          std::size_t        maxIterations,
-          bool               withScaling);
+  bool trajectoryAlignmentRobust(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform,
+                                 double inlierThreshold, double ransacConfidence, std::size_t maxIterations, bool withScaling);
 
   // Member variables
   Trajectory r3Trajectory_;

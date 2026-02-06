@@ -99,9 +99,6 @@ class TransformsDictionary {
     // Check whether transformation pair is already there
     if (!isFramePairInDictionary(frame1, frame2)) {
       ++numStoredTransforms_;
-    } else {
-      std::cout << YELLOW_START << "GMsf-TransformsDict" << COLOR_END << " Transformation pair " << frame1 << " and " << frame2
-                << " already exists." << std::endl;
     }
     // Set transformation
     lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;

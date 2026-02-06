@@ -31,7 +31,7 @@ void createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStre
 // Pose 3
 void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose,
                          const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                         boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+                         const Eigen::Matrix<double, 6, 6>* optionalPoseCovarianceInWorldRos = nullptr);
 // Latitude, Longitude, Altitude
 void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Vector3d& latLonAlt,
                              const std::string& transformIdentifier, const double timeStamp);

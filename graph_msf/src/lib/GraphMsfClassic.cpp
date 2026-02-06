@@ -15,8 +15,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/GraphManager.h"
 
 // Unary Factors
-#include "graph_msf/factors/non_expression/unaryRollFactor.h"
 #include "graph_msf/factors/non_expression/unaryPitchFactor.h"
+#include "graph_msf/factors/non_expression/unaryRollFactor.h"
 #include "graph_msf/factors/non_expression/unaryYawFactor.h"
 
 namespace graph_msf {
@@ -53,9 +53,8 @@ void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbs
       optimizeGraphFlag_ = true;
     }
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in yaw unary measurement at time " << yaw_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in yaw unary measurement at time "
+              << yaw_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 
@@ -85,9 +84,8 @@ void GraphMsfClassic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAb
       optimizeGraphFlag_ = true;
     }
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in roll unary measurement at time " << roll_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in roll unary measurement at time "
+              << roll_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 
@@ -105,7 +103,8 @@ void GraphMsfClassic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDA
   gtsam::Rot3 pitchR_W_frame = gtsam::Rot3::Pitch(pitch_W_frame.unaryMeasurement());
   gtsam::Rot3 pitchR_W_I =
       pitchR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(pitch_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
+      gtsam::Rot3(
+          staticTransformsPtr_->rv_T_frame1_frame2(pitch_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
   // Add factor
   if (!covarianceViolatedFlag) {
@@ -117,9 +116,8 @@ void GraphMsfClassic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDA
       optimizeGraphFlag_ = true;
     }
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in pitch unary measurement at time " << pitch_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in pitch unary measurement at time "
+              << pitch_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 
