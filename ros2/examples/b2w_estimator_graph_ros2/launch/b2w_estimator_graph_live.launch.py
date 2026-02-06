@@ -36,7 +36,7 @@ def generate_launch_description():
         DeclareLaunchArgument("use_gnss_unary", default_value="true", description="Enable GNSS unary factor"),
         DeclareLaunchArgument("imu_topic_name", default_value="/imu_sensor_broadcaster/imu", description="IMU topic name"),
         DeclareLaunchArgument("lidar_odometry_topic_name", default_value="/dlio/odom_node/odom", description="Lidar odometry topic name"),
-        DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio2/odom_node/odom", description="Between lidar odometry topic name"),
+        DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio/odom_node/odom", description="Between lidar odometry topic name"),
         DeclareLaunchArgument("wheel_odometry_topic_name", default_value="/wheel_odometry", description="Wheel odometry topic name"),
         DeclareLaunchArgument("wheel_velocities_topic_name", default_value="/wheel_velocities", description="Wheel velocities topic name"),
         DeclareLaunchArgument("vio_odometry_topic_name", default_value="/tracking_camera/odom/sample", description="VIO odometry topic name"),
