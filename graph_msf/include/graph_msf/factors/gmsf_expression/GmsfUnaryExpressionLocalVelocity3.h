@@ -33,7 +33,8 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
     // Check whether we can find an IMU measurement corresponding to the velocity measurement
     double imuTimestamp;
     graph_msf::ImuMeasurement imuMeasurement = graph_msf::ImuMeasurement();
-    if (!imuBufferPtr->getClosestImuMeasurement(imuTimestamp, imuMeasurement, 0.1, velocityUnaryMeasurementPtr->timeK())) { // previously 0.02
+    if (!imuBufferPtr->getClosestImuMeasurement(imuTimestamp, imuMeasurement, 0.1,
+                                                velocityUnaryMeasurementPtr->timeK())) {  // previously 0.02
       REGULAR_COUT << RED_START << " No IMU Measurement (in time interval) found, assuming 0 angular velocity for the factor." << COLOR_END
                    << std::endl;
     }

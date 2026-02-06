@@ -130,7 +130,7 @@ void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& 
 // Pose3
 void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
                                      const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                                     boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
+                                     const Eigen::Matrix<double, 6, 6>* optionalPoseCovarianceInWorldRos) {
   fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
                                    << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                    << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
@@ -140,7 +140,7 @@ void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileS
     if (!optionalPoseCovarianceInWorldRos) {
       throw std::runtime_error("FileLogger: Pose covariance not provided for writing to file.");
     } else {
-      const auto& poseCovarianceInWorldRos = optionalPoseCovarianceInWorldRos.value();
+      const auto& poseCovarianceInWorldRos = *optionalPoseCovarianceInWorldRos;
       fileStreams[transformIdentifier + "_covariance"]
           << std::setprecision(14) << timeStamp << ", " << poseCovarianceInWorldRos(0, 0) << ", " << poseCovarianceInWorldRos(0, 1) << ", "
           << poseCovarianceInWorldRos(0, 2) << ", " << poseCovarianceInWorldRos(0, 3) << ", " << poseCovarianceInWorldRos(0, 4) << ", "

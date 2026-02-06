@@ -9,8 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_HEADING_FACTOR_H
 
 // CPP
-#include <boost/none.hpp>
-#include <boost/shared_ptr.hpp>
+#include <cmath>
 
 // GTSAM
 #include <gtsam/base/OptionalJacobian.h>
@@ -42,25 +41,29 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::OptionalMatrixType H = OptionalNone) const override {
     // If close to singularity, do not add measurement
     if (std::abs(robotPose.rotation().pitch()) >= M_PI / 2.0 - 0.1 || std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
-      if (H_Ptr) {
-        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+      if (H) {
+        (*H) = gtsam::Matrix::Zero(1, 6);
       }
       return gtsam::Vector1::Zero();
     }
 
+    gtsam::Matrix13 H_rot;
+    const double yaw_meas = H ? robotPose.rotation().yaw(gtsam::OptionalJacobian<1, 3>(H_rot)) : robotPose.rotation().yaw();
+
     // calculate error
-    double yawError = robotPose.rotation().yaw(H_Ptr) - yaw_;
+    double yawError = yaw_meas - yaw_;
 
     // Smaller half circle
     while (yawError < -M_PI) yawError += 2 * M_PI;
     while (yawError > M_PI) yawError -= 2 * M_PI;
 
     // Jacobian
-    if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+    if (H) {
+      (*H) = gtsam::Matrix::Zero(1, 6);
+      (*H).block<1, 3>(0, 0) = H_rot;
     }
 
     return gtsam::Vector1(yawError);
