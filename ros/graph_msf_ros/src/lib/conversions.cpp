@@ -13,6 +13,10 @@ void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Matrix4d& T) {
   T.block<3, 1>(0, 3) = t;
 }
 
+void geometryPoseToEigen(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& T) {
+    geometryPoseToEigen(pose.pose, T);
+}
+
 void geometryPoseToEigen(const geometry_msgs::PoseWithCovarianceStamped& pose, Eigen::Matrix4d& T) {
   geometryPoseToEigen(pose.pose.pose, T);
 }

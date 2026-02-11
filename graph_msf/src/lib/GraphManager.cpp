@@ -13,9 +13,11 @@ Please see the LICENSE file that has been included as part of this package.
 #include <iomanip>
 #include <string>
 #include <utility>
+#include <boost/archive/binary_oarchive.hpp>
 
 // IO
 #include <gtsam/slam/dataset.h>
+
 
 // Factors
 #include <gtsam/navigation/CombinedImuFactor.h>
@@ -25,6 +27,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/GraphManager.h"
 #include "graph_msf/geometry/conversions.h"
+#include "graph_msf/core/Serialization.h"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
 #include "graph_msf/core/optimizer/OptimizerIsam2FixedLag.hpp"
@@ -60,8 +63,10 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
   // B. Batch Optimizer
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     if (graphConfigPtr_->slowBatchSmootherUseIsamFlag_) {
+        std::cout<<"Initializing ISAM2 Batch Optimizer"<<std::endl;
       batchOptimizerPtr_ = std::make_shared<OptimizerIsam2Batch>(graphConfigPtr_);
     } else {
+      std::cout<<"Initializing LM Batch Optimizer"<<std::endl;
       batchOptimizerPtr_ = std::make_shared<OptimizerLMBatch>(graphConfigPtr_);
     }
   }
@@ -82,6 +87,7 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// Rotation
   imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroNoiseDensity_, 2));
   imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis_);
+
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
@@ -255,10 +261,13 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 
   // Part 2 (OPTIONAL): Create new state and add IMU factor to graph ------------------------------
   if (createNewStateFlag) {
+
     // Get new key
     const gtsam::Key oldKey = propagatedStateKey_;
     const gtsam::Key newKey = newPropagatedStateKey_();
 
+      REGULAR_COUT << GREEN_START
+                   << " Creating new IMU state : "<<newKey<< std::fixed << std::setprecision(6) << "current imu time: "<< imuTimeK<< "last optimized state time : "<< lastOptimizedStateTime_<< ",  current imu time - last optimized state time :  "<<imuTimeK - lastOptimizedStateTime_<<COLOR_END << std::endl;
     // Add to time key buffer
     timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
 
@@ -318,8 +327,15 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
     // Measurement coming from the future
     if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
       // Not too far in the future --> add to buffer and add later
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
+
+      if (unaryMeasurement.timeK() - returnedGraphTime <= graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
+          std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
+          std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
+          REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
+                       << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
+                       << " ms, the admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_<<COLOR_END << std::endl;
+          REGULAR_COUT << RED_START <<"Adding to graph"<<COLOR_END << std::endl;
         return true;
       }
       // Too far in the future --> do not add it
@@ -335,7 +351,7 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
     }
     // Measurement coming from the past, but could not find suitable key
     else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
+      REGULAR_COUT << RED_START << "Here Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
                    << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
                    << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
       return false;
@@ -807,7 +823,19 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
     // Save Optimized Result
     saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath, saveCovarianceFlag);
-
+    // Save optimized graph
+      std::time_t now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      std::tm now_tm = *std::localtime(&now_time_t);
+      // String of time without line breaks: year_month_day_hour_min_sec
+      std::ostringstream oss;
+      oss << std::put_time(&now_tm, "%Y_%m_%d_%H_%M_%S");
+      // Convert stream to string
+      std::string timeString = oss.str();
+      // Remove any line breaks
+      timeString.erase(std::remove(timeString.begin(), timeString.end(), '\n'), timeString.end());
+      // Replace spaces with underscores
+      std::replace(timeString.begin(), timeString.end(), ' ', '_');
+    saveOptimizedGraphToG2o(*batchOptimizerPtr_, optimizedStateValues, savePath+timeString+".g2o");
     // Return
     return true;
   } else {
@@ -845,7 +873,7 @@ bool GraphManager::logRealTimeNavStates(const std::string& savePath, const std::
     for (const auto& statePair : realTimeWorldPoseContainer_) {
       // Write to files
       // CSV
-      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose", statePair.first, false);
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second," ", "rt_world_x_state_6D_pose", statePair.first, false);
       // TUM
       FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_world_x_state_6D_pose_tum", statePair.first);
     }
@@ -853,7 +881,7 @@ bool GraphManager::logRealTimeNavStates(const std::string& savePath, const std::
     for (const auto& statePair : realTimeOdomPoseContainer_) {
       // Write to files
       // CSV
-      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose", statePair.first, false);
+      FileLogger::writePose3ToCsvFile(fileStreams, statePair.second," ", "rt_odom_x_state_6D_pose", statePair.first, false);
       // TUM
       FileLogger::writePose3ToTumFile(fileStreams, statePair.second, "rt_odom_x_state_6D_pose_tum", statePair.first);
     }
@@ -910,7 +938,7 @@ bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, 
         std::replace(frameInformation.begin(), frameInformation.end(), '/', '_');
         // Write to files
         // CSV
-        FileLogger::writePose3ToCsvFile(fileStreams, gtsam::Pose3(transform.matrix()), stateCategoryString + frameInformation, timeStamp,
+        FileLogger::writePose3ToCsvFile(fileStreams, gtsam::Pose3(transform.matrix()), " ", stateCategoryString + frameInformation, timeStamp,
                                         false);
         // TUM
         FileLogger::writePose3ToTumFile(fileStreams, gtsam::Pose3(transform.matrix()), stateCategoryString + frameInformation + "_tum",
@@ -1085,7 +1113,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // Write the values to the appropriate file
     // CSV file for Pose3
-    fileLogger_.writePose3ToCsvFile(fileStreams, pose, transformIdentifier, timeStamp, saveCovarianceFlag, poseCovarianceInWorldRos);
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose,stateSymbol.string(), transformIdentifier, timeStamp, saveCovarianceFlag, poseCovarianceInWorldRos);
     // TUM file for Pose3
     fileLogger_.writePose3ToTumFile(fileStreams, pose, transformIdentifier + "_tum", timeStamp);
   }  // end of for loop over all pose states
@@ -1140,7 +1168,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     fileLogger_.createPoint3CsvFileStream(fileStreams, savePath, transformIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileLogger_.writePoint3ToCsvFile(fileStreams, vector, transformIdentifier, timeStamp);
+    fileLogger_.writePoint3ToCsvFile(fileStreams, vector, symbol.string(), transformIdentifier, timeStamp);
   }  // end of for loop over all vector states
 
   // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
@@ -1167,7 +1195,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     fileLogger_.createImuBiasCsvFileStream(fileStreams, savePath, stateCategoryIdentifier, timeString);
 
     // Write the values to the appropriate file
-    fileLogger_.writeImuBiasToCsvFile(fileStreams, bias, stateCategoryIdentifier, timeStamp);
+    fileLogger_.writeImuBiasToCsvFile(fileStreams, bias, symbol.string(), stateCategoryIdentifier, timeStamp);
   }
 
   // Close all file streams
@@ -1184,6 +1212,30 @@ void GraphManager::saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, 
                                            const std::string& saveFileName) {
   // Safe optimized states
   gtsam::writeG2o(optimizedGraph.getNonlinearFactorGraph(), optimizedValues, saveFileName);
+  const gtsam::NonlinearFactorGraph graph = optimizedGraph.getNonlinearFactorGraph();
+
+    graph_msf::HFSerializedGraph serialized = serializeHFGraph(graph);
+    std::cout<<"Done serialization of graph"<<std::endl;
+    //write to file
+
+    saveHFSerializedGraph(serialized, "/home/auv/hf_serialized.bin");
+    HFSerializedGraph blob;
+    loadHFSerializedGraph("/home/auv/hf_serialized.bin", blob);
+
+    gtsam::NonlinearFactorGraph actGraph = *deserializeHFGraph(blob);
+    if (assert_equal(graph, actGraph)) std::cout<<"Serialized and deserialized graphs are same"<<std::endl;
+    else{
+        std::cout<<"size of graph: "<<graph.size()<<" , size of deserialized : "<<actGraph.size()<<std::endl;
+        for (size_t i = 0; i <graph.size(); i++){
+            if(!assert_equal(*graph[i], *actGraph[i])) std::cout<<"not equal at factor "<< i<<std::endl;
+        }
+    }
+
+    double e1 = graph.error(optimizedValues);
+    double e2 = actGraph.error(optimizedValues);
+    std::cout << "e1=" << e1 << " e2=" << e2 << "\n";
+    serializeToBinaryFile(optimizedValues, "/home/auv/optimizedvalues.bin");
+
 }
 
 // Calculate State at Key

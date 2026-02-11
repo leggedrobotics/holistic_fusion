@@ -44,13 +44,13 @@ void createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStre
 
 // Addition to Files -----------------------------------------------------------
 // Pose 3
-void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose,
+void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose, const std::string& poseKey,
                          const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
                          boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
   // Convert
   gtsam::Pose3 poseGtsam = gtsam::Pose3(pose.matrix());
   // Write to the file
-  FileLogger::writePose3ToCsvFile(fileStreams, poseGtsam, transformIdentifier, timeStamp, saveCovarianceFlag,
+  FileLogger::writePose3ToCsvFile(fileStreams, poseGtsam, poseKey, transformIdentifier, timeStamp, saveCovarianceFlag,
                                   optionalPoseCovarianceInWorldRos);
 }
 // Latitude, Longitude, Altitude

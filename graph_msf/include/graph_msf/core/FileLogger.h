@@ -56,17 +56,17 @@ class FileLogger {
   // Write to File
   // 1. CSV
   // Pose3
-  static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
+  static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,const std::string& poseKey,
                                   const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
                                   boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
   // Latitude, Longitude, Altitude
   static void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
                                       const std::string& transformIdentifier, const double timeStamp);
   // Point3
-  static void writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
+  static void writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,const std::string& key,
                                    const std::string& transformIdentifier, const double timeStamp);
   // Imu Bias
-  static void writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,
+  static void writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,const std::string& key,
                                     const std::string& stateCategoryIdentifier, const double timeStamp);
   // Double
   static void writeDoubleToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const double value,

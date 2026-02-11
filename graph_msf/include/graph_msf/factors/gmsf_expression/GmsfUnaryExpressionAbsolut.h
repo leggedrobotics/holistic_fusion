@@ -41,9 +41,10 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                                                   const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) final {
     if (gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() == gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName()) {
       // Do nothing as this is a world frame measurement
+      REGULAR_COUT << GREEN_START << "Fixed frame is same as world frame. no transform of IMU state needed" << COLOR_END << std::endl;
       return;
     }
-
+      REGULAR_COUT << GREEN_START << "GmsfUnaryExpressionAbsolut - transformImuStateFromWorldToReferenceFrame" << COLOR_END << std::endl;
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys.get<gtsam::Pose3>().mutex());
 

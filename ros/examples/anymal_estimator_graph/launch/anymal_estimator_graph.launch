@@ -8,6 +8,7 @@
     <arg name="imu_topic_name" default="/boxi/cpt7/imu"/>
     <arg name="gnss_topic_name" default="/boxi/inertial_explorer/tc/navsatfix"/>
     <arg name="lidar_odometry_topic_name" default="/boxi/dlio/lidar_map_odometry"/>
+    <arg name="visual_slam_topic_name" default="/visual_slam/pose"/>
     <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom"/>
     <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry"/>
     <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state"/>
@@ -19,9 +20,10 @@
     <arg name="extrinsics_from_urdf" default="false"/>
     <arg name="using_gnss_unary" default="true"/>
     <arg name="using_lio_unary" default="true"/>
+    <arg name="using_vslam_unary" default="true"/>
     <arg name="using_lio_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
-    <arg name="using_legged_velocity_unary" default="true"/>
+    <arg name="using_legged_velocity_unary" default="false"/>
     <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Config Files -->
@@ -56,6 +58,7 @@
         <!-- Launch Parameters -->
         <param name="launch/usingGnssUnary" type="bool" value="$(arg using_gnss_unary)"/>
         <param name="launch/usingLioUnary" type="bool" value="$(arg using_lio_unary)"/>
+        <param name="launch/usingVslamUnary" type="bool" value="$(arg using_vslam_unary)"/>
         <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)"/>
         <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)"/>
         <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)"/>
@@ -72,6 +75,7 @@
         <!-- Remapping of topics -->
         <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
         <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)"/>
+        <remap from="/visual_slam_topic" to="$(arg visual_slam_topic_name)"/>
         <remap from="/gnss_topic" to="$(arg gnss_topic_name)"/>
         <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)"/>
         <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)"/>

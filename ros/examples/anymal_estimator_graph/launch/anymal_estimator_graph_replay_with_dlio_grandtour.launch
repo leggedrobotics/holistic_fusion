@@ -11,6 +11,7 @@
 
     <arg name="gnss_topic_name" default="/boxi/inertial_explorer/tc/navsatfix"/>
     <arg name="lidar_odometry_topic_name" default="/boxi/dlio/lidar_map_odometry"/>
+    <arg name="visual_slam_topic_name" default="/visual_slam/pose"/>
 
     <!-- Launch Stack -->
     <include file="$(find anymal_estimator_graph)/launch/anymal_estimator_graph_replay.launch">
@@ -22,6 +23,7 @@
         <arg name="legged_odometry_odom_topic_name" value="$(arg legged_odometry_odom_topic_name)"/>
         <arg name="gnss_topic_name" value="$(arg gnss_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
+        <arg name="visual_slam_topic_name" value="$(arg visual_slam_topic_name)"/>
     </include>
 
 

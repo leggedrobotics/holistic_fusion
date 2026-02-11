@@ -67,7 +67,7 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation
               << " ms" << std::endl;
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
-              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
+              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms. Maxsearch deviation : "<<maxSearchDeviation << std::endl;
   }
 
   // Check for error and warn user

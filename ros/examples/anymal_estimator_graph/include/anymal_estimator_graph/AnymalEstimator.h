@@ -74,6 +74,9 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
   void leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
 
+  //vslam
+  void vslamUnaryCallback_(const geometry_msgs::PoseStamped::ConstPtr& poseVslamPtr);
+
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
@@ -99,6 +102,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Flags
   bool useGnssUnaryFlag_ = false;
   bool useLioUnaryFlag_ = true;
+  bool useVslamUnaryFlag_ = true;
   bool useLioBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
@@ -149,6 +153,7 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Instances
   ros::Subscriber subGnssUnary_;
   ros::Subscriber subLioUnary_;
+  ros::Subscriber subVslamUnary_;
   ros::Subscriber subLioBetween_;
   ros::Subscriber subLeggedBetween_;
   ros::Subscriber subLeggedVelocityUnary_;

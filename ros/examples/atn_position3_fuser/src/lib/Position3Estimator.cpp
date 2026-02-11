@@ -162,7 +162,7 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   std::string transformIdentifier = "R_6D_transform_" + totalStationReferenceFrame_ + "_to_" + totalStationReferenceFrame_ + "Old";
   graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
   // Add to file
-  graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, transformIdentifier, ros::Time::now().toSec(), false);
+  graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, " ", transformIdentifier, ros::Time::now().toSec(), false);
   REGULAR_COUT << " Wrote T_totalStation_totalStationOld to file." << std::endl;
 
   // Depending on whether GNSS or Prism was used for initialization, write the corresponding T_W_R identity to file ------------------------
@@ -171,14 +171,14 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
     std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + gnssReferenceFrame_;
     graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
     // Add to file
-    graph_msf::writePose3ToCsvFile(fileStreams, Eigen::Isometry3d::Identity(), transformIdentifier, ros::Time::now().toSec(), false);
+    graph_msf::writePose3ToCsvFile(fileStreams, Eigen::Isometry3d::Identity()," ", transformIdentifier, ros::Time::now().toSec(), false);
     REGULAR_COUT << " Wrote T_W_gnssReferenceFrame to file." << std::endl;
   } else {
     // Write T_totalStation_enu_ to file
     std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + totalStationReferenceFrame_;
     graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
     // Add to file
-    graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_enu_, transformIdentifier, ros::Time::now().toSec(), false);
+    graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_enu_," ", transformIdentifier, ros::Time::now().toSec(), false);
     REGULAR_COUT << " Wrote T_W_totalStationReferenceFrame to file." << std::endl;
   }
 

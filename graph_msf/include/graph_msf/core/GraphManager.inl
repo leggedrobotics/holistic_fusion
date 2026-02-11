@@ -141,6 +141,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
           // i) Not existent or ii) If timestamp is newer than existing one
           if (batchKeyTimestampMapIterator == batchGraphKeysTimestampsMapBufferPtr_->end() ||
               gmsfUnaryExpressionPtr->getTimestamp() > batchKeyTimestampMapIterator->second) {
+              REGULAR_COUT << RED_START << "Time stamp of Key "<< gtsam::Symbol(key).string()<<": "<<batchKeyTimestampMapIterator->second<<"changing to: "<<gmsfUnaryExpressionPtr->getTimestamp()<< COLOR_END << std::endl;
             writeKeyToKeyTimeStampMap_(key, gmsfUnaryExpressionPtr->getTimestamp(), batchGraphKeysTimestampsMapBufferPtr_);
           }
         }

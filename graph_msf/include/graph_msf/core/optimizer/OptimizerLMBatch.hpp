@@ -33,6 +33,7 @@ class OptimizerLMBatch : public OptimizerLM {
       }
       // Print
       lmParams_.print("GraphMSF: OptimizerLMBatch, LM Parameters:");
+
     }
   }
   ~OptimizerLMBatch() = default;

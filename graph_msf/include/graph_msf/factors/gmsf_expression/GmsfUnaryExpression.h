@@ -83,6 +83,7 @@ class GmsfUnaryExpression {
     }
 
     // C. Transform State to Sensor Frame -----------------------------------------------------
+      REGULAR_COUT << GREEN_START <<"GmsfUnaryExpression-"<< gmsfUnaryMeasurement.sensorFrameName()<<" != " <<imuFrame_ << COLOR_END << std::endl;
     if (gmsfUnaryMeasurement.sensorFrameName() != imuFrame_) {
       transformImuStateToSensorFrameState();
     }
@@ -147,6 +148,7 @@ class GmsfUnaryExpression {
 
   // iv) Extrinsic calibration
   virtual void transformSensorFrameStateToSensorFrameCorrectedState(DynamicDictionaryContainer& gtsamDynamicExpressionKeys) {
+      REGULAR_COUT << GREEN_START << "GmsfUnaryExpression- transformSensorFrameStateToSensorFrameCorrectedState" << COLOR_END << std::endl;
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys.get<gtsam::Pose3>().mutex());
 

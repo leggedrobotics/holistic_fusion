@@ -6,6 +6,8 @@ message("Building ${PROJECT_NAME} library -----------------------------")
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
 
+
+
 # If build variables not set, set them to default values
 if (NOT DEFINED CMAKE_BUILD_LIBDIR)
     set(CMAKE_BUILD_LIBDIR ${CMAKE_BINARY_DIR}/lib)
@@ -21,6 +23,31 @@ message("CMAKE_BUILD_BINDIR: ${CMAKE_BUILD_BINDIR}")
 message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
+#pushyami: boost
+
+set(BOOST_FIND_MINIMUM_VERSION 1.65)
+set(BOOST_FIND_MINIMUM_COMPONENTS serialization system filesystem thread program_options date_time timer chrono regex)
+
+find_package(Boost ${BOOST_FIND_MINIMUM_VERSION} COMPONENTS ${BOOST_FIND_MINIMUM_COMPONENTS})
+
+# Required components
+if(NOT Boost_SERIALIZATION_LIBRARY OR NOT Boost_SYSTEM_LIBRARY OR NOT Boost_FILESYSTEM_LIBRARY OR
+        NOT Boost_THREAD_LIBRARY OR NOT Boost_DATE_TIME_LIBRARY)
+    message(FATAL_ERROR "Missing required Boost components >= v1.65, please install/upgrade Boost or configure your search paths.")
+endif()
+
+set(HF_BOOST_LIBRARIES
+        Boost::serialization
+        Boost::system
+        Boost::filesystem
+        Boost::thread
+        Boost::date_time
+        Boost::regex
+        )
+if (Boost_FOUND)
+    message("Boost Version:: ${Boost_DIR}")
+endif()
+#---------
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
 find_package(GTSAM_UNSTABLE REQUIRED)
@@ -75,6 +102,7 @@ add_library(${PROJECT_NAME} SHARED
         src/lib/TrajectoryAlignment.cpp
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp
+        src/lib/Serialization.cpp
 )
 
 # Link GTSAM and other dependencies to the graph_msf library
@@ -82,6 +110,7 @@ target_link_libraries(${PROJECT_NAME}
         gtsam
         gtsam_unstable
         metis-gtsam
+        ${HF_BOOST_LIBRARIES}
 )
 
 # Include directories for the library

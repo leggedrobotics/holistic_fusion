@@ -73,6 +73,11 @@ void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
 void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   // GNSS
   if (useGnssUnaryFlag_) {
+    REGULAR_COUT <<"Resolved name: " << ros::names::resolve("/gnss_topic")<<std::endl;
+    REGULAR_COUT << "ros::isInitialized(): " << ros::isInitialized()<<std::endl;
+    REGULAR_COUT<<"pnh ns: " << privateNode.getNamespace()<<std::endl;
+    REGULAR_COUT<<"ros::master::check(): " << ros::master::check()<<std::endl;
+    REGULAR_COUT<<"QUEUE SIZE " << ROS_QUEUE_SIZE<<std::endl;
     subGnssUnary_ = privateNode.subscribe<sensor_msgs::NavSatFix>("/gnss_topic", ROS_QUEUE_SIZE, &AnymalEstimator::gnssUnaryCallback_, this,
                                                                   ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << " Initialized Gnss subscriber with topic: " << subGnssUnary_.getTopic() << std::endl;
@@ -115,6 +120,14 @@ void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
         "/anymal_state_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedKinematicsCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Kinematics subscriber with topic: " << subLeggedKinematics_.getTopic() << std::endl;
   }
+
+  //visual SLAM
+    if (useVslamUnaryFlag_) {
+        subVslamUnary_ = privateNode.subscribe<geometry_msgs::PoseStamped>("/visual_slam_topic", ROS_QUEUE_SIZE, &AnymalEstimator::vslamUnaryCallback_,
+                                                                 this, ros::TransportHints().tcpNoDelay());
+
+        REGULAR_COUT << COLOR_END << " Initialized Visual SLAM Unary Factor pose subscriber with topic: " << subVslamUnary_.getTopic() << std::endl;
+    }
 }
 
 void AnymalEstimator::initializeMessages(ros::NodeHandle& privateNode) {
@@ -175,7 +188,7 @@ bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Off
         Eigen::Isometry3d optionalGnssEnuCoordinatesIsometry = Eigen::Isometry3d::Identity();
         optionalGnssEnuCoordinatesIsometry.translation() = optionalGnssEnuCoordinates;
         // Add to file
-        graph_msf::writePose3ToCsvFile(fileStreams, optionalGnssEnuCoordinatesIsometry, transformIdentifier,
+        graph_msf::writePose3ToCsvFile(fileStreams, optionalGnssEnuCoordinatesIsometry, " ",transformIdentifier,
                                        optionalGnssEnuCoordinatesTimeStamps_[index], false);
         index++;
       }
@@ -306,6 +319,8 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Measurement
   const std::string& lioOdomFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
+//  REGULAR_COUT << GREEN_START << " lioOdomFrameName: " << lioOdomFrameName <<
+//  "odomLidarPtr->header.frame_id : " <<odomLidarPtr->header.frame_id<<"world frame name : "<<staticTransformsPtr_->getWorldFrame()<<COLOR_END << std::endl;
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
       graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
@@ -615,6 +630,16 @@ void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::Any
       }
     }
   }
+}
+
+void AnymalEstimator::vslamUnaryCallback_(const geometry_msgs::PoseStamped::ConstPtr& poseVslamPtr){
+    Eigen::Isometry3d vslam_T_M_Lk = Eigen::Isometry3d::Identity();
+    graph_msf::geometryPoseToEigen(*poseVslamPtr, vslam_T_M_Lk.matrix());
+    double vslamUnaryTimeK = poseVslamPtr->header.stamp.toSec();
+    this->normalOperationFlag_ = false;
+    REGULAR_COUT << GREEN_START << std::fixed << std::setprecision(6) <<" ===================================In Visual SLAM callback at time : " << vslamUnaryTimeK<<"==============================="<<COLOR_END << std::endl;
+
+    REGULAR_COUT << GREEN_START << std::fixed << std::setprecision(6) <<" ============================================================================================="<<COLOR_END << std::endl;
 }
 
 }  // namespace anymal_se

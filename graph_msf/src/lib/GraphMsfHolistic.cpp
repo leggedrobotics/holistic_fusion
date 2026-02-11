@@ -57,7 +57,8 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
         std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(R_T_R_S), staticTransformsPtr_->getImuFrame(),
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), R_T_R_S.sensorFrameName()),
         graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
-
+      REGULAR_COUT << GREEN_START << " GraphMsfHolistic-adding Unary Pose 3 factor." << COLOR_END << std::endl;
+      REGULAR_COUT<<RED_START<<staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), R_T_R_S.sensorFrameName()).matrix()<<COLOR_END<<std::endl;
     // Add factor to graph
     graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr, addToOnlineSmootherFlag);
 
@@ -96,7 +97,7 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
                                                  fixedFrame_t_fixedFrame_sensorFrame.sensorFrameName()),
         graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
-
+      REGULAR_COUT << GREEN_START << " GraphMsfHolistic-adding Unary Position3 factor." << COLOR_END << std::endl;
     // Add factor to graph
     graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
 

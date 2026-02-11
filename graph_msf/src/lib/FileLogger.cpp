@@ -125,10 +125,10 @@ void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& 
 // Write to File
 // 1. CSV
 // Pose3
-void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
+void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,const std::string& poseKey,
                                      const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
                                      boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
-  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
+  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " <<poseKey<<", "<<  pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
                                    << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                    << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "
                                    << pose.rotation().roll() << ", " << pose.rotation().pitch() << ", " << pose.rotation().yaw() << "\n";
@@ -164,16 +164,16 @@ void FileLogger::writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& f
 }
 
 // Point3
-void FileLogger::writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
+void FileLogger::writePoint3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,const std::string& key,
                                       const std::string& transformIdentifier, const double timeStamp) {
-  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << point.x() << ", " << point.y() << ", " << point.z()
+  fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", "<<key<<", " << point.x() << ", " << point.y() << ", " << point.z()
                                    << "\n";
 }
 
 // Imu Bias
-void FileLogger::writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,
+void FileLogger::writeImuBiasToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::imuBias::ConstantBias& imuBias,const std::string& key,
                                        const std::string& stateCategoryIdentifier, const double timeStamp) {
-  fileStreams[stateCategoryIdentifier] << std::setprecision(14) << timeStamp << ", " << imuBias.accelerometer().x() << ", "
+  fileStreams[stateCategoryIdentifier] << std::setprecision(14) << timeStamp << ", " <<key<<", "<< imuBias.accelerometer().x() << ", "
                                        << imuBias.accelerometer().y() << ", " << imuBias.accelerometer().z() << ", "
                                        << imuBias.gyroscope().x() << ", " << imuBias.gyroscope().y() << ", " << imuBias.gyroscope().z()
                                        << "\n";

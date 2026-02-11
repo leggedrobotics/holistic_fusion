@@ -74,6 +74,7 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
 
   // iii) transform estimate to sensor frame --------------------------------------------------------------
   void transformImuStateToSensorFrameState() final {
+      REGULAR_COUT << GREEN_START << "GmsfUnaryExpressionAbsolutePose3- transformImuStateToSensorFrameState" << COLOR_END << std::endl;
     exp_T_fixedFrame_sensorFrame_ = composeRigidTransformations(
         exp_T_fixedFrame_sensorFrame_, gtsam::Pose3(T_I_sensorFrameInit_.matrix()));  // T_fixedFrame_sensorFrameInit
   }

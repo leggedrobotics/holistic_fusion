@@ -83,6 +83,8 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   useGnssUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingGnssUnary", privateNode);
   // LIO Unary
   useLioUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLioUnary", privateNode);
+  // VSLAM Unary
+  useVslamUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingVslamUnary", privateNode);
   // LIO Between
   useLioBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLioBetween", privateNode);
   // Legged Between Odometry

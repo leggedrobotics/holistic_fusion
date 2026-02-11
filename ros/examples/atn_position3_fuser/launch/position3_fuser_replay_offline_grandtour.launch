@@ -18,9 +18,9 @@
                      doc="Path to RViz configuration file"/>
 
           <!-- System Parameters -->
-          <arg name="run_elevation_mapping" value="false" doc="Enable elevation mapping"/>
+          <!-- <arg name="run_elevation_mapping" value="false" doc="Enable elevation mapping"/>
           <arg name="model" default="$(find box_model)/urdf/box/box.urdf.xacro" 
-                     doc="Path to the URDF model of the box"/>
+                     doc="Path to the URDF model of the box"/> -->
 
           <!-- Sensor Input Topic Names -->
           <arg name="imu_topic_name" 
@@ -39,17 +39,6 @@
                     <!-- All arguments from this file are passed to the included launch file -->
           </include>
 
-          <!-- Visualization -->
-          <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" if="$(arg run_rviz)"/>
-
-          <!-- Load Boxi Model Description -->
-          <!-- If not already, build the model package with: catkin build box_model-->
-          <param name="$(arg description_name)" command="xacro $(arg model)" />
-
-          <!-- Launch the robot state publisher to publish TF frames -->
-          <node name="boxi_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-          <param name="capability_group" value="Visualization"/>
-          <remap from="robot_description" to="$(arg description_name)"/>
-          </node> 
+         
 
 </launch>

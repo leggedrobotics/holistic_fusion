@@ -86,6 +86,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
 
   // iii) Transform Measurement to Core Imu Frame -----------------------------------------------------------
   void transformImuStateToSensorFrameState() final {
+      REGULAR_COUT << GREEN_START << "GmsfUnaryExpressionAbsolutePosition3- transformImuStateToSensorFrameState" << COLOR_END << std::endl;
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 

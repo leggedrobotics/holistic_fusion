@@ -221,7 +221,7 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
     if (imuCallbackCounter_ % int(graphConfigPtr_->imuRate_) == 0) {
       REGULAR_COUT << " IMU callback waiting for initialization of global yaw and initial position." << std::endl;
     }
-    // Publish state with correct roll and pitch, nothing has changed compared to Case 1.2
+        // Publish state with correct roll and pitch, nothing has changed compared to Case 1.2
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     return true;
@@ -240,10 +240,13 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
     REGULAR_COUT << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
   }
-
   // Case 5: Normal operation, meaning predicting the next state via integration -------------
   // Only create state every n-th measurements (or at first successful iteration)
+
   bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0 || !normalOperationFlag_;
+  REGULAR_COUT << RED_START << " IMU callback Normal operation flag is : "<<normalOperationFlag_ << COLOR_END << std::endl;
+  // create a new state when we have Visual SLAM keyframe
+
   // Add IMU factor and return propagated & optimized state
   graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, coreImuBufferPtr_,
                                         imuTimeK, createNewStateFlag);

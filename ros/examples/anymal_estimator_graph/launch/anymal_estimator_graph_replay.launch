@@ -21,6 +21,9 @@
     <arg name="lidar_odometry_topic_name"
          default="/open3d_slam/scan2map_odometry"/>
 
+    <arg name="visual_slam_topic_name"
+              default="/visual_slam/pose"/>
+
     <!-- Load dumped parameters, mainly for description -->
 
     <rosparam command="load" file="$(arg dumped_param_file)"/>
@@ -37,9 +40,10 @@
         <arg name="legged_odometry_odom_topic_name" value="$(arg legged_odometry_odom_topic_name)"/>
         <arg name="gnss_topic_name" value="$(arg gnss_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
+        <arg name="visual_slam_topic_name" value="$(arg visual_slam_topic_name)"/>
     </include>
 
     <!-- RVIZ for Visualization -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" required="true" output="screen"/>
+   <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" required="true" output="screen"/> -->
 
 </launch>
