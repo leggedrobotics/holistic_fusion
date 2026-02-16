@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <iterator>
+#include <cmath>
 #include <Eigen/Core>
 #include "graph_msf/geometry/Pose.h"
 
@@ -22,8 +24,7 @@ class Trajectory {
   ~Trajectory() = default;
 
   void addPose(const Eigen::Vector3d& position, double time) {
-    Pose newPose(position, Eigen::Vector4d(0.0, 0.0, 0.0, 1.0), time);
-    _poses.push_back(newPose);
+    _poses.emplace_back(position, Eigen::Vector4d(0.0, 0.0, 0.0, 1.0), time);
   }
 
   void addPose(const Pose& pose) {
@@ -35,6 +36,8 @@ class Trajectory {
                          const Eigen::Vector3d& covariance,
                          double                timeConstant = 0.5)
   {
+    timeConstant = std::max(1e-6, timeConstant);
+
     if (_poses.empty()) {
       _filteredPos   = position;
       _filteredCov   = covariance;
@@ -43,7 +46,7 @@ class Trajectory {
       return;
     }
 
-    double dt        = std::max(1e-6, time - _lastTime);  
+    double dt        = std::max(1e-6, time - _lastTime);
     double alpha_t   = 1.0 - std::exp(-dt / timeConstant);
 
     double w_new     = 1.0 / (covariance.array().max(1e-6)).mean();
@@ -66,11 +69,13 @@ class Trajectory {
 
   void clear() {
     _poses.clear();
+    resetFilterState_();
   }
 
   // Optionally release heap memory
   void releaseMemory() {
     std::vector<Pose>().swap(_poses);
+    resetFilterState_();
   }
 
   double distance() const {
@@ -91,19 +96,43 @@ class Trajectory {
             : (_poses.back().position() - _poses.front().position()).norm();
     }
 
-  bool isStanding(double rate, double seconds, double noMovementThreshold) const {
-    size_t required_size = static_cast<size_t>(rate * seconds);
-    if (_poses.size() < required_size) {
-      return false;
+  bool isStanding(
+                  double seconds,
+                  double noMovementThreshold) const
+  {
+    if (_poses.size() < 2) return false;
+    if (seconds <= 0.0)   return false;
+
+    // Require non-decreasing time for correctness (caller can sort once upstream).
+    // If you cannot guarantee it, consider sorting a copy or using min/max time scans.
+    const double t_end = _poses.back().time();
+    const double t_start = t_end - seconds;
+
+    // Find first pose within the time window [t_start, t_end]
+    auto it0 = std::lower_bound(
+        _poses.begin(), _poses.end(), t_start,
+        [](const Pose& p, double t) { return p.time() < t; });
+
+    // Not enough samples in the time window
+    if (it0 == _poses.end()) return false;
+    if (std::distance(it0, _poses.end()) < 2) return false;
+
+    const Eigen::Vector3d p0 = it0->position();
+    const Eigen::Vector3d p1 = _poses.back().position();
+
+    // Displacement over the window
+    const double disp = (p1 - p0).norm();
+    if (disp >= noMovementThreshold) return false;
+
+    // Optional additional guard: max deviation from the start point
+    // Helps avoid declaring standing when trajectory "wiggles" but ends near start.
+    double maxRadius = 0.0;
+    for (auto it = it0; it != _poses.end(); ++it) {
+      maxRadius = std::max(maxRadius, (it->position() - p0).norm());
     }
-    double distance = 0.0;
-    auto beginIt = _poses.end() - required_size;
-    Eigen::Vector3d lastPose = beginIt->position();
-    for (auto poseIt = beginIt + 1; poseIt != _poses.end(); ++poseIt) {
-      distance += (poseIt->position() - lastPose).norm();
-      lastPose = poseIt->position();
-    }
-    return distance < noMovementThreshold;
+
+    // You can tune this; using the same threshold is conservative and simple.
+    return maxRadius < noMovementThreshold;
   }
 
   const std::vector<Pose>& poses() const { return _poses; }
@@ -120,6 +149,8 @@ class Trajectory {
     auto lastPose = std::find_if(_poses.begin(), _poses.end(),
                                  [endTime](const Pose& pose) { return pose.time() > endTime; });
     _poses.erase(lastPose, _poses.end());
+
+    syncFilterStateToBack_();
   }
 
   // Downsample the trajectory by a factor (keeps 0, factor, 2*factor, ...)
@@ -131,6 +162,25 @@ class Trajectory {
       downsampledPoses.push_back(_poses[i]);
     }
     _poses = std::move(downsampledPoses);
+
+    syncFilterStateToBack_();
+  }
+
+ private:
+  void resetFilterState_() {
+    _filteredPos = Eigen::Vector3d::Zero();
+    _filteredCov = Eigen::Vector3d::Zero();
+    _lastTime    = 0.0;
+  }
+
+  void syncFilterStateToBack_() {
+    if (_poses.empty()) {
+      resetFilterState_();
+      return;
+    }
+    _filteredPos = _poses.back().position();
+    _filteredCov = Eigen::Vector3d::Ones();
+    _lastTime    = _poses.back().time();
   }
 
  private:

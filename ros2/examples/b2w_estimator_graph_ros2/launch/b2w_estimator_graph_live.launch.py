@@ -21,6 +21,7 @@ def generate_launch_description():
     wheel_odometry_topic_name = LaunchConfiguration("wheel_odometry_topic_name")
     wheel_velocities_topic_name = LaunchConfiguration("wheel_velocities_topic_name")
     vio_odometry_topic_name = LaunchConfiguration("vio_odometry_topic_name")
+    vio_odometry_between_topic_name = LaunchConfiguration("vio_odometry_between_topic_name")
     logging_dir_location = LaunchConfiguration("logging_dir_location")
 
     # Static parameter files
@@ -40,6 +41,7 @@ def generate_launch_description():
         DeclareLaunchArgument("wheel_odometry_topic_name", default_value="/wheel_odometry", description="Wheel odometry topic name"),
         DeclareLaunchArgument("wheel_velocities_topic_name", default_value="/wheel_velocities", description="Wheel velocities topic name"),
         DeclareLaunchArgument("vio_odometry_topic_name", default_value="/tracking_camera/odom/sample", description="VIO odometry topic name"),
+        DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/tracking_camera/pose/sample", description="Between VIO odometry topic name"),
         DeclareLaunchArgument("gnss_topic_name", default_value="/navsatfix", description="GNSS topic name"),
         DeclareLaunchArgument("logging_dir_location", default_value=os.path.join(pkg_dir, "logging"), description="Logging directory location"),
 
@@ -67,6 +69,7 @@ def generate_launch_description():
                 ("/wheel_odometry_topic", wheel_odometry_topic_name),
                 ("/wheel_velocities_topic", wheel_velocities_topic_name),
                 ("/vio_odometry_topic", vio_odometry_topic_name),
+                ("/vio_odometry_between_topic", vio_odometry_between_topic_name),
                 ("/gnss_topic", gnss_topic_name),
             ],
         ),

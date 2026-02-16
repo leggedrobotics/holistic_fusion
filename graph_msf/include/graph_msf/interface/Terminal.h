@@ -16,6 +16,9 @@ Please see the LICENSE file that has been included as part of this package.
 #define YELLOW_START "\033[33m"
 #define RED_START "\033[31m"
 #define COLOR_END "\033[0m"
+#define BLUE_START "\033[94m"
+#define MAGENTA_START "\033[95m"
+#define GOLD_START "\033[38;5;220m"
 
 /*// Constexpr Macros
 constexpr std::string_view GREEN_START = "\033[92m";

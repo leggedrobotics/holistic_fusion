@@ -381,11 +381,11 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
                                               const double timeKm1, const double timeK, const double rate,
                                               const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
   // Find corresponding keys in graph
-  const double maxLidarTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
+  const double maxTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance{0.0};
 
-  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, timeKm1, timeK, "pose between")) {
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxTimestampDistance, timeKm1, timeK, "pose between")) {
     REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
                  << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
     return closestKeyK;
