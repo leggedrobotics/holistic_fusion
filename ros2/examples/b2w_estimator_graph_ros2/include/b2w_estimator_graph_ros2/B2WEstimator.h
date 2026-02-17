@@ -13,6 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <deque>
 #include <cstddef>
 #include <cmath>
+#include <limits>
 #include <mutex>
 #include <utility>
 
@@ -64,7 +65,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   void initializeSubscribers();
   void initializeMessages();
   void initializeServices();
-  void imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr);
+  // void imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr);
 
  private:
   // Time
@@ -200,13 +201,12 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   std::shared_ptr<nav_msgs::msg::Path> measGnssPathPtr_;
 
   // --------------------------------------------------------------------------
-  // LIO pose buffer for GNSS initialization:
-  // Must match the names used in B2WEstimator.cpp (lioPoseBufMutex_ / lioPoseBuf_).
+  // LIO pose buffer for GNSS initialization
   mutable std::mutex lioPoseBufMutex_;
   std::deque<std::pair<double, Eigen::Isometry3d>> lioPoseBuf_;  // (time, ^M T_B)
   static constexpr double kLioBufKeepSec = 5.0;                  // [s]
   static constexpr double kInitSyncMaxDt = 0.20;                 // [s]
-  bool getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out) const;
+  bool getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
   // --------------------------------------------------------------------------
 
   // GNSS Handler
@@ -226,6 +226,24 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
 
   // Wheel Radius
   double wheelRadiusMeter_ = 0.195;
+
+  // --------------------------------------------------------------------------
+  // Cached frame names + constant lever arm (step 9.1)
+  void cacheFrames_();
+  bool framesCached_ = false;
+
+  std::string worldFrame_;
+  std::string baseLinkFrame_;
+  std::string gnssFrame_;
+  std::string lioOdometryFrame_;
+  std::string lidarBetweenFrame_;
+  std::string wheelOdometryBetweenFrame_;
+  std::string wheelLinearVelocityLeftFrame_;
+  std::string wheelLinearVelocityRightFrame_;
+  std::string vioOdometryFrame_;
+
+  Eigen::Vector3d t_B_G_cached_ = Eigen::Vector3d::Zero();
+  // --------------------------------------------------------------------------
 };
 
 }  // namespace b2w_se

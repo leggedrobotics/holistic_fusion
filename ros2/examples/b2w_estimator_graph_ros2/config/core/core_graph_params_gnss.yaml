@@ -24,7 +24,7 @@
       slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
       # Optimizer Config
       gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
-      minOptimizationFrequency: 2.0           # Minimum optimization frequency [Hz]
+      minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
       maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
       additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
       findUnusedFactorSlots: true
@@ -36,7 +36,7 @@
       optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
       referenceFramePosesResetThreshold: 3.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
       centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
-      createReferenceAlignmentKeyframeEveryNSeconds: 5.0   # Create a new keyframe for alignment every n seconds
+      createReferenceAlignmentKeyframeEveryNSeconds: 4.0   # Create a new keyframe for alignment every n seconds
       # Extrinsic Calibration
       optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
 
