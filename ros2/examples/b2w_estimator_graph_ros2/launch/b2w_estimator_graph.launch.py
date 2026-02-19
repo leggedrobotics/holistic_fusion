@@ -89,38 +89,4 @@ def generate_launch_description():
             parameters=[{"use_sim_time": use_sim_time}],
             output="log",
         ),
-
-        Node(
-            package="tf2_ros",
-            executable="static_transform_publisher",
-            output="screen",
-            arguments=["-0.49", "0.0", "0.14", "0", "0", "0", "lidar", "gnss"],
-        )
-
-        # Main Node with GNSS
-        # Node(
-        #     package="b2w_estimator_graph_ros2",
-        #     executable="b2w_estimator_graph_ros2_node",
-        #     name="b2w_estimator_node",
-        #     output="screen",
-        #     parameters=[
-        #         {"use_sim_time": use_sim_time},
-        #         {"launch/optimizationResultLoggingPath": logging_dir_location},
-        #         core_graph_config_param_file,
-        #         os.path.join(pkg_dir, "config", "core", "core_graph_params_gnss.yaml"),
-        #         core_extrinsic_param_file,
-        #         os.path.join(pkg_dir, "config", "b2w_specific", "b2w_graph_params_gnss.yaml"),
-        #         b2w_extrinsic_param_file,
-        #     ],
-        #     remappings=[
-        #         ("/imu_topic", imu_topic_name),
-        #         ("/lidar_odometry_topic", lidar_odometry_topic_name),
-        #         ("/between_lidar_odometry_topic", between_lidar_odometry_topic_name),
-        #         ("/wheel_odometry_topic", wheel_odometry_topic_name),
-        #         ("/wheel_velocities_topic", wheel_velocities_topic_name),
-        #         ("/vio_odometry_topic", vio_odometry_topic_name),
-        #         ("/gnss_topic", gnss_topic_name),
-        #     ],
-        #     condition=IfCondition(use_gnss_unary),
-        # ),
     ])
