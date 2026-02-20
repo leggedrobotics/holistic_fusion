@@ -1,3 +1,4 @@
+// TrajectoryAlignment.h
 /*
 Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
@@ -29,16 +30,56 @@ class TrajectoryAlignment {
   template<typename Vec, typename T>
   inline Vec lerp(const Vec& a, const Vec& b, T t) { return a + t*(b - a); }
 
+  // Resample a trajectory to uniform timestamps.
+  // Minimal safety fixes:
+  // - handle <2 poses
+  // - clamp to endpoints to avoid OOB
+  // - guard against duplicate timestamps
   Trajectory resample(const Trajectory& src, double t0, double dt, size_t N)
   {
     Trajectory dst;
+    const auto& poses = src.poses();
+    if (poses.size() < 2 || N == 0) {
+      return dst;
+    }
+
+    const double t_first = poses.front().time();
+    const double t_last  = poses.back().time();
+
     size_t i = 0;
     for (size_t k = 0; k < N; ++k) {
-      double tk = t0 + k*dt;
-      while (i+1 < src.poses().size() && src.poses()[i+1].time() < tk) ++i;
-      const auto& p0 = src.poses()[i];
-      const auto& p1 = src.poses()[i+1];
-      double u = (tk - p0.time()) / (p1.time() - p0.time());
+      double tk = t0 + k * dt;
+
+      if (tk <= t_first) {
+        dst.addPose(poses.front().position(), tk);
+        continue;
+      }
+      if (tk >= t_last) {
+        dst.addPose(poses.back().position(), tk);
+        continue;
+      }
+
+      while (i + 1 < poses.size() && poses[i + 1].time() < tk) {
+        ++i;
+      }
+      if (i + 1 >= poses.size()) {
+        // Should not happen due to tk < t_last, but keep it safe.
+        dst.addPose(poses.back().position(), tk);
+        continue;
+      }
+
+      const auto& p0 = poses[i];
+      const auto& p1 = poses[i + 1];
+
+      const double denom = (p1.time() - p0.time());
+      double u = 0.0;
+      if (std::abs(denom) > 1e-12) {
+        u = (tk - p0.time()) / denom;
+      }
+      // Clamp interpolation to segment endpoints (handles small numerical drift)
+      if (u < 0.0) u = 0.0;
+      if (u > 1.0) u = 1.0;
+
       dst.addPose(lerp(p0.position(), p1.position(), u), tk);
     }
     return dst;

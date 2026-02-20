@@ -222,6 +222,9 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
 
   // Mutex
   std::mutex rosPublisherMutex_;
+
+  // NEW (minimal): protects shared Path message objects from cross-thread publish vs modification
+  mutable std::mutex pathMsgMutex_;
 };
 }  // namespace graph_msf
 

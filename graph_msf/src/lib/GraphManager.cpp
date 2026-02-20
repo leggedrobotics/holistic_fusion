@@ -7,12 +7,19 @@ Please see the LICENSE file that has been included as part of this package.
 
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
+// Set to 1 to skip expensive covariance computations in updateGraph() and publish zeros instead.
+#define GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING 1
+
 // C++
 #include <chrono>
 #include <filesystem>
 #include <iomanip>
 #include <string>
 #include <utility>
+
+// Timing (minimal additions)
+#include <atomic>
+#include <cstdint>
 
 // IO
 #include <gtsam/slam/dataset.h>
@@ -37,11 +44,76 @@ Please see the LICENSE file that has been included as part of this package.
 #endif
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 
+// Set to 0 to compile out function timing.
+#define GRAPH_MSF_ENABLE_FUNCTION_TIMING 0
+
 namespace graph_msf {
+
+#if GRAPH_MSF_ENABLE_FUNCTION_TIMING
+namespace detail {
+
+struct FunctionTimingStats {
+  std::atomic<std::uint64_t> n{0};
+  std::atomic<std::int64_t> total_ns{0};
+  std::atomic<std::int64_t> max_ns{0};
+  std::atomic<std::int64_t> last_report_ns{0};
+};
+
+inline void atomicMax(std::atomic<std::int64_t>& a, std::int64_t v) {
+  std::int64_t cur = a.load(std::memory_order_relaxed);
+  while (v > cur && !a.compare_exchange_weak(cur, v, std::memory_order_relaxed)) {}
+}
+
+class ScopedFunctionTimer {
+public:
+  explicit ScopedFunctionTimer(const char* name, FunctionTimingStats& stats)
+      : name_(name), stats_(stats), start_(std::chrono::steady_clock::now()) {}
+
+  ~ScopedFunctionTimer() {
+    using namespace std::chrono;
+    const auto end = steady_clock::now();
+    const std::int64_t dur_ns = duration_cast<nanoseconds>(end - start_).count();
+
+    const std::uint64_t n = stats_.n.fetch_add(1, std::memory_order_relaxed) + 1;
+    const std::int64_t total_ns = stats_.total_ns.fetch_add(dur_ns, std::memory_order_relaxed) + dur_ns;
+    atomicMax(stats_.max_ns, dur_ns);
+
+    constexpr std::int64_t kReportPeriodNs =
+        static_cast<std::int64_t>(5) * static_cast<std::int64_t>(1000000000LL);
+
+    const std::int64_t now_ns = duration_cast<nanoseconds>(end.time_since_epoch()).count();
+    std::int64_t last = stats_.last_report_ns.load(std::memory_order_relaxed);
+    if ((now_ns - last) >= kReportPeriodNs &&
+        stats_.last_report_ns.compare_exchange_strong(last, now_ns, std::memory_order_relaxed)) {
+      const double avg_ms = (n > 0) ? (static_cast<double>(total_ns) / 1e6) / static_cast<double>(n) : 0.0;
+      const double max_ms = static_cast<double>(stats_.max_ns.load(std::memory_order_relaxed)) / 1e6;
+      REGULAR_COUT << " [T] " << name_ << ": n=" << static_cast<unsigned long long>(n)
+                   << " avg=" << avg_ms << " ms"
+                   << " max=" << max_ms << " ms" << std::endl;
+    }
+  }
+
+private:
+  const char* name_;
+  FunctionTimingStats& stats_;
+  std::chrono::steady_clock::time_point start_;
+};
+
+}  // namespace detail
+
+#define GRAPH_MSF_SCOPED_TIMER(NAME_LITERAL)                  \
+  static ::graph_msf::detail::FunctionTimingStats __fn_stats; \
+  ::graph_msf::detail::ScopedFunctionTimer __fn_timer((NAME_LITERAL), __fn_stats)
+
+#else
+#define GRAPH_MSF_SCOPED_TIMER(NAME_LITERAL) (void)0
+#endif
 
 // Public --------------------------------------------------------------------
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
     : graphConfigPtr_(std::move(graphConfigPtr)), imuFrame_(std::move(imuFrame)), worldFrame_(std::move(worldFrame)) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::GraphManager");
+
   // Buffer
   rtFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
   batchFactorGraphBufferPtr_ = std::make_shared<gtsam::NonlinearFactorGraph>();
@@ -72,6 +144,8 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
 
 // Initialization Interface ---------------------------------------------------
 bool GraphManager::initImuIntegrators(const double gravityValue) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::initImuIntegrators");
+
   // Gravity direction definition
   imuParamsPtr_ = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(gravityValue);  // ROS convention
 
@@ -101,6 +175,8 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
 }
 
 bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::initPoseVelocityBiasGraph");
+
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -167,13 +243,13 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 
     // Copy over
     // Rt
-    newRtGraphFactors = *rtFactorGraphBufferPtr_;
-    newRtGraphValues = *rtGraphValuesBufferPtr_;
+    std::swap(newRtGraphFactors, *rtFactorGraphBufferPtr_);
+    std::swap(newRtGraphValues, *rtGraphValuesBufferPtr_);
     rtFactorGraphBufferPtr_->resize(0);
     rtGraphValuesBufferPtr_->clear();
     // Batch
-    newBatchGraphFactors = *batchFactorGraphBufferPtr_;
-    newBatchGraphValues = *batchGraphValuesBufferPtr_;
+    std::swap(newBatchGraphFactors, *batchFactorGraphBufferPtr_);
+    std::swap(newBatchGraphValues, *batchGraphValuesBufferPtr_);
     batchFactorGraphBufferPtr_->resize(0);
     batchGraphValuesBufferPtr_->clear();
   }
@@ -187,7 +263,7 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
-                                             gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
+                                            gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
   W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
   T_W_O_ = (T_W_I0.inverse() * T_O_I0).matrix();
@@ -198,6 +274,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                            const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::addImuFactorAndGetState");
+
   // Logging of latency
   if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
     latencyStartTime_ = std::chrono::high_resolution_clock::now();
@@ -228,7 +306,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
                                                      gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector_);
   }
-  
+
   // 1.4 Propagate to state in odom
   // Delta pose
   const gtsam::Pose3 T_W_I_afterInt = W_imuPropagatedState_.pose();
@@ -286,7 +364,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     gtsam::CombinedImuFactor imuFactor(gtsam::symbol_shorthand::X(oldKey), gtsam::symbol_shorthand::V(oldKey),
                                        gtsam::symbol_shorthand::X(newKey), gtsam::symbol_shorthand::V(newKey),
                                        gtsam::symbol_shorthand::B(oldKey), gtsam::symbol_shorthand::B(newKey), *imuStepPreintegratorPtr_);
-    addFactorToRtAndBatchGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu");
+    addFactorToRtAndBatchGraph_<const gtsam::CombinedImuFactor*>(&imuFactor, imuTimeK, "imu", true);
 
     // Add IMU values
     gtsam::Values valuesEstimate;
@@ -330,8 +408,9 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
 
 // Set T_W_F
 bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
-  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>()
-          .setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::setInitialWorldFrameToFixedFrameTransform");
+
+  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
   std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix()
             << std::endl;
   return true;
@@ -340,6 +419,8 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::getUnaryFactorGeneralKey");
+
   // Find the closest key in existing graph
   // Case 1: Can't add immediately
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
@@ -380,12 +461,14 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
 gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
                                               const double timeKm1, const double timeK, const double rate,
                                               const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::addPoseBetweenFactor");
+
   // Find corresponding keys in graph
-  const double maxLidarTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
+  const double maxTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance{0.0};
 
-  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxLidarTimestampDistance, timeKm1, timeK, "pose between")) {
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxTimestampDistance, timeKm1, timeK, "pose between")) {
     REGULAR_COUT << RED_START << " Current propagated key: " << propagatedStateKey_ << " , PoseBetween factor not added between keys "
                  << closestKeyKm1 << " and " << closestKeyK << COLOR_END << std::endl;
     return closestKeyK;
@@ -421,6 +504,8 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
       robustErrorFunction =
           gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noise);
       break;
+    case RobustNormEnum::None:
+      break;
   }
 
   // Create pose between factor and add it
@@ -448,6 +533,8 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
 gtsam::NavState GraphManager::calculateNavStateAtGeneralKey(bool& computeSuccessfulFlag,
                                                             const std::shared_ptr<graph_msf::OptimizerBase> optimizerPtr,
                                                             const gtsam::Key& generalKey, const char* callingFunctionName) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::calculateNavStateAtGeneralKey");
+
   // Nav State (pose and velocity)
   gtsam::Pose3 resultPose;
   gtsam::Vector3 resultVelocity;
@@ -471,6 +558,8 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
                                                                                    const gtsam::Key& graphKey,
                                                                                    const char* callingFunctionName,
                                                                                    std::optional<const gtsam::NavState> optionalNavState) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::calculatePoseCovarianceAtKeyInWorldFrame");
+
   // Pose Covariance in Tangent Space
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
   gtsam::Matrix66 resultPoseCovarianceBodyFrame = graphPtr->calculateMarginalCovarianceMatrixAtKey(graphKey);
@@ -498,6 +587,8 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
 }
 
 void GraphManager::updateGraph() {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::updateGraph");
+
   // At compile time get the symbols for the 6D and 3D states
   constexpr int numDynamic6DStates = countNDStates<6>();
   constexpr int numDynamic3DStates = countNDStates<3>();
@@ -516,28 +607,24 @@ void GraphManager::updateGraph() {
   {
     // Lock
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
     // Get current key and time
     currentPropagatedKey = propagatedStateKey_;
     currentPropagatedTime = propagatedStateTime_;
     currentAngularVelocity = currentAngularVelocity_;
-    // Get copy of factors and values and empty buffers
-    newRtGraphFactors = *rtFactorGraphBufferPtr_;
-    newRtGraphValues = *rtGraphValuesBufferPtr_;
-    newRtGraphKeysTimestampsMap = *rtGraphKeysTimestampsMapBufferPtr_;
-    rtFactorGraphBufferPtr_->resize(0);
-    rtGraphValuesBufferPtr_->clear();
-    rtGraphKeysTimestampsMapBufferPtr_->clear();
+
+    // Drain buffered factors/values/maps without deep copies
+    std::swap(newRtGraphFactors, *rtFactorGraphBufferPtr_);
+    std::swap(newRtGraphValues, *rtGraphValuesBufferPtr_);
+    std::swap(newRtGraphKeysTimestampsMap, *rtGraphKeysTimestampsMapBufferPtr_);
+
     if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
-      newBatchGraphFactors = *batchFactorGraphBufferPtr_;
-      newBatchGraphValues = *batchGraphValuesBufferPtr_;
-      newBatchGraphKeysTimestampsMap = *batchGraphKeysTimestampsMapBufferPtr_;
-      batchFactorGraphBufferPtr_->resize(0);
-      batchGraphValuesBufferPtr_->clear();
-      batchGraphKeysTimestampsMapBufferPtr_->clear();
+      std::swap(newBatchGraphFactors, *batchFactorGraphBufferPtr_);
+      std::swap(newBatchGraphValues, *batchGraphValuesBufferPtr_);
+      std::swap(newBatchGraphKeysTimestampsMap, *batchGraphKeysTimestampsMapBufferPtr_);
     }
 
-    // Empty Buffer Pre-integrator --> everything missed during the update will
-    // be in here
+    // Reset buffer pre-integrator: anything missed during the update will accumulate here
     if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
     } else {
@@ -589,14 +676,21 @@ void GraphManager::updateGraph() {
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
   rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);
-  // gtsam::Matrix resultAccBiasCov =
-  // rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::B(currentPropagatedKey)); C. Compute & Transform
-  // Covariances ------------------------------ Pose Covariance in World Frame
-  gtsam::Matrix66 resultPoseCovarianceWorldFrame =
+
+  // C. Compute & Transform Covariances ------------------------------
+  gtsam::Matrix66 resultPoseCovarianceWorldFrame;
+  gtsam::Matrix33 resultVelocityCovariance;
+#if GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING
+  resultPoseCovarianceWorldFrame = gtsam::Z_6x6;
+  resultVelocityCovariance = gtsam::Matrix33::Zero();
+#else
+  // Pose Covariance in World Frame
+  resultPoseCovarianceWorldFrame =
       calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
   // Velocity Covariance
-  gtsam::Matrix33 resultVelocityCovariance =
+  resultVelocityCovariance =
       rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
+#endif
 
   // D. Reference Frame Transformations ------------------------------
   // Containers
@@ -613,7 +707,7 @@ void GraphManager::updateGraph() {
     // Iterate through all dynamically allocated variables (holistic, calibration, landmarks) --------------------------------
     for (auto& framePairKeyMapIterator : gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getTransformsMap()) {
       // Frame Pair
-      const std::pair<std::string, std::string>& framePair = framePairKeyMapIterator.first;  // alias
+      const std::pair<std::string, std::string>& framePairKeyMapIterator_first_first = framePairKeyMapIterator.first;  // alias
 
       // Get Variable Key
       const gtsam::Key& gtsamKey = framePairKeyMapIterator.second.key();  // alias
@@ -637,7 +731,9 @@ void GraphManager::updateGraph() {
           // 6D Transformations
           if (isCharInCharArray<numDynamic6DStates>(stateCategory, dim6StateSymbols)) {
             T_frame1_frame2 = rtOptimizerPtr_->calculateEstimatedPose3(gtsamKey);
+#if !GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING
             T_frame1_frame2_covariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
+#endif
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
             // Update the initial guess for the offline graph
@@ -651,7 +747,9 @@ void GraphManager::updateGraph() {
           else if (isCharInCharArray<numDynamic3DStates>(stateCategory, dim3StateSymbols)) {
             gtsam::Point3 point3Estimate = rtOptimizerPtr_->calculateEstimatedPoint3(gtsamKey);
             T_frame1_frame2 = gtsam::Pose3(gtsam::Rot3::Identity(), point3Estimate);
+#if !GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING
             T_frame1_frame2_covariance.block<3, 3>(3, 3) = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsamKey);
+#endif
             // Add current belief back to the map
             framePairKeyMapIterator.second.updateLatestEstimate(T_frame1_frame2, T_frame1_frame2_covariance);
             // Update the initial guess for the offline graph
@@ -678,7 +776,7 @@ void GraphManager::updateGraph() {
           if (isLandmarkState) {
             // Write to landmark container
             resultLandmarkTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
-                                                              Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
+                                                             Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
             resultLandmarkTransformationsCovariance.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                         framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
           }
@@ -692,9 +790,10 @@ void GraphManager::updateGraph() {
                 framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
             // Potentially fill in existing pairs for logging
             if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
-              if (realTimeReferenceFrameNamePairs_.find(framePair) == realTimeReferenceFrameNamePairs_.end()) {
-                realTimeReferenceFrameNamePairs_.insert(framePair);
-                REGULAR_COUT << " Added frame pair: " << framePair.first << " to " << framePair.second << " to real-time logging."
+              if (realTimeReferenceFrameNamePairs_.find(framePairKeyMapIterator_first_first) == realTimeReferenceFrameNamePairs_.end()) {
+                realTimeReferenceFrameNamePairs_.insert(framePairKeyMapIterator_first_first);
+                REGULAR_COUT << " Added frame pair: " << framePairKeyMapIterator_first_first.first << " to "
+                             << framePairKeyMapIterator_first_first.second << " to real-time logging."
                              << std::endl;
               }
             }
@@ -730,7 +829,7 @@ void GraphManager::updateGraph() {
                            << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                          framePairKeyMapIterator.first.second);
+                                                                                         framePairKeyMapIterator.first.second);
               break;
             }
           }
@@ -748,7 +847,7 @@ void GraphManager::updateGraph() {
                          << COLOR_END << std::endl;
             // Remove state from state dictionary
             gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                        framePairKeyMapIterator.first.second);
+                                                                                       framePairKeyMapIterator.first.second);
             return;
           }
           // If active but added newly but never optimized
@@ -764,7 +863,7 @@ void GraphManager::updateGraph() {
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                          framePairKeyMapIterator.first.second);
+                                                                                         framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
             else if (graphConfigPtr_->verboseLevel_ >= 1) {
@@ -805,21 +904,6 @@ void GraphManager::updateGraph() {
       W_imuPropagatedState_ = imuBufferPreintegratorPtr_->predict(resultNavState, gtsam::imuBias::ConstantBias());
     }
 
-    // 3. State in Odom
-    // Correct rotation only for roll and pitch, keep integrated yaw
-    // gtsam::Rot3 R_O_I_rp_corrected =
-    //     gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
-    //                      W_imuPropagatedState_.pose().rotation().roll());
-    // TODO: Apply gravity correction
-    // gtsam::Rot3 R_O_I_rp_corrected = O_imuPropagatedState_.pose().rotation();
-    // // Rotate corrected velocity to odom frame
-    // gtsam::Vector3 O_v_O_I = R_O_I_rp_corrected * W_imuPropagatedState_.bodyVelocity();
-    // Update the NavState
-    // O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
-
-    // // 4. Transformation between World and Odom
-    // T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
-
     // Update the time of the last optimized state
     lastOptimizedStateTime_ = currentPropagatedTime;
   }  // end of locking
@@ -831,6 +915,8 @@ void GraphManager::updateGraph() {
 }
 
 bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::optimizeSlowBatchSmoother");
+
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     // Time duration of optimization
     std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
@@ -858,6 +944,8 @@ bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::strin
 
 // Logging of the real-time navigation states
 bool GraphManager::logRealTimeNavStates(const std::string& savePath, const std::string& timeString) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::logRealTimeNavStates");
+
   // Note enabled
   if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
     REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
@@ -904,6 +992,8 @@ bool GraphManager::logRealTimeNavStates(const std::string& savePath, const std::
 
 // Logging of real-time reference frame states
 bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, const std::string& timeString) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::logRealTimeReferenceFrameStates");
+
   // Note enabled
   if (!graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
     REGULAR_COUT << RED_START << " Logging of real-time states is disabled. " << COLOR_END << std::endl;
@@ -964,6 +1054,8 @@ bool GraphManager::logRealTimeReferenceFrameStates(const std::string& savePath, 
 
 // Log Latency and Update Duration to Memory
 bool GraphManager::logLatencyAndUpdateDuration(const std::string& savePath, const std::string& timeString) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::logLatencyAndUpdateDuration");
+
   // Note enabled
   if (!graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
     REGULAR_COUT << RED_START << " Logging of latency and update duration is disabled. " << COLOR_END << std::endl;
@@ -1009,6 +1101,8 @@ bool GraphManager::logLatencyAndUpdateDuration(const std::string& savePath, cons
 // Save optimized values to file
 void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
                                              const std::string& savePath, const bool saveCovarianceFlag) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::saveOptimizedValuesToFile");
+
   // At compile time get the symbols for the 6D and 3D states
   constexpr int num6DStates = countNDStates<6>();
   constexpr int num3DStates = countNDStates<3>();
@@ -1223,12 +1317,16 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 // Save optimized Graph to Common Open source G2o format
 void GraphManager::saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,
                                            const std::string& saveFileName) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::saveOptimizedGraphToG2o");
+
   // Safe optimized states
   gtsam::writeG2o(optimizedGraph.getNonlinearFactorGraph(), optimizedValues, saveFileName);
 }
 
 // Calculate State at Key
 gtsam::NavState GraphManager::calculateStateAtGeneralKey(bool& computeSuccessfulFlag, const gtsam::Key& generalKey) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::calculateStateAtGeneralKey");
+
   return calculateNavStateAtGeneralKey(computeSuccessfulFlag, rtOptimizerPtr_, generalKey, __func__);
 }
 
@@ -1236,6 +1334,8 @@ gtsam::NavState GraphManager::calculateStateAtGeneralKey(bool& computeSuccessful
 
 // Update of the two IMU pre-integrators
 void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::updateImuIntegrators_");
+
   if (imuMeas.size() < 2) {
     REGULAR_COUT << " Received less than 2 IMU messages --- No Preintegration done." << std::endl;
     return;
@@ -1267,6 +1367,8 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
                                                      const gtsam::Values& newRtGraphValues,
                                                      const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
                                                      const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::addFactorsToRtSmootherAndOptimize");
+
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> startLoopTime = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> endLoopTime;
@@ -1277,7 +1379,7 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
   // Perform update of the real-time smoother, including optimization
   bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
   // Additional iterations
-  for (size_t itr = 0; itr < additionalIterations; ++itr) {
+  for (int itr = 0; itr < additionalIterations; ++itr) {
     successFlag = successFlag && rtOptimizerPtr_->update();
   }
 
@@ -1297,6 +1399,8 @@ bool GraphManager::addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFa
                                                         const gtsam::Values& newBatchGraphValues,
                                                         const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
                                                         const std::shared_ptr<GraphConfig>& graphConfigPtr) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::addFactorsToBatchSmootherAndOptimize");
+
   // Lock for optimization (as shared rtOptimizer is optimized)
   const std::lock_guard<std::mutex> optimization(optimizationRunningMutex_);
 
@@ -1313,6 +1417,8 @@ bool GraphManager::addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFa
 // Find closest keys in graph
 bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance,
                                   const double maxTimestampDistance, const double timeKm1, const double timeK, const std::string& name) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::findGraphKeys_");
+
   // Find closest lidar keys in existing graph
   double closestGraphTimeKm1, closestGraphTimeK;
   {
@@ -1346,6 +1452,8 @@ bool GraphManager::findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closest
 
 void GraphManager::writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, const double measurementTime,
                                                     std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::writeValueKeysToKeyTimeStampMap_");
+
   for (const auto& value : values) {
     writeKeyToKeyTimeStampMap_(value.key, measurementTime, keyTimestampMapPtr);
   }

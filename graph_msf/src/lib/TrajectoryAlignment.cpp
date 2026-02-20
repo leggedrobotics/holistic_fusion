@@ -1,3 +1,4 @@
+// TrajectoryAlignment.cpp
 /*
 Copyright 2022 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
 All rights reserved.
@@ -14,6 +15,18 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/trajectory_alignment/TrajectoryAlignment.h"
 
+namespace {
+
+inline void sortTrajectoryByTime(graph_msf::Trajectory& traj) {
+  auto& poses = traj.poses();
+  std::sort(poses.begin(), poses.end(),
+            [](const graph_msf::Pose& a, const graph_msf::Pose& b) {
+              return a.time() < b.time();
+            });
+}
+
+}  // namespace
+
 namespace graph_msf {
 
 // Public -------------------------------------------------------------------
@@ -22,23 +35,31 @@ TrajectoryAlignment::TrajectoryAlignment() {
 }
 
 std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignment::getSe3Trajectory() {
+  std::vector<Pose> posesCopy;
+  {
+    const std::lock_guard<std::mutex> alignmentLock(alignmentMutex);
+    posesCopy = se3Trajectory_.poses();
+  }
+
   std::vector<std::pair<double, Eigen::Vector3d>> trajectory;
-  std::pair<double, Eigen::Vector3d> onePose;
-  for (auto pose : se3Trajectory_.poses()) {
-    onePose.first = pose.time();
-    onePose.second = pose.position();
-    trajectory.push_back(onePose);
+  trajectory.reserve(posesCopy.size());
+  for (const auto& pose : posesCopy) {
+    trajectory.emplace_back(pose.time(), pose.position());
   }
   return trajectory;
 }
 
 std::vector<std::pair<double, Eigen::Vector3d>> TrajectoryAlignment::getR3Trajectory() {
+  std::vector<Pose> posesCopy;
+  {
+    const std::lock_guard<std::mutex> alignmentLock(alignmentMutex);
+    posesCopy = r3Trajectory_.poses();
+  }
+
   std::vector<std::pair<double, Eigen::Vector3d>> trajectory;
-  std::pair<double, Eigen::Vector3d> onePose;
-  for (auto pose : r3Trajectory_.poses()) {
-    onePose.first = pose.time();
-    onePose.second = pose.position();
-    trajectory.push_back(onePose);
+  trajectory.reserve(posesCopy.size());
+  for (const auto& pose : posesCopy) {
+    trajectory.emplace_back(pose.time(), pose.position());
   }
   return trajectory;
 }
@@ -59,42 +80,38 @@ void TrajectoryAlignment::addR3PositionWithStdDev(Eigen::Vector3d position, doub
 }
 
 bool TrajectoryAlignment::associateTrajectories(
-        const Trajectory& trajectoryA,
-        const Trajectory& trajectoryB,
-        Trajectory&       newTrajectoryA,
-        Trajectory&       newTrajectoryB)
+    const Trajectory& trajectoryA,
+    const Trajectory& trajectoryB,
+    Trajectory& newTrajectoryA,
+    Trajectory& newTrajectoryB)
 {
   newTrajectoryA.clear();
   newTrajectoryB.clear();
 
-  const auto& posesA = trajectoryA.poses();
-  const auto& posesB = trajectoryB.poses();
-  if (posesA.empty() || posesB.empty()) return false;
+  if (trajectoryA.poses().size() < 2 || trajectoryB.poses().size() < 2) return false;
 
-  std::size_t i = 0;
-  std::size_t j = 0;
+  // Make local copies so we can sort defensively
+  Trajectory A = trajectoryA;
+  Trajectory B = trajectoryB;
+  sortTrajectoryByTime(A);
+  sortTrajectoryByTime(B);
 
-  while (i < posesA.size() && j < posesB.size())
-  {
-    const double tA = posesA[i].time();
-    const double tB = posesB[j].time();
-    const double dt = tA - tB;
+  const double t0 = std::max(A.poses().front().time(), B.poses().front().time());
+  const double t1 = std::min(A.poses().back().time(),  B.poses().back().time());
+  if (!(t1 > t0)) return false;
 
-    if (std::fabs(dt) <= 0.15)
-    {
-      // one-to-one correspondence found
-      newTrajectoryA.addPose(posesA[i]);
-      newTrajectoryB.addPose(posesB[j]);
-      ++i; ++j;
-    }
-    else
-    {
-      // advance the trajectory that is behind in time
-      (dt < 0.0) ? ++i : ++j;
-    }
-  }
+  // Pick a common dt based on configured rates (choose one policy)
+  const double rate_common = std::min(r3Rate_, se3Rate_);   // conservative, avoids oversampling
+  if (!(rate_common > 0.0)) return false;
+  const double dt = 1.0 / rate_common;
 
-  return newTrajectoryA.poses().size() >= 3;
+  const std::size_t N = static_cast<std::size_t>(std::floor((t1 - t0) / dt)) + 1;
+  if (N < 3) return false;
+
+  newTrajectoryA = resample(A, t0, dt, N);
+  newTrajectoryB = resample(B, t0, dt, N);
+
+  return (newTrajectoryA.poses().size() >= 3 && newTrajectoryB.poses().size() >= 3);
 }
 
 
@@ -168,10 +185,34 @@ bool TrajectoryAlignment::trajectoryAlignmentRobust(
   while (iter < maxIterations) {
     // 1. Random minimal subset (indices)
     std::array<std::size_t, 3> idx;
-    do {
+    bool found = false;
+    constexpr std::size_t kMaxSampleAttempts = 100;
+    for (std::size_t attempt = 0; attempt < kMaxSampleAttempts; ++attempt) {
       for (auto& k : idx) k = uni(rng);
-    } while (!nonCollinear(B.col(idx[0]), B.col(idx[1]), B.col(idx[2])));
-
+      if (nonCollinear(B.col(idx[0]), B.col(idx[1]), B.col(idx[2]))) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // Degenerate data (e.g., collinear/duplicated points): avoid infinite looping.
+      std::cerr << RED_START
+          << "\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "###########################################   Solution not found   #####################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << "########################################################################################################\n"
+          << COLOR_END << std::endl;
+      return false;
+    }
     // 2. Extract columns for these indices
     Eigen::Matrix3d B_sample, A_sample;
     for (int j = 0; j < 3; ++j) {
@@ -298,35 +339,35 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   // Containers for running data processing
   Trajectory copySe3Trajectory;
   Trajectory copyR3Trajectory;
+  bool localFirstTry = false;
   {
-    // Mutex for alignment Flag
+    // Mutex for alignment Flag + trajectory copies
     const std::lock_guard<std::mutex> alignmentLock(alignmentMutex);
-    // Copy Trajectories
     copySe3Trajectory = se3Trajectory_;
     copyR3Trajectory = r3Trajectory_;
+    localFirstTry = firstAlignmentTryFlag_;
   }
+
+  // Ensure time-ordering (minimal fix for out-of-order inserts)
+  sortTrajectoryByTime(copySe3Trajectory);
+  sortTrajectoryByTime(copyR3Trajectory);
 
   // Early exit if not enough data
   const size_t minPoses = 20;
   if (copySe3Trajectory.poses().size() < minPoses || copyR3Trajectory.poses().size() < minPoses) {
-    // std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
-    //           << " Insufficient data for alignment. SE3 poses: " << copySe3Trajectory.poses().size()
-    //           << ", R3 poses: " << copyR3Trajectory.poses().size()
-    //           << ". At least " << minPoses << " poses required in each trajectory."
-    //           << COLOR_END << std::endl;
     return false;
   }
 
   // Check for standing still or first alignment
-  if (copySe3Trajectory.isStanding(se3Rate_, noMovementTime_, noMovementDistance_) ||
-      copyR3Trajectory.isStanding(r3Rate_, noMovementTime_, noMovementDistance_) ||
-      firstAlignmentTryFlag_) 
+  if ((copySe3Trajectory.isStanding(noMovementTime_, noMovementDistance_) &&
+      copyR3Trajectory.isStanding(noMovementTime_, noMovementDistance_)) ||
+      localFirstTry)
   {
     {
       const std::lock_guard<std::mutex> lock(alignmentMutex);
       se3Trajectory_.clear();
       r3Trajectory_.clear();
-      if (firstAlignmentTryFlag_) {
+      if (localFirstTry) {
         std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " First Alignment Try." << COLOR_END << std::endl;
         firstAlignmentTryFlag_ = false;
       }
@@ -334,7 +375,6 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
     std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " No movement detected. Trajectories cleared." << COLOR_END << std::endl;
     return false;
   }
-
 
   // Status
   if (copyR3Trajectory.poses().size() % 5 == 0) {
@@ -352,15 +392,24 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   }
 
   double kMinSpread = 0.05;  // Minimum spatial spread in meters
+  // Throttle error prints to avoid log spam.
+  static std::size_t r3SpreadFailCount = 0;
   if (!hasMinimumSpatialSpread(copyR3Trajectory.poses(), kMinSpread)) {
-    std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
-              << " Minimum spatial spread check failed for R3 trajectory." << COLOR_END << std::endl;
+    if ((r3SpreadFailCount++ % 20) == 0) {
+      std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
+                << " Minimum spatial spread check failed for R3 trajectory."
+                << " (throttled: every 20 occurrences)" << COLOR_END << std::endl;
+    }
     return false;
   }
 
+  static std::size_t se3SpreadFailCount = 0;
   if (!hasMinimumSpatialSpread(copySe3Trajectory.poses(), kMinSpread)) {
-    std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
-              << " Minimum spatial spread check failed for SE3 trajectory." << COLOR_END << std::endl;
+    if ((se3SpreadFailCount++ % 20) == 0) {
+      std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
+                << " Minimum spatial spread check failed for SE3 trajectory."
+                << " (throttled: every 20 occurrences)" << COLOR_END << std::endl;
+    }
     return false;
   }
 
@@ -368,51 +417,67 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " All checks passed. Trying to align." << COLOR_END << std::endl;
 
   // Cutting of Timestamps Outside the Joint Time Window
-  // Print the front and back times of both trajectories
-  std::cout << YELLOW_START << "Trajectory Alignment: SE3 time range [" 
-            << std::fixed << std::setprecision(9) << copySe3Trajectory.poses().front().time() << ", " 
+  std::cout << YELLOW_START << "Trajectory Alignment: SE3 time range ["
+            << std::fixed << std::setprecision(9) << copySe3Trajectory.poses().front().time() << ", "
             << copySe3Trajectory.poses().back().time() << "]" << COLOR_END << std::endl;
-  std::cout << YELLOW_START << "Trajectory Alignment: R3 time range [" 
-            << std::fixed << std::setprecision(9) << copyR3Trajectory.poses().front().time() << ", " 
+  std::cout << YELLOW_START << "Trajectory Alignment: R3 time range ["
+            << std::fixed << std::setprecision(9) << copyR3Trajectory.poses().front().time() << ", "
             << copyR3Trajectory.poses().back().time() << "]" << COLOR_END << std::endl;
 
   double startTime = std::max(copySe3Trajectory.poses().front().time(), copyR3Trajectory.poses().front().time());
-  double endTime = std::min(copySe3Trajectory.poses().back().time(), copyR3Trajectory.poses().back().time());
+  double endTime   = std::min(copySe3Trajectory.poses().back().time(),  copyR3Trajectory.poses().back().time());
 
-  // Print
+  // Critical fix: require overlap
+  if (startTime >= endTime) {
+    std::cerr << YELLOW_START << "Trajectory Alignment" << RED_START
+              << " No overlapping time window between trajectories." << COLOR_END << std::endl;
+    return false;
+  }
+
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories A and B before cutting of size: " << COLOR_END
             << copySe3Trajectory.poses().size() << " / " << copyR3Trajectory.poses().size() << std::endl;
-  // Cut
+
   copySe3Trajectory.cutTrajectory(startTime, endTime);
   copyR3Trajectory.cutTrajectory(startTime, endTime);
-  // Print
+
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
             << " Trajectories A and B after cutting of size and time: " << COLOR_END << copySe3Trajectory.poses().size() << " / "
             << copyR3Trajectory.poses().size() << std::endl;
+
+  // Critical fix: avoid empty/small trajectories after cut
+  if (copySe3Trajectory.poses().size() < 3 || copyR3Trajectory.poses().size() < 3) {
+    return false;
+  }
 
   // Downsample the longer trajectory to the shorter one
   int downsampleFactor = 1;
   if (copySe3Trajectory.poses().size() > copyR3Trajectory.poses().size()) {
     downsampleFactor = std::floor(copySe3Trajectory.poses().size() / copyR3Trajectory.poses().size());
+    if (downsampleFactor < 1) downsampleFactor = 1;
     copySe3Trajectory.downsample(downsampleFactor);
   } else {
     downsampleFactor = std::floor(copyR3Trajectory.poses().size() / copySe3Trajectory.poses().size());
+    if (downsampleFactor < 1) downsampleFactor = 1;
     copyR3Trajectory.downsample(downsampleFactor);
   }
+
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Downsample Factor: " << COLOR_END << downsampleFactor
             << std::endl;
-  // Print
+
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories A and B after downsampling: " << COLOR_END
             << copySe3Trajectory.poses().size() << " / " << copyR3Trajectory.poses().size() << std::endl;
+
+  if (copySe3Trajectory.poses().size() < 3 || copyR3Trajectory.poses().size() < 3) {
+    return false;
+  }
 
   // Align Trajectories
   Trajectory newSe3Trajectory;
   Trajectory newR3Trajectory;
-  // Associate Trajectories
-  // Difference of trajectory size should not be larger than 10%
+
   bool sizeDeviatesTooMuch = (std::abs(static_cast<int>(copySe3Trajectory.poses().size() - copyR3Trajectory.poses().size())) >
                               0.1 * std::min(copySe3Trajectory.poses().size(), copyR3Trajectory.poses().size()));
-  // If the trajectories deviate too much, associate them
+
   if (sizeDeviatesTooMuch) {
     bool success = associateTrajectories(copySe3Trajectory, copyR3Trajectory, newSe3Trajectory, newR3Trajectory);
     if (!success) {
@@ -421,26 +486,19 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
     }
     std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
               << " Trajectories Associated, as after downsampling they were different in size." << COLOR_END << std::endl;
-  }
-  // If the trajectories do not deviate too much, just copy them
-  else {
+  } else {
     newSe3Trajectory = copySe3Trajectory;
     newR3Trajectory = copyR3Trajectory;
     std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START
               << " Trajectories copied, as after downsampling they were similar in size." << COLOR_END << std::endl;
   }
 
-  // Update Trajectories
-  copySe3Trajectory = newSe3Trajectory;
-  copyR3Trajectory = newR3Trajectory;
   Eigen::Isometry3d alignmentTransform;
-
-  Eigen::Isometry3d att;
   bool ok = trajectoryAlignmentRobust(newR3Trajectory, newSe3Trajectory, alignmentTransform,
-                                              /*inlierThreshold*/0.15,
-                                              /*confidence*/0.999,
-                                              /*maxIter*/1000,
-                                              /*withScaling*/false);
+                                      /*inlierThreshold*/0.15,
+                                      /*confidence*/0.999,
+                                      /*maxIter*/1000,
+                                      /*withScaling*/false);
   if (!ok) {
     std::cout << "TrajectoryAlignment::initializeYaw trajectoryAlignment failed." << std::endl;
     return false;
@@ -448,14 +506,14 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
     std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Trajectories Aligned." << COLOR_END << std::endl;
   }
 
-  // Math --> Rotation to Yaw
+  // Math --> Rotation to Yaw (unchanged)
   Eigen::Matrix3d rotation = alignmentTransform.rotation();
   double pitch = -asin(rotation(2, 0));
   double roll = atan2(rotation(2, 1), rotation(2, 2));
   yaw = atan2(rotation(1, 0) / cos(pitch), rotation(0, 0) / cos(pitch));
   std::cout << YELLOW_START << "Trajectory Alignment" << GREEN_START << " Initial Roll/Pitch/Yaw(deg):" << COLOR_END << roll * 180 / M_PI
             << "," << pitch * 180 / M_PI << "," << yaw * 180 / M_PI << std::endl;
-  // Return
+
   returnTransform = alignmentTransform;
   return true;
 }

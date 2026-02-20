@@ -25,8 +25,8 @@ int main(int argc, char** argv) {
   auto node = std::make_shared<b2w_se::B2WEstimator>("b2w_estimator_node", opts);
   node->setup(node);
 
-  rclcpp::executors::MultiThreadedExecutor exec(rclcpp::ExecutorOptions(), /*num_threads=*/4);
-  exec.add_node(node);  // add the B2WEstimator itself
+  rclcpp::executors::MultiThreadedExecutor exec(rclcpp::ExecutorOptions(), 4);
+  exec.add_node(node);
   exec.spin();
 
   // Shutdown ROS 2

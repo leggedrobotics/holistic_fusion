@@ -2,8 +2,15 @@ cmake_minimum_required(VERSION 3.16)
 project(b2w_estimator_graph_ros2)
 
 ## Compile as C++17
-add_compile_options(-std=c++17 -O3 -mtune=native -funroll-loops -fopenmp -fopt-info-vec-optimized)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Keep default Release flags and append what you need
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+
+# Global extra flags (avoid repeating -std and -O3 here)
+add_compile_options(-mtune=native -funroll-loops -fopenmp)
 
 # For FindGlog.cmake and FindGflags.cmake
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
@@ -23,7 +30,6 @@ find_package(graph_msf_ros2)
 find_package(graph_msf_ros2_msgs REQUIRED
   COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
 )
-
 
 # Check if the target from graph_msf is already defined
 if(NOT TARGET graph_msf::graph_msf)

@@ -38,8 +38,13 @@ void B2WEstimator::readParams() {
 
   useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useWheelLinearVelocities");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseWheelLinearVelocitiesFlag(useWheelLinearVelocitiesFlag_);
+
   useVioOdometryFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useVioOdometry");
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryFlag(useVioOdometryFlag_);
+
+  useVioOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useVioOdometryBetween");
+  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryBetweenFlag(useVioOdometryBetweenFlag_);
+
 
     // Print sensor flags in bright green
     RCLCPP_INFO(this->get_logger(), "\033[92m=== B2W Estimator Configuration ===\033[0m");
@@ -49,6 +54,7 @@ void B2WEstimator::readParams() {
     RCLCPP_INFO(this->get_logger(), "\033[92m- Use Wheel Odometry Between: %s\033[0m", useWheelOdometryBetweenFlag_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "\033[92m- Use Wheel Linear Velocities: %s\033[0m", useWheelLinearVelocitiesFlag_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "\033[92m- Use VIO Odometry: %s\033[0m", useVioOdometryFlag_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "\033[92m- Use VIO Odometry Between: %s\033[0m", useVioOdometryBetweenFlag_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "\033[92m===============================\033[0m");
 
   // Sensor Param as
@@ -58,6 +64,7 @@ void B2WEstimator::readParams() {
   wheelOdometryBetweenRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.wheelOdometryBetweenRate");
   wheelLinearVelocitiesRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.wheelLinearVelocitiesRate");
   vioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryRate");
+vioOdometryBetweenRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryBetweenRate");
 
   // Alignment Parameters
   const auto initialSe3AlignmentNoiseDensity =
@@ -68,6 +75,11 @@ void B2WEstimator::readParams() {
       graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.lioSe3AlignmentRandomWalk");
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
+
+  const auto vioSe3AlignmentRandomWalk =
+      graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.vioSe3AlignmentRandomWalk");
+  vioSe3AlignmentRandomWalk_ << vioSe3AlignmentRandomWalk[0], vioSe3AlignmentRandomWalk[1], vioSe3AlignmentRandomWalk[2],
+      vioSe3AlignmentRandomWalk[3], vioSe3AlignmentRandomWalk[4], vioSe3AlignmentRandomWalk[5];
 
   // Noise Parameters
   /// LiDAR Odometry
@@ -89,12 +101,17 @@ void B2WEstimator::readParams() {
   const auto wheelLinearVelocitiesNoise =
       graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.wheelLinearVelocitiesNoiseDensity");  // left,right
   wheelLinearVelocitiesNoise_ << wheelLinearVelocitiesNoise[0], wheelLinearVelocitiesNoise[1], wheelLinearVelocitiesNoise[2];
-  /// VIO Odometry
+  /// VIO Odometry Between
   const auto vioPoseBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.vioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
   vioPoseBetweenNoise_ << vioPoseBetweenNoise[0], vioPoseBetweenNoise[1], vioPoseBetweenNoise[2], vioPoseBetweenNoise[3],
       vioPoseBetweenNoise[4], vioPoseBetweenNoise[5];
 
+    /// VIO Odometry Unary
+    const auto vioPoseUnaryNoise =
+            graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.vioPoseUnaryNoiseDensity");  // roll,pitch,yaw,x,y,z
+    vioPoseUnaryNoise_ << vioPoseUnaryNoise[0], vioPoseUnaryNoise[1], vioPoseUnaryNoise[2], vioPoseUnaryNoise[3],
+            vioPoseUnaryNoise[4], vioPoseUnaryNoise[5];
 
 // GNSS parameters
 if (useGnssFlag_) {
@@ -163,12 +180,17 @@ if (useGnssFlag_) {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setWheelLinearVelocityRightFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelLinearVelocityRightFrame"));
 
+  // Wheel Radius
+  wheelRadiusMeter_ = graph_msf::tryGetParam<double>(this, "sensor_params.wheelRadius");
+
   /// VIO Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.vioOdometryFrame"));
 
-  // Wheel Radius
-  wheelRadiusMeter_ = graph_msf::tryGetParam<double>(this, "sensor_params.wheelRadius");
+ // VIO Odometry frame Between    
+  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
+  ->setVioOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.vioOdometryBetweenFrame"));
+
 }
 
 }  // namespace b2w_se
