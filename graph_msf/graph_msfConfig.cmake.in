@@ -7,3 +7,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/graph_msfTargets.cmake")
 
 # Set up version compatibility (optional if you use a version file)
 # include("${CMAKE_CURRENT_LIST_DIR}/graph_msfConfigVersion.cmake")
+
+# Downstream packages must find dependencies (important when using non-standard install directories)
+include(CMakeFindDependencyMacro)
+find_dependency(Eigen3 REQUIRED)
+find_dependency(GTSAM REQUIRED)
+find_dependency(GTSAM_UNSTABLE REQUIRED)
