@@ -18,6 +18,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/expressions.h>
 
 // Package
+#include <gtsam/linear/LossFunctions.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/DynamicDictionaryContainer.h"
 #include "graph_msf/core/FileLogger.h"
@@ -30,8 +32,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurement.h"
 #include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include <gtsam/nonlinear/ExpressionFactor.h>
-#include <gtsam/linear/LossFunctions.h>
 
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
@@ -187,7 +187,7 @@ class GraphManager {
   FileLogger fileLogger_;
 
   // Objects
-  boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
   std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
   graph_msf::GraphState optimizedGraphState_;
   /// Propagated state (at IMU frequency)

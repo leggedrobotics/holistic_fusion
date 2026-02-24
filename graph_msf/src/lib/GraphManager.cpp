@@ -399,7 +399,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   // Create noise model
   assert(poseBetweenNoiseDensity.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  gtsam::noiseModel::Robust::shared_ptr robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
     case RobustNormEnum::Huber:
@@ -1124,7 +1124,8 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
 
     // Write the values to the appropriate file
     // CSV file for Pose3
-    fileLogger_.writePose3ToCsvFile(fileStreams, pose, transformIdentifier, timeStamp, saveCovarianceFlag, poseCovarianceInWorldRos);
+    fileLogger_.writePose3ToCsvFile(fileStreams, pose, transformIdentifier, timeStamp, saveCovarianceFlag,
+                                    saveCovarianceFlag ? &poseCovarianceInWorldRos : nullptr);
     // TUM file for Pose3
     fileLogger_.writePose3ToTumFile(fileStreams, pose, transformIdentifier + "_tum", timeStamp);
   }  // end of for loop over all pose states

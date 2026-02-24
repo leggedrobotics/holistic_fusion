@@ -115,9 +115,6 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
     Eigen::Vector3d W_t_W_I0 =
         W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
 
-
-    
-
     // Set Position
     preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStartFlag_);
 

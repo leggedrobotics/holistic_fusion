@@ -9,8 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_ROLL_FACTOR_H
 
 // CPP
-#include <boost/none.hpp>
-#include <boost/shared_ptr.hpp>
+#include <cmath>
 
 // GTSAM
 #include <gtsam/base/OptionalJacobian.h>
@@ -33,7 +32,8 @@ class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param measured roll reading
    * @param model of the additive Gaussian noise that is assumed
    */
-  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model) : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), roll_(roll) {}
+  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model)
+      : gtsam::NoiseModelFactor1<gtsam::Pose3>(model, j), roll_(roll) {}
 
   // Destructor
   virtual ~RollFactor() {}
@@ -42,25 +42,29 @@ class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
-        // If close to singularity, do not add measurement
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::OptionalMatrixType H = OptionalNone) const override {
+    // If close to singularity, do not add measurement
     if (std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
-      if (H_Ptr) {
-        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+      if (H) {
+        (*H) = gtsam::Matrix::Zero(1, 6);
       }
       return gtsam::Vector1::Zero();
     }
 
+    gtsam::Matrix13 H_rot;
+    const double roll_meas = H ? robotPose.rotation().roll(gtsam::OptionalJacobian<1, 3>(H_rot)) : robotPose.rotation().roll();
+
     // calculate error
-    double rollError = robotPose.rotation().roll(H_Ptr) - roll_;
+    double rollError = roll_meas - roll_;
 
     // Smaller half circle
     while (rollError < -M_PI) rollError += 2 * M_PI;
     while (rollError > M_PI) rollError -= 2 * M_PI;
 
     // Jacobian
-    if (H_Ptr) {
-      (*H_Ptr) = (gtsam::Matrix(1, 6) << *H_Ptr, 0.0, 0.0, 0.0).finished();  // [rad] [m]
+    if (H) {
+      (*H) = gtsam::Matrix::Zero(1, 6);
+      (*H).block<1, 3>(0, 0) = H_rot;
     }
 
     return gtsam::Vector1(rollError);

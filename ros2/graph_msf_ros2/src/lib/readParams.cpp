@@ -161,6 +161,10 @@ void GraphMsfRos2::readParams() {
   // Logging path
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
     optimizationResultLoggingPath = tryGetParam<std::string>(this, "launch.optimizationResultLoggingPath");
+    if (optimizationResultLoggingPath.empty()) {
+      throw std::runtime_error(
+          "GraphMsfRos2: launch.optimizationResultLoggingPath must be non-empty when graph_params.useAdditionalSlowBatchSmoother=true.");
+    }
 
     if (optimizationResultLoggingPath.back() != '/') {
       optimizationResultLoggingPath += "/";

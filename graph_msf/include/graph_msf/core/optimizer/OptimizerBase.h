@@ -9,10 +9,10 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_BASE_HPP
 
 // GTSAM
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
-#include <gtsam/geometry/Pose3.h>
 
 // Workspace
 #include "graph_msf/config/GraphConfig.h"
@@ -50,14 +50,10 @@ class OptimizerBase {
   virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
 
   // Add latest IMU bias before optimization
-  virtual void addLatestImuBiasBelief(const gtsam::imuBias::ConstantBias& imuBias) {
-    latestImuBias_ = imuBias;
-  }
+  virtual void addLatestImuBiasBelief(const gtsam::imuBias::ConstantBias& imuBias) { latestImuBias_ = imuBias; }
 
   // Add latest pose before optimization
-  virtual void addLatestPoseBelief(const gtsam::Pose3& pose) {
-    latestPose_ = pose;
-  }
+  virtual void addLatestPoseBelief(const gtsam::Pose3& pose) { latestPose_ = pose; }
 
  protected:
   // Config

@@ -58,7 +58,7 @@ class FileLogger {
   // Pose3
   static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
                                   const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                                  boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+                                  const Eigen::Matrix<double, 6, 6>* optionalPoseCovarianceInWorldRos = nullptr);
   // Latitude, Longitude, Altitude
   static void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
                                       const std::string& transformIdentifier, const double timeStamp);

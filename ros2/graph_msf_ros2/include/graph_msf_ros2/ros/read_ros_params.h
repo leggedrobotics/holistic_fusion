@@ -26,6 +26,15 @@ inline void printKey<std::vector<double>>(const std::string& key, const std::vec
   std::cout << std::endl;
 }
 
+template <>
+inline void printKey<std::vector<std::string>>(const std::string& key, const std::vector<std::string>& vec) {
+  std::cout << YELLOW_START << "GraphMsfRos2 " << COLOR_END << key << " set to: ";
+  for (size_t i = 0; i < vec.size(); ++i) {
+    std::cout << vec[i] << (i + 1 < vec.size() ? "," : "");
+  }
+  std::cout << std::endl;
+}
+
 // ---------- dumpAllParams ----------
 inline void dumpAllParams(const rclcpp::Node& node) {
   auto result = node.list_parameters({}, 10);  // depth = 10

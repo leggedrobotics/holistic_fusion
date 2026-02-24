@@ -1,9 +1,9 @@
 #ifndef GRAPH_MSF_TRAJECTORY_H
 #define GRAPH_MSF_TRAJECTORY_H
 
-#include <vector>
-#include <algorithm>
 #include <Eigen/Core>
+#include <algorithm>
+#include <vector>
 #include "graph_msf/geometry/Pose.h"
 
 namespace graph_msf {
@@ -26,28 +26,22 @@ class Trajectory {
     _poses.push_back(newPose);
   }
 
-  void addPose(const Pose& pose) {
-    _poses.push_back(pose);
-  }
+  void addPose(const Pose& pose) { _poses.push_back(pose); }
 
-  void addPoseWithFilter(const Eigen::Vector3d& position,
-                         double                time,
-                         const Eigen::Vector3d& covariance,
-                         double                timeConstant = 0.5)
-  {
+  void addPoseWithFilter(const Eigen::Vector3d& position, double time, const Eigen::Vector3d& covariance, double timeConstant = 0.5) {
     if (_poses.empty()) {
-      _filteredPos   = position;
-      _filteredCov   = covariance;
-      _poses.emplace_back(position, Eigen::Vector4d(0,0,0,1), time);
-      _lastTime      = time;
+      _filteredPos = position;
+      _filteredCov = covariance;
+      _poses.emplace_back(position, Eigen::Vector4d(0, 0, 0, 1), time);
+      _lastTime = time;
       return;
     }
 
-    double dt        = std::max(1e-6, time - _lastTime);  
-    double alpha_t   = 1.0 - std::exp(-dt / timeConstant);
+    double dt = std::max(1e-6, time - _lastTime);
+    double alpha_t = 1.0 - std::exp(-dt / timeConstant);
 
-    double w_new     = 1.0 / (covariance.array().max(1e-6)).mean();
-    double w_old     = 1.0 / (_filteredCov.array().max(1e-6)).mean();
+    double w_new = 1.0 / (covariance.array().max(1e-6)).mean();
+    double w_old = 1.0 / (_filteredCov.array().max(1e-6)).mean();
     double alpha_cov = w_new / (w_new + w_old);
 
     double alpha = alpha_t * alpha_cov;
@@ -60,18 +54,14 @@ class Trajectory {
     _filteredPos = (1.0 - alpha) * _filteredPos + alpha * position;
     _filteredCov = (1.0 - alpha) * _filteredCov + alpha * covariance;
 
-    _poses.emplace_back(_filteredPos, Eigen::Vector4d(0,0,0,1), time);
+    _poses.emplace_back(_filteredPos, Eigen::Vector4d(0, 0, 0, 1), time);
     _lastTime = time;
   }
 
-  void clear() {
-    _poses.clear();
-  }
+  void clear() { _poses.clear(); }
 
   // Optionally release heap memory
-  void releaseMemory() {
-    std::vector<Pose>().swap(_poses);
-  }
+  void releaseMemory() { std::vector<Pose>().swap(_poses); }
 
   double distance() const {
     double distance = 0.0;
@@ -84,12 +74,7 @@ class Trajectory {
     return distance;
   }
 
-  double displacement() const
-    {
-      return (_poses.size() < 2)
-            ? 0.0
-            : (_poses.back().position() - _poses.front().position()).norm();
-    }
+  double displacement() const { return (_poses.size() < 2) ? 0.0 : (_poses.back().position() - _poses.front().position()).norm(); }
 
   bool isStanding(double rate, double seconds, double noMovementThreshold) const {
     size_t required_size = static_cast<size_t>(rate * seconds);
@@ -112,13 +97,11 @@ class Trajectory {
   // Cut the trajectory to the time window [startTime, endTime]
   void cutTrajectory(double startTime, double endTime) {
     // Remove poses before startTime
-    auto firstPose = std::find_if(_poses.begin(), _poses.end(),
-                                  [startTime](const Pose& pose) { return pose.time() >= startTime; });
+    auto firstPose = std::find_if(_poses.begin(), _poses.end(), [startTime](const Pose& pose) { return pose.time() >= startTime; });
     _poses.erase(_poses.begin(), firstPose);
 
     // Remove poses after endTime
-    auto lastPose = std::find_if(_poses.begin(), _poses.end(),
-                                 [endTime](const Pose& pose) { return pose.time() > endTime; });
+    auto lastPose = std::find_if(_poses.begin(), _poses.end(), [endTime](const Pose& pose) { return pose.time() > endTime; });
     _poses.erase(lastPose, _poses.end());
   }
 
@@ -138,7 +121,7 @@ class Trajectory {
 
   Eigen::Vector3d _filteredPos = Eigen::Vector3d::Zero();
   Eigen::Vector3d _filteredCov = Eigen::Vector3d::Zero();
-  double          _lastTime    = 0.0;
+  double _lastTime = 0.0;
 };
 
 }  // namespace graph_msf
