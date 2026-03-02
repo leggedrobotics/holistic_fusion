@@ -38,8 +38,22 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   ~OptimizerIsam2FixedLag() = default;
 
   bool update() override {
-    fixedLagSmootherPtr_->update();
-    return true;
+    // Keep update() exception-safe by rolling back to the previous smoother state on failure.
+    gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+    try {
+      fixedLagSmootherPtr_->update();
+      return true;
+    } catch (const gtsam::IndeterminantLinearSystemException& e) {
+      *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START
+                << " IndeterminantLinearSystem exception during additional update(): '" << e.what() << "'" << COLOR_END << std::endl;
+      return false;
+    } catch (const std::exception& e) {
+      *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Exception during additional update(): '" << e.what() << "'"
+                << COLOR_END << std::endl;
+      return false;
+    }
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,

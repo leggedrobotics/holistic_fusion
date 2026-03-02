@@ -1277,6 +1277,9 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
   bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
   // Additional iterations
   for (size_t itr = 0; itr < additionalIterations; ++itr) {
+    if (!successFlag) {
+      break;
+    }
     successFlag = successFlag && rtOptimizerPtr_->update();
   }
 
