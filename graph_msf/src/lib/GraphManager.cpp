@@ -583,6 +583,12 @@ void GraphManager::updateGraph() {
   // A. NavState ------------------------------
   gtsam::NavState resultNavState =
       calculateNavStateAtGeneralKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
+  if (!successfulOptimizationFlag) {
+    REGULAR_COUT << RED_START << " Skipping result extraction for marginalized key "
+                 << gtsam::Symbol(gtsam::symbol_shorthand::X(currentPropagatedKey))
+                 << " after fixed-lag optimization." << COLOR_END << std::endl;
+    return;
+  }
   rtOptimizerPtr_->addLatestPoseBelief(resultNavState.pose());
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
