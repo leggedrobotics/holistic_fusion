@@ -65,7 +65,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   void initializeSubscribers();
   void initializeMessages();
   void initializeServices();
-  // void imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr);
 
  private:
   // Time

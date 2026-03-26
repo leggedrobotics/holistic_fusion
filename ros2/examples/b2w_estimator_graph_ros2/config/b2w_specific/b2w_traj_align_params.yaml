@@ -4,5 +4,6 @@
       gnssRate: 10.0 # [Hz], rate of gnss measurements
       lidarRate: 10.0 # [Hz], rate of lidar odometry
       minimumDistanceHeadingInit: 2.0 # [m], minimal length of trajectory to get yaw between GNSS and Lidar trajectory
+      minimumSpatialSpread: 0.01 # [m], minimum spatial spread required for trajectory alignment
       noMovementDistance: 0.05 # [m], if measurements are below this distance and in time range, robot is considered standing
       noMovementTime: 3.0 # [s], if measurements is time range and below distance, robot is considered standing

@@ -34,8 +34,7 @@ class PitchFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param pitch  measured pitch reading [rad]
    * @param model  additive Gaussian noise model
    */
-  PitchFactor(gtsam::Key j, double pitch, const gtsam::SharedNoiseModel& model)
-      : Base(model, j), pitch_(pitch) {}
+  PitchFactor(gtsam::Key j, double pitch, const gtsam::SharedNoiseModel& model) : Base(model, j), pitch_(pitch) {}
 
   ~PitchFactor() override = default;
 
@@ -43,8 +42,7 @@ class PitchFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose,
-                              gtsam::Matrix* H = nullptr) const override {
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::Matrix* H = nullptr) const override {
     const auto& R = robotPose.rotation();
 
     // If close to singularity, do not add measurement
@@ -69,7 +67,7 @@ class PitchFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
     // Wrap into (-pi, pi]
     while (pitchError < -M_PI) pitchError += 2.0 * M_PI;
-    while (pitchError >  M_PI) pitchError -= 2.0 * M_PI;
+    while (pitchError > M_PI) pitchError -= 2.0 * M_PI;
 
     // Jacobian: [d pitch / d rot(3), 0 0 0]
     if (H) {

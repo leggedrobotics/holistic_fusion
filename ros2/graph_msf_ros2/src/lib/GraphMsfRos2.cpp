@@ -207,9 +207,9 @@ void GraphMsfRos2::initializePublishers() {
   // auto rviz_path_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
 
   // Paths
-  pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", best_effort_qos);
-  pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", best_effort_qos);
-  pubOptWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", best_effort_qos);
+  pubEstOdomImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_odom_imu", best_effort_qos);    // RViz: white
+  pubEstWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/est_path_world_imu", best_effort_qos);  // RViz: light blue
+  pubOptWorldImuPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/opt_path_world_imu", best_effort_qos);  // RViz: magenta
 
   // Imu Bias
   pubAccelBias_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/accel_bias", best_effort_qos);

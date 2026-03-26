@@ -425,7 +425,7 @@ void GraphMsfRos::publishOptimizedStateAndBias(
     // Path
     // world->imu
     addToPathMsg(optWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(optimizedStateWithCovarianceAndBiasPtr->getTimeK()),
-                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 20);
+                 optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().translation(), graphConfigPtr_->imuBufferLength_ * 5);
     if (pubOptWorldImuPath_.getNumSubscribers() > 0) {
       pubOptWorldImuPath_.publish(optWorldImuPathPtr_);
     }
@@ -620,13 +620,13 @@ void GraphMsfRos::publishVelocityMarkers(const std::shared_ptr<const graph_msf::
 void GraphMsfRos::publishImuPaths(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const {
   // odom->imu
   addToPathMsg(estOdomImuPathPtr_, staticTransformsPtr_->getOdomFrame(), ros::Time(navStatePtr->getTimeK()),
-               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength_ * 20);
+               navStatePtr->getT_O_Ik_gravityAligned().translation(), graphConfigPtr_->imuBufferLength_ * 5);
   if (pubEstOdomImuPath_.getNumSubscribers() > 0) {
     pubEstOdomImuPath_.publish(estOdomImuPathPtr_);
   }
   // world->imu
   addToPathMsg(estWorldImuPathPtr_, staticTransformsPtr_->getWorldFrame(), ros::Time(navStatePtr->getTimeK()),
-               (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength_ * 20);
+               (navStatePtr->getT_W_Ik()).translation(), graphConfigPtr_->imuBufferLength_ * 5);
   if (pubEstWorldImuPath_.getNumSubscribers() > 0) {
     pubEstWorldImuPath_.publish(estWorldImuPathPtr_);
   }

@@ -36,6 +36,7 @@ class TrajectoryAlignmentHandler {
   void setR3Rate(const double& r3Rate);
   void setSe3Rate(const double& se3Rate);
   void setMinDistanceHeadingInit(const double& minDistanceHeadingInit);
+  void setMinimumSpatialSpread(const double& minimumSpatialSpread);
   void setNoMovementDistance(const double& noMovementDistance);
   void setNoMovementTime(const double& noMovementTime);
 

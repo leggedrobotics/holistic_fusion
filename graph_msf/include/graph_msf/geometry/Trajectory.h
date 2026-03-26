@@ -1,11 +1,11 @@
 #ifndef GRAPH_MSF_TRAJECTORY_H
 #define GRAPH_MSF_TRAJECTORY_H
 
-#include <vector>
-#include <algorithm>
-#include <iterator>
-#include <cmath>
 #include <Eigen/Core>
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <vector>
 #include "graph_msf/geometry/Pose.h"
 
 namespace graph_msf {
@@ -23,34 +23,26 @@ class Trajectory {
   Trajectory& operator=(Trajectory&& other) noexcept = default;
   ~Trajectory() = default;
 
-  void addPose(const Eigen::Vector3d& position, double time) {
-    _poses.emplace_back(position, Eigen::Vector4d(0.0, 0.0, 0.0, 1.0), time);
-  }
+  void addPose(const Eigen::Vector3d& position, double time) { _poses.emplace_back(position, Eigen::Vector4d(0.0, 0.0, 0.0, 1.0), time); }
 
-  void addPose(const Pose& pose) {
-    _poses.push_back(pose);
-  }
+  void addPose(const Pose& pose) { _poses.push_back(pose); }
 
-  void addPoseWithFilter(const Eigen::Vector3d& position,
-                         double                time,
-                         const Eigen::Vector3d& covariance,
-                         double                timeConstant = 0.5)
-  {
+  void addPoseWithFilter(const Eigen::Vector3d& position, double time, const Eigen::Vector3d& covariance, double timeConstant = 0.5) {
     timeConstant = std::max(1e-6, timeConstant);
 
     if (_poses.empty()) {
-      _filteredPos   = position;
-      _filteredCov   = covariance;
-      _poses.emplace_back(position, Eigen::Vector4d(0,0,0,1), time);
-      _lastTime      = time;
+      _filteredPos = position;
+      _filteredCov = covariance;
+      _poses.emplace_back(position, Eigen::Vector4d(0, 0, 0, 1), time);
+      _lastTime = time;
       return;
     }
 
-    double dt        = std::max(1e-6, time - _lastTime);
-    double alpha_t   = 1.0 - std::exp(-dt / timeConstant);
+    double dt = std::max(1e-6, time - _lastTime);
+    double alpha_t = 1.0 - std::exp(-dt / timeConstant);
 
-    double w_new     = 1.0 / (covariance.array().max(1e-6)).mean();
-    double w_old     = 1.0 / (_filteredCov.array().max(1e-6)).mean();
+    double w_new = 1.0 / (covariance.array().max(1e-6)).mean();
+    double w_old = 1.0 / (_filteredCov.array().max(1e-6)).mean();
     double alpha_cov = w_new / (w_new + w_old);
 
     double alpha = alpha_t * alpha_cov;
@@ -63,7 +55,7 @@ class Trajectory {
     _filteredPos = (1.0 - alpha) * _filteredPos + alpha * position;
     _filteredCov = (1.0 - alpha) * _filteredCov + alpha * covariance;
 
-    _poses.emplace_back(_filteredPos, Eigen::Vector4d(0,0,0,1), time);
+    _poses.emplace_back(_filteredPos, Eigen::Vector4d(0, 0, 0, 1), time);
     _lastTime = time;
   }
 
@@ -89,19 +81,11 @@ class Trajectory {
     return distance;
   }
 
-  double displacement() const
-    {
-      return (_poses.size() < 2)
-            ? 0.0
-            : (_poses.back().position() - _poses.front().position()).norm();
-    }
+  double displacement() const { return (_poses.size() < 2) ? 0.0 : (_poses.back().position() - _poses.front().position()).norm(); }
 
-  bool isStanding(
-                  double seconds,
-                  double noMovementThreshold) const
-  {
+  bool isStanding(double seconds, double noMovementThreshold) const {
     if (_poses.size() < 2) return false;
-    if (seconds <= 0.0)   return false;
+    if (seconds <= 0.0) return false;
 
     // Require non-decreasing time for correctness (caller can sort once upstream).
     // If you cannot guarantee it, consider sorting a copy or using min/max time scans.
@@ -109,9 +93,7 @@ class Trajectory {
     const double t_start = t_end - seconds;
 
     // Find first pose within the time window [t_start, t_end]
-    auto it0 = std::lower_bound(
-        _poses.begin(), _poses.end(), t_start,
-        [](const Pose& p, double t) { return p.time() < t; });
+    auto it0 = std::lower_bound(_poses.begin(), _poses.end(), t_start, [](const Pose& p, double t) { return p.time() < t; });
 
     // Not enough samples in the time window
     if (it0 == _poses.end()) return false;
@@ -141,13 +123,11 @@ class Trajectory {
   // Cut the trajectory to the time window [startTime, endTime]
   void cutTrajectory(double startTime, double endTime) {
     // Remove poses before startTime
-    auto firstPose = std::find_if(_poses.begin(), _poses.end(),
-                                  [startTime](const Pose& pose) { return pose.time() >= startTime; });
+    auto firstPose = std::find_if(_poses.begin(), _poses.end(), [startTime](const Pose& pose) { return pose.time() >= startTime; });
     _poses.erase(_poses.begin(), firstPose);
 
     // Remove poses after endTime
-    auto lastPose = std::find_if(_poses.begin(), _poses.end(),
-                                 [endTime](const Pose& pose) { return pose.time() > endTime; });
+    auto lastPose = std::find_if(_poses.begin(), _poses.end(), [endTime](const Pose& pose) { return pose.time() > endTime; });
     _poses.erase(lastPose, _poses.end());
 
     syncFilterStateToBack_();
@@ -170,7 +150,7 @@ class Trajectory {
   void resetFilterState_() {
     _filteredPos = Eigen::Vector3d::Zero();
     _filteredCov = Eigen::Vector3d::Zero();
-    _lastTime    = 0.0;
+    _lastTime = 0.0;
   }
 
   void syncFilterStateToBack_() {
@@ -180,7 +160,7 @@ class Trajectory {
     }
     _filteredPos = _poses.back().position();
     _filteredCov = Eigen::Vector3d::Ones();
-    _lastTime    = _poses.back().time();
+    _lastTime = _poses.back().time();
   }
 
  private:
@@ -188,7 +168,7 @@ class Trajectory {
 
   Eigen::Vector3d _filteredPos = Eigen::Vector3d::Zero();
   Eigen::Vector3d _filteredCov = Eigen::Vector3d::Zero();
-  double          _lastTime    = 0.0;
+  double _lastTime = 0.0;
 };
 
 }  // namespace graph_msf

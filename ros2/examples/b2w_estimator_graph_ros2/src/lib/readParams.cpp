@@ -133,6 +133,8 @@ if (useGnssFlag_) {
 
     trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
         graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumDistanceHeadingInit"));
+    trajectoryAlignmentHandler_->setMinimumSpatialSpread(
+        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumSpatialSpread"));
     trajectoryAlignmentHandler_->setNoMovementDistance(
         graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementDistance"));
     trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementTime"));

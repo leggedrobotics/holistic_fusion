@@ -36,8 +36,7 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param yaw     measured yaw [rad] in the navigation frame
    * @param model   additive Gaussian noise model on yaw
    */
-  YawFactor(gtsam::Key key, double yaw, const gtsam::SharedNoiseModel& model)
-      : Base(model, key), yaw_(yaw) {}
+  YawFactor(gtsam::Key key, double yaw, const gtsam::SharedNoiseModel& model) : Base(model, key), yaw_(yaw) {}
 
   ~YawFactor() override = default;
 
@@ -48,13 +47,11 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param H          optional 1x6 Jacobian wrt Pose3 (rot-then-trans order)
    * @return 1x1 vector containing yaw error
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose,
-                              gtsam::Matrix* H = nullptr) const override {
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::Matrix* H = nullptr) const override {
     const auto& R = robotPose.rotation();
 
     // If close to singularity, do not add measurement (zero error and Jacobian)
-    if (std::abs(R.pitch()) >= M_PI / 2.0 - 0.1 ||
-        std::abs(R.roll())  >= M_PI / 2.0 - 0.1) {
+    if (std::abs(R.pitch()) >= M_PI / 2.0 - 0.1 || std::abs(R.roll()) >= M_PI / 2.0 - 0.1) {
       if (H) {
         *H = gtsam::Matrix::Zero(1, 6);
       }
@@ -76,7 +73,7 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
     // Wrap into (-pi, pi]
     while (yawError < -M_PI) yawError += 2.0 * M_PI;
-    while (yawError >  M_PI) yawError -= 2.0 * M_PI;
+    while (yawError > M_PI) yawError -= 2.0 * M_PI;
 
     // Fill full Pose3 Jacobian: [d yaw / d rot(3) , d yaw / d trans(3) = 0]
     if (H) {

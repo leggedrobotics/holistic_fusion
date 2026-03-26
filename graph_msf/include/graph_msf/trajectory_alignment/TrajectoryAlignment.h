@@ -26,17 +26,17 @@ namespace graph_msf {
 
 class TrajectoryAlignment {
  public:
-
-  template<typename Vec, typename T>
-  inline Vec lerp(const Vec& a, const Vec& b, T t) { return a + t*(b - a); }
+  template <typename Vec, typename T>
+  inline Vec lerp(const Vec& a, const Vec& b, T t) {
+    return a + t * (b - a);
+  }
 
   // Resample a trajectory to uniform timestamps.
   // Minimal safety fixes:
   // - handle <2 poses
   // - clamp to endpoints to avoid OOB
   // - guard against duplicate timestamps
-  Trajectory resample(const Trajectory& src, double t0, double dt, size_t N)
-  {
+  Trajectory resample(const Trajectory& src, double t0, double dt, size_t N) {
     Trajectory dst;
     const auto& poses = src.poses();
     if (poses.size() < 2 || N == 0) {
@@ -44,7 +44,7 @@ class TrajectoryAlignment {
     }
 
     const double t_first = poses.front().time();
-    const double t_last  = poses.back().time();
+    const double t_last = poses.back().time();
 
     size_t i = 0;
     for (size_t k = 0; k < N; ++k) {
@@ -92,11 +92,12 @@ class TrajectoryAlignment {
   void addR3Position(Eigen::Vector3d position, double time);
   void addR3PositionWithStdDev(Eigen::Vector3d position, double time, Eigen::Vector3d stdDev);
   bool alignTrajectories(double& yaw, Eigen::Isometry3d& returnTransform);
-  
+
   // Setters
   void setR3Rate(const double r3Rate) { r3Rate_ = r3Rate; }
   void setSe3Rate(const double se3Rate) { se3Rate_ = se3Rate; }
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
+  void setMinimumSpatialSpread(const double minimumSpatialSpread) { minimumSpatialSpread_ = minimumSpatialSpread; }
   void setNoMovementDistance(const double noMovementDistance) { noMovementDistance_ = noMovementDistance; }
   void setNoMovementTime(const double noMovementTime) { noMovementTime_ = noMovementTime; }
 
@@ -106,17 +107,12 @@ class TrajectoryAlignment {
 
  private:
   // Member methods
-  bool associateTrajectories(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Trajectory& newTrajectoryA, Trajectory& newTrajectoryB);
+  bool associateTrajectories(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Trajectory& newTrajectoryA,
+                             Trajectory& newTrajectoryB);
   bool hasMinimumSpatialSpread(const std::vector<Pose>& poses, double kMinSpread);
   bool trajectoryAlignment(Trajectory& trajectoryA, Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform);
-  bool trajectoryAlignmentRobust(
-          const Trajectory&  trajectoryA,
-          const Trajectory&  trajectoryB,
-          Eigen::Isometry3d& returnTransform,
-          double             inlierThreshold,
-          double             ransacConfidence,
-          std::size_t        maxIterations,
-          bool               withScaling);
+  bool trajectoryAlignmentRobust(const Trajectory& trajectoryA, const Trajectory& trajectoryB, Eigen::Isometry3d& returnTransform,
+                                 double inlierThreshold, double ransacConfidence, std::size_t maxIterations, bool withScaling);
 
   // Member variables
   Trajectory r3Trajectory_;
@@ -126,6 +122,7 @@ class TrajectoryAlignment {
   double r3Rate_{20.0};
   double se3Rate_{10.0};
   double minDistanceHeadingInit_{3.0};
+  double minimumSpatialSpread_{0.01};
   double noMovementDistance_{1.0};
   double noMovementTime_{3.0};
   bool firstAlignmentTryFlag_{true};

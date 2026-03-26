@@ -16,6 +16,11 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+enum class AbsoluteUnaryAlignmentRecoveryPolicy {
+  ReactivateAndContinue,
+  RestartFromPrior,
+};
+
 /**
  * @class UnaryMeasurementAbsolute
  * @brief Class to represent an absolute unary measurement in the graph. Exact dimension is not known.
@@ -41,11 +46,14 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
                            const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                            const double covarianceViolationThreshold, const std::string& fixedFrameName, const std::string& worldFrameName,
                            const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
-                           const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none)
+                           const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
+                           const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy =
+                               AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                          covarianceViolationThreshold),
         fixedFrameName_(fixedFrameName),
-        worldFrameName_(worldFrameName) {
+        worldFrameName_(worldFrameName),
+        alignmentRecoveryPolicy_(alignmentRecoveryPolicy) {
     // If initialSe3AlignmentNoise is not set, set it to zero
     if (initialSe3AlignmentNoise) {
       initialSe3AlignmentNoise_ = initialSe3AlignmentNoise.value();
@@ -97,14 +105,17 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
   [[nodiscard]] const Eigen::Matrix<double, 6, 1>& initialSe3AlignmentNoise() const { return initialSe3AlignmentNoise_; }
   [[nodiscard]] const Eigen::Matrix<double, 6, 1>& se3AlignmentRandomWalk() const { return se3AlignmentRandomWalk_; }
   [[nodiscard]] bool modelAsRandomWalkFlag() const { return modelAsRandomWalkFlag_; }
+  [[nodiscard]] AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy() const { return alignmentRecoveryPolicy_; }
 
  protected:
   // Standard members
-  std::string fixedFrameName_;
-  std::string worldFrameName_;
-  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_;
-  Eigen::Matrix<double, 6, 1> se3AlignmentRandomWalk_;
+  std::string fixedFrameName_ = "";
+  std::string worldFrameName_ = "";
+  Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = Eigen::Matrix<double, 6, 1>::Zero();
+  Eigen::Matrix<double, 6, 1> se3AlignmentRandomWalk_ = Eigen::Matrix<double, 6, 1>::Zero();
   bool modelAsRandomWalkFlag_ = false;
+  AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy_ =
+      AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue;
 };
 
 }  // namespace graph_msf

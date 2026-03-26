@@ -54,6 +54,10 @@ void TrajectoryAlignmentHandler::setMinDistanceHeadingInit(const double& minDist
   trajectoryAlignment_.setMinDistanceHeadingInit(minDistanceHeadingInit);
 }
 
+void TrajectoryAlignmentHandler::setMinimumSpatialSpread(const double& minimumSpatialSpread) {
+  trajectoryAlignment_.setMinimumSpatialSpread(minimumSpatialSpread);
+}
+
 void TrajectoryAlignmentHandler::setNoMovementDistance(const double& noMovementDistance) {
   trajectoryAlignment_.setNoMovementDistance(noMovementDistance);
 }

@@ -83,6 +83,15 @@ void GraphMsfRos2::readParams() {
       tryGetParam<bool>(this, "graph_params.centerMeasurementsAtKeyframePositionBeforeAlignment");
   graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ =
       tryGetParam<double>(this, "graph_params.createReferenceAlignmentKeyframeEveryNSeconds");
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ &&
+      graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_ > graphConfigPtr_->realTimeSmootherLag_) {
+    RCLCPP_WARN(
+        this->get_logger(),
+        "createReferenceAlignmentKeyframeEveryNSeconds (%.3fs) is larger than realTimeSmootherLag (%.3fs). "
+        "Reference-alignment keys will regularly leave the online window before their successor is created, "
+        "so delayed/resumed absolute measurements must rely on the old-key reactivation path.",
+        graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_, graphConfigPtr_->realTimeSmootherLag_);
+  }
 
   // Noise Parameters
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>(this, "noise_params.accNoiseDensity");

@@ -26,8 +26,27 @@ class OptimizerLM : public OptimizerBase {
     // Set Custom LM Parameters
     //    lmParams_.setLinearSolverType(
     //        "CHOLMOD");  // "MULTIFRONTAL_CHOLESKY", "MULTIFRONTAL_QR", "SEQUENTIAL_CHOLESKY", "SEQUENTIAL_QR", "ITERATIVE", "CHOLMOD"
-    lmParams_.setRelativeErrorTol(1e-6);
-    lmParams_.setAbsoluteErrorTol(1e-6);
+    lmParams_.setMaxIterations(50);       // Ceres-like default: 50
+    lmParams_.setRelativeErrorTol(1e-6);  // Ceres-like default: 1e-6
+    lmParams_.setAbsoluteErrorTol(0.0);   // Ceres-like default: 0.0
+
+    lmParams_.setLinearSolverType("MULTIFRONTAL_QR");  // Ceres-like leaves inherited default unchanged: "MULTIFRONTAL_CHOLESKY"
+    // switch to "MULTIFRONTAL_QR" if conditioning is problematic
+
+    lmParams_.setOrderingType("COLAMD");  // METIS //NATURAL   // Ceres-like leaves inherited default unchanged: "COLAMD"
+    // for landmark-heavy problems, prefer a custom constrained ordering:
+    // keep states last, eliminate landmarks first
+
+    lmParams_.setDiagonalDamping(true);        // Ceres-like default: true
+    lmParams_.setUseFixedLambdaFactor(false);  // Ceres-like default: false
+    lmParams_.setlambdaInitial(1e-4);          // Ceres-like default: 1e-4
+    lmParams_.setlambdaFactor(2.0);            // Ceres-like default: 2.0
+    lmParams_.setlambdaLowerBound(1e-16);      // Ceres-like default: 1e-16
+    lmParams_.setlambdaUpperBound(1e32);       // Ceres-like default: 1e32
+
+    lmParams_.minModelFidelity = 1e-3;  // Accept LM step only if modelFidelity >= this threshold. Default in Ceres-like GTSAM LM: 1e-3.
+    // Raise to 1e-2..1e-1 for more conservative, more robust step acceptance; lower to 1e-4 if LM is overly cautious and converges too
+    // slowly       // Ceres-like default: 1e-3
     //    lmParams_.minModelFidelity = 1e-1;
   }
   ~OptimizerLM() = default;

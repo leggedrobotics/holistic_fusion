@@ -22,8 +22,11 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   std::string callingName = "GnssPositionUnaryFactor";
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName,
                                                       graphConfigPtr_->maxSearchDeviation_, measurementTime)) {
-    if (propagatedStateTime_ - measurementTime < 0.0) {  // Factor is coming from the future, hence add it to the buffer and adding it later
-      // TODO: Add to buffer and return --> still add it until we are there
+    if (propagatedStateTime_ - measurementTime < 0.0) {
+      const double futureLead = measurementTime - propagatedStateTime_;
+      REGULAR_COUT << RED_START << " Future unary factor \"" << callingName << "\" leads the propagated time by " << 1000 * futureLead
+                   << " ms. Rejecting it instead of attaching it to the latest available key." << COLOR_END << std::endl;
+      return;
     } else {  // Otherwise do not add it
       REGULAR_COUT << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key " << closestKey << " is "
                    << 1000 * std::abs(closestGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
@@ -74,12 +77,6 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   }
 
   // Create Expression --> exact type of expression is determined by the template
-  const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
-      closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
-      graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_,
-      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
-
-  // Factor
   std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> unaryExpressionFactorPtr;
 
   // Noise & Error Function
@@ -113,15 +110,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
           gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::DCS::Create(robustNormConstant), noiseModel);
       break;
     case RobustNormEnum::None:
-      unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
-          noiseModel, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
       break;
-  }
-
-  // Create Factor
-  if (robustNormEnum != RobustNormEnum::None) {
-    unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
-        robustErrorFunction, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
   }
 
   const double ts = gmsfUnaryExpressionPtr->getTimestamp();
@@ -129,14 +118,41 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Operating on graph data
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    DynamicDictionaryContainer dynamicExpressionKeysSnapshot;
+    {
+      std::scoped_lock snapshotLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                    gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+      dynamicExpressionKeysSnapshot = DynamicDictionaryContainer(gtsamDynamicExpressionKeys_);
+    }
 
-    // A. Main expression factor: add to graph ---------------------------------------------------------------------------------------------
-    const bool success =
-        addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
-            unaryExpressionFactorPtr.get(), ts, "GMSF-Expression", addToOnlineSmootherFlag);
+    try {
+      // Create Expression --> exact type of expression is determined by the template
+      const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
+          closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
+          graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_,
+          graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
 
-    // If successful
-    if (success) {
+      // Factor
+      if (robustNormEnum == RobustNormEnum::None) {
+        unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+            noiseModel, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
+      } else {
+        unaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+            robustErrorFunction, gmsfUnaryExpressionPtr->getGtsamMeasurementValue(), gmsfGtsamExpression);
+      }
+
+      // A. Main expression factor: add to graph -------------------------------------------------------------------------------------------
+      const bool success =
+          addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
+              unaryExpressionFactorPtr.get(), ts, "GMSF-Expression", addToOnlineSmootherFlag);
+
+      if (!success) {
+        std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                     gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+        gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
+        return;
+      }
+
       // B. Write to timestamp map for fixed lag smoother (writeKeyToKeyTimeStampMap_ handles "newer-than" internally)
       // B.a) Keys in expression factor
       for (const gtsam::Key& key : unaryExpressionFactorPtr->keys()) {
@@ -146,6 +162,20 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
         if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
           writeKeyToKeyTimeStampMap_(key, ts, batchGraphKeysTimestampsMapBufferPtr_);
         }
+      }
+
+      // Unary factors are attached to a full navigation state at closestGeneralKey.
+      // In the fixed-lag smoother, extending only x_k can let v_k / b_k fall out of the
+      // window first, leaving the pose state underconstrained on delayed measurements.
+      if (addToOnlineSmootherFlag) {
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestGeneralKey), ts, rtGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestGeneralKey), ts, rtGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestGeneralKey), ts, rtGraphKeysTimestampsMapBufferPtr_);
+      }
+      if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestGeneralKey), ts, batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestGeneralKey), ts, batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestGeneralKey), ts, batchGraphKeysTimestampsMapBufferPtr_);
       }
 
       // B.b) Keys in newly created online graph values (can activate previously inactive keys)
@@ -183,6 +213,11 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
         }
         batchFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
       }
+    } catch (...) {
+      std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                   gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+      gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
+      throw;
     }
   }
 

@@ -24,7 +24,7 @@
 
     # Alignment Parameters
     alignment_params:
-      initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      initialSe3AlignmentNoiseDensity: [ 5.0, 5.0, 5.0, 5.0, 5.0, 5.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       lioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       vioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
@@ -32,11 +32,11 @@
     noise_params:
       gnssPositionOutlierThreshold: 4.0 # meters
       ## LiDAR
-      lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       lioPoseBetweenNoiseDensity: [ 0.02, 0.02, 0.02, 0.002, 0.002, 0.002 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       ## Wheel
       wheelPoseBetweenNoiseDensity: [ 0.1, 0.1, 0.1, 0.06, 0.06, 0.06 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       wheelLinearVelocitiesNoiseDensity: [ 0.2, 0.1, 0.01 ] # StdDev, ORDER VxVyVz(meters/sec)
       ## VIO
       vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-      vioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      vioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.05, 0.05, 0.05] # StdDev, ORDER RPY(rad) - XYZ(meters)
