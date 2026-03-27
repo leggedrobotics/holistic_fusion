@@ -55,6 +55,9 @@ struct GraphConfig {
   double minOptimizationFrequency_ = 5;
   double maxOptimizationFrequency_ = 100;
   int additionalOptimizationIterations_ = 0;
+  bool useAdaptiveAdditionalOptimizationIterationsFlag_ = false;
+  double adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ = 1e-3;
+  bool printAdditionalOptimizationDiagnosticsFlag_ = false;
   bool findUnusedFactorSlotsFlag_ = false;
   bool enableDetailedResultsFlag_ = false;
   bool usingBiasForPreIntegrationFlag_ = true;

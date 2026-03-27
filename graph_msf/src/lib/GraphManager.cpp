@@ -11,9 +11,12 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING 1
 
 // C++
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <iomanip>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <string>
@@ -1677,9 +1680,108 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
 
   // Perform update of the real-time smoother, including optimization
   bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
+
+  const bool adaptiveAdditionalIterationsEnabled =
+      graphConfigPtr->useAdaptiveAdditionalOptimizationIterationsFlag_ &&
+      graphConfigPtr->realTimeSmootherUseIsamFlag_ &&
+      graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ > 0.0;
+  const bool printAdditionalOptimizationDiagnostics =
+      graphConfigPtr->printAdditionalOptimizationDiagnosticsFlag_;
+
+  bool adaptiveFallbackToFixedIterations = !adaptiveAdditionalIterationsEnabled;
+  double previousErrorAfter = std::numeric_limits<double>::quiet_NaN();
+  bool previousErrorAfterValid = false;
+
+  if (successFlag) {
+    const auto& initialDiagnostics = rtOptimizerPtr_->getLastUpdateDiagnostics();
+    if (initialDiagnostics.nonlinearErrorAvailable && std::isfinite(initialDiagnostics.errorAfter)) {
+      previousErrorAfter = initialDiagnostics.errorAfter;
+      previousErrorAfterValid = true;
+      if (printAdditionalOptimizationDiagnostics) {
+        REGULAR_COUT << GREEN_START
+                     << " Additional optimization initial update: errorBefore=" << std::setprecision(10)
+                     << initialDiagnostics.errorBefore
+                     << ", errorAfter=" << initialDiagnostics.errorAfter
+                     << ", variablesRelinearized=" << initialDiagnostics.variablesRelinearized
+                     << ", variablesReeliminated=" << initialDiagnostics.variablesReeliminated
+                     << COLOR_END << std::endl;
+      }
+    } else if (printAdditionalOptimizationDiagnostics) {
+      REGULAR_COUT << YELLOW_START
+                   << " Additional optimization initial update: nonlinear error diagnostics are unavailable."
+                   << COLOR_END << std::endl;
+    }
+
+    if (adaptiveAdditionalIterationsEnabled && !previousErrorAfterValid) {
+      adaptiveFallbackToFixedIterations = true;
+      REGULAR_COUT << YELLOW_START
+                   << " Adaptive additional optimization iterations requested, but nonlinear error diagnostics are unavailable. "
+                   << "Falling back to the fixed additionalOptimizationIterations cap."
+                   << COLOR_END << std::endl;
+    }
+  }
+
   // Additional iterations
   for (int itr = 0; itr < additionalIterations; ++itr) {
     successFlag = successFlag && rtOptimizerPtr_->update();
+    if (!successFlag) {
+      break;
+    }
+
+    const auto& diagnostics = rtOptimizerPtr_->getLastUpdateDiagnostics();
+    const bool diagnosticsAvailable =
+        diagnostics.nonlinearErrorAvailable && std::isfinite(diagnostics.errorAfter) && previousErrorAfterValid;
+    const double relativeImprovement =
+        diagnosticsAvailable ? (previousErrorAfter - diagnostics.errorAfter) /
+                                   std::max(std::abs(previousErrorAfter), 1e-12)
+                             : std::numeric_limits<double>::quiet_NaN();
+
+    if (printAdditionalOptimizationDiagnostics) {
+      if (diagnosticsAvailable) {
+        REGULAR_COUT << GREEN_START
+                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": errorBefore=" << std::setprecision(10) << diagnostics.errorBefore
+                     << ", errorAfter=" << diagnostics.errorAfter
+                     << ", relative improvement=" << relativeImprovement
+                     << ", variablesRelinearized=" << diagnostics.variablesRelinearized
+                     << ", variablesReeliminated=" << diagnostics.variablesReeliminated
+                     << COLOR_END << std::endl;
+      } else {
+        REGULAR_COUT << YELLOW_START
+                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": nonlinear error diagnostics are unavailable."
+                     << COLOR_END << std::endl;
+      }
+    }
+
+    if (adaptiveAdditionalIterationsEnabled && !adaptiveFallbackToFixedIterations) {
+      if (!diagnosticsAvailable) {
+        adaptiveFallbackToFixedIterations = true;
+        REGULAR_COUT << YELLOW_START
+                     << " Lost nonlinear error diagnostics during adaptive additional optimization. "
+                     << "Falling back to the fixed additionalOptimizationIterations cap."
+                     << COLOR_END << std::endl;
+        continue;
+      }
+
+      if (relativeImprovement <
+          graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_) {
+        if (printAdditionalOptimizationDiagnostics) {
+          REGULAR_COUT << GREEN_START
+                       << " Stopping adaptive additional optimization after " << (itr + 1)
+                       << " extra iteration(s) because the relative nonlinear-error improvement "
+                       << relativeImprovement << " fell below the threshold "
+                       << graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ << "."
+                       << COLOR_END << std::endl;
+        }
+        break;
+      }
+    }
+
+    if (diagnostics.nonlinearErrorAvailable && std::isfinite(diagnostics.errorAfter)) {
+      previousErrorAfter = diagnostics.errorAfter;
+      previousErrorAfterValid = true;
+    }
   }
 
   // Logging

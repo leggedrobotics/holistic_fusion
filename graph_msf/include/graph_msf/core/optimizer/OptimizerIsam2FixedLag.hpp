@@ -11,6 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <chrono>
 #include <set>
 #include <sstream>
 
@@ -40,12 +41,16 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   ~OptimizerIsam2FixedLag() = default;
 
   bool update() override {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
+    const auto startTime = std::chrono::steady_clock::now();
     fixedLagSmootherPtr_->update();
+    recordLastUpdateDiagnostics_(std::chrono::steady_clock::now() - startTime);
     return true;
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
     // Limit recursion depth to prevent infinite loops
     if (depth > 5) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START 
@@ -236,6 +241,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
         }
       }
     };
+
+    const auto startTime = std::chrono::steady_clock::now();
 
     // Try to update
     try {
@@ -482,6 +489,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     if (!optimizedAtLeastOnceFlag_) {
       optimizedAtLeastOnceFlag_ = true;
     }
+    recordLastUpdateDiagnostics_(std::chrono::steady_clock::now() - startTime);
     return true;
   }
 
@@ -545,6 +553,23 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
  private:
+  template <typename DurationT>
+  void recordLastUpdateDiagnostics_(const DurationT& elapsed) {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
+    lastUpdateDiagnostics_.valid = true;
+    lastUpdateDiagnostics_.elapsedMs = std::chrono::duration<double, std::milli>(elapsed).count();
+
+    const gtsam::ISAM2Result isam2Result = fixedLagSmootherPtr_->getISAM2Result();
+    lastUpdateDiagnostics_.variablesRelinearized = isam2Result.getVariablesRelinearized();
+    lastUpdateDiagnostics_.variablesReeliminated = isam2Result.getVariablesReeliminated();
+
+    if (isam2Result.errorBefore && isam2Result.errorAfter) {
+      lastUpdateDiagnostics_.nonlinearErrorAvailable = true;
+      lastUpdateDiagnostics_.errorBefore = *isam2Result.errorBefore;
+      lastUpdateDiagnostics_.errorAfter = *isam2Result.errorAfter;
+    }
+  }
+
   // Optimizer itself
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
   // Result

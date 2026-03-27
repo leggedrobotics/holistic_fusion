@@ -25,6 +25,7 @@ graph_params:
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
   maxOptimizationFrequency: 20.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 10     # Additional iterations of graph optimizer after update with new factors
+  evaluateNonlinearError: true             # Whether to evaluate the nonlinear error before and after the update, default: false
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
@@ -76,6 +77,5 @@ relinearization_params:
   landmarkReLinTh: 1.0e-02                 # Letter "l" in GTSAM variables, Landmark linearization threshold
   relinearizeSkip: 1                       # Re-linearization is skipped every n-th step, default: 10
   enableRelinearization: true              # Whether to use relinearization, default: true
-  evaluateNonlinearError: true             # Whether to evaluate the nonlinear errorr before and after the update, default: false
   cacheLinearizedFactors: true             # Whether to cache the linearized factors, default: true
   enablePartialRelinearizationCheck: false # Whether potentially only parts of the tree needs to be relinearized, default: false

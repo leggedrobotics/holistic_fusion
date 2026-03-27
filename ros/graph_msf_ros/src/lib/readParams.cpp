@@ -112,7 +112,7 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   /// Others
   graphConfigPtr_->relinearizeSkip_ = tryGetParam<int>("relinearization_params/relinearizeSkip", privateNode);
   graphConfigPtr_->enableRelinearizationFlag_ = tryGetParam<bool>("relinearization_params/enableRelinearization", privateNode);
-  graphConfigPtr_->evaluateNonlinearErrorFlag_ = tryGetParam<bool>("relinearization_params/evaluateNonlinearError", privateNode);
+  graphConfigPtr_->evaluateNonlinearErrorFlag_ = tryGetParam<bool>("graph_params/evaluateNonlinearError", privateNode);
   graphConfigPtr_->cacheLinearizedFactorsFlag_ = tryGetParam<bool>("relinearization_params/cacheLinearizedFactors", privateNode);
   graphConfigPtr_->enablePartialRelinearizationCheckFlag_ =
       tryGetParam<bool>("relinearization_params/enablePartialRelinearizationCheck", privateNode);

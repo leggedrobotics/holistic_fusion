@@ -59,6 +59,12 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->maxOptimizationFrequency_ = tryGetParam<double>(this, "graph_params.maxOptimizationFrequency");
   graphConfigPtr_->additionalOptimizationIterations_ =
       tryGetParam<int>(this, "graph_params.additionalOptimizationIterations");
+  graphConfigPtr_->useAdaptiveAdditionalOptimizationIterationsFlag_ =
+      tryGetParam<bool>(this, "graph_params.useAdaptiveAdditionalOptimizationIterations");
+  graphConfigPtr_->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ =
+      tryGetParam<double>(this, "graph_params.adaptiveAdditionalOptimizationMinRelativeErrorImprovement");
+  graphConfigPtr_->printAdditionalOptimizationDiagnosticsFlag_ =
+      tryGetParam<bool>(this, "graph_params.printAdditionalOptimizationDiagnostics");
   graphConfigPtr_->findUnusedFactorSlotsFlag_ = tryGetParam<bool>(this, "graph_params.findUnusedFactorSlots");
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>(this, "graph_params.enableDetailedResults");
   graphConfigPtr_->realTimeSmootherUseCholeskyFactorizationFlag_ =
@@ -137,11 +143,50 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->enableRelinearizationFlag_ =
       tryGetParam<bool>(this, "relinearization_params.enableRelinearization");
   graphConfigPtr_->evaluateNonlinearErrorFlag_ =
-      tryGetParam<bool>(this, "relinearization_params.evaluateNonlinearError");
+      tryGetParam<bool>(this, "graph_params.evaluateNonlinearError");
   graphConfigPtr_->cacheLinearizedFactorsFlag_ =
       tryGetParam<bool>(this, "relinearization_params.cacheLinearizedFactors");
   graphConfigPtr_->enablePartialRelinearizationCheckFlag_ =
       tryGetParam<bool>(this, "relinearization_params.enablePartialRelinearizationCheck");
+
+  if (graphConfigPtr_->useAdaptiveAdditionalOptimizationIterationsFlag_) {
+    if (!graphConfigPtr_->realTimeSmootherUseIsamFlag_) {
+      RCLCPP_WARN(
+          this->get_logger(),
+          "useAdaptiveAdditionalOptimizationIterations is enabled, but realTimeSmootherUseIsam is false. "
+          "Adaptive stopping is only available for the iSAM2 real-time smoother and will fall back to the fixed "
+          "additionalOptimizationIterations cap.");
+    }
+    if (!graphConfigPtr_->evaluateNonlinearErrorFlag_) {
+      RCLCPP_WARN(
+          this->get_logger(),
+          "useAdaptiveAdditionalOptimizationIterations requires evaluateNonlinearError=true. "
+          "Enabling evaluateNonlinearError automatically.");
+      graphConfigPtr_->evaluateNonlinearErrorFlag_ = true;
+    }
+    if (graphConfigPtr_->additionalOptimizationIterations_ <= 0) {
+      RCLCPP_WARN(
+          this->get_logger(),
+          "useAdaptiveAdditionalOptimizationIterations is enabled, but additionalOptimizationIterations is %d. "
+          "No additional iterations will run until the cap is set above zero.",
+          graphConfigPtr_->additionalOptimizationIterations_);
+    }
+    if (graphConfigPtr_->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ <= 0.0) {
+      RCLCPP_WARN(
+          this->get_logger(),
+          "adaptiveAdditionalOptimizationMinRelativeErrorImprovement is %.3e. "
+          "Non-positive values disable early stopping and keep the fixed additionalOptimizationIterations cap.",
+          graphConfigPtr_->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_);
+    }
+  }
+  if (graphConfigPtr_->printAdditionalOptimizationDiagnosticsFlag_ &&
+      !graphConfigPtr_->evaluateNonlinearErrorFlag_) {
+    RCLCPP_WARN(
+        this->get_logger(),
+        "printAdditionalOptimizationDiagnostics requires evaluateNonlinearError=true. "
+        "Enabling evaluateNonlinearError automatically.");
+    graphConfigPtr_->evaluateNonlinearErrorFlag_ = true;
+  }
 
   // Common Parameters
   graphConfigPtr_->verboseLevel_ = tryGetParam<int>(this, "common_params.verbosity");
