@@ -133,6 +133,8 @@ if (useGnssFlag_) {
 
     trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
         graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumDistanceHeadingInit"));
+    trajectoryAlignmentHandler_->setMinimumSpatialSpread(
+        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumSpatialSpread"));
     trajectoryAlignmentHandler_->setNoMovementDistance(
         graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementDistance"));
     trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementTime"));
@@ -166,9 +168,6 @@ if (useGnssFlag_) {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarOdometryFrame"));
       
-  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.betweenLidarOdometryFrame"));
-
   /// Wheel Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelOdometryBetweenFrame"));

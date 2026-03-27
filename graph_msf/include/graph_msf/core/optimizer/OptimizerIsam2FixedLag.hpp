@@ -11,6 +11,9 @@ Please see the LICENSE file that has been included as part of this package.
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <chrono>
+#include <set>
+#include <sstream>
 
 // Workspace
 #include <graph_msf/core/optimizer/OptimizerIsam2.hpp>
@@ -38,12 +41,16 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   ~OptimizerIsam2FixedLag() = default;
 
   bool update() override {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
+    const auto startTime = std::chrono::steady_clock::now();
     fixedLagSmootherPtr_->update();
+    recordLastUpdateDiagnostics_(std::chrono::steady_clock::now() - startTime);
     return true;
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
               const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
     // Limit recursion depth to prevent infinite loops
     if (depth > 5) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START 
@@ -54,6 +61,188 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
 
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
     gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
+
+    auto collectKeysFromFactors = [](const gtsam::NonlinearFactorGraph& factors) {
+      std::set<gtsam::Key> retainedKeys;
+      for (const auto& factor : factors) {
+        if (!factor) {
+          continue;
+        }
+        for (const gtsam::Key key : factor->keys()) {
+          retainedKeys.insert(key);
+        }
+      }
+      return retainedKeys;
+    };
+
+    auto filterValuesAndTimestamps = [&](const std::set<gtsam::Key>& retainedKeys, gtsam::Values& filteredValues,
+                                         std::map<gtsam::Key, double>& filteredKeyTimeMap) {
+      for (const auto& keyValue : newGraphValues) {
+        if (retainedKeys.count(keyValue.key) > 0) {
+          filteredValues.insert(keyValue.key, newGraphValues.at(keyValue.key));
+        } else if (newGraphKeysTimeStampMap.find(keyValue.key) != newGraphKeysTimeStampMap.end()) {
+          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Values contains orphaned key after filtering: "
+                    << gtsam::Symbol(keyValue.key) << ". -> Removed." << COLOR_END << std::endl;
+        }
+      }
+      for (const auto& keyTimeStamp : newGraphKeysTimeStampMap) {
+        if (retainedKeys.count(keyTimeStamp.first) > 0) {
+          filteredKeyTimeMap.insert(keyTimeStamp);
+        }
+      }
+    };
+
+    auto collectKeysFromValues = [](const gtsam::Values& values) {
+      std::set<gtsam::Key> keys;
+      for (const auto& keyValue : values) {
+        keys.insert(keyValue.key);
+      }
+      return keys;
+    };
+
+    auto collectKeysFromTimestampMap = [](const std::map<gtsam::Key, double>& timestampMap) {
+      std::set<gtsam::Key> keys;
+      for (const auto& keyTime : timestampMap) {
+        keys.insert(keyTime.first);
+      }
+      return keys;
+    };
+
+    auto keyToString = [](const gtsam::Key key) {
+      std::ostringstream oss;
+      oss << gtsam::Symbol(key);
+      return oss.str();
+    };
+
+    auto formatKeySet = [&](const std::set<gtsam::Key>& keys, const std::size_t maxKeys = 16) {
+      std::ostringstream oss;
+      oss << "[";
+      std::size_t count = 0;
+      for (const gtsam::Key key : keys) {
+        if (count > 0) {
+          oss << ", ";
+        }
+        if (count == maxKeys) {
+          oss << "... +" << (keys.size() - maxKeys) << " more";
+          break;
+        }
+        oss << keyToString(key);
+        ++count;
+      }
+      oss << "]";
+      return oss.str();
+    };
+
+    auto describeFactor = [&](const gtsam::NonlinearFactor::shared_ptr& factor, const std::size_t index) {
+      std::ostringstream oss;
+      oss << "#" << index << " type=";
+      if (!factor) {
+        oss << "<null>";
+        return oss.str();
+      }
+      oss << typeid(*factor).name() << " keys=[";
+      for (std::size_t keyIndex = 0; keyIndex < factor->keys().size(); ++keyIndex) {
+        if (keyIndex > 0) {
+          oss << ", ";
+        }
+        oss << keyToString(factor->keys()[keyIndex]);
+      }
+      oss << "]";
+      return oss.str();
+    };
+
+    auto printBatchDiagnostics = [&](const std::string& reason, const gtsam::Key* focusKey = nullptr) {
+      const std::set<gtsam::Key> factorKeys = collectKeysFromFactors(newGraphFactors);
+      const std::set<gtsam::Key> valueKeys = collectKeysFromValues(newGraphValues);
+      const std::set<gtsam::Key> timestampKeys = collectKeysFromTimestampMap(newGraphKeysTimeStampMap);
+      const std::set<gtsam::Key> optimizerKeys = collectKeysFromTimestampMap(fixedLagSmootherPtr_->timestamps());
+
+      std::set<gtsam::Key> availableKeys = optimizerKeys;
+      availableKeys.insert(valueKeys.begin(), valueKeys.end());
+
+      std::set<gtsam::Key> missingFactorKeys;
+      for (const gtsam::Key factorKey : factorKeys) {
+        if (availableKeys.count(factorKey) == 0) {
+          missingFactorKeys.insert(factorKey);
+        }
+      }
+
+      std::set<gtsam::Key> orphanValueKeys;
+      for (const gtsam::Key valueKey : valueKeys) {
+        if (factorKeys.count(valueKey) == 0) {
+          orphanValueKeys.insert(valueKey);
+        }
+      }
+
+      std::set<gtsam::Key> orphanTimestampKeys;
+      for (const gtsam::Key timestampKey : timestampKeys) {
+        if (factorKeys.count(timestampKey) == 0 && valueKeys.count(timestampKey) == 0) {
+          orphanTimestampKeys.insert(timestampKey);
+        }
+      }
+
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Batch diagnostics (" << reason << ", depth=" << depth
+                << "): factors=" << newGraphFactors.size() << ", values=" << newGraphValues.size()
+                << ", timestamps=" << newGraphKeysTimeStampMap.size()
+                << ", optimizer_keys=" << optimizerKeys.size() << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Batch factor keys: " << formatKeySet(factorKeys) << std::endl;
+      if (!missingFactorKeys.empty()) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                  << " Factor keys missing from optimizer+incoming-values: " << formatKeySet(missingFactorKeys) << COLOR_END
+                  << std::endl;
+      }
+      if (!orphanValueKeys.empty()) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Incoming values not referenced by any factor: "
+                  << formatKeySet(orphanValueKeys) << COLOR_END << std::endl;
+      }
+      if (!orphanTimestampKeys.empty()) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Incoming timestamps not referenced by any factor/value: "
+                  << formatKeySet(orphanTimestampKeys) << COLOR_END << std::endl;
+      }
+
+      if (focusKey != nullptr) {
+        auto printKeyAvailability = [&](const gtsam::Key queryKey, const std::string& label) {
+          std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " " << label << " " << keyToString(queryKey)
+                    << ": in_factors=" << (factorKeys.count(queryKey) > 0) << ", in_values=" << (valueKeys.count(queryKey) > 0)
+                    << ", in_timestamps=" << (timestampKeys.count(queryKey) > 0)
+                    << ", in_optimizer=" << (optimizerKeys.count(queryKey) > 0) << std::endl;
+        };
+
+        printKeyAvailability(*focusKey, "Focus key");
+        const gtsam::Symbol focusSymbol(*focusKey);
+        if (focusSymbol.chr() == 'x') {
+          const std::uint64_t keyIndex = focusSymbol.index();
+          printKeyAvailability(gtsam::symbol_shorthand::V(keyIndex), "Companion velocity");
+          printKeyAvailability(gtsam::symbol_shorthand::B(keyIndex), "Companion bias");
+        }
+
+        std::size_t numPrintedFactors = 0;
+        for (std::size_t factorIndex = 0; factorIndex < newGraphFactors.size(); ++factorIndex) {
+          const auto& factor = newGraphFactors[factorIndex];
+          if (!factor) {
+            continue;
+          }
+          bool touchesFocusKey = false;
+          for (const gtsam::Key factorKey : factor->keys()) {
+            if (factorKey == *focusKey) {
+              touchesFocusKey = true;
+              break;
+            }
+          }
+          if (touchesFocusKey) {
+            std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Factor touching " << keyToString(*focusKey) << ": "
+                      << describeFactor(factor, factorIndex) << std::endl;
+            ++numPrintedFactors;
+          }
+        }
+        if (numPrintedFactors == 0) {
+          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " No incoming factor directly touches "
+                    << keyToString(*focusKey) << "." << COLOR_END << std::endl;
+        }
+      }
+    };
+
+    const auto startTime = std::chrono::steady_clock::now();
 
     // Try to update
     try {
@@ -68,6 +257,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                    "happens if the graph hasn't been optimized for the duration of the smoother lag. Increase the lag or optimization "
                    "frequency in this case."
                 << COLOR_END << std::endl;
+      printBatchDiagnostics("OutOfRange during fixed-lag update");
 
       // Detect all factors that contain a timestamp older than the smoother lag
       double latestTimeStamp = 0.0;
@@ -87,8 +277,6 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       bool filteredOutAtLeastOneKey = false;
       // Containers
       gtsam::NonlinearFactorGraph newGraphFactorsFiltered = gtsam::NonlinearFactorGraph();
-      // Filtering the keyTimestampMap
-      std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered = newGraphKeysTimeStampMap;
       // For loop
       for (auto factor : newGraphFactors) {
         bool factorOnlyContainsExistentKeys = true;
@@ -118,6 +306,10 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
           newGraphFactorsFiltered.add(factor);
         }
       }
+      const std::set<gtsam::Key> retainedKeys = collectKeysFromFactors(newGraphFactorsFiltered);
+      gtsam::Values newGraphValuesFiltered;
+      std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered;
+      filterValuesAndTimestamps(retainedKeys, newGraphValuesFiltered, newGraphKeysTimeStampMapFiltered);
 
       // Limit depth of recursion
       // Try again
@@ -126,7 +318,11 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << " Filtered out factors that are either older than the smoother lag or coming from the future. Trying to optimize "
                      "again."
                   << COLOR_END << std::endl;
-        return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Retry batch sizes after filtering: factors="
+                  << newGraphFactorsFiltered.size() << ", values=" << newGraphValuesFiltered.size()
+                  << ", timestamps=" << newGraphKeysTimeStampMapFiltered.size() << std::endl;
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return update(newGraphFactorsFiltered, newGraphValuesFiltered, newGraphKeysTimeStampMapFiltered, depth + 1);
       }
       // Nothing changed, hence abort
       else {
@@ -135,6 +331,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << " Could not filter out any factors that are either older than the smoother lag or coming from the future. Aborting "
                      "optimization."
                   << COLOR_END << std::endl;
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         return false;
       }
     }
@@ -148,10 +345,11 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                    "containing a graph state that was marginalized out before. To avoid this, increase the factor graph lag or reduce "
                    "the delay of your measurements."
                 << std::endl;
+      const gtsam::Key valuesKeyNotExistent = valuesKeyDoesNotExistException.key();
+      printBatchDiagnostics("ValuesKeyDoesNotExist", &valuesKeyNotExistent);
 
       // Filter out the factor that caused the error -------------------------
       gtsam::NonlinearFactorGraph newGraphFactorsFiltered;
-      gtsam::Key valuesKeyNotExistent = valuesKeyDoesNotExistException.key();
       bool removedAtLeastOneFactorOrKey = false;
       for (auto factor : newGraphFactors) {
         bool factorContainsExistentKeys = true;
@@ -170,37 +368,35 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       }
 
       // Filter out the key from the keyTimestampMap -------------------------
+      if (newGraphKeysTimeStampMap.find(valuesKeyNotExistent) != newGraphKeysTimeStampMap.end()) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                  << " GraphKeysTimeStampMap contains non-existent key: " << gtsam::Symbol(valuesKeyNotExistent) << ". -> Removed."
+                  << COLOR_END << std::endl;
+        removedAtLeastOneFactorOrKey = true;
+      }
+      if (newGraphValues.exists(valuesKeyNotExistent)) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Values contains non-existent key: "
+                  << gtsam::Symbol(valuesKeyNotExistent) << ". -> Removed." << COLOR_END << std::endl;
+        removedAtLeastOneFactorOrKey = true;
+      }
+      const std::set<gtsam::Key> retainedKeys = collectKeysFromFactors(newGraphFactorsFiltered);
+      gtsam::Values newGraphValuesFiltered;
       std::map<gtsam::Key, double> newGraphKeysTimeStampMapFiltered;
-      for (auto keyTimeStamp : newGraphKeysTimeStampMap) {
-        if (keyTimeStamp.first != valuesKeyNotExistent) {
-          newGraphKeysTimeStampMapFiltered.insert(keyTimeStamp);
-        } else {
-          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                    << " GraphKeysTimeStampMap contains non-existent key: " << gtsam::Symbol(keyTimeStamp.first) << ". -> Removed."
-                    << COLOR_END << std::endl;
-          removedAtLeastOneFactorOrKey = true;
-        }
-      }
-
-      // Keys in values
-      for (auto key : newGraphValues.keys()) {
-        if (key == valuesKeyNotExistent) {
-          std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Values contains non-existent key: " << gtsam::Symbol(key)
-                    << ". -> Removed." << COLOR_END << std::endl;
-          removedAtLeastOneFactorOrKey = true;
-        }
-      }
+      filterValuesAndTimestamps(retainedKeys, newGraphValuesFiltered, newGraphKeysTimeStampMapFiltered);
 
       // Potentially try to optimize again
       if (removedAtLeastOneFactorOrKey) {
         std::cout << YELLOW_START << "GMsf-ISAM2" << GREEN_START
                   << " Filtered out the factor or key that caused the error (i.e. containing the key "
                   << gtsam::Symbol(valuesKeyNotExistent) << "). Trying to optimize again." << COLOR_END << std::endl;
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Retry batch sizes after filtering: factors="
+                  << newGraphFactorsFiltered.size() << ", values=" << newGraphValuesFiltered.size()
+                  << ", timestamps=" << newGraphKeysTimeStampMapFiltered.size() << std::endl;
         std::cout << "----------------------------------------------------------" << std::endl;
         // Copy back
         *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         // Try again
-        return update(newGraphFactorsFiltered, newGraphValues, newGraphKeysTimeStampMapFiltered);
+        return update(newGraphFactorsFiltered, newGraphValuesFiltered, newGraphKeysTimeStampMapFiltered, depth + 1);
       } else {
         std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                   << " Could not filter out any factors that caused the error (i.e. containing the key "
@@ -217,12 +413,14 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                 << " This happens if a factor is added to the graph that contains a state that already exists. This is usually a sign of "
                    "a bug in the code. Please check the factor graph construction."
                 << std::endl;
+      *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
       throw std::runtime_error(valuesKeyAlreadyExistsException.what());
     }
     // Case 4: Runtime error --> can't handle explicitly
     catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
+      *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
       throw std::runtime_error(runtimeError.what());
     }
     // Case 5: Typical indeterminant linear system
@@ -237,6 +435,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       // Get key
       gtsam::Key key = indeterminantLinearSystemException.nearbyVariable();
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " The key causing the issue is: " << gtsam::Symbol(key) << std::endl;
+      printBatchDiagnostics("IndeterminantLinearSystemException", &key);
 
       // If bias --> fix graph
       const gtsam::Symbol symbol(key);
@@ -281,6 +480,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << " The key causing the issue is not a bias key. Currently, only bias keys can be fixed automatically. Aborting "
                      "optimization."
                   << COLOR_END << std::endl;
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         return false;
       }
       throw std::runtime_error(indeterminantLinearSystemException.what());
@@ -289,6 +489,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     if (!optimizedAtLeastOnceFlag_) {
       optimizedAtLeastOnceFlag_ = true;
     }
+    recordLastUpdateDiagnostics_(std::chrono::steady_clock::now() - startTime);
     return true;
   }
 
@@ -352,6 +553,23 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
  private:
+  template <typename DurationT>
+  void recordLastUpdateDiagnostics_(const DurationT& elapsed) {
+    lastUpdateDiagnostics_ = UpdateDiagnostics{};
+    lastUpdateDiagnostics_.valid = true;
+    lastUpdateDiagnostics_.elapsedMs = std::chrono::duration<double, std::milli>(elapsed).count();
+
+    const gtsam::ISAM2Result isam2Result = fixedLagSmootherPtr_->getISAM2Result();
+    lastUpdateDiagnostics_.variablesRelinearized = isam2Result.getVariablesRelinearized();
+    lastUpdateDiagnostics_.variablesReeliminated = isam2Result.getVariablesReeliminated();
+
+    if (isam2Result.errorBefore && isam2Result.errorAfter) {
+      lastUpdateDiagnostics_.nonlinearErrorAvailable = true;
+      lastUpdateDiagnostics_.errorBefore = *isam2Result.errorBefore;
+      lastUpdateDiagnostics_.errorAfter = *isam2Result.errorAfter;
+    }
+  }
+
   // Optimizer itself
   std::shared_ptr<gtsam::IncrementalFixedLagSmoother> fixedLagSmootherPtr_;
   // Result

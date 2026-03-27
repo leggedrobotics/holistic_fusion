@@ -37,21 +37,22 @@ void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbs
   bool covarianceViolatedFlag =
       isCovarianceViolated_<1>(yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.covarianceViolationThreshold());
 
-  // Transform yaw to imu frame
-  gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame.unaryMeasurement());
-  gtsam::Rot3 yawR_W_I =
-      yawR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
-
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
-        yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
-    }
+    const std::string measurementName = yaw_W_frame.measurementName();
+    const double measurementTime = yaw_W_frame.timeK();
+    runOrDeferUnaryMeasurement_(
+        measurementName, measurementTime,
+        [this, measurement = yaw_W_frame]() -> UnaryAddOutcome {
+          gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(measurement.unaryMeasurement());
+          gtsam::Rot3 yawR_W_I =
+              yawR_W_frame *
+              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
+                              .rotation());
+
+          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
+              yawR_W_I.yaw(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+        });
   } else {
     std::cout << YELLOW_START << "GMsf-Classic" << RED_START
               << " Covariance violation detected in yaw unary measurement at time " << yaw_W_frame.timeK()
@@ -69,21 +70,22 @@ void GraphMsfClassic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAb
   bool covarianceViolatedFlag =
       isCovarianceViolated_<1>(roll_W_frame.unaryMeasurementNoiseDensity(), roll_W_frame.covarianceViolationThreshold());
 
-  // Transform roll to imu frame
-  gtsam::Rot3 rollR_W_frame = gtsam::Rot3::Roll(roll_W_frame.unaryMeasurement());
-  gtsam::Rot3 rollR_W_I =
-      rollR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(roll_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
-
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
-        rollR_W_I.roll(), roll_W_frame.unaryMeasurementNoiseDensity(), roll_W_frame.timeK());
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
-    }
+    const std::string measurementName = roll_W_frame.measurementName();
+    const double measurementTime = roll_W_frame.timeK();
+    runOrDeferUnaryMeasurement_(
+        measurementName, measurementTime,
+        [this, measurement = roll_W_frame]() -> UnaryAddOutcome {
+          gtsam::Rot3 rollR_W_frame = gtsam::Rot3::Roll(measurement.unaryMeasurement());
+          gtsam::Rot3 rollR_W_I =
+              rollR_W_frame *
+              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
+                              .rotation());
+
+          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
+              rollR_W_I.roll(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+        });
   } else {
     std::cout << YELLOW_START << "GMsf-Classic" << RED_START
               << " Covariance violation detected in roll unary measurement at time " << roll_W_frame.timeK()
@@ -101,21 +103,22 @@ void GraphMsfClassic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDA
   bool covarianceViolatedFlag =
       isCovarianceViolated_<1>(pitch_W_frame.unaryMeasurementNoiseDensity(), pitch_W_frame.covarianceViolationThreshold());
 
-  // Transform pitch to imu frame
-  gtsam::Rot3 pitchR_W_frame = gtsam::Rot3::Pitch(pitch_W_frame.unaryMeasurement());
-  gtsam::Rot3 pitchR_W_I =
-      pitchR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(pitch_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
-
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
-        pitchR_W_I.pitch(), pitch_W_frame.unaryMeasurementNoiseDensity(), pitch_W_frame.timeK());
-    {
-      // Mutex for optimizeGraph Flag
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      optimizeGraphFlag_ = true;
-    }
+    const std::string measurementName = pitch_W_frame.measurementName();
+    const double measurementTime = pitch_W_frame.timeK();
+    runOrDeferUnaryMeasurement_(
+        measurementName, measurementTime,
+        [this, measurement = pitch_W_frame]() -> UnaryAddOutcome {
+          gtsam::Rot3 pitchR_W_frame = gtsam::Rot3::Pitch(measurement.unaryMeasurement());
+          gtsam::Rot3 pitchR_W_I =
+              pitchR_W_frame *
+              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
+                              .rotation());
+
+          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
+              pitchR_W_I.pitch(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+        });
   } else {
     std::cout << YELLOW_START << "GMsf-Classic" << RED_START
               << " Covariance violation detected in pitch unary measurement at time " << pitch_W_frame.timeK()
@@ -138,8 +141,8 @@ void GraphMsfClassic::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen:
 
   Eigen::Isometry3d T_fkm1_fk = deltaMeasurement.deltaMeasurement();
 
-  // Check frame of measuremnts
-  if (deltaMeasurement.measurementName() != staticTransformsPtr_->getImuFrame()) {
+  // Transform non-IMU binary measurements into the IMU frame before adding the factor.
+  if (deltaMeasurement.sensorFrameName() != staticTransformsPtr_->getImuFrame()) {
     T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()) *
                 T_fkm1_fk *
                 staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());

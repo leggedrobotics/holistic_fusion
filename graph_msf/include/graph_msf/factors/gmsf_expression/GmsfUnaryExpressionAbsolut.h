@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GMSF_UNARY_EXPRESSION_ABSOLUT_H
 #define GMSF_UNARY_EXPRESSION_ABSOLUT_H
 
+#include <algorithm>
+#include <cmath>
+
 // GTSAM
 #include <gtsam/base/types.h>
 #include <gtsam/navigation/NavState.h>
@@ -79,7 +82,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
         gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
     // Get age of keyframe
-    const double keyframeAge = graphKey.computeKeyframeAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
+    double keyframeAge = graphKey.computeKeyframeAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
 
     // B: Take care of the old keyframe -----------------------------------------------------
     // If deactivated or too old, we should remove the old keyframe and create a new one (with or without random walk)
@@ -89,10 +92,14 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Online graph: we can only add the delta if the old keyframe is still active (random walk or deterministic keyframe displacement. If
     // it is not active, add prior from old keyframe to new keyframe (including the displacement).
     bool introducedNewKeyframeDisplacement = false;
+    bool restartedFromPrior = false;
     // Old GTSAM key --> needed for adding constraints between previous and new keyframe
     const gtsam::Key oldGtsamKey = graphKey.key();
     const Eigen::Vector3d oldKeyframePosition = graphKey.getReferenceFrameKeyframePosition();
     bool oldVariableWasActive = graphKey.isVariableActive();
+    gtsam::Pose3 restartedKeyPriorBelief = T_W_fixedFrame_initial;
+    std::shared_ptr<gtsam::noiseModel::Base> restartedKeyPriorNoiseModelPtr;
+    gtsam::Matrix66 restartedKeyPriorCovariance = gtsam::Z_6x6;
     // If needed, have a copy of the old key to add back a prior to the online graph
     std::unique_ptr<DynamicFactorGraphStateKey<gtsam::Pose3>> oldKeyPtr = nullptr;
     if (!oldVariableWasActive) {
@@ -100,9 +107,90 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       oldKeyPtr = std::make_unique<DynamicFactorGraphStateKey<gtsam::Pose3>>(graphKey);
     }
 
+    const auto getPriorBeliefAndCovarianceFromOldKey = [&](gtsam::Pose3& priorBelief, gtsam::Matrix66& priorCovariance) {
+          if (oldKeyPtr == nullptr) {
+            throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe is unavailable while preparing comeback prior.");
+          }
+
+          if (oldKeyPtr->getNumberStepsOptimized() > 0) {
+            priorBelief = oldKeyPtr->getTransformationAfterOptimization();
+            priorCovariance = oldKeyPtr->getCovarianceAfterOptimization();
+          } else {
+            priorBelief = oldKeyPtr->getApproximateTransformationBeforeOptimization();
+            priorCovariance = gtsam::Matrix66::Zero();
+            priorCovariance.diagonal() = gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise().array().square().matrix();
+          }
+        };
+    const auto computeCenteredKeyframeShift =
+        [&](const Eigen::Vector3d& newKeyframePosition) -> gtsam::Pose3 {
+      const gtsam::Point3 relativeKeyframeTranslation(newKeyframePosition - oldKeyframePosition);
+      return gtsam::Pose3(gtsam::Rot3::Identity(), relativeKeyframeTranslation);
+    };
+    const auto shiftCenteredPriorToCurrentKeyframe = [&](const gtsam::Pose3& priorBelief,
+                                                         const gtsam::Pose3& T_fixedFrameOld_fixedFrame) {
+      return priorBelief.compose(T_fixedFrameOld_fixedFrame);
+    };
+    const auto buildRestartPriorNoiseModel = [&](const gtsam::Matrix66& oldPriorCovariance,
+                                                 const gtsam::Pose3& T_fixedFrameOld_fixedFrame,
+                                                 const double outageSeconds) {
+      const gtsam::Matrix66 tangentFrameJacobian = T_fixedFrameOld_fixedFrame.inverse().AdjointMap();
+      const gtsam::Matrix66 transformedPriorCovariance =
+          tangentFrameJacobian * oldPriorCovariance * tangentFrameJacobian.transpose();
+
+      const Eigen::Matrix<double, 6, 1> transformedPriorSigmas =
+          transformedPriorCovariance.diagonal().array().max(0.0).sqrt().matrix();
+      Eigen::Matrix<double, 6, 1> restartPriorSigmas =
+          transformedPriorSigmas.cwiseMax(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise());
+
+      if (gmsfUnaryAbsoluteMeasurementPtr_->modelAsRandomWalkFlag()) {
+        const double effectiveKeyframePeriod = std::max(createReferenceAlignmentKeyframeEveryNSeconds_, 1e-6);
+        const double missedKeyframeCount = std::max(1.0, outageSeconds / effectiveKeyframePeriod);
+        const Eigen::Matrix<double, 6, 1> outageSigmas =
+            gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk() * std::sqrt(missedKeyframeCount);
+        restartPriorSigmas =
+            (restartPriorSigmas.array().square() + outageSigmas.array().square()).sqrt().matrix();
+      }
+
+      restartPriorSigmas = restartPriorSigmas.cwiseMax(Eigen::Matrix<double, 6, 1>::Constant(1e-9));
+      return gtsam::noiseModel::Diagonal::Sigmas(restartPriorSigmas);
+    };
+
     // C: Check if we need to create a new keyframe -----------------------------------------------------
-    // Case 1: Old keyframe not active --> just reactivate the keyframe (independent of whether new keyframe was added or not)
-    if (!oldVariableWasActive) {
+    // Case 1: Old keyframe not active --> either reactivate it or explicitly restart the reference-frame chain from its prior.
+    if (!oldVariableWasActive &&
+        gmsfUnaryAbsoluteMeasurementPtr_->alignmentRecoveryPolicy() ==
+            AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior) {
+      if (newGraphKeyAddedFlag) {
+        throw std::logic_error("GmsfUnaryExpressionAbsolut: Old inactive keyframe cannot already be marked as newly added.");
+      }
+
+      getPriorBeliefAndCovarianceFromOldKey(restartedKeyPriorBelief, restartedKeyPriorCovariance);
+
+      DynamicFactorGraphStateKey<gtsam::Pose3> removedOldKey;
+      const bool removedOldKeyFlag = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(
+          gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), removedOldKey);
+      if (!removedOldKeyFlag || removedOldKey.key() != oldGtsamKey) {
+        throw std::logic_error("GmsfUnaryExpressionAbsolut: Failed to remove inactive keyframe before restart-from-prior.");
+      }
+
+      T_W_fixedFrame_initial = restartedKeyPriorBelief;
+      graphKey = gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getTransformationKey<'r'>(
+          newGraphKeyAddedFlag, gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
+          gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
+      assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
+
+      const gtsam::Pose3 T_fixedFrameOld_fixedFrame =
+          computeCenteredKeyframeShift(graphKey.getReferenceFrameKeyframePosition());
+      restartedKeyPriorBelief = shiftCenteredPriorToCurrentKeyframe(restartedKeyPriorBelief, T_fixedFrameOld_fixedFrame);
+      restartedKeyPriorNoiseModelPtr = buildRestartPriorNoiseModel(
+          restartedKeyPriorCovariance, T_fixedFrameOld_fixedFrame, oldKeyPtr->computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK()));
+      T_W_fixedFrame_initial = restartedKeyPriorBelief;
+
+      keyframeAge = graphKey.computeKeyframeAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
+      restartedFromPrior = true;
+    }
+    // Case 2: Old keyframe not active --> just reactivate the keyframe (independent of whether new keyframe was added or not)
+    else if (!oldVariableWasActive) {
       // Check whether no new keyframe was added
       if (newGraphKeyAddedFlag) {
         throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe was not active, but new keyframe was added.");
@@ -124,25 +212,18 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       if (oldKeyPtr == nullptr) {
         throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe was not active, but old key ptr is null.");
       }
-      // Container for belief of old keyframe
+      // Container for belief of old keyframe and its prior noise
       gtsam::Pose3 T_W_fixedFrameOld;
-      // Noise model container
-      std::shared_ptr<gtsam::noiseModel::Base> noiseModelPtr;
+      gtsam::Matrix66 priorCovariance;
+      getPriorBeliefAndCovarianceFromOldKey(T_W_fixedFrameOld, priorCovariance);
+      const std::shared_ptr<gtsam::noiseModel::Base> noiseModelPtr = gtsam::noiseModel::Gaussian::Covariance(priorCovariance);
       // Case 1: Has been optimized before
       if (oldKeyPtr->getNumberStepsOptimized() > 0) {
-        T_W_fixedFrameOld = oldKeyPtr->getTransformationAfterOptimization();
-        Eigen::Matrix<double, 6, 6> oldKeyframeCovariance = oldKeyPtr->getCovarianceAfterOptimization();
-        // Noise model from 6x6 covariance
-        noiseModelPtr = gtsam::noiseModel::Gaussian::Covariance(oldKeyframeCovariance);
         // Print
         REGULAR_COUT << " Old keyframe has been optimized before. Adding previous optimization outcome again to online graph." << std::endl;
       }
       // Case 2: Has not been optimized before
       else {
-        T_W_fixedFrameOld = oldKeyPtr->getApproximateTransformationBeforeOptimization();
-        Eigen::Matrix<double, 6, 1> oldKeyframeCovariance = gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise();
-        // Noise model for prior
-        noiseModelPtr = gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise());
         // Print
         REGULAR_COUT << " Old keyframe has not been optimized before. Adding very initial guess that should have been added last time."
                      << std::endl;
@@ -157,8 +238,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                    << " to the online graph, as it was not active anymore." << COLOR_END << std::endl;
     }
 
-    // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
-    if (keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
+    // Case 3: Keyframe is too old --> create a new keyframe to model the displacement
+    if (!restartedFromPrior && keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
       // Remove the old keyframe from memory
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
                                                                      gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
@@ -177,8 +258,10 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && !initialGuessSetExternally) {
       // Shift the measurement to the robot position
       this->setMeasurementPosition(this->getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
-      // Recompute initial guess
-      T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
+      // Recompute initial guess unless we intentionally restarted from the old prior.
+      if (!restartedFromPrior) {
+        T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
+      }
       // Update the initial guess
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
           .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
@@ -192,15 +275,23 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // F: Initial values and priors if needed -----------------------------------------------------
     if (newGraphKeyAddedFlag) {
-      REGULAR_COUT << " Initial Guess for T_W_" << gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName()
-                   << ", RPY (deg): " << T_W_fixedFrame_initial.rotation().rpy().transpose() * (180.0 / M_PI)
-                   << ", t (x, y, z): " << T_W_fixedFrame_initial.translation().transpose() << std::endl;
+      // REGULAR_COUT << " Initial Guess for T_W_" << gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName()
+      //              << ", RPY (deg): " << T_W_fixedFrame_initial.rotation().rpy().transpose() * (180.0 / M_PI)
+      //              << ", t (x, y, z): " << T_W_fixedFrame_initial.translation().transpose() << std::endl;
       // Insert Values
       this->newOnlineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
       this->newOfflineStateValues_.insert(graphKey.key(), T_W_fixedFrame_initial);
 
-      // Case 1: Entirely new keyframe has been added (not just a displacement) --> add prior to online graph
-      if (!introducedNewKeyframeDisplacement) {
+      // Case 1: Restarted from prior after a long outage --> anchor the new keyframe with the previous belief shifted into the
+      // new keyframe-centered coordinate system.
+      if (restartedFromPrior) {
+        if (!restartedKeyPriorNoiseModelPtr) {
+          throw std::logic_error("GmsfUnaryExpressionAbsolut: Restart-from-prior requested without a prior noise model.");
+        }
+        this->newOnlinePosePriorFactors_.emplace_back(graphKey.key(), restartedKeyPriorBelief, restartedKeyPriorNoiseModelPtr);
+      }
+      // Case 2: Entirely new keyframe has been added (not just a displacement) --> add prior to online graph
+      else if (!introducedNewKeyframeDisplacement) {
         // Insert Prior ONLY for online graph (offline is observable regardless)
         this->newOnlinePosePriorFactors_.emplace_back(
             graphKey.key(), T_W_fixedFrame_initial,
@@ -209,7 +300,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
                      << gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise().transpose()
                      << " to the online graph, as it is an entirely new keyframe." << COLOR_END << std::endl;
       }
-      // Case 2: New keyframe has been added, but one existed before already --> add relative constraint from old to new keyframe
+      // Case 3: New keyframe has been added, but one existed before already --> add relative constraint from old to new keyframe
       else {
         // Add relative constraint from old keyframe to new keyframe
         gtsam::Point3 relativeKeyframeTranslation(graphKey.getReferenceFrameKeyframePosition() - oldKeyframePosition);
@@ -223,9 +314,9 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
               gtsam::noiseModel::Diagonal::Sigmas(gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk());
           this->newOnlineAndOfflinePoseBetweenFactors_.emplace_back(oldGtsamKey, graphKey.key(), T_fixedFrameOld_fixedFrame, noiseModelPtr);
 
-          // Add prior from old keyframe to new keyframe
-          REGULAR_COUT << GREEN_START << " Adding relative RANDOM WALK constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
-                       << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
+          // // Add prior from old keyframe to new keyframe
+          // REGULAR_COUT << GREEN_START << " Adding relative RANDOM WALK constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
+          //              << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
 
           // TODO: Remove
           // Add prior to variable to check

@@ -6,6 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // C++
+#include <algorithm>
 #include <chrono>
 
 // Implementation
@@ -278,10 +279,15 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
   // Case 5: Normal operation, meaning predicting the next state via integration -------------
   // Only create state every n-th measurements (or at first successful iteration)
   bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0 || !normalOperationFlag_;
+  bool newStateCreatedFlag = false;
   // Add IMU factor and return propagated & optimized state
   graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, coreImuBufferPtr_,
-                                        imuTimeK, createNewStateFlag);
+                                        imuTimeK, createNewStateFlag, &newStateCreatedFlag);
   returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
+
+  if (newStateCreatedFlag) {
+    flushDeferredUnaryMeasurements_();
+  }
 
   // Set to normal operation
   if (!normalOperationFlag_) {
@@ -296,20 +302,139 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
 bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity) {
   static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), noiseDensity * Eigen::Matrix<double, 6, 1>::Ones(),
                                                        timeKm1, timeK, 10, RobustNormEnum::None, 0.0));
-  graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
-      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK);
+  static_cast<void>(graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>,
+                                                           gtsam::symbol_shorthand::V>(
+      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
 
   return true;
 }
 
 bool GraphMsf::addZeroVelocityFactor(double timeK, double noiseDensity) {
-  graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
-      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK);
+  static_cast<void>(graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>,
+                                                           gtsam::symbol_shorthand::V>(
+      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
 
   return true;
 }
 
 // Private ---------------------------------------------------------------
+void GraphMsf::requestGraphOptimization_() {
+  const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+  optimizeGraphFlag_ = true;
+}
+
+double GraphMsf::effectiveMaxDeferredUnaryFutureLeadSeconds_() const {
+  if (!graphConfigPtr_) {
+    return 0.0;
+  }
+  if (graphConfigPtr_->maxDeferredUnaryFutureLeadSeconds_ > 0.0) {
+    return graphConfigPtr_->maxDeferredUnaryFutureLeadSeconds_;
+  }
+  return graphConfigPtr_->maxSearchDeviation_;
+}
+
+void GraphMsf::enqueueDeferredUnaryMeasurement_(const std::string& measurementName, const double measurementTime,
+                                                const std::function<UnaryAddOutcome()>& addAttempt) {
+  const std::lock_guard<std::mutex> deferredLock(deferredUnaryMeasurementsMutex_);
+
+  DeferredUnaryMeasurementWorkItem workItem;
+  workItem.measurementTime = measurementTime;
+  workItem.sequenceNumber = deferredUnaryMeasurementSequenceCounter_++;
+  workItem.measurementName = measurementName;
+  workItem.addAttempt = addAttempt;
+  const auto insertIt = std::upper_bound(
+      deferredUnaryMeasurements_.begin(), deferredUnaryMeasurements_.end(), workItem,
+      [](const DeferredUnaryMeasurementWorkItem& lhs, const DeferredUnaryMeasurementWorkItem& rhs) {
+        if (lhs.measurementTime != rhs.measurementTime) {
+          return lhs.measurementTime < rhs.measurementTime;
+        }
+        return lhs.sequenceNumber < rhs.sequenceNumber;
+      });
+  deferredUnaryMeasurements_.insert(insertIt, workItem);
+
+  while (static_cast<int>(deferredUnaryMeasurements_.size()) > graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_) {
+    const auto& droppedWorkItem = deferredUnaryMeasurements_.back();
+    REGULAR_COUT << RED_START << " Deferred unary queue is full. Dropping newest deferred measurement \""
+                 << droppedWorkItem.measurementName << "\" at time " << std::setprecision(14) << droppedWorkItem.measurementTime
+                 << "." << COLOR_END << std::endl;
+    deferredUnaryMeasurements_.pop_back();
+  }
+}
+
+void GraphMsf::runOrDeferUnaryMeasurement_(const std::string& measurementName, const double measurementTime,
+                                           const std::function<UnaryAddOutcome()>& addAttempt) {
+  const UnaryAddOutcome outcome = addAttempt();
+
+  switch (outcome.status) {
+    case UnaryAddStatus::Added:
+      requestGraphOptimization_();
+      return;
+    case UnaryAddStatus::DeferredFuture: {
+      if (!graphConfigPtr_->deferFutureUnaryMeasurementsFlag_) {
+        REGULAR_COUT << YELLOW_START << " Future unary measurement \"" << measurementName
+                     << "\" will not be deferred because deferFutureUnaryMeasurements is disabled." << COLOR_END << std::endl;
+        return;
+      }
+
+      const double maxDeferredLeadSeconds = effectiveMaxDeferredUnaryFutureLeadSeconds_();
+      if (outcome.futureLeadSeconds > maxDeferredLeadSeconds) {
+        REGULAR_COUT << RED_START << " Future unary measurement \"" << measurementName << "\" leads by "
+                     << 1000 * outcome.futureLeadSeconds << " ms, exceeding the deferred-unary limit of "
+                     << 1000 * maxDeferredLeadSeconds << " ms. Dropping it." << COLOR_END << std::endl;
+        return;
+      }
+
+      enqueueDeferredUnaryMeasurement_(measurementName, measurementTime, addAttempt);
+      if (graphConfigPtr_->verboseLevel_ >= VerbosityLevels::kOptimizationEffort2) {
+        REGULAR_COUT << GREEN_START << " Deferred future unary measurement \"" << measurementName << "\" by "
+                     << 1000 * outcome.futureLeadSeconds << " ms." << COLOR_END << std::endl;
+      }
+      return;
+    }
+    case UnaryAddStatus::Dropped:
+      return;
+  }
+}
+
+void GraphMsf::flushDeferredUnaryMeasurements_() {
+  if (!graphConfigPtr_->deferFutureUnaryMeasurementsFlag_) {
+    return;
+  }
+
+  double oldestBufferedKeyTime = 0.0;
+  double latestBufferedKeyTime = 0.0;
+  if (!graphMgrPtr_->getGraphKeyTimestampBounds(oldestBufferedKeyTime, latestBufferedKeyTime)) {
+    return;
+  }
+
+  std::deque<DeferredUnaryMeasurementWorkItem> readyWorkItems;
+  {
+    const std::lock_guard<std::mutex> deferredLock(deferredUnaryMeasurementsMutex_);
+    if (deferredUnaryMeasurements_.empty()) {
+      return;
+    }
+    while (!deferredUnaryMeasurements_.empty()) {
+      const auto& front = deferredUnaryMeasurements_.front();
+      if (front.measurementTime < oldestBufferedKeyTime - graphConfigPtr_->maxSearchDeviation_) {
+        REGULAR_COUT << RED_START << " Deferred unary measurement \"" << front.measurementName << "\" at time "
+                     << std::setprecision(14) << front.measurementTime
+                     << " aged out of the graph-key buffer. Dropping it." << COLOR_END << std::endl;
+        deferredUnaryMeasurements_.pop_front();
+        continue;
+      }
+      if (front.measurementTime > latestBufferedKeyTime) {
+        break;
+      }
+
+      readyWorkItems.push_back(std::move(deferredUnaryMeasurements_.front()));
+      deferredUnaryMeasurements_.pop_front();
+    }
+  }
+
+  for (const auto& workItem : readyWorkItems) {
+    runOrDeferUnaryMeasurement_(workItem.measurementName, workItem.measurementTime, workItem.addAttempt);
+  }
+}
 
 /// Worker Functions -----------------------
 bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {

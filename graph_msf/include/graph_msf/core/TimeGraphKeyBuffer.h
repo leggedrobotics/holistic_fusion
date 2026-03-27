@@ -31,6 +31,7 @@ class TimeGraphKeyBuffer {
   // Getters
   bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
                                  const double tK);
+  bool getTimestampBounds(double& oldestTimestamp, double& latestTimestamp);
   double getLatestTimestampInBuffer() const { return tLatestInBuffer_; }
   const TimeToKeyMap& getTimeToKeyBuffer() { return timeToKeyBuffer_; }
   const KeyToTimeMap& getKeyToTimeBuffer() { return keyToTimeBuffer_; }

@@ -34,12 +34,28 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
  public:
   // Constructor
   DynamicTransformDictionary()
-      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>()) {
-    REGULAR_COUT << " Instance created." << std::endl;
-  }
+      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>()) {}
+
+  DynamicTransformDictionary(const DynamicTransformDictionary& other)
+      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(other),
+        transformGtsamKeyToFramePairMap_(other.transformGtsamKeyToFramePairMap_),
+        transformGtsamKeyToKeyframePositionMap_(other.transformGtsamKeyToKeyframePositionMap_),
+        transformGtsamKeyToInitialGuessMap_(other.transformGtsamKeyToInitialGuessMap_),
+        numStoredTransformsPerSymbol_(other.numStoredTransformsPerSymbol_) {}
 
   // Destructor
   ~DynamicTransformDictionary() = default;
+
+  DynamicTransformDictionary& operator=(const DynamicTransformDictionary& other) {
+    if (this != &other) {
+      TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>::operator=(other);
+      transformGtsamKeyToFramePairMap_ = other.transformGtsamKeyToFramePairMap_;
+      transformGtsamKeyToKeyframePositionMap_ = other.transformGtsamKeyToKeyframePositionMap_;
+      transformGtsamKeyToInitialGuessMap_ = other.transformGtsamKeyToInitialGuessMap_;
+      numStoredTransformsPerSymbol_ = other.numStoredTransformsPerSymbol_;
+    }
+    return *this;
+  }
 
   // Cleanup
   bool removeTransform(const std::string& frame1, const std::string& frame2,
@@ -226,11 +242,11 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     // Create New Key
     gtsam::Key gtsamKey = gtsam::Symbol(SYMBOL_CHAR, numStoredTransformsPerSymbol_[symbolIndex]);
 
-    // Print out for calibrations and reference frames
-    if (variableType.getVariableTypeEnum() != DynamicVariableTypeEnum::Landmark) {
-      REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(gtsamKey) << " created for frame pair " << frame1 << " and " << frame2
-                   << "." << COLOR_END << std::endl;
-    }
+    // // Print out for calibrations and reference frames
+    // if (variableType.getVariableTypeEnum() != DynamicVariableTypeEnum::Landmark) {
+    //   REGULAR_COUT << GREEN_START << " New key " << gtsam::Symbol(gtsamKey) << " created for frame pair " << frame1 << " and " << frame2
+    //                << "." << COLOR_END << std::endl;
+    // }
 
     // Add to main dictionary
     DynamicFactorGraphStateKey factorGraphStateKey(gtsamKey, timeK, 0, approximateTransformationBeforeOptimization, variableType, frame1,

@@ -41,6 +41,12 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("graph_params.minOptimizationFrequency", 0.0);
   this->declare_parameter("graph_params.maxOptimizationFrequency", 0.0);
   this->declare_parameter("graph_params.additionalOptimizationIterations", 0);
+  this->declare_parameter("graph_params.useAdaptiveAdditionalOptimizationIterations", false);
+  this->declare_parameter("graph_params.adaptiveAdditionalOptimizationMinRelativeErrorImprovement", 0.0);
+  this->declare_parameter("graph_params.printAdditionalOptimizationDiagnostics", false);
+  this->declare_parameter("graph_params.deferFutureUnaryMeasurements", false);
+  this->declare_parameter("graph_params.maxDeferredUnaryFutureLeadSeconds", 0.0);
+  this->declare_parameter("graph_params.maxDeferredUnaryMeasurementsInQueue", 100);
   this->declare_parameter("graph_params.findUnusedFactorSlots", false);
   this->declare_parameter("graph_params.enableDetailedResults", false);
   this->declare_parameter("graph_params.realTimeSmootherUseCholeskyFactorization", false);
@@ -84,7 +90,7 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("relinearization_params.landmarkReLinTh", 0.0);
   this->declare_parameter("relinearization_params.relinearizeSkip", 0);
   this->declare_parameter("relinearization_params.enableRelinearization", false);
-  this->declare_parameter("relinearization_params.evaluateNonlinearError", false);
+  this->declare_parameter("graph_params.evaluateNonlinearError", false);
   this->declare_parameter("relinearization_params.cacheLinearizedFactors", false);
   this->declare_parameter("relinearization_params.enablePartialRelinearizationCheck", false);
 

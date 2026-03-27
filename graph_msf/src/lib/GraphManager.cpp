@@ -11,9 +11,14 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING 1
 
 // C++
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <iomanip>
+#include <limits>
+#include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -108,6 +113,101 @@ private:
 #else
 #define GRAPH_MSF_SCOPED_TIMER(NAME_LITERAL) (void)0
 #endif
+
+namespace {
+
+std::string keyToString(const gtsam::Key key) {
+  std::ostringstream oss;
+  oss << gtsam::Symbol(key);
+  return oss.str();
+}
+
+std::set<gtsam::Key> collectFactorKeys(const gtsam::NonlinearFactorGraph& factors) {
+  std::set<gtsam::Key> keys;
+  for (const auto& factor : factors) {
+    if (!factor) {
+      continue;
+    }
+    for (const gtsam::Key key : factor->keys()) {
+      keys.insert(key);
+    }
+  }
+  return keys;
+}
+
+std::set<gtsam::Key> collectValueKeys(const gtsam::Values& values) {
+  std::set<gtsam::Key> keys;
+  for (const auto& keyValue : values) {
+    keys.insert(keyValue.key);
+  }
+  return keys;
+}
+
+std::set<gtsam::Key> collectTimestampKeys(const std::map<gtsam::Key, double>& keyTimestampMap) {
+  std::set<gtsam::Key> keys;
+  for (const auto& keyTimestamp : keyTimestampMap) {
+    keys.insert(keyTimestamp.first);
+  }
+  return keys;
+}
+
+std::string formatKeySet(const std::set<gtsam::Key>& keys, const std::size_t maxKeys = 16) {
+  std::ostringstream oss;
+  oss << "[";
+  std::size_t count = 0;
+  for (const gtsam::Key key : keys) {
+    if (count > 0) {
+      oss << ", ";
+    }
+    if (count == maxKeys) {
+      oss << "... +" << (keys.size() - maxKeys) << " more";
+      break;
+    }
+    oss << keyToString(key);
+    ++count;
+  }
+  oss << "]";
+  return oss.str();
+}
+
+std::string describeFactor(const gtsam::NonlinearFactor::shared_ptr& factor, const std::size_t index) {
+  std::ostringstream oss;
+  oss << "#" << index << " type=";
+  if (!factor) {
+    oss << "<null>";
+    return oss.str();
+  }
+  oss << typeid(*factor).name() << " keys=[";
+  for (std::size_t keyIndex = 0; keyIndex < factor->keys().size(); ++keyIndex) {
+    if (keyIndex > 0) {
+      oss << ", ";
+    }
+    oss << keyToString(factor->keys()[keyIndex]);
+  }
+  oss << "]";
+  return oss.str();
+}
+
+bool findLatestKeyForSymbol(gtsam::Key& latestKey, double& latestTimestamp, const std::map<gtsam::Key, double>& keyTimestampMap,
+                            const char symbolChar) {
+  bool foundKey = false;
+  std::uint64_t latestIndex = 0;
+  for (const auto& keyTimestamp : keyTimestampMap) {
+    const gtsam::Symbol symbol(keyTimestamp.first);
+    if (symbol.chr() != symbolChar) {
+      continue;
+    }
+    if (!foundKey || symbol.index() > latestIndex) {
+      latestKey = keyTimestamp.first;
+      latestTimestamp = keyTimestamp.second;
+      latestIndex = symbol.index();
+      foundKey = true;
+    }
+  }
+  return foundKey;
+}
+
+}  // namespace
 
 // Public --------------------------------------------------------------------
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
@@ -263,18 +363,24 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
-                                            gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
+                                             gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
   W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
-  T_W_O_ = (T_W_I0.inverse() * T_O_I0).matrix();
+  // Keep the same world/odom composition convention as runtime propagation: T_W_I = T_W_O * T_O_I.
+  T_W_O_ = (T_W_I0 * T_O_I0.inverse()).matrix();
   return true;
 }
 
 // IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag,
+                                           bool* newStateCreatedFlag) {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::addImuFactorAndGetState");
+
+  if (newStateCreatedFlag != nullptr) {
+    *newStateCreatedFlag = false;
+  }
 
   // Logging of latency
   if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
@@ -389,6 +495,10 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     } else {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
+
+    if (newStateCreatedFlag != nullptr) {
+      *newStateCreatedFlag = true;
+    }
   }  // End of create new state
 
   // Potentially log real-time state to container
@@ -417,44 +527,49 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
 }
 
 // Unary factors ----------------------------------------------------------------
+UnaryAddOutcome GraphManager::classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                            const std::string& measurementName, const double measurementTime) {
+  double oldestBufferedTime = 0.0;
+  double latestBufferedTime = 0.0;
+  if (!timeToKeyBufferPtr_->getTimestampBounds(oldestBufferedTime, latestBufferedTime)) {
+    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName
+                 << "\" arrived before any graph keys were available. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  if (measurementTime > latestBufferedTime) {
+    return {UnaryAddStatus::DeferredFuture, measurementTime - latestBufferedTime};
+  }
+
+  if (measurementTime < oldestBufferedTime - graphConfigPtr_->maxSearchDeviation_) {
+    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName << "\" at time " << std::setprecision(14)
+                 << measurementTime << " is older than the oldest buffered graph key time " << oldestBufferedTime
+                 << " by more than the admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation_
+                 << " ms. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, measurementName,
+                                                      graphConfigPtr_->maxSearchDeviation_, measurementTime)) {
+    REGULAR_COUT << RED_START << " Time deviation of unary measurement \"" << measurementName << "\" at key " << returnedKey << " is "
+                 << 1000 * std::abs(returnedGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
+                 << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  return {UnaryAddStatus::Added, 0.0};
+}
+
 // Key Lookup
-bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
+UnaryAddOutcome GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                       const UnaryMeasurement& unaryMeasurement) {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::getUnaryFactorGeneralKey");
 
-  // Find the closest key in existing graph
-  // Case 1: Can't add immediately
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
-                                                      graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
-    // Measurement coming from the future
-    if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
-      // Not too far in the future --> add to buffer and add later
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
-        // TODO: Add to buffer and return --> still add it until we are there
-        return true;
-      }
-      // Too far in the future --> do not add it
-      else {
-        std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
-        std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
-        REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
-                     << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
-                     << " ms, being larger than admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_
-                     << " ms. Not adding to graph." << COLOR_END << std::endl;
-        return false;
-      }
-    }
-    // Measurement coming from the past, but could not find suitable key
-    else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
-                   << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return false;
-    }
-  }
-  // Case 2: Can add immediately
-  else {
-    return true;
-  }
+  return classifyUnaryMeasurementTime_(returnedKey, returnedGraphTime, unaryMeasurement.measurementName(), unaryMeasurement.timeK());
+}
+
+bool GraphManager::getGraphKeyTimestampBounds(double& oldestTimestamp, double& latestTimestamp) {
+  return timeToKeyBufferPtr_->getTimestampBounds(oldestTimestamp, latestTimestamp);
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------
@@ -603,6 +718,187 @@ void GraphManager::updateGraph() {
   gtsam::Vector3 currentAngularVelocity;
   double currentPropagatedTime;
 
+  auto dumpRtFailureDiagnostics = [&](const std::string& reason) {
+    const std::map<gtsam::Key, double>& optimizerKeyTimestampMap = rtOptimizerPtr_->getFullKeyTimestampMap();
+    const std::set<gtsam::Key> batchFactorKeys = collectFactorKeys(newRtGraphFactors);
+    const std::set<gtsam::Key> batchValueKeys = collectValueKeys(newRtGraphValues);
+    const std::set<gtsam::Key> batchTimestampKeys = collectTimestampKeys(newRtGraphKeysTimestampsMap);
+    const std::set<gtsam::Key> optimizerKeys = collectTimestampKeys(optimizerKeyTimestampMap);
+
+    std::set<gtsam::Key> availableKeys = optimizerKeys;
+    availableKeys.insert(batchValueKeys.begin(), batchValueKeys.end());
+
+    std::set<gtsam::Key> missingFactorKeys;
+    for (const gtsam::Key factorKey : batchFactorKeys) {
+      if (availableKeys.count(factorKey) == 0) {
+        missingFactorKeys.insert(factorKey);
+      }
+    }
+
+    std::set<gtsam::Key> orphanValueKeys;
+    for (const gtsam::Key valueKey : batchValueKeys) {
+      if (batchFactorKeys.count(valueKey) == 0) {
+        orphanValueKeys.insert(valueKey);
+      }
+    }
+
+    std::set<gtsam::Key> orphanTimestampKeys;
+    for (const gtsam::Key timestampKey : batchTimestampKeys) {
+      if (batchFactorKeys.count(timestampKey) == 0 && batchValueKeys.count(timestampKey) == 0) {
+        orphanTimestampKeys.insert(timestampKey);
+      }
+    }
+
+    REGULAR_COUT << RED_START << " RT update diagnostics (" << reason << "): current=" << keyToString(gtsam::symbol_shorthand::X(currentPropagatedKey))
+                 << ", t=" << std::setprecision(14) << currentPropagatedTime << ", last_optimized_t=" << lastOptimizedStateTime_
+                 << ", dt_since_last_optimized=" << (currentPropagatedTime - lastOptimizedStateTime_) << "s."
+                 << COLOR_END << std::endl;
+    REGULAR_COUT << " Incoming batch sizes: factors=" << newRtGraphFactors.size() << ", values=" << newRtGraphValues.size()
+                 << ", timestamps=" << newRtGraphKeysTimestampsMap.size() << ", optimizer_keys=" << optimizerKeys.size() << std::endl;
+    REGULAR_COUT << " Incoming factor keys: " << formatKeySet(batchFactorKeys) << std::endl;
+
+    gtsam::Key latestOptimizerPoseKey = 0;
+    double latestOptimizerPoseTime = 0.0;
+    if (findLatestKeyForSymbol(latestOptimizerPoseKey, latestOptimizerPoseTime, optimizerKeyTimestampMap, 'x')) {
+      const std::uint64_t latestOptimizerPoseIndex = gtsam::Symbol(latestOptimizerPoseKey).index();
+      REGULAR_COUT << " Latest optimizer pose key: " << keyToString(latestOptimizerPoseKey) << " at t=" << latestOptimizerPoseTime
+                   << ". Current propagated pose key is ahead by " << (currentPropagatedKey - latestOptimizerPoseIndex) << " states."
+                   << std::endl;
+    } else {
+      REGULAR_COUT << RED_START << " Optimizer currently reports no pose keys in its timestamp map." << COLOR_END << std::endl;
+    }
+
+    auto printKeyAvailability = [&](const gtsam::Key queryKey, const std::string& label) {
+      REGULAR_COUT << " " << label << " " << keyToString(queryKey) << ": in_factors=" << (batchFactorKeys.count(queryKey) > 0)
+                   << ", in_values=" << (batchValueKeys.count(queryKey) > 0)
+                   << ", in_timestamps=" << (batchTimestampKeys.count(queryKey) > 0)
+                   << ", in_optimizer=" << (optimizerKeys.count(queryKey) > 0) << std::endl;
+    };
+
+    printKeyAvailability(gtsam::symbol_shorthand::X(currentPropagatedKey), "Current pose");
+    printKeyAvailability(gtsam::symbol_shorthand::V(currentPropagatedKey), "Current velocity");
+    printKeyAvailability(gtsam::symbol_shorthand::B(currentPropagatedKey), "Current bias");
+
+    if (!missingFactorKeys.empty()) {
+      REGULAR_COUT << RED_START << " Factor keys missing from optimizer+incoming-values: " << formatKeySet(missingFactorKeys)
+                   << COLOR_END << std::endl;
+    }
+    if (!orphanValueKeys.empty()) {
+      REGULAR_COUT << RED_START << " Incoming values not referenced by any factor: " << formatKeySet(orphanValueKeys) << COLOR_END
+                   << std::endl;
+    }
+    if (!orphanTimestampKeys.empty()) {
+      REGULAR_COUT << RED_START << " Incoming timestamps not referenced by any factor/value: " << formatKeySet(orphanTimestampKeys)
+                   << COLOR_END << std::endl;
+    }
+
+    auto printFactorsTouchingKey = [&](const gtsam::Key queryKey, const std::string& label) {
+      std::size_t printedFactors = 0;
+      for (std::size_t factorIndex = 0; factorIndex < newRtGraphFactors.size(); ++factorIndex) {
+        const auto& factor = newRtGraphFactors[factorIndex];
+        if (!factor) {
+          continue;
+        }
+        bool touchesKey = false;
+        for (const gtsam::Key factorKey : factor->keys()) {
+          if (factorKey == queryKey) {
+            touchesKey = true;
+            break;
+          }
+        }
+        if (touchesKey) {
+          REGULAR_COUT << " " << label << ": " << describeFactor(factor, factorIndex) << std::endl;
+          ++printedFactors;
+          if (printedFactors >= 8) {
+            REGULAR_COUT << " " << label << ": ... truncated after 8 factors." << std::endl;
+            break;
+          }
+        }
+      }
+      if (printedFactors == 0) {
+        REGULAR_COUT << " " << label << ": none." << std::endl;
+      }
+    };
+
+    printFactorsTouchingKey(gtsam::symbol_shorthand::X(currentPropagatedKey), "Factors touching current pose");
+
+    const std::set<gtsam::Key> dynamicKeysInBatch = [&]() {
+      std::set<gtsam::Key> dynamicKeys;
+      dynamicKeys.insert(batchFactorKeys.begin(), batchFactorKeys.end());
+      dynamicKeys.insert(batchValueKeys.begin(), batchValueKeys.end());
+      dynamicKeys.insert(batchTimestampKeys.begin(), batchTimestampKeys.end());
+      for (auto it = dynamicKeys.begin(); it != dynamicKeys.end();) {
+        const char stateChar = gtsam::Symbol(*it).chr();
+        if (stateChar == 'x' || stateChar == 'v' || stateChar == 'b') {
+          it = dynamicKeys.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      return dynamicKeys;
+    }();
+
+    if (!dynamicKeysInBatch.empty()) {
+      auto& dynamicPoseDictionary = gtsamDynamicExpressionKeys_.get<gtsam::Pose3>();
+      std::lock_guard<std::mutex> dynamicPoseDictionaryLock(dynamicPoseDictionary.mutex());
+      REGULAR_COUT << " Dynamic keys in failing batch: " << formatKeySet(dynamicKeysInBatch) << std::endl;
+      std::size_t printedDynamicKeys = 0;
+      for (const gtsam::Key dynamicKey : dynamicKeysInBatch) {
+        std::pair<std::string, std::string> framePair;
+        const bool hasFramePair = dynamicPoseDictionary.getFramePairFromGtsamKey(framePair, dynamicKey);
+        std::ostringstream dynamicKeyInfo;
+        dynamicKeyInfo << keyToString(dynamicKey);
+        if (hasFramePair) {
+          dynamicKeyInfo << " -> " << framePair.first << "->" << framePair.second;
+          const bool isInDictionary = dynamicPoseDictionary.isFramePairInDictionary(framePair.first, framePair.second);
+          dynamicKeyInfo << ", in_dictionary=" << isInDictionary;
+          if (isInDictionary) {
+            const auto& dynamicState = dynamicPoseDictionary.rv_T_frame1_frame2(framePair.first, framePair.second);
+            dynamicKeyInfo << ", active=" << dynamicState.isVariableActive()
+                           << ", optimized_steps=" << dynamicState.getNumberStepsOptimized()
+                           << ", state_time=" << dynamicState.getTime();
+          }
+        } else {
+          dynamicKeyInfo << " -> no_frame_pair_mapping";
+        }
+        REGULAR_COUT << "  " << dynamicKeyInfo.str() << std::endl;
+        printFactorsTouchingKey(dynamicKey, "Factors touching dynamic key " + keyToString(dynamicKey));
+        ++printedDynamicKeys;
+        if (printedDynamicKeys >= 12) {
+          REGULAR_COUT << "  ... truncated after 12 dynamic keys." << std::endl;
+          break;
+        }
+      }
+    }
+  };
+
+  auto restoreBufferedGraphWork = [&](const gtsam::NonlinearFactorGraph& factors, const gtsam::Values& values,
+                                      const std::map<gtsam::Key, double>& keyTimestamps, const bool restoreRt,
+                                      const bool restoreBatch, const std::string& reason) {
+    if (factors.empty() && values.empty() && keyTimestamps.empty()) {
+      return;
+    }
+
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    if (restoreRt) {
+      rtFactorGraphBufferPtr_->add(factors);
+      rtGraphValuesBufferPtr_->insert_or_assign(values);
+      for (const auto& keyTimestamp : keyTimestamps) {
+        writeKeyToKeyTimeStampMap_(keyTimestamp.first, keyTimestamp.second, rtGraphKeysTimestampsMapBufferPtr_);
+      }
+    }
+    if (restoreBatch && graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+      batchFactorGraphBufferPtr_->add(factors);
+      batchGraphValuesBufferPtr_->insert_or_assign(values);
+      for (const auto& keyTimestamp : keyTimestamps) {
+        writeKeyToKeyTimeStampMap_(keyTimestamp.first, keyTimestamp.second, batchGraphKeysTimestampsMapBufferPtr_);
+      }
+    }
+
+    REGULAR_COUT << YELLOW_START << " Re-queued drained graph work after " << reason << ": factors=" << factors.size()
+                 << ", values=" << values.size() << ", timestamps=" << keyTimestamps.size() << "." << COLOR_END << std::endl;
+  };
+
   // Mutex Block 1 -----------------
   {
     // Lock
@@ -638,17 +934,18 @@ void GraphManager::updateGraph() {
   }
 
   // Graph Update (time consuming) -------------------------------------------
-  bool successfulOptimizationFlag = true;
+  bool successfulRtOptimizationFlag = true;
+  bool successfulBatchOptimizationFlag = true;
   // Rt Smoother
   if (newRtGraphFactors.size() > 0) {
-    successfulOptimizationFlag = addFactorsToRtSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap,
-                                                                   graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
+    successfulRtOptimizationFlag = addFactorsToRtSmootherAndOptimize(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap,
+                                                                     graphConfigPtr_, graphConfigPtr_->additionalOptimizationIterations_);
   } else if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " No factors present in rt smoother, not optimizing." << std::endl;
   }
   // Batch Smoother
-  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_ && newBatchGraphFactors.size() > 0) {
-    successfulOptimizationFlag =
+  if (successfulRtOptimizationFlag && graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_ && newBatchGraphFactors.size() > 0) {
+    successfulBatchOptimizationFlag =
         addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, graphConfigPtr_);
   } else if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " No factors present in batch smoother, not optimizing." << std::endl;
@@ -663,18 +960,47 @@ void GraphManager::updateGraph() {
   }
 
   // Return if optimization failed
-  if (!successfulOptimizationFlag) {
+  if (!successfulRtOptimizationFlag) {
+    restoreBufferedGraphWork(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, true, false,
+                             "real-time optimizer failure");
+    restoreBufferedGraphWork(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, false, true,
+                             "real-time optimizer failure");
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
+    dumpRtFailureDiagnostics("rt optimizer update returned false");
     return;
+  }
+  if (!successfulBatchOptimizationFlag) {
+    restoreBufferedGraphWork(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, false, true,
+                             "batch optimizer failure");
+    REGULAR_COUT << RED_START << " Batch graph optimization failed, but real-time results are kept for this cycle." << COLOR_END
+                 << std::endl;
   }
 
   // Compute entire results ----------------------------------------------
   // A. NavState ------------------------------
+  bool stateLookupSuccessfulFlag = true;
   gtsam::NavState resultNavState =
-      calculateNavStateAtGeneralKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
+      calculateNavStateAtGeneralKey(stateLookupSuccessfulFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
+  if (!stateLookupSuccessfulFlag) {
+    REGULAR_COUT << RED_START << " Optimizer update succeeded, but current propagated state x" << currentPropagatedKey
+                 << " is not available in the real-time smoother anymore. "
+                 << "Skipping state publication/update for this cycle to avoid using inconsistent x/v/b keys." << COLOR_END
+                 << std::endl;
+    dumpRtFailureDiagnostics("current propagated pose missing after nominally successful update");
+    return;
+  }
   rtOptimizerPtr_->addLatestPoseBelief(resultNavState.pose());
   // B. Bias ------------------------------
-  gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
+  gtsam::imuBias::ConstantBias resultBias;
+  try {
+    resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
+  } catch (const std::out_of_range& exception) {
+    REGULAR_COUT << RED_START << " Bias at current propagated key b" << currentPropagatedKey
+                 << " is not available in the real-time smoother: " << exception.what()
+                 << ". Skipping state publication/update for this cycle." << COLOR_END << std::endl;
+    dumpRtFailureDiagnostics("current propagated bias missing after nominally successful update");
+    return;
+  }
   rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);
 
   // C. Compute & Transform Covariances ------------------------------
@@ -1378,9 +1704,108 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
 
   // Perform update of the real-time smoother, including optimization
   bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
+
+  const bool adaptiveAdditionalIterationsEnabled =
+      graphConfigPtr->useAdaptiveAdditionalOptimizationIterationsFlag_ &&
+      graphConfigPtr->realTimeSmootherUseIsamFlag_ &&
+      graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ > 0.0;
+  const bool printAdditionalOptimizationDiagnostics =
+      graphConfigPtr->printAdditionalOptimizationDiagnosticsFlag_;
+
+  bool adaptiveFallbackToFixedIterations = !adaptiveAdditionalIterationsEnabled;
+  double previousErrorAfter = std::numeric_limits<double>::quiet_NaN();
+  bool previousErrorAfterValid = false;
+
+  if (successFlag) {
+    const auto& initialDiagnostics = rtOptimizerPtr_->getLastUpdateDiagnostics();
+    if (initialDiagnostics.nonlinearErrorAvailable && std::isfinite(initialDiagnostics.errorAfter)) {
+      previousErrorAfter = initialDiagnostics.errorAfter;
+      previousErrorAfterValid = true;
+      if (printAdditionalOptimizationDiagnostics) {
+        REGULAR_COUT << GREEN_START
+                     << " Additional optimization initial update: errorBefore=" << std::setprecision(10)
+                     << initialDiagnostics.errorBefore
+                     << ", errorAfter=" << initialDiagnostics.errorAfter
+                     << ", variablesRelinearized=" << initialDiagnostics.variablesRelinearized
+                     << ", variablesReeliminated=" << initialDiagnostics.variablesReeliminated
+                     << COLOR_END << std::endl;
+      }
+    } else if (printAdditionalOptimizationDiagnostics) {
+      REGULAR_COUT << YELLOW_START
+                   << " Additional optimization initial update: nonlinear error diagnostics are unavailable."
+                   << COLOR_END << std::endl;
+    }
+
+    if (adaptiveAdditionalIterationsEnabled && !previousErrorAfterValid) {
+      adaptiveFallbackToFixedIterations = true;
+      REGULAR_COUT << YELLOW_START
+                   << " Adaptive additional optimization iterations requested, but nonlinear error diagnostics are unavailable. "
+                   << "Falling back to the fixed additionalOptimizationIterations cap."
+                   << COLOR_END << std::endl;
+    }
+  }
+
   // Additional iterations
   for (int itr = 0; itr < additionalIterations; ++itr) {
     successFlag = successFlag && rtOptimizerPtr_->update();
+    if (!successFlag) {
+      break;
+    }
+
+    const auto& diagnostics = rtOptimizerPtr_->getLastUpdateDiagnostics();
+    const bool diagnosticsAvailable =
+        diagnostics.nonlinearErrorAvailable && std::isfinite(diagnostics.errorAfter) && previousErrorAfterValid;
+    const double relativeImprovement =
+        diagnosticsAvailable ? (previousErrorAfter - diagnostics.errorAfter) /
+                                   std::max(std::abs(previousErrorAfter), 1e-12)
+                             : std::numeric_limits<double>::quiet_NaN();
+
+    if (printAdditionalOptimizationDiagnostics) {
+      if (diagnosticsAvailable) {
+        REGULAR_COUT << GREEN_START
+                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": errorBefore=" << std::setprecision(10) << diagnostics.errorBefore
+                     << ", errorAfter=" << diagnostics.errorAfter
+                     << ", relative improvement=" << relativeImprovement
+                     << ", variablesRelinearized=" << diagnostics.variablesRelinearized
+                     << ", variablesReeliminated=" << diagnostics.variablesReeliminated
+                     << COLOR_END << std::endl;
+      } else {
+        REGULAR_COUT << YELLOW_START
+                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": nonlinear error diagnostics are unavailable."
+                     << COLOR_END << std::endl;
+      }
+    }
+
+    if (adaptiveAdditionalIterationsEnabled && !adaptiveFallbackToFixedIterations) {
+      if (!diagnosticsAvailable) {
+        adaptiveFallbackToFixedIterations = true;
+        REGULAR_COUT << YELLOW_START
+                     << " Lost nonlinear error diagnostics during adaptive additional optimization. "
+                     << "Falling back to the fixed additionalOptimizationIterations cap."
+                     << COLOR_END << std::endl;
+        continue;
+      }
+
+      if (relativeImprovement <
+          graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_) {
+        if (printAdditionalOptimizationDiagnostics) {
+          REGULAR_COUT << GREEN_START
+                       << " Stopping adaptive additional optimization after " << (itr + 1)
+                       << " extra iteration(s) because the relative nonlinear-error improvement "
+                       << relativeImprovement << " fell below the threshold "
+                       << graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ << "."
+                       << COLOR_END << std::endl;
+        }
+        break;
+      }
+    }
+
+    if (diagnostics.nonlinearErrorAvailable && std::isfinite(diagnostics.errorAfter)) {
+      previousErrorAfter = diagnostics.errorAfter;
+      previousErrorAfterValid = true;
+    }
   }
 
   // Logging

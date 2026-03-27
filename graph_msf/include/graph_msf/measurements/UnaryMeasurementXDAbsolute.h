@@ -43,12 +43,14 @@ class UnaryMeasurementXDAbsolute final : public virtual UnaryMeasurementAbsolute
                              const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity, const std::string& fixedFrameName,
                              const std::string& worldFrameName,
                              const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
-                             const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none)
+                             const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
+                             const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy =
+                                 AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                          covarianceViolationThreshold),
         UnaryMeasurementAbsolute(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                                  covarianceViolationThreshold, fixedFrameName, worldFrameName, initialSe3AlignmentNoise,
-                                 se3AlignmentRandomWalk),
+                                 se3AlignmentRandomWalk, alignmentRecoveryPolicy),
         UnaryMeasurementXD<MEASUREMENT_TYPE, DIM>(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm,
                                                   timeStamp, covarianceViolationThreshold, unaryMeasurement, unaryMeasurementNoiseDensity) {
   }

@@ -12,7 +12,14 @@ initialization_params:
 graph_params:
   useIsam: true # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
   smootherLag: 2.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
-  additionalOptimizationIterations: 0                  #Additional iterations of graph optimizer after update with new factors
+  additionalOptimizationIterations: 0                  #Maximum number of additional optimizer iterations after each update with new factors
+  useAdaptiveAdditionalOptimizationIterations: false   #If true, stop extra iterations early once nonlinear-error improvement becomes too small
+  adaptiveAdditionalOptimizationMinRelativeErrorImprovement: 1.0e-3 #Minimum relative nonlinear-error improvement required to keep running extra iterations
+  printAdditionalOptimizationDiagnostics: false        #If true, print nonlinear residuals and relative error improvement for the initial and extra optimization passes
+  deferFutureUnaryMeasurements: false                  #If true, queue slightly future-dated unary measurements until a matching graph key exists
+  maxDeferredUnaryFutureLeadSeconds: 0.0               #Maximum future lead to defer in seconds; <= 0 uses maxSearchDeviation
+  maxDeferredUnaryMeasurementsInQueue: 100             #Maximum number of deferred unary measurements kept in the queue
+  evaluateNonlinearError: false                        # Whether to evaluate the nonlinear error before and after the update, default: false
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingFallbackGraph: true
@@ -49,6 +56,5 @@ relinearization_params:
   gyrBiasReLinTh: 1.0e-05                      #Gyroscope bias linearization threshold
   relinearizeSkip: 1
   enableRelinearization: true
-  evaluateNonlinearError: false
   cacheLinearizedFactors: true
   enablePartialRelinearizationCheck: false

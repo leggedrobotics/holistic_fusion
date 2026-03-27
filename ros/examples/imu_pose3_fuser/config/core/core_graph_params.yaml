@@ -23,6 +23,7 @@ graph_params:
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
   maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
+  evaluateNonlinearError: true             # Whether to evaluate the nonlinear error before and after the update, default: false
   findUnusedFactorSlots: true
   enableDetailedResults: false
   usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
@@ -68,6 +69,5 @@ relinearization_params:
   displacementReLinTh: 1.0e-03            # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
   relinearizeSkip: 1                      # Re-linearization is skipped every n-th step, default: 10
   enableRelinearization: true             # Whether to use relinearization, default: true
-  evaluateNonlinearError: true            # Whether to evaluate the nonlinear errorr before and after the update, default: false
   cacheLinearizedFactors: true            # Whether to cache the linearized factors, default: true
   enablePartialRelinearizationCheck: false # Whether potentially only parts of the tree needs to be relinearized, default: false

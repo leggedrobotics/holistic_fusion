@@ -20,7 +20,18 @@ namespace graph_msf {
 class DynamicDictionaryContainer {
  public:
   DynamicDictionaryContainer() = default;
+  DynamicDictionaryContainer(const DynamicDictionaryContainer& other)
+      : gtsamPose3ExpressionKeys_(other.gtsamPose3ExpressionKeys_),
+        gtsamPoint3ExpressionKeys_(other.gtsamPoint3ExpressionKeys_) {}
   ~DynamicDictionaryContainer() = default;
+
+  DynamicDictionaryContainer& operator=(const DynamicDictionaryContainer& other) {
+    if (this != &other) {
+      gtsamPose3ExpressionKeys_ = other.gtsamPose3ExpressionKeys_;
+      gtsamPoint3ExpressionKeys_ = other.gtsamPoint3ExpressionKeys_;
+    }
+    return *this;
+  }
 
   // Get the right dictionary based on template type
   template <class GTSAM_DYNAMIC_STATE_TYPE>

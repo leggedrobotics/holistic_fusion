@@ -50,9 +50,8 @@ class StaticTransforms : public TransformsDictionary<Eigen::Isometry3d> {
   std::string baseLinkFrame_;
   std::string initializationFrame_;
 
-  private:
-    mutable std::shared_mutex transformsMutex_;
-
+ private:
+  mutable std::shared_mutex transformsMutex_;
 };
 
 }  // namespace graph_msf

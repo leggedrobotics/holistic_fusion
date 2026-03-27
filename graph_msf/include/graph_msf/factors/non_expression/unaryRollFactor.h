@@ -34,8 +34,7 @@ class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @param roll   measured roll reading [rad]
    * @param model  additive Gaussian noise model
    */
-  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model)
-      : Base(model, j), roll_(roll) {}
+  RollFactor(gtsam::Key j, double roll, const gtsam::SharedNoiseModel& model) : Base(model, j), roll_(roll) {}
 
   ~RollFactor() override = default;
 
@@ -43,8 +42,7 @@ class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose,
-                              gtsam::Matrix* H = nullptr) const override {
+  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::Matrix* H = nullptr) const override {
     const auto& R = robotPose.rotation();
 
     // If close to singularity, do not add measurement
@@ -69,7 +67,7 @@ class RollFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
     // Wrap into (-pi, pi]
     while (rollError < -M_PI) rollError += 2.0 * M_PI;
-    while (rollError >  M_PI) rollError -= 2.0 * M_PI;
+    while (rollError > M_PI) rollError -= 2.0 * M_PI;
 
     // Jacobian: [d roll / d rot(3), 0 0 0]
     if (H) {

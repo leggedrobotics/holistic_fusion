@@ -9,6 +9,9 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_H
 
 // C++
+#include <cstdint>
+#include <deque>
+#include <functional>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -17,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Package
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/config/StaticTransforms.h"
+#include "graph_msf/core/UnaryAddOutcome.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
@@ -108,6 +112,13 @@ class GraphMsf {
 
   // Check whether measurement violated covariance, if yes, add to set and print once, if not, remove from set and print that returned
   bool checkAndPrintCovarianceViolation_(const std::string& measurementName, const bool violatedFlag);
+  void runOrDeferUnaryMeasurement_(const std::string& measurementName, double measurementTime,
+                                   const std::function<UnaryAddOutcome()>& addAttempt);
+  void requestGraphOptimization_();
+  void flushDeferredUnaryMeasurements_();
+  void enqueueDeferredUnaryMeasurement_(const std::string& measurementName, double measurementTime,
+                                        const std::function<UnaryAddOutcome()>& addAttempt);
+  double effectiveMaxDeferredUnaryFutureLeadSeconds_() const;
 
   // Members
   // Graph Config
@@ -140,6 +151,13 @@ class GraphMsf {
   std::unordered_set<std::string> measurementsWithViolatedCovariance_;
 
  private:
+  struct DeferredUnaryMeasurementWorkItem {
+    double measurementTime = 0.0;
+    std::uint64_t sequenceNumber = 0;
+    std::string measurementName;
+    std::function<UnaryAddOutcome()> addAttempt;
+  };
+
   /// Worker functions
   //// Set Imu Attitude
   bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
@@ -159,9 +177,12 @@ class GraphMsf {
 
   // Mutex
   std::mutex initYawAndPositionMutex_;
+  std::mutex deferredUnaryMeasurementsMutex_;
 
   /// State Containers
   std::shared_ptr<SafeIntegratedNavState> preIntegratedNavStatePtr_ = nullptr;
+  std::deque<DeferredUnaryMeasurementWorkItem> deferredUnaryMeasurements_;
+  std::uint64_t deferredUnaryMeasurementSequenceCounter_ = 0;
 };
 
 }  // namespace graph_msf

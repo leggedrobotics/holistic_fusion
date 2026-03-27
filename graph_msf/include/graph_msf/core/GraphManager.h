@@ -10,6 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <chrono>
+#include <iomanip>
 #include <mutex>
 #include <vector>
 
@@ -18,11 +19,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/expressions.h>
 
 // Package
+#include <gtsam/linear/LossFunctions.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include "graph_msf/config/GraphConfig.h"
 #include "graph_msf/core/DynamicDictionaryContainer.h"
 #include "graph_msf/core/FileLogger.h"
 #include "graph_msf/core/GraphState.hpp"
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
+#include "graph_msf/core/UnaryAddOutcome.h"
 #include "graph_msf/core/optimizer/OptimizerBase.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
@@ -30,8 +34,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurement.h"
 #include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include <gtsam/nonlinear/ExpressionFactor.h>
-#include <gtsam/linear/LossFunctions.h>
 
 // General Unary Factor Interface
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpression.h"
@@ -69,23 +71,26 @@ class GraphManager {
   // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                               const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
+                               const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag,
+                               bool* newStateCreatedFlag = nullptr);
 
   // All other measurements -----------------------------------------------------
 
   // Unary commodity methods --> Key Lookup
-  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
+  UnaryAddOutcome getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
+  bool getGraphKeyTimestampBounds(double& oldestTimestamp, double& latestTimestamp);
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
-  void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                double measurementTime);
+  UnaryAddOutcome addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                           const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
+                                           double measurementTime);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
-                                    const bool addToOnlineSmootherFlag = true);
+  UnaryAddOutcome addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                               const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -174,6 +179,8 @@ class GraphManager {
 
   void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, double measurementTime,
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
+  UnaryAddOutcome classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                const std::string& measurementName, double measurementTime);
 
   // Buffers
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;

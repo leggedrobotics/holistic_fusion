@@ -14,6 +14,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
 #include <gtsam/geometry/Pose3.h>
 
+// C++
+#include <cstddef>
+#include <limits>
+
 // Workspace
 #include "graph_msf/config/GraphConfig.h"
 
@@ -21,6 +25,16 @@ namespace graph_msf {
 
 class OptimizerBase {
  public:
+  struct UpdateDiagnostics {
+    bool valid = false;
+    bool nonlinearErrorAvailable = false;
+    double errorBefore = std::numeric_limits<double>::quiet_NaN();
+    double errorAfter = std::numeric_limits<double>::quiet_NaN();
+    double elapsedMs = 0.0;
+    std::size_t variablesRelinearized = 0;
+    std::size_t variablesReeliminated = 0;
+  };
+
   // Constructior and Destructor
   explicit OptimizerBase(const std::shared_ptr<GraphConfig> graphConfigPtr) : graphConfigPtr_(graphConfigPtr) {}
   ~OptimizerBase() = default;
@@ -38,6 +52,7 @@ class OptimizerBase {
   virtual const gtsam::NonlinearFactorGraph& getNonlinearFactorGraph() const = 0;
   // Get keyTimestampMap
   virtual const std::map<gtsam::Key, double>& getFullKeyTimestampMap() = 0;
+  [[nodiscard]] const UpdateDiagnostics& getLastUpdateDiagnostics() const { return lastUpdateDiagnostics_; }
 
   // Calculate State at Key
   virtual gtsam::Pose3 calculateEstimatedPose3(const gtsam::Key& key) = 0;
@@ -62,6 +77,7 @@ class OptimizerBase {
  protected:
   // Config
   std::shared_ptr<GraphConfig> graphConfigPtr_;
+  UpdateDiagnostics lastUpdateDiagnostics_;
 
   // Latest IMU bias
   gtsam::imuBias::ConstantBias latestImuBias_;
