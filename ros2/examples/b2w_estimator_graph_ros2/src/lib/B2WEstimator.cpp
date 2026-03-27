@@ -677,25 +677,60 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   B2W_SCOPED_CB_TIMER("lidarOdometryCallback_");
 
   static double lastLidarOdometryTimeK_ = 0.0;
+  static std::uint64_t lidarRawCallbackCounter_ = 0;
+  static std::uint64_t lidarAcceptedCallbackCounter_ = 0;
+  static std::uint64_t lidarRateGateRejectedCounter_ = 0;
+  static FrequencyChecker lio_raw_wall_freq_checker(40, 5.0);
+  static FrequencyChecker lio_accepted_wall_freq_checker(40, 5.0);
+  static FrequencyChecker lio_accepted_stamp_freq_checker(40, 5.0);
 
   const double lidarOdometryTimeK =
       odomLidarPtr->header.stamp.sec + odomLidarPtr->header.stamp.nanosec * 1e-9;
+  const double lidarCallbackWallTimeK = std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+
+  ++lidarRawCallbackCounter_;
+  const bool lioReportNow = lio_raw_wall_freq_checker.tick(lidarCallbackWallTimeK);
 
   if (lastLidarOdometryTimeK_ > 0.0 &&
       (lidarOdometryTimeK - lastLidarOdometryTimeK_) < (1.0 / lioOdometryRate_)) {
+    ++lidarRateGateRejectedCounter_;
+    if (lioReportNow) {
+      REGULAR_COUT << BLUE_START
+                   << "[LIO] raw arrival rate (wall, avg last "
+                   << lio_raw_wall_freq_checker.last_window_n() << "): "
+                   << std::fixed << std::setprecision(2)
+                   << lio_raw_wall_freq_checker.last_hz() << " Hz"
+                   << " | accepted arrival rate (wall): "
+                   << lio_accepted_wall_freq_checker.last_hz() << " Hz"
+                   << " | accepted rate (header stamp): "
+                   << lio_accepted_stamp_freq_checker.last_hz() << " Hz"
+                   << " | accepted/raw: " << lidarAcceptedCallbackCounter_
+                   << "/" << lidarRawCallbackCounter_
+                   << " | rate-gated: " << lidarRateGateRejectedCounter_
+                   << COLOR_END << "\n";
+    }
     return;
   }
   lastLidarOdometryTimeK_ = lidarOdometryTimeK;
+  ++lidarAcceptedCallbackCounter_;
+  lio_accepted_wall_freq_checker.tick(lidarCallbackWallTimeK);
+  lio_accepted_stamp_freq_checker.tick(lidarOdometryTimeK);
 
   ++lidarUnaryCallbackCounter_;
-
-  static FrequencyChecker lio_freq_checker(40, 5.0);
-  if (lio_freq_checker.tick(lidarOdometryTimeK)) {
+  if (lioReportNow) {
     REGULAR_COUT << BLUE_START
-                 << "[LIO] callback frequency (avg last "
-                 << lio_freq_checker.last_window_n() << "): "
+                 << "[LIO] raw arrival rate (wall, avg last "
+                 << lio_raw_wall_freq_checker.last_window_n() << "): "
                  << std::fixed << std::setprecision(2)
-                 << lio_freq_checker.last_hz() << " Hz"
+                 << lio_raw_wall_freq_checker.last_hz() << " Hz"
+                 << " | accepted arrival rate (wall): "
+                 << lio_accepted_wall_freq_checker.last_hz() << " Hz"
+                 << " | accepted rate (header stamp): "
+                 << lio_accepted_stamp_freq_checker.last_hz() << " Hz"
+                 << " | accepted/raw: " << lidarAcceptedCallbackCounter_
+                 << "/" << lidarRawCallbackCounter_
+                 << " | rate-gated: " << lidarRateGateRejectedCounter_
                  << COLOR_END << "\n";
   }
 
@@ -871,28 +906,64 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
     return;
   }
 
+  static std::uint64_t vioRawCallbackCounter = 0;
+  static std::uint64_t vioAcceptedCallbackCounter = 0;
+  static std::uint64_t vioRateGateRejectedCounter = 0;
+  static FrequencyChecker vio_raw_wall_freq_checker(50, 5.0);
+  static FrequencyChecker vio_accepted_wall_freq_checker(50, 5.0);
+  static FrequencyChecker vio_accepted_stamp_freq_checker(50, 5.0);
+
   const double timeK =
       vioOdomPtr->header.stamp.sec + vioOdomPtr->header.stamp.nanosec * 1e-9;
+  const double vioCallbackWallTimeK = std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+
+  ++vioRawCallbackCounter;
+  const bool vioReportNow = vio_raw_wall_freq_checker.tick(vioCallbackWallTimeK);
 
   static double lastVioTimeK = 0.0;
   if (vioOdometryRate_ > 0.0 && lastVioTimeK > 0.0) {
     const double dt = timeK - lastVioTimeK;
     if (dt > 0.0 && dt < (1.0 / static_cast<double>(vioOdometryRate_))) {
+      ++vioRateGateRejectedCounter;
+      if (vioReportNow) {
+        REGULAR_COUT << MAGENTA_START
+                     << "[VIO] raw arrival rate (wall, avg last "
+                     << vio_raw_wall_freq_checker.last_window_n() << "): "
+                     << std::fixed << std::setprecision(2)
+                     << vio_raw_wall_freq_checker.last_hz() << " Hz"
+                     << " | accepted arrival rate (wall): "
+                     << vio_accepted_wall_freq_checker.last_hz() << " Hz"
+                     << " | accepted rate (header stamp): "
+                     << vio_accepted_stamp_freq_checker.last_hz() << " Hz"
+                     << " | accepted/raw: " << vioAcceptedCallbackCounter
+                     << "/" << vioRawCallbackCounter
+                     << " | rate-gated: " << vioRateGateRejectedCounter
+                     << COLOR_END << "\n";
+      }
       return;
     }
   }
   lastVioTimeK = timeK;
+  ++vioAcceptedCallbackCounter;
+  vio_accepted_wall_freq_checker.tick(vioCallbackWallTimeK);
+  vio_accepted_stamp_freq_checker.tick(lastVioTimeK);
 
   static std::uint64_t vioUnaryCallbackCounter = 0;
   ++vioUnaryCallbackCounter;
-
-  static FrequencyChecker vio_freq_checker(50, 5.0);
-  if (vio_freq_checker.tick(lastVioTimeK)) {
+  if (vioReportNow) {
     REGULAR_COUT << MAGENTA_START
-                 << "[VIO] callback frequency (avg last "
-                 << vio_freq_checker.last_window_n() << "): "
+                 << "[VIO] raw arrival rate (wall, avg last "
+                 << vio_raw_wall_freq_checker.last_window_n() << "): "
                  << std::fixed << std::setprecision(2)
-                 << vio_freq_checker.last_hz() << " Hz"
+                 << vio_raw_wall_freq_checker.last_hz() << " Hz"
+                 << " | accepted arrival rate (wall): "
+                 << vio_accepted_wall_freq_checker.last_hz() << " Hz"
+                 << " | accepted rate (header stamp): "
+                 << vio_accepted_stamp_freq_checker.last_hz() << " Hz"
+                 << " | accepted/raw: " << vioAcceptedCallbackCounter
+                 << "/" << vioRawCallbackCounter
+                 << " | rate-gated: " << vioRateGateRejectedCounter
                  << COLOR_END << "\n";
   }
 
