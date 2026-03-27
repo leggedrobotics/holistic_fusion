@@ -13,26 +13,16 @@ namespace graph_msf {
 // 1) Unary meta method --> classic GTSAM Factors ----------------------------------------
 typedef gtsam::Key (*F)(std::uint64_t);
 template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
-void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
-                                            const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                            const double measurementTime) {
+UnaryAddOutcome GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                                       const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
+                                                       const double measurementTime) {
   // Find the closest key in existing graph
-  double closestGraphTime;
+  double closestGraphTime = 0.0;
   gtsam::Key closestKey;
   std::string callingName = "GnssPositionUnaryFactor";
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey, callingName,
-                                                      graphConfigPtr_->maxSearchDeviation_, measurementTime)) {
-    if (propagatedStateTime_ - measurementTime < 0.0) {
-      const double futureLead = measurementTime - propagatedStateTime_;
-      REGULAR_COUT << RED_START << " Future unary factor \"" << callingName << "\" leads the propagated time by " << 1000 * futureLead
-                   << " ms. Rejecting it instead of attaching it to the latest available key." << COLOR_END << std::endl;
-      return;
-    } else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(FACTOR_TYPE).name() << " at key " << closestKey << " is "
-                   << 1000 * std::abs(closestGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return;
-    }
+  const UnaryAddOutcome outcome = classifyUnaryMeasurementTime_(closestKey, closestGraphTime, callingName, measurementTime);
+  if (outcome.status != UnaryAddStatus::Added) {
+    return outcome;
   }
 
   // Create noise model
@@ -51,8 +41,11 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
   // Print summary
   if (graphConfigPtr_->verboseLevel_ > 1) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << GREEN_START << ", " << typeid(FACTOR_TYPE).name()
-                 << " factor added to key " << closestKey << COLOR_END << std::endl;
+                 << " factor added to key " << closestKey << " at graph time " << std::setprecision(14) << closestGraphTime
+                 << COLOR_END << std::endl;
   }
+
+  return {UnaryAddStatus::Added, 0.0};
 }
 
 // 2) GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
@@ -64,16 +57,17 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
  * @tparam GMSF_EXPRESSION_TYPE Type of the GMSF expression (e.g. GmsfUnaryExpressionAbsolutePose3).
  */
 template <class GMSF_EXPRESSION_TYPE>  // e.g. GmsfUnaryExpressionAbsolutePose3
-void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
-                                                const bool addToOnlineSmootherFlag) {
+UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                                           const bool addToOnlineSmootherFlag) {
   // Measurement
   const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
 
   // Get corresponding key of robot state in graph
   gtsam::Key closestGeneralKey;
-  double closestGeneralKeyTime;
-  if (!getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement)) {
-    return;
+  double closestGeneralKeyTime = 0.0;
+  const UnaryAddOutcome outcome = getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement);
+  if (outcome.status != UnaryAddStatus::Added) {
+    return outcome;
   }
 
   // Create Expression --> exact type of expression is determined by the template
@@ -150,7 +144,7 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
         std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
                                      gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
         gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
-        return;
+        return {UnaryAddStatus::Dropped, 0.0};
       }
 
       // B. Write to timestamp map for fixed lag smoother (writeKeyToKeyTimeStampMap_ handles "newer-than" internally)
@@ -224,12 +218,15 @@ void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   // Print summary --------------------------------------
   if (graphConfigPtr_->verboseLevel_ >= 2) {
     REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << ": expression factor of type "
-                 << typeid(GMSF_EXPRESSION_TYPE).name() << " added to keys ";
+                 << typeid(GMSF_EXPRESSION_TYPE).name() << " added at graph time " << std::setprecision(14)
+                 << closestGeneralKeyTime << " to keys ";
     for (const auto& key : unaryExpressionFactorPtr->keys()) {
       std::cout << gtsam::Symbol(key) << ", ";
     }
     std::cout << COLOR_END << std::endl;
   }
+
+  return {UnaryAddStatus::Added, 0.0};
 }
 
 // Private -----------------------------------------------------------------------------------------

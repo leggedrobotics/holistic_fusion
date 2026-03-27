@@ -30,6 +30,9 @@
       useAdaptiveAdditionalOptimizationIterations: false # If true, stop extra iterations early once nonlinear-error improvement becomes too small
       adaptiveAdditionalOptimizationMinRelativeErrorImprovement: 1.0e-3 # Minimum relative nonlinear-error improvement required to keep running extra iterations
       printAdditionalOptimizationDiagnostics: false # If true, print nonlinear residuals and relative error improvement for the initial and extra optimization passes
+      deferFutureUnaryMeasurements: false # If true, queue slightly future-dated unary measurements until a matching graph key exists
+      maxDeferredUnaryFutureLeadSeconds: 0.0 # Maximum future lead to defer in seconds; <= 0 uses maxSearchDeviation
+      maxDeferredUnaryMeasurementsInQueue: 100 # Maximum number of deferred unary measurements kept in the queue
       evaluateNonlinearError: true             # Whether to evaluate the nonlinear error before and after the update, default: false
       findUnusedFactorSlots: true
       enableDetailedResults: false

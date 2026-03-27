@@ -628,7 +628,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::Huber(0.5),
+        graph_msf::RobustNorm::Huber(0.25),
         timestampSec, gnssPositionOutlierThreshold_,
         W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, worldFrame_);
@@ -1072,8 +1072,7 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
   // Frame name (cached)
   const std::string& vioOdometryFrame = vioOdometryFrame_;
 
-  if (vioOdomPtr->header.frame_id.find("odom") != std::string::npos &&
-      vioOdometryFrame != vioOdomPtr->child_frame_id) {
+  if (vioOdometryFrame != vioOdomPtr->child_frame_id) {
     REGULAR_COUT << RED_START << "====================================================================\n"
                  << "ERROR: VIO ODOMETRY FRAME MISMATCH!\n"
                  << "Expected frame: " << vioOdometryFrame << "\n"

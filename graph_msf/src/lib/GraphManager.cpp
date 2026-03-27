@@ -374,8 +374,13 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 // IMU at the core --------------------------------------------------------------
 void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
                                            std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag,
+                                           bool* newStateCreatedFlag) {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::addImuFactorAndGetState");
+
+  if (newStateCreatedFlag != nullptr) {
+    *newStateCreatedFlag = false;
+  }
 
   // Logging of latency
   if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
@@ -490,6 +495,10 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     } else {
       imuStepPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
     }
+
+    if (newStateCreatedFlag != nullptr) {
+      *newStateCreatedFlag = true;
+    }
   }  // End of create new state
 
   // Potentially log real-time state to container
@@ -518,34 +527,49 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
 }
 
 // Unary factors ----------------------------------------------------------------
+UnaryAddOutcome GraphManager::classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                            const std::string& measurementName, const double measurementTime) {
+  double oldestBufferedTime = 0.0;
+  double latestBufferedTime = 0.0;
+  if (!timeToKeyBufferPtr_->getTimestampBounds(oldestBufferedTime, latestBufferedTime)) {
+    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName
+                 << "\" arrived before any graph keys were available. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  if (measurementTime > latestBufferedTime) {
+    return {UnaryAddStatus::DeferredFuture, measurementTime - latestBufferedTime};
+  }
+
+  if (measurementTime < oldestBufferedTime - graphConfigPtr_->maxSearchDeviation_) {
+    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName << "\" at time " << std::setprecision(14)
+                 << measurementTime << " is older than the oldest buffered graph key time " << oldestBufferedTime
+                 << " by more than the admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation_
+                 << " ms. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, measurementName,
+                                                      graphConfigPtr_->maxSearchDeviation_, measurementTime)) {
+    REGULAR_COUT << RED_START << " Time deviation of unary measurement \"" << measurementName << "\" at key " << returnedKey << " is "
+                 << 1000 * std::abs(returnedGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
+                 << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
+    return {};
+  }
+
+  return {UnaryAddStatus::Added, 0.0};
+}
+
 // Key Lookup
-bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
+UnaryAddOutcome GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                       const UnaryMeasurement& unaryMeasurement) {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::getUnaryFactorGeneralKey");
 
-  // Find the closest key in existing graph
-  // Case 1: Can't add immediately
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
-                                                      graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
-    // Measurement coming from the future
-    if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {
-      const double futureLead = unaryMeasurement.timeK() - propagatedStateTime_;
-      REGULAR_COUT << RED_START << " Future unary measurement \"" << unaryMeasurement.measurementName() << "\" leads the propagated time by "
-                   << 1000 * futureLead << " ms. Rejecting it instead of attaching it to the latest available key." << COLOR_END
-                   << std::endl;
-      return false;
-    }
-    // Measurement coming from the past, but could not find suitable key
-    else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
-                   << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return false;
-    }
-  }
-  // Case 2: Can add immediately
-  else {
-    return true;
-  }
+  return classifyUnaryMeasurementTime_(returnedKey, returnedGraphTime, unaryMeasurement.measurementName(), unaryMeasurement.timeK());
+}
+
+bool GraphManager::getGraphKeyTimestampBounds(double& oldestTimestamp, double& latestTimestamp) {
+  return timeToKeyBufferPtr_->getTimestampBounds(oldestTimestamp, latestTimestamp);
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------

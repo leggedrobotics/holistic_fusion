@@ -44,6 +44,9 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("graph_params.useAdaptiveAdditionalOptimizationIterations", false);
   this->declare_parameter("graph_params.adaptiveAdditionalOptimizationMinRelativeErrorImprovement", 0.0);
   this->declare_parameter("graph_params.printAdditionalOptimizationDiagnostics", false);
+  this->declare_parameter("graph_params.deferFutureUnaryMeasurements", false);
+  this->declare_parameter("graph_params.maxDeferredUnaryFutureLeadSeconds", 0.0);
+  this->declare_parameter("graph_params.maxDeferredUnaryMeasurementsInQueue", 100);
   this->declare_parameter("graph_params.findUnusedFactorSlots", false);
   this->declare_parameter("graph_params.enableDetailedResults", false);
   this->declare_parameter("graph_params.realTimeSmootherUseCholeskyFactorization", false);

@@ -58,6 +58,9 @@ struct GraphConfig {
   bool useAdaptiveAdditionalOptimizationIterationsFlag_ = false;
   double adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ = 1e-3;
   bool printAdditionalOptimizationDiagnosticsFlag_ = false;
+  bool deferFutureUnaryMeasurementsFlag_ = false;
+  double maxDeferredUnaryFutureLeadSeconds_ = 0.0;
+  int maxDeferredUnaryMeasurementsInQueue_ = 100;
   bool findUnusedFactorSlotsFlag_ = false;
   bool enableDetailedResultsFlag_ = false;
   bool usingBiasForPreIntegrationFlag_ = true;

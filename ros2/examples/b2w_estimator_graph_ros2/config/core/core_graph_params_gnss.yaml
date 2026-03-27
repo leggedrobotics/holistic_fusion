@@ -24,13 +24,16 @@
       slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
       # Optimizer Config
       gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
-      minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
+      minOptimizationFrequency: 5.0           # Minimum optimization frequency [Hz]
       maxOptimizationFrequency: 10.0          # Maximum optimization frequency [Hz], can be used to control computational load
       additionalOptimizationIterations: 0     # Maximum number of additional optimizer iterations after each update with new factors
       useAdaptiveAdditionalOptimizationIterations: false # If true, stop extra iterations early once nonlinear-error improvement becomes too small
       adaptiveAdditionalOptimizationMinRelativeErrorImprovement: 1.0e-4 # Minimum relative nonlinear-error improvement required to keep running extra iterations
       printAdditionalOptimizationDiagnostics: false # If true, print nonlinear residuals and relative error improvement for the initial and extra optimization passes
-      evaluateNonlinearError: false             # Whether to evaluate the nonlinear error before and after the update, default: false
+      evaluateNonlinearError: true             # Whether to evaluate the nonlinear error before and after the update, default: false
+      deferFutureUnaryMeasurements: true # If true, queue slightly future-dated unary measurements until a matching graph key exists
+      maxDeferredUnaryFutureLeadSeconds: 0.0 # Maximum future lead to defer in seconds; <= 0 uses maxSearchDeviation
+      maxDeferredUnaryMeasurementsInQueue: 100 # Maximum number of deferred unary measurements kept in the queue
       findUnusedFactorSlots: true
       enableDetailedResults: false
       usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration

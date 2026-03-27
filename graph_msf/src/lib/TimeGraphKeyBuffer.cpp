@@ -34,6 +34,18 @@ void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
   }
 }
 
+bool TimeGraphKeyBuffer::getTimestampBounds(double& oldestTimestamp, double& latestTimestamp) {
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+
+  if (timeToKeyBuffer_.empty()) {
+    return false;
+  }
+
+  oldestTimestamp = timeToKeyBuffer_.begin()->first;
+  latestTimestamp = std::prev(timeToKeyBuffer_.end())->first;
+  return true;
+}
+
 bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
                                                    const double maxSearchDeviation, const double tK) {
   // Read from IMU buffer --> acquire mutex

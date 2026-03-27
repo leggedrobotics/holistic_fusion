@@ -65,6 +65,12 @@ void GraphMsfRos2::readParams() {
       tryGetParam<double>(this, "graph_params.adaptiveAdditionalOptimizationMinRelativeErrorImprovement");
   graphConfigPtr_->printAdditionalOptimizationDiagnosticsFlag_ =
       tryGetParam<bool>(this, "graph_params.printAdditionalOptimizationDiagnostics");
+  graphConfigPtr_->deferFutureUnaryMeasurementsFlag_ =
+      tryGetParam<bool>(this, "graph_params.deferFutureUnaryMeasurements");
+  graphConfigPtr_->maxDeferredUnaryFutureLeadSeconds_ =
+      tryGetParam<double>(this, "graph_params.maxDeferredUnaryFutureLeadSeconds");
+  graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_ =
+      tryGetParam<int>(this, "graph_params.maxDeferredUnaryMeasurementsInQueue");
   graphConfigPtr_->findUnusedFactorSlotsFlag_ = tryGetParam<bool>(this, "graph_params.findUnusedFactorSlots");
   graphConfigPtr_->enableDetailedResultsFlag_ = tryGetParam<bool>(this, "graph_params.enableDetailedResults");
   graphConfigPtr_->realTimeSmootherUseCholeskyFactorizationFlag_ =
@@ -186,6 +192,14 @@ void GraphMsfRos2::readParams() {
         "printAdditionalOptimizationDiagnostics requires evaluateNonlinearError=true. "
         "Enabling evaluateNonlinearError automatically.");
     graphConfigPtr_->evaluateNonlinearErrorFlag_ = true;
+  }
+  if (graphConfigPtr_->deferFutureUnaryMeasurementsFlag_ && graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_ <= 0) {
+    RCLCPP_WARN(
+        this->get_logger(),
+        "deferFutureUnaryMeasurements is enabled, but maxDeferredUnaryMeasurementsInQueue is %d. "
+        "Clamping it to 1.",
+        graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_);
+    graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_ = 1;
   }
 
   // Common Parameters

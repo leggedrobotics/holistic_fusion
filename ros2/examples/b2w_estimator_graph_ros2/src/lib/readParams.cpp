@@ -168,9 +168,6 @@ if (useGnssFlag_) {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarOdometryFrame"));
       
-  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.betweenLidarOdometryFrame"));
-
   /// Wheel Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.wheelOdometryBetweenFrame"));
