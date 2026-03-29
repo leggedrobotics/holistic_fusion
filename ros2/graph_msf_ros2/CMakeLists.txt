@@ -72,9 +72,6 @@ target_link_libraries(${PROJECT_NAME}
     tf2_ros::tf2_ros
     tf2_eigen::tf2_eigen
     graph_msf::graph_msf
-    # graph_msf_ros2_msgs::graph_msf_ros2_msgs
-    # rosidl_typesupport_cpp::rosidl_typesupport_cpp
-    # rosidl_service_type_support_t::rosidl_service_type_support_t
 )
 
 # Include directories for the library
