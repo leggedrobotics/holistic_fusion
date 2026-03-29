@@ -3,6 +3,8 @@ name: Build ROS2 Humble Docker Image
 on:
   pull_request:
     branches: ['**']
+  push:
+    branches: ['main']
 
 jobs:
   build-ros2-humble:

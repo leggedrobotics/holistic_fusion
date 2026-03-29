@@ -3,6 +3,8 @@ name: Build ROS1 Noetic Docker Image
 on:
   pull_request:
     branches: ['**']
+  push:
+    branches: ['main']
 
 jobs:
   build-ros1-noetic:
