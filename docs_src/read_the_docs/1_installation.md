@@ -86,10 +86,13 @@ catkin init
 catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-2. Cloning the requirements
+2. Cloning the repository and (vcs-managed) third-party dependencies
 
 ```bash
-wget -qO - https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs | vcs import src
+cd src
+git clone https://github.com/leggedrobotics/holistic_fusion.git
+wget -qO - https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs | vcs import .
+cd ..
 ```
 
 3. Compiling the workspace:

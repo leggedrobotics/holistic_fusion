@@ -14,12 +14,24 @@
 #=============================================================================
 figlet holistic_fusion
 #==
+# Set up the colcon workspace
+#==
+# Create symlink to the repo and import third-party dependencies
+if [ ! -d /ros2_ws/src/kindr ]; then
+    echo "[entrypoint.sh]: Importing third-party dependencies into /ros2_ws/src..."
+    cd /ros2_ws/src && vcs import . < $REPO_DIR/catkin_workspace.vcs
+fi
+
+# Ensure the host user owns the workspace
+chown -R $HOST_USERNAME:$HOST_USERNAME /ros2_ws
+
+#==
 # Log into the container as the host user
 #==
 # set home for host user
 export HOME=/home/$HOST_USERNAME
 export USER=$HOST_USERNAME
-cd $HOME
+cd /ros2_ws
 
 # Enable sudo access without password
 echo "root ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers

@@ -29,7 +29,7 @@ RUN apt update && apt upgrade -y
 # System APT base dependencies and utilities
 #==
 
-COPY submodules/base.sh /home/base.sh
+COPY docker/submodules/base.sh /home/base.sh
 RUN chmod +x /home/base.sh
 RUN /home/base.sh && rm /home/base.sh
 
@@ -40,7 +40,7 @@ RUN /home/base.sh && rm /home/base.sh
 # Version
 ARG ROS=humble
 
-COPY submodules/ros_2.sh /home/ros_2.sh
+COPY docker/submodules/ros_2.sh /home/ros_2.sh
 RUN chmod +x /home/ros_2.sh
 RUN /home/ros_2.sh && rm /home/ros_2.sh
 
@@ -48,7 +48,7 @@ RUN /home/ros_2.sh && rm /home/ros_2.sh
 # GTSAM
 #==
 
-COPY submodules/gtsam.sh /home/gtsam.sh
+COPY docker/submodules/gtsam.sh /home/gtsam.sh
 RUN chmod +x /home/gtsam.sh
 RUN /home/gtsam.sh && rm /home/gtsam.sh
 
@@ -62,8 +62,14 @@ RUN chmod ugo+rwx /software
 #==
 # Environment
 #==
-COPY ros2_humble/bashrc /etc/bash.bashrc
+COPY docker/ros2_humble/bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc
+
+#==
+# Workspace
+#==
+RUN mkdir -p /ros2_ws/src \
+ && chmod -R ugo+rwx /ros2_ws
 
 # ----------------------------------------------------------------------------
 
@@ -71,7 +77,7 @@ RUN chmod a+rwx /etc/bash.bashrc
 # Execution
 #==
 
-COPY ros2_humble/entrypoint.sh /entrypoint.sh
+COPY docker/ros2_humble/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 #ENTRYPOINT ["/entrypoint.sh"]
 CMD []
