@@ -25,7 +25,7 @@ AnymalStaticTransforms::AnymalStaticTransforms(const std::shared_ptr<ros::NodeHa
   REGULAR_COUT << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
-void AnymalStaticTransforms::findTransformations() {
+bool AnymalStaticTransforms::findTransformations() {
   // Print to console --------------------------
   REGULAR_COUT << " Looking up transforms in TF-tree." << std::endl;
   REGULAR_COUT << " Transforms between the following frames are required: " << lioOdometryFrame_ << ", " << gnssFrame_ << ", " << imuFrame_
@@ -68,6 +68,7 @@ void AnymalStaticTransforms::findTransformations() {
 
   // Call parent class
   graph_msf::StaticTransformsTf::findTransformations();
+  return true;
 }
 
 }  // namespace anymal_se

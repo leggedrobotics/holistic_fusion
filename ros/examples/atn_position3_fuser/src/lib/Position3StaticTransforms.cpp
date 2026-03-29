@@ -25,7 +25,7 @@ Position3StaticTransforms::Position3StaticTransforms(const std::shared_ptr<ros::
   useGnss_ = useGnss;
 }
 
-void Position3StaticTransforms::findTransformations() {
+bool Position3StaticTransforms::findTransformations() {
   // Print to console --------------------------
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
@@ -91,6 +91,7 @@ void Position3StaticTransforms::findTransformations() {
 
   // Call parent class
   graph_msf::StaticTransformsTf::findTransformations();
+  return true;
 }
 
 }  // namespace position3_se

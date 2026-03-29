@@ -21,7 +21,7 @@ ExcavatorStaticTransforms::ExcavatorStaticTransforms(const std::shared_ptr<ros::
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
-void ExcavatorStaticTransforms::findTransformations() {
+bool ExcavatorStaticTransforms::findTransformations() {
   // Print to console --------------------------
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
   std::cout << YELLOW_START << "StaticTransformsTf" << COLOR_END << " Transforms between the following frames are required:" << std::endl;
@@ -89,6 +89,7 @@ void ExcavatorStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(rightGnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, rightGnssFrame_).inverse();
 
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
+  return true;
 }
 
 }  // namespace excavator_se

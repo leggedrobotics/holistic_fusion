@@ -17,7 +17,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
-void StaticTransformsTf::findTransformations() {
+bool StaticTransformsTf::findTransformations() {
   // Print to console --------------------------
   REGULAR_COUT << " Looking up transforms in TF-tree." << std::endl;
   REGULAR_COUT << " Transforms between the following frames are required: " << imuFrame_ << ", " << baseLinkFrame_ << std::endl;
@@ -43,6 +43,7 @@ void StaticTransformsTf::findTransformations() {
 
   // Wrapping up --------------------------
   REGULAR_COUT << " Transforms looked up successfully." << std::endl;
+  return true;
 }
 
 }  // namespace graph_msf

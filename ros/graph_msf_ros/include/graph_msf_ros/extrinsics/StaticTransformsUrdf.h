@@ -45,7 +45,7 @@ class StaticTransformsUrdf : public StaticTransforms {
   ros::NodeHandle privateNode_;
 
  private:
-  virtual void findTransformations() = 0;
+  virtual bool findTransformations() = 0;
 };
 }  // namespace graph_msf
 #endif  // end StaticTransformsUrdf_H
