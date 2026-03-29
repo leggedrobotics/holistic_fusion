@@ -1,0 +1,19 @@
+name: Build ROS1 Noetic Docker Image
+
+on:
+  pull_request:
+    branches: ['**']
+
+jobs:
+  build-ros1-noetic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ROS1 Noetic Docker image
+        run: |
+          docker build \
+            -t holistic_fusion_ros1:ci \
+            -f docker/ros1_noetic/base.Dockerfile \
+            .

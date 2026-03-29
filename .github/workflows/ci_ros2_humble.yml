@@ -1,0 +1,19 @@
+name: Build ROS2 Humble Docker Image
+
+on:
+  pull_request:
+    branches: ['**']
+
+jobs:
+  build-ros2-humble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ROS2 Humble Docker image
+        run: |
+          docker build \
+            -t holistic_fusion_ros2:ci \
+            -f docker/ros2_humble/base.Dockerfile \
+            .
