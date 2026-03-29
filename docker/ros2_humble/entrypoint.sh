@@ -17,9 +17,9 @@ figlet holistic_fusion
 # Set up the colcon workspace
 #==
 # Create symlink to the repo and import third-party dependencies
-if [ ! -d /ros2_ws/src/kindr ]; then
+if [ ! -d /ros2_ws/src/eigen_colcon ]; then
     echo "[entrypoint.sh]: Importing third-party dependencies into /ros2_ws/src..."
-    cd /ros2_ws/src && vcs import . < $REPO_DIR/catkin_workspace.vcs
+    cd /ros2_ws/src && vcs import . < $REPO_DIR/colcon_workspace.vcs
 fi
 
 # Ensure the host user owns the workspace

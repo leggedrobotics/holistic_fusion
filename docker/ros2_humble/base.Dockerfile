@@ -71,6 +71,19 @@ RUN chmod a+rwx /etc/bash.bashrc
 RUN mkdir -p /ros2_ws/src \
  && chmod -R ugo+rwx /ros2_ws
 
+#==
+# Pre-build colcon workspace (also for CI)
+#==
+COPY colcon_workspace.vcs /holistic_fusion_prebuilt/holistic_fusion/colcon_workspace.vcs
+COPY . /holistic_fusion_prebuilt/holistic_fusion/src/holistic_fusion
+RUN mkdir -p /holistic_fusion_prebuilt/holistic_fusion/src \
+ && cd /holistic_fusion_prebuilt/holistic_fusion/src \
+ && vcs import . < /holistic_fusion_prebuilt/holistic_fusion/colcon_workspace.vcs \
+ && cd /holistic_fusion_prebuilt/holistic_fusion \
+ && /bin/bash -c "source /opt/ros/humble/setup.bash \
+    && colcon build --symlink-install --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCMAKE_BUILD_TYPE=Release --packages-up-to smb_estimator_graph_ros2" \
+ && chmod -R ugo+rwx /holistic_fusion_prebuilt
+
 # ----------------------------------------------------------------------------
 
 #==

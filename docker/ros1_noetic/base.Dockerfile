@@ -74,17 +74,17 @@ RUN mkdir -p /ros_ws/src \
 #==
 # Pre-build catkin workspace (also for CI)
 #==
-# COPY catkin_workspace.vcs /holistic_fusion_prebuilt/holistic_fusion/catkin_workspace.vcs
-# COPY . /holistic_fusion_prebuilt/holistic_fusion/src/holistic_fusion
-# RUN mkdir -p /holistic_fusion_prebuilt/holistic_fusion/src \
-#  && cd /holistic_fusion_prebuilt/holistic_fusion/src \
-#  && vcs import . < /holistic_fusion_prebuilt/holistic_fusion/catkin_workspace.vcs \
-#  && cd /holistic_fusion_prebuilt/holistic_fusion \
-#  && /bin/bash -c "source /opt/ros/noetic/setup.bash \
-#     && catkin init \
-#     && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
-#     && catkin build graph_msf_ros_examples" \
-#  && chmod -R ugo+rwx /holistic_fusion_prebuilt
+COPY catkin_workspace.vcs /holistic_fusion_prebuilt/holistic_fusion/catkin_workspace.vcs
+COPY . /holistic_fusion_prebuilt/holistic_fusion/src/holistic_fusion
+RUN mkdir -p /holistic_fusion_prebuilt/holistic_fusion/src \
+ && cd /holistic_fusion_prebuilt/holistic_fusion/src \
+ && vcs import . < /holistic_fusion_prebuilt/holistic_fusion/catkin_workspace.vcs \
+ && cd /holistic_fusion_prebuilt/holistic_fusion \
+ && /bin/bash -c "source /opt/ros/noetic/setup.bash \
+    && catkin init \
+    && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    && catkin build graph_msf_ros_examples" \
+ && chmod -R ugo+rwx /holistic_fusion_prebuilt
 
 # ----------------------------------------------------------------------------
 
