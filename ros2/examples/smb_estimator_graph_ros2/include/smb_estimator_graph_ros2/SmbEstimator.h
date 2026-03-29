@@ -31,7 +31,7 @@ namespace smb_se {
 
 class SmbEstimator : public graph_msf::GraphMsfRos2 {
  public:
-  explicit SmbEstimator(std::shared_ptr<rclcpp::Node>& node);
+  explicit SmbEstimator(const std::string& nodeName, const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
   ~SmbEstimator() override = default;
 

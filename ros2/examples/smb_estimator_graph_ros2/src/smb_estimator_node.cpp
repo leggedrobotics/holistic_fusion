@@ -22,15 +22,15 @@ int main(int argc, char** argv) {
   // Debugging
   // FLAGS_alsologtostderr = true;
 
-  // Create Node
-  auto privateNodePtr = std::make_shared<rclcpp::Node>("smb_estimator_node");
+  // Create Instance of SmbEstimator (which is itself a Node)
+  auto smbEstimator = std::make_shared<smb_se::SmbEstimator>("smb_estimator_node");
 
-  // Create Instance of SmbEstimator
-  auto smbEstimator = std::make_shared<smb_se::SmbEstimator>(privateNodePtr);
+  // Call setup after construction (needs shared_from_this)
+  smbEstimator->setup();
 
   // Use Multi-Threaded Executor
   rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 4);
-  executor.add_node(privateNodePtr);
+  executor.add_node(smbEstimator);
   executor.spin();
 
   // Shutdown ROS 2
