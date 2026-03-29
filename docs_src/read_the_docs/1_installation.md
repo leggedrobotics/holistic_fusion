@@ -105,4 +105,30 @@ This should build 14 packages, including all ROS1 examples, the core library, th
 
 ## Colcon Workspace
 
-Still under construction.
+To use the `graph_msf` library in a ROS2 workspace, we provide a package called `graph_msf_ros2`.
+To install all dependencies and compile the library, you can follow these steps:
+
+1. Setting up the workspace:
+
+```bash
+mkdir -p ros2_ws/src
+cd ros2_ws
+```
+
+2. Cloning the repository and (vcs-managed) third-party dependencies
+
+```bash
+cd src
+git clone https://github.com/leggedrobotics/holistic_fusion.git
+wget -qO - https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/colcon_workspace.vcs | vcs import .
+cd ..
+```
+
+3. Compiling the workspace:
+
+```bash
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCMAKE_BUILD_TYPE=Release --packages-up-to smb_estimator_graph_ros2
+```
+
+This should build the core library, the `graph_msf_ros2` package, the `graph_msf_ros2_msgs` package, and the `smb_estimator_graph_ros2` example package.
