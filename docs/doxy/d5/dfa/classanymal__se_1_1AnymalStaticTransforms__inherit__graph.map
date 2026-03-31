@@ -1,9 +1,0 @@
-<map id="anymal_se::AnymalStaticTransforms" name="anymal_se::AnymalStaticTransforms">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,240,265,265"/>
-<area shape="rect" id="Node000002" href="$d2/dd7/classgraph__msf_1_1StaticTransformsTf.html" title=" " alt="" coords="25,167,245,192"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,206,138,240,133,240,133,206"/>
-<area shape="rect" id="Node000003" href="$d2/dea/classgraph__msf_1_1StaticTransforms.html" title=" " alt="" coords="32,93,239,119"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="138,132,138,167,133,167,133,132"/>
-<area shape="rect" id="Node000004" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="17,5,254,45"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="138,59,138,93,133,93,133,59"/>
-</map>

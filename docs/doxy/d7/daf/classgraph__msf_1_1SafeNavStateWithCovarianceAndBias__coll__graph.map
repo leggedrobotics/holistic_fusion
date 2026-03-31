@@ -1,9 +1,0 @@
-<map id="graph_msf::SafeNavStateWithCovarianceAndBias" name="graph_msf::SafeNavStateWithCovarianceAndBias">
-<area shape="rect" id="Node000001" title=" " alt="" coords="553,62,771,102"/>
-<area shape="rect" id="Node000002" href="$df/d81/classgraph__msf_1_1NavState.html" title=" " alt="" coords="48,5,207,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="221,12,367,15,449,22,530,34,573,45,614,59,612,64,572,50,529,39,448,27,366,21,221,18"/>
-<area shape="rect" id="Node000003" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="9,62,246,102"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="260,79,553,79,553,85,260,85"/>
-<area shape="rect" id="Node000004" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="5,137,249,177"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="263,155,393,148,461,141,529,129,574,116,616,100,618,105,576,121,530,134,462,146,393,154,263,161"/>
-</map>

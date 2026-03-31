@@ -1,10 +1,16 @@
 # Building Documentation
 
-Documentation is automatically built and deployed to GitHub Pages on every push to `main` via the
+## Automatic Build (Default)
+
+By default, the documentation is automatically built and deployed to GitHub Pages on every push to `main` via the
 [docs GitHub Action](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/docs.yml).
 On pull requests, the documentation is built (but not deployed) to catch errors early.
 
-The sections below describe how to build the documentation locally.
+No manual steps are required — merging to `main` triggers a fresh build of both the Sphinx and Doxygen documentation.
+
+## Manual Build (Local)
+
+You can also build the documentation locally, e.g. for previewing changes before pushing.
 
 ## Read The Docs
 
