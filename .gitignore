@@ -7,6 +7,8 @@
 docs/docs_src/read_the_docs/_build
 docs/docs_src/read_the_docs/_static
 docs/docs_src/read_the_docs/_templates
+docs/docs/
+docs/doxy/
 *.doctree
 
 # Node artifact files
