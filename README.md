@@ -4,6 +4,9 @@
 
 # Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs
 
+[![Build ROS1 Noetic](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros1_noetic.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros1_noetic.yml)
+[![Build ROS2 Humble](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros2_humble.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros2_humble.yml)
+
 **Authors:**
 [Julian Nubert](https://www.linkedin.com/in/juliannubert/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub])),
 [Turcan Tuna](https://www.linkedin.com/in/turcantuna/),

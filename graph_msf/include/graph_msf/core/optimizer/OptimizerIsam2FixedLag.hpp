@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_ISAM2_FIXED_LAG_HPP
 
 // GTSAM
+#include <gtsam/linear/linearExceptions.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
@@ -42,7 +43,15 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) {
+    // Limit recursion depth to prevent infinite loops
+    if (depth > 5) {
+      std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START 
+                << " Maximum recursion depth reached (" << depth << "). Aborting optimization." 
+                << COLOR_END << std::endl;
+      return false;
+    }
+
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
     gtsam::IncrementalFixedLagSmoother fixedLagSmootherCopy = *fixedLagSmootherPtr_;
 
@@ -52,7 +61,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 1: Catching the failure of marginalization (as some states which should be marginalized have not been optimized before)
     catch (const std::out_of_range& outOfRangeException) {
-      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Out of Range exception while optimizing graph: '"
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " OutOfRange-Exception while optimizing graph: '"
                 << outOfRangeException.what() << "'." << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
                 << " This happens if the FixedLagSmoother tries to marginalize out states that have never been optimized before. This e.g. "
@@ -216,6 +225,67 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
     }
+    // Case 5: Typical indeterminant linear system
+    catch (const gtsam::IndeterminantLinearSystemException& indeterminantLinearSystemException) {
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminantLinearSystem exception while optimizing graph: '"
+                << indeterminantLinearSystemException.what() << "'" << COLOR_END << std::endl;
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
+                << " This happens if the linear system is indeterminant, which usually indicates that there are not enough constraints to "
+                   "solve for all variables."
+                << std::endl;
+
+      // Get key
+      gtsam::Key key = indeterminantLinearSystemException.nearbyVariable();
+      std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " The key causing the issue is: " << gtsam::Symbol(key) << std::endl;
+
+      // If bias --> fix graph
+      const gtsam::Symbol symbol(key);
+      const char stateCategory = symbol.chr();
+      if (stateCategory == 'b') {
+        const gtsam::Key& biasKey = key;  // Alias
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Latest estimated bias for key " << symbol << ": "
+                  << this->latestImuBias_ << std::endl;
+        // Get number component of symbol
+        const int symbolNumber = symbol.index();
+        gtsam::Key poseKey = gtsam::symbol_shorthand::X(symbolNumber);
+        std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " Latest estimated pose for key " << gtsam::Symbol(poseKey) << ": "
+                  << this->latestPose_ << std::endl;
+        // Uncertainty
+        const auto priorBiasNoise =
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasNoiseDensity_,  // m/s^2
+                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
+                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
+                                                    .finished());  // acc, acc, acc, gyro, gyro, gyro
+
+        const auto priorPoseNoise =
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialOrientationNoiseDensity_,  // rad
+                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
+                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
+                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
+                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
+                                                 graphConfigPtr_->initialPositionNoiseDensity_)                         // m
+                                                    .finished());
+        // Add additional factor for bias
+        gtsam::NonlinearFactorGraph newGraphFactorsExtended = newGraphFactors;
+        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(biasKey, this->latestImuBias_, priorBiasNoise));
+        newGraphFactorsExtended.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey, this->latestPose_, priorPoseNoise));
+        // Copy back
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        // Recursion
+        return update(newGraphFactorsExtended, newGraphValues, newGraphKeysTimeStampMap, depth + 1);
+      } else {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
+                  << " The key causing the issue is not a bias key. Currently, only bias keys can be fixed automatically. Aborting "
+                     "optimization."
+                  << COLOR_END << std::endl;
+        return false;
+      }
+      throw std::runtime_error(indeterminantLinearSystemException.what());
+    }
+
     if (!optimizedAtLeastOnceFlag_) {
       optimizedAtLeastOnceFlag_ = true;
     }

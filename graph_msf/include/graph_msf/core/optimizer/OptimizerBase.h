@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
 #include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
+#include <gtsam/geometry/Pose3.h>
 
 // Workspace
 #include "graph_msf/config/GraphConfig.h"
@@ -28,7 +29,7 @@ class OptimizerBase {
   // Add factors
   virtual bool update() = 0;
   virtual bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-                      const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) = 0;
+                      const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) = 0;
   virtual bool updateExistingValues(const gtsam::Values& newGraphValues) = 0;
   // Run (Batch) Optimization and get result
   virtual void optimize(int maxIterations) = 0;
@@ -48,9 +49,23 @@ class OptimizerBase {
   // Marginal Covariance
   virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
 
+  // Add latest IMU bias before optimization
+  virtual void addLatestImuBiasBelief(const gtsam::imuBias::ConstantBias& imuBias) {
+    latestImuBias_ = imuBias;
+  }
+
+  // Add latest pose before optimization
+  virtual void addLatestPoseBelief(const gtsam::Pose3& pose) {
+    latestPose_ = pose;
+  }
+
  protected:
   // Config
   std::shared_ptr<GraphConfig> graphConfigPtr_;
+
+  // Latest IMU bias
+  gtsam::imuBias::ConstantBias latestImuBias_;
+  gtsam::Pose3 latestPose_;
 };
 
 }  // namespace graph_msf

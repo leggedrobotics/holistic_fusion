@@ -1,21 +1,21 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Installation &mdash; Holistic Fusion January 2025 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
-      <script src="_static/doctools.js?v=888ff710"></script>
-      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="_static/documentation_options.js?v=88014068"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -80,8 +80,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros1-noetic">ROS1 Noetic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros2-humble">ROS2 Humble</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id1">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id2">Running the Docker Container</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
@@ -98,7 +106,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#building">Building</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
@@ -131,27 +139,27 @@
            <div itemprop="articleBody">
              
   <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h1>
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
 <section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
 <section id="docker">
-<h3>Docker<a class="headerlink" href="#docker" title="Permalink to this heading"></a></h3>
+<h3>Docker<a class="headerlink" href="#docker" title="Link to this heading"></a></h3>
 <p>We recommend using Docker to run the code. This way you can avoid dependency issues and have a clean environment.
 The instructions for building and running the Docker image can be found in the <a class="reference internal" href="6_docker.html"><span class="std std-doc">Docker section</span></a>.</p>
 </section>
 <section id="custom-build">
-<h3>Custom Build<a class="headerlink" href="#custom-build" title="Permalink to this heading"></a></h3>
+<h3>Custom Build<a class="headerlink" href="#custom-build" title="Link to this heading"></a></h3>
 <p><strong>Note: This is only needed if you are not using Docker.</strong></p>
 <p>The two main dependencies of the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library are Eigen3 and GTSAM.
 For running the ROS and ROS2 examples, you also need to have ROS Noetic and/or ROS2 Humble installed.</p>
 <section id="graph-msf-core">
-<h4>Graph MSF Core<a class="headerlink" href="#graph-msf-core" title="Permalink to this heading"></a></h4>
+<h4>Graph MSF Core<a class="headerlink" href="#graph-msf-core" title="Link to this heading"></a></h4>
 <section id="eigen3">
-<h5>Eigen3<a class="headerlink" href="#eigen3" title="Permalink to this heading"></a></h5>
+<h5>Eigen3<a class="headerlink" href="#eigen3" title="Link to this heading"></a></h5>
 <p>Make sure you have the Eigen3-headers in your include path. This is usually automatically the case if you have ROS installed.</p>
 </section>
 <section id="gtsam">
-<h5>GTSAM<a class="headerlink" href="#gtsam" title="Permalink to this heading"></a></h5>
+<h5>GTSAM<a class="headerlink" href="#gtsam" title="Link to this heading"></a></h5>
 <p>We install GTSAM from source.
 You can also install it locally by adding the <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> option to the CMake command as done in the following.</p>
 <ul class="simple">
@@ -188,7 +196,7 @@ You can also install it locally by adding the <code class="docutils literal notr
 </section>
 </section>
 <section id="core-library">
-<h2>Core Library<a class="headerlink" href="#core-library" title="Permalink to this heading"></a></h2>
+<h2>Core Library<a class="headerlink" href="#core-library" title="Link to this heading"></a></h2>
 <p>The core library can be compile without ROS or ROS2. It is a pure C++ library that can be used in any C++ project with CMake support.
 When using the library with ROS or ROS2, we provide packages called <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code> and <code class="docutils literal notranslate"><span class="pre">graph_msf_ament</span></code> that are wrapper projects exposing the functionalities to the workspace, which can be used to compile the library with the respective build system.</p>
 <p>To build the core library (standalone) you can simply do this using cmake:</p>
@@ -202,7 +210,7 @@ make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</s
 </div>
 </section>
 <section id="catkin-workspace">
-<h2>Catkin Workspace<a class="headerlink" href="#catkin-workspace" title="Permalink to this heading"></a></h2>
+<h2>Catkin Workspace<a class="headerlink" href="#catkin-workspace" title="Link to this heading"></a></h2>
 <p>To use the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library in a ROS workspace, we provide a package called <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code>.
 To install all dependencies and compile the library, you can follow these steps:</p>
 <ol class="arabic simple">
@@ -215,9 +223,12 @@ catkin<span class="w"> </span>config<span class="w"> </span>--cmake-args<span cl
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
-<li><p>Cloning the requirements</p></li>
+<li><p>Cloning the repository and (vcs-managed) third-party dependencies</p></li>
 </ol>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>-qO<span class="w"> </span>-<span class="w"> </span>https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs<span class="w"> </span><span class="p">|</span><span class="w"> </span>vcs<span class="w"> </span>import<span class="w"> </span>src
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/leggedrobotics/holistic_fusion.git
+wget<span class="w"> </span>-qO<span class="w"> </span>-<span class="w"> </span>https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/catkin_workspace.vcs<span class="w"> </span><span class="p">|</span><span class="w"> </span>vcs<span class="w"> </span>import<span class="w"> </span>.
+<span class="nb">cd</span><span class="w"> </span>..
 </pre></div>
 </div>
 <ol class="arabic simple" start="3">
@@ -229,8 +240,33 @@ catkin<span class="w"> </span>config<span class="w"> </span>--cmake-args<span cl
 <p>This should build 14 packages, including all ROS1 examples, the core library, the <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code> package, the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros</span></code> package (commodity package for the ROS examples), and the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros_examples</span></code> package.</p>
 </section>
 <section id="colcon-workspace">
-<h2>Colcon Workspace<a class="headerlink" href="#colcon-workspace" title="Permalink to this heading"></a></h2>
-<p>Still under construction.</p>
+<h2>Colcon Workspace<a class="headerlink" href="#colcon-workspace" title="Link to this heading"></a></h2>
+<p>To use the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library in a ROS2 workspace, we provide a package called <code class="docutils literal notranslate"><span class="pre">graph_msf_ros2</span></code>.
+To install all dependencies and compile the library, you can follow these steps:</p>
+<ol class="arabic simple">
+<li><p>Setting up the workspace:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>ros2_ws/src
+<span class="nb">cd</span><span class="w"> </span>ros2_ws
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Cloning the repository and (vcs-managed) third-party dependencies</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/leggedrobotics/holistic_fusion.git
+wget<span class="w"> </span>-qO<span class="w"> </span>-<span class="w"> </span>https://raw.githubusercontent.com/leggedrobotics/holistic_fusion/refs/heads/main/colcon_workspace.vcs<span class="w"> </span><span class="p">|</span><span class="w"> </span>vcs<span class="w"> </span>import<span class="w"> </span>.
+<span class="nb">cd</span><span class="w"> </span>..
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Compiling the workspace:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>/opt/ros/humble/setup.bash
+colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--cmake-args<span class="w"> </span>-DPYTHON_EXECUTABLE<span class="o">=</span>/usr/bin/python3<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>--packages-up-to<span class="w"> </span>smb_estimator_graph_ros2
+</pre></div>
+</div>
+<p>This should build the core library, the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros2</span></code> package, the <code class="docutils literal notranslate"><span class="pre">graph_msf_ros2_msgs</span></code> package, and the <code class="docutils literal notranslate"><span class="pre">smb_estimator_graph_ros2</span></code> example package.</p>
 </section>
 </section>
 

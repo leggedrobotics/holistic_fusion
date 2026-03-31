@@ -144,16 +144,26 @@ bool GraphMsf::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>
                                    unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
 }
 
+bool GraphMsf::initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
+  // Set the initial transform
+  std::cout << "Setting initial transform from world frame to " << fixedFrame << " frame: " << T_W_F.matrix() << std::endl;
+  // Actually set the transform
+  return graphMgrPtr_->setInitialWorldFrameToFixedFrameTransform(T_W_F, fixedFrame);
+}
+
 // Adders --------------------------------
 /// Main: IMU -----------------------
 bool GraphMsf::addCoreImuMeasurementAndGetState(
-    const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
+    const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, double imuTimeK,
     std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements) {
   // Setup -------------------------
   // Increase counter
   ++imuCallbackCounter_;
+
+  // Adapt time stamp
+  imuTimeK += graphConfigPtr_->imuTimeOffset_;
 
   // First Iteration
   if (preIntegratedNavStatePtr_ == nullptr) {
@@ -167,8 +177,38 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
     return false;
   }
 
+  // Potentially convert to m/s^2
+  Eigen::Vector3d linearAccInMps2 = linearAcc;
+  if (graphConfigPtr_->isImuAccInG_) {
+    constexpr double gravityConst = 9.80665;
+    linearAccInMps2 *= gravityConst;
+  }
+
+  // Check the norm and spit out warning in case the acceleration is either too small or too big
+  const double accNorm = linearAccInMps2.norm();
+  if (accNorm < 2) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration is too small: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to false." << COLOR_END << std::endl;
+  } else if (accNorm > 90) {
+    REGULAR_COUT << RED_START << " IMU linear acceleration is too big: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Check whether isImuAccInG_ is not mistakenly set to true." << COLOR_END << std::endl;
+  }
+
+  // Clamp linear acceleration to 60 m/s^2 to avoid outliers
+  // constexpr double maxAcc = 60.0;
+  // if (accNorm > maxAcc) {
+  //   // Iterate through each element and scale
+  //   for (int i = 0; i < 3; ++i) {
+  //     // If element is too big, clamp
+  //     if (std::abs(linearAccInMps2(i)) > maxAcc) {
+  //       linearAccInMps2(i) = (linearAccInMps2(i) > 0 ? maxAcc : -maxAcc);
+  //     }
+  //   }
+  //   REGULAR_COUT << YELLOW_START << " Clamped IMU linear acceleration to: " << linearAccInMps2.transpose() << COLOR_END << std::endl;
+  // }
+
   // Add measurement to buffer
-  returnAddedImuMeasurements = coreImuBufferPtr_->addToImuBuffer(imuTimeK, linearAcc, angularVel);
+  returnAddedImuMeasurements = coreImuBufferPtr_->addToImuBuffer(imuTimeK, linearAccInMps2, angularVel);
 
   // Locking
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);

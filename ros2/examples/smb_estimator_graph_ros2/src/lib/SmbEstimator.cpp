@@ -19,50 +19,47 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-SmbEstimator::SmbEstimator(std::shared_ptr<rclcpp::Node>& node) : graph_msf::GraphMsfRos2(node) {
+SmbEstimator::SmbEstimator(const std::string& nodeName, const rclcpp::NodeOptions& options) : graph_msf::GraphMsfRos2(nodeName, options) {
   REGULAR_COUT << GREEN_START << " SmbEstimator-Constructor called." << COLOR_END << std::endl;
-
-  // Call setup after declaring parameters
-  SmbEstimator::setup();
 }
 
 void SmbEstimator::setup() {
   REGULAR_COUT << GREEN_START << " SmbEstimator-Setup called." << COLOR_END << std::endl;
 
   // Boolean flags
-  node_->declare_parameter("sensor_params.useLioOdometry", false);
-  node_->declare_parameter("sensor_params.useWheelOdometryBetween", false);
-  node_->declare_parameter("sensor_params.useWheelLinearVelocities", false);
-  node_->declare_parameter("sensor_params.useVioOdometry", false);
+  this->declare_parameter("sensor_params.useLioOdometry", false);
+  this->declare_parameter("sensor_params.useWheelOdometryBetween", false);
+  this->declare_parameter("sensor_params.useWheelLinearVelocities", false);
+  this->declare_parameter("sensor_params.useVioOdometry", false);
 
   // Sensor parameters (int)
-  node_->declare_parameter("sensor_params.lioOdometryRate", 0);
-  node_->declare_parameter("sensor_params.wheelOdometryBetweenRate", 0);
-  node_->declare_parameter("sensor_params.wheelLinearVelocitiesRate", 0);
-  node_->declare_parameter("sensor_params.vioOdometryRate", 0);
+  this->declare_parameter("sensor_params.lioOdometryRate", 0);
+  this->declare_parameter("sensor_params.wheelOdometryBetweenRate", 0);
+  this->declare_parameter("sensor_params.wheelLinearVelocitiesRate", 0);
+  this->declare_parameter("sensor_params.vioOdometryRate", 0);
 
   // Alignment parameters (vector of double)
-  node_->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
   // Noise parameters (vectors of double)
-  node_->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
-  node_->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
   // Extrinsic frames (string)
-  node_->declare_parameter("extrinsics.lidarOdometryFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelOdometryBetweenFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelLinearVelocityLeftFrame", std::string(""));
-  node_->declare_parameter("extrinsics.wheelLinearVelocityRightFrame", std::string(""));
-  node_->declare_parameter("extrinsics.vioOdometryFrame", std::string(""));
+  this->declare_parameter("extrinsics.lidarOdometryFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelOdometryBetweenFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelLinearVelocityLeftFrame", std::string(""));
+  this->declare_parameter("extrinsics.wheelLinearVelocityRightFrame", std::string(""));
+  this->declare_parameter("extrinsics.vioOdometryFrame", std::string(""));
 
   // Wheel Radius (double)
-  node_->declare_parameter("sensor_params.wheelRadius", 0.0);
+  this->declare_parameter("sensor_params.wheelRadius", 0.0);
 
   // Create SmbStaticTransforms
-  staticTransformsPtr_ = std::make_shared<SmbStaticTransforms>(node_);
+  staticTransformsPtr_ = std::make_shared<SmbStaticTransforms>(shared_from_this());
 
   SmbEstimator::readParams();
 
@@ -86,31 +83,31 @@ void SmbEstimator::setup() {
 }
 
 void SmbEstimator::initializePublishers() {
-  pubMeasMapLioPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapVioPath_ = node_->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapLioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapVioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_imu", ROS_QUEUE_SIZE);
 }
 
 void SmbEstimator::initializeSubscribers() {
   if (useLioOdometryFlag_) {
-    subLioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subLioOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/lidar_odometry_topic", ROS_QUEUE_SIZE, std::bind(&SmbEstimator::lidarOdometryCallback_, this, std::placeholders::_1));
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: /lidar_odometry_topic" << std::endl;
   }
 
   if (useWheelOdometryBetweenFlag_) {
-    subWheelOdometryBetween_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subWheelOdometryBetween_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/wheel_odometry_topic", ROS_QUEUE_SIZE, std::bind(&SmbEstimator::wheelOdometryPoseCallback_, this, std::placeholders::_1));
     REGULAR_COUT << COLOR_END << " Initialized Wheel Odometry subscriber with topic: /wheel_odometry_topic" << std::endl;
   }
 
   if (useWheelLinearVelocitiesFlag_) {
-    subWheelLinearVelocities_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+    subWheelLinearVelocities_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
         "/wheel_velocities_topic", ROS_QUEUE_SIZE, std::bind(&SmbEstimator::wheelLinearVelocitiesCallback_, this, std::placeholders::_1));
     REGULAR_COUT << COLOR_END << " Initialized Wheel Linear Velocities subscriber with topic: /wheel_velocities_topic" << std::endl;
   }
 
   if (useVioOdometryFlag_) {
-    subVioOdometry_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    subVioOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/vio_odometry_topic", ROS_QUEUE_SIZE, std::bind(&SmbEstimator::vioOdometryCallback_, this, std::placeholders::_1));
     REGULAR_COUT << COLOR_END << " Initialized VIO Odometry subscriber with topic: /vio_odometry_topic" << std::endl;
   }
@@ -127,16 +124,6 @@ void SmbEstimator::initializeServices() {
 
 void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
   const rclcpp::Time new_imu_timestamp{imuPtr->header.stamp};
-//   const rclcpp::Time arrival_time = this->node_->get_clock()->now();
-//   const rclcpp::Duration delay = arrival_time - new_imu_timestamp;
-//   if (delay < rclcpp::Duration(0, 0)) {
-//     REGULAR_COUT << RED_START << " IMU message arrived at " << std::fixed << delay.seconds() << " before the message "
-//                 "timestamp. The messages should not be stamped with a time in the future." << COLOR_END << std::endl;
-//   } else if (delay > rclcpp::Duration(0, 100000000)) {
-//     REGULAR_COUT << RED_START << " IMU message arrival was delayed by " << std::fixed << delay.seconds() << "." << COLOR_END << std::endl;
-//   } else {
-//     REGULAR_COUT << " IMU message arrival was ok. Delay: " << delay.seconds() << "." << COLOR_END << std::endl;
-//   }
 
   if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
       !useWheelOdometryBetweenFlag_ && !useWheelLinearVelocitiesFlag_ && !useVioOdometryFlag_) {
@@ -292,18 +279,6 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64Mu
       graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
     }
   } else {
-    // graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(
-    //     "Wheel_linear_velocity_left", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-    //     wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::Tukey(1.0), timeK, 1.0,
-    //     Eigen::Vector3d(leftWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
-    // this->addUnaryVelocity3LocalMeasurement(leftWheelLinearVelocityMeasurement);
-
-    // graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> rightWheelLinearVelocityMeasurement(
-    //     "Wheel_linear_velocity_right", int(wheelLinearVelocitiesRate_), wheelLinearVelocityRightFrame,
-    //     wheelLinearVelocityRightFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::Tukey(1.0), timeK, 1.0,
-    //     Eigen::Vector3d(rightWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
-    // this->addUnaryVelocity3LocalMeasurement(rightWheelLinearVelocityMeasurement);
-
     graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(
         "Wheel_linear_velocity_left", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
         wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), timeK, 1.0,

@@ -1,21 +1,21 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Building Documentation &mdash; Holistic Fusion January 2025 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
-      <script src="_static/doctools.js?v=888ff710"></script>
-      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="_static/documentation_options.js?v=88014068"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -79,8 +79,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros1-noetic">ROS1 Noetic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros2-humble">ROS2 Humble</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id1">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id2">Running the Docker Container</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
@@ -97,7 +105,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Building Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#read-the-docs">Read The Docs</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#building">Building</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#doxygen">Doxygen</a></li>
@@ -130,29 +138,18 @@
            <div itemprop="articleBody">
              
   <section id="building-documentation">
-<h1>Building Documentation<a class="headerlink" href="#building-documentation" title="Permalink to this heading"></a></h1>
+<h1>Building Documentation<a class="headerlink" href="#building-documentation" title="Link to this heading"></a></h1>
 <section id="read-the-docs">
-<h2>Read The Docs<a class="headerlink" href="#read-the-docs" title="Permalink to this heading"></a></h2>
+<h2>Read The Docs<a class="headerlink" href="#read-the-docs" title="Link to this heading"></a></h2>
 <p>This documentation uses ReadTheDocs and Sphinx.</p>
-<section id="dependencies">
-<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this heading"></a></h3>
-<p>To build the documentation locally, you need to have Sphinx installed. You can install it via pip:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sphinx
-</pre></div>
-</div>
-<p>Moreover, as we use markdown files, you need to install the <code class="docutils literal notranslate"><span class="pre">myst_parser</span></code> package:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>myst-parser
-</pre></div>
-</div>
-<p>Moreover, to make the documentation look nice, we use the <code class="docutils literal notranslate"><span class="pre">sphinx_rtd_theme</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sphinx_rtd_theme
-</pre></div>
-</div>
-<p>Then, you can build the documentation by running:</p>
+<section id="building">
+<h3>Building<a class="headerlink" href="#building" title="Link to this heading"></a></h3>
+<p>The documentation dependencies are managed via <a class="reference external" href="https://docs.astral.sh/uv/">uv</a>. To build:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs_src/read_the_docs
-make<span class="w"> </span>html
+uv<span class="w"> </span>run<span class="w"> </span>make<span class="w"> </span>html
 </pre></div>
 </div>
+<p>This automatically creates a local <code class="docutils literal notranslate"><span class="pre">.venv</span></code>, installs the required packages (<code class="docutils literal notranslate"><span class="pre">sphinx</span></code>, <code class="docutils literal notranslate"><span class="pre">myst-parser</span></code>, <code class="docutils literal notranslate"><span class="pre">sphinx-rtd-theme</span></code>), and runs the Sphinx build.</p>
 <p>After this, currently we are manually copying the content of the _build folder to the <code class="docutils literal notranslate"><span class="pre">docs</span></code> folder in the root of the
 repository, which is used by the Github pages.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>&lt;repo_root&gt;
@@ -162,7 +159,7 @@ cp<span class="w"> </span>-r<span class="w"> </span>docs_src/read_the_docs/_buil
 </section>
 </section>
 <section id="doxygen">
-<h2>Doxygen<a class="headerlink" href="#doxygen" title="Permalink to this heading"></a></h2>
+<h2>Doxygen<a class="headerlink" href="#doxygen" title="Link to this heading"></a></h2>
 <p>We also use Doxygen to generate documentation for the C++ code. You can install it via:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>doxygen<span class="w"> </span>graphviz
 </pre></div>

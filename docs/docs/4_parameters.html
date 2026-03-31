@@ -1,21 +1,21 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Parameters &mdash; Holistic Fusion January 2025 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
-      <script src="_static/doctools.js?v=888ff710"></script>
-      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="_static/documentation_options.js?v=88014068"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -80,8 +80,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros1-noetic">ROS1 Noetic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros2-humble">ROS2 Humble</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id1">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id2">Running the Docker Container</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
@@ -98,7 +106,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#building">Building</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
@@ -131,11 +139,11 @@
            <div itemprop="articleBody">
              
   <section id="parameters">
-<h1>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h1>
+<h1>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h1>
 <p>The parameters of the <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> library are split in two parts: the parameters of the core library and the parameters of the ROS/ROS2 wrapper packages / downstream applications.</p>
 <p>All parameters are provided as YAML files. An example for a ROS1 application is provided in each of the example packages in the <a class="reference external" href="https://github.com/leggedrobotics/holistic_fusion/tree/main/ros">ROS1 examples</a>.</p>
 <section id="core-library-parameters">
-<h2>Core Library Parameters<a class="headerlink" href="#core-library-parameters" title="Permalink to this heading"></a></h2>
+<h2>Core Library Parameters<a class="headerlink" href="#core-library-parameters" title="Link to this heading"></a></h2>
 <p>The core libary parameters are given in the following 3 yaml file-types:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">core_extrinsic_params.yaml</span></code>: This file contains the names of the reference frames.</p></li>
@@ -144,20 +152,20 @@
 </ul>
 <p><strong>Note: <code class="docutils literal notranslate"><span class="pre">core_graph_params.yaml</span></code> only contains the noise parameters of the central IMU, as these are always needed for any holistic fusion application. The noise parameters of the other sensors are provided in the sensor-specific parameter files.</strong></p>
 <section id="core-extrinsic-parameters">
-<h3>Core Extrinsic Parameters<a class="headerlink" href="#core-extrinsic-parameters" title="Permalink to this heading"></a></h3>
+<h3>Core Extrinsic Parameters<a class="headerlink" href="#core-extrinsic-parameters" title="Link to this heading"></a></h3>
 <p>Coming soon.</p>
 </section>
 <section id="core-graph-config">
-<h3>Core Graph Config<a class="headerlink" href="#core-graph-config" title="Permalink to this heading"></a></h3>
+<h3>Core Graph Config<a class="headerlink" href="#core-graph-config" title="Link to this heading"></a></h3>
 <p>Coming soon.</p>
 </section>
 <section id="core-graph-parameters">
-<h3>Core Graph Parameters<a class="headerlink" href="#core-graph-parameters" title="Permalink to this heading"></a></h3>
+<h3>Core Graph Parameters<a class="headerlink" href="#core-graph-parameters" title="Link to this heading"></a></h3>
 <p>Coming soon.</p>
 </section>
 </section>
 <section id="applications-specific-parameters">
-<h2>Applications Specific Parameters<a class="headerlink" href="#applications-specific-parameters" title="Permalink to this heading"></a></h2>
+<h2>Applications Specific Parameters<a class="headerlink" href="#applications-specific-parameters" title="Link to this heading"></a></h2>
 <p>Application specific parameters are provided separately.
 In theory this can fully be done by the user, but we provide some examples for ROS1 and ROS2 applications in the respective example packages.</p>
 <p>An example for the anymal robot can be found in the <a class="reference external" href="https://github.com/leggedrobotics/holistic_fusion/tree/main/ros">ROS1 examples</a>.

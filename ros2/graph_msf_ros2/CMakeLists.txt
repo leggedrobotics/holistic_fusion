@@ -46,6 +46,7 @@ include_directories(
 add_library(${PROJECT_NAME} SHARED
   src/lib/StaticTransformsTf.cpp
   src/lib/GraphMsfRos2.cpp
+  src/lib/declareRosParams.cpp
   src/lib/readParams.cpp
   src/lib/conversions.cpp
 )
@@ -71,9 +72,6 @@ target_link_libraries(${PROJECT_NAME}
     tf2_ros::tf2_ros
     tf2_eigen::tf2_eigen
     graph_msf::graph_msf
-    # graph_msf_ros2_msgs::graph_msf_ros2_msgs
-    # rosidl_typesupport_cpp::rosidl_typesupport_cpp
-    # rosidl_service_type_support_t::rosidl_service_type_support_t
 )
 
 # Include directories for the library
@@ -99,18 +97,23 @@ install(PROGRAMS
 ## Install ##
 #############
 
+# Set standard installation directories
+include(GNUInstallDirs)
+
 # Export the include directories and linked libraries
 install(
     TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets  # Export the target for downstream usage
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+    INCLUDES DESTINATION include
 )
 
 # Install the include directory
-install(DIRECTORY include/
-        DESTINATION include
+install(
+  DIRECTORY include/
+  DESTINATION include
 )
 
 # Install the export file for downstream projects
@@ -135,12 +138,22 @@ configure_package_config_file(
   INSTALL_DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-# Files
+# Cmake Files
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-# Export ament package
-ament_package()
+# ##
+# # ROS2 Ament Package
+# ##
+
+# # Export the package for ament
+# ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+# ament_export_dependencies(
+#   graph_msf
+# )
+
+# # Finish ament package setup
+# ament_package()

@@ -90,6 +90,9 @@ class GraphManager {
                                   double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,
                                   const double robustNormConstant);
 
+  // Set T_W_F
+  bool setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
+
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update
   void updateGraph();

@@ -28,7 +28,7 @@ class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getLeggedOdometryFrame() { return leggedOdometryFrame_; }
 
  private:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Members
   std::string lioOdometryFrame_;

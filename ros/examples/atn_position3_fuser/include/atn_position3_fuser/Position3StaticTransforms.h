@@ -28,7 +28,7 @@ class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getGnssOfflinePoseMeasFrame() { return gnssOfflinePoseMeasFrame_; }
 
  protected:  // Methods
-  void findTransformations() override;
+  bool findTransformations() override;
 
  private:  // Members
   // Frame names

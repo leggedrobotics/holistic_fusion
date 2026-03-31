@@ -114,16 +114,6 @@ void GraphMsfHolistic::addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAb
   throw std::runtime_error("Velocity measurements in fixed frame are not yet supported.");
 }
 
-// Roll
-void GraphMsfHolistic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_W_frame) {
-  throw std::runtime_error("Roll measurements are not yet supported for the holistic MSF.");
-}
-
-// Pitch
-void GraphMsfHolistic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_W_frame) {
-  throw std::runtime_error("Pitch measurements are not yet supported for the holistic MSF.");
-}
-
 // Local Measurements: Fully Local ---------------------------------------------------------
 // Velocity3 in Body Frame
 void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) {

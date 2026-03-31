@@ -28,20 +28,16 @@ inline void printKey(const std::string& key, std::vector<double> vector) {
 
 // Implementation of Templating
 template <typename T>
-T tryGetParam(std::shared_ptr<rclcpp::Node> node, const std::string& key) {
+T tryGetParam(const rclcpp::Node* node, const std::string& key) {
   T value;
 
   if (node->get_parameter(key, value)) {
     printKey(key, value);
-    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter: %s", key.c_str());
-    // std::cout << YELLOW_START << "GraphMsfRos2 " << COLOR_END << key.c_str() << " set to: " << value << std::endl;
-    return value;
+   return value;
   }
 
   if (node->get_parameter("/" + key, value)) {
     printKey("/" + key, value);
-    RCLCPP_INFO(node->get_logger(), "Successfully retrieved parameter with absolute key: %s", ("/" + key).c_str());
-    // std::cout << YELLOW_START << "GraphMsfRos2 " << COLOR_END << key.c_str() << " set to: " << value << std::endl;
     return value;
   }
 

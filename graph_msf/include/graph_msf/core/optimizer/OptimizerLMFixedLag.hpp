@@ -41,13 +41,13 @@ class OptimizerLMFixedLag : public OptimizerLM {
   }
 
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) override {
     // Try to update
     try {
       fixedLagSmootherPtr_->update(newGraphFactors, newGraphValues, newGraphKeysTimeStampMap);
     } catch (const std::out_of_range& outOfRangeExeception) {  // Not specifically catching
       std::cerr << YELLOW_START << "GMsf-LM-FixedLagSmoother" << RED_START
-                << " Out of Range exception while optimizing graph: " << outOfRangeExeception.what() << COLOR_END << std::endl;
+                << " OutOfRange-Exception while optimizing graph: " << outOfRangeExeception.what() << COLOR_END << std::endl;
       std::cout
           << YELLOW_START << "GMsf-ISAM2" << RED_START
           << " This usually happens if the measurement delay is larger than the graph-smootherLag, i.e. the optimized graph instances are "

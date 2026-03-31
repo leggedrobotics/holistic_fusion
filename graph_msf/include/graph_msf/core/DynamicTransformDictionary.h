@@ -156,6 +156,16 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
     return stateKey;
   }
 
+  // Get initial guess for a specific frame pair
+  bool getInitialGuessForFramePair(const std::string& frame1, const std::string& frame2, GTSAM_DYNAMIC_STATE_TYPE& initialGuessRef) const {
+    auto it = transformGtsamKeyToInitialGuessMap_.find(std::make_pair(frame1, frame2));
+    if (it != transformGtsamKeyToInitialGuessMap_.end()) {
+      initialGuessRef = it->second;
+      return true;
+    }
+    return false;
+  }
+
   // Safe addition of new frame pair to dictionary --> checks whether already present
   template <char SYMBOL_CHAR>
   bool addNewFramePairSafelyToDictionary(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>& returnStateKey, const std::string& frame1,
@@ -187,6 +197,17 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
           addNewFactorGraphStateKey<SYMBOL_CHAR>(frame1, frame2, timeK, approximateTransformationBeforeOptimization, variableType);
       return true;
     }
+  }
+
+  // Set initial guess for a specific frame pair
+  void setInitialGuessForFramePair(const std::string& frame1, const std::string& frame2, const GTSAM_DYNAMIC_STATE_TYPE& initialGuess) {
+    transformGtsamKeyToInitialGuessMap_[std::make_pair(frame1, frame2)] = initialGuess;
+  }
+
+  // Remove initial guess for a specific frame pair
+  void removeInitialGuessForFramePair(const std::string& frame1, const std::string& frame2) {
+    std::cout << "Removing initial guess for frame pair: " << frame1 << ", " << frame2 << std::endl;
+    transformGtsamKeyToInitialGuessMap_.erase(std::make_pair(frame1, frame2));
   }
 
   // Functionality ------------------------------------------------------------
@@ -233,6 +254,8 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
   std::map<gtsam::Key, std::pair<std::string, std::string>> transformGtsamKeyToFramePairMap_;
   // Container for storing the keyframe position for each key (for later use)
   std::map<gtsam::Key, Eigen::Vector3d> transformGtsamKeyToKeyframePositionMap_;
+  // Container to store potential initial guesses
+  std::map<std::pair<std::string, std::string>, GTSAM_DYNAMIC_STATE_TYPE> transformGtsamKeyToInitialGuessMap_;
 
   // Mutex
   std::mutex internalDictionaryModifierMutex_;

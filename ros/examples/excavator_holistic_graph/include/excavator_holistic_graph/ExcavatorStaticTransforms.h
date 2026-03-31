@@ -29,7 +29,7 @@ class ExcavatorStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getCabinFrame() { return cabinFrame_; }
 
  protected:  // Methods
-  void findTransformations() override;
+  bool findTransformations() override;
 
  private:  // Members
   // Robot frame names

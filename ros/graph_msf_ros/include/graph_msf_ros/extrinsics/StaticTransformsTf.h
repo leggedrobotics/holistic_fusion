@@ -21,7 +21,7 @@ class StaticTransformsTf : public StaticTransforms {
   StaticTransformsTf() = default;
 
  protected:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Members
   tf::TransformListener listener_;

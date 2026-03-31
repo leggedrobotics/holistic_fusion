@@ -14,7 +14,10 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 // Transformation Functions
+// Remove roll and pitch
 void inPlaceRemoveRollPitch(Eigen::Isometry3d& T);
+// Calculate yaw from Isometry
+double getYawFromIsometry(const Eigen::Isometry3d& T);
 
 // Creation of Files
 // Pose 3

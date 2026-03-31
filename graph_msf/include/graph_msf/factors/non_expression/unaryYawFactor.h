@@ -11,7 +11,6 @@ Please see the LICENSE file that has been included as part of this package.
 // CPP
 #include <boost/none.hpp>
 #include <boost/shared_ptr.hpp>
-#include <string>
 
 // GTSAM
 #include <gtsam/base/OptionalJacobian.h>
@@ -44,6 +43,14 @@ class YawFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    * @brief vector of errors
    */
   gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, boost::optional<gtsam::Matrix&> H_Ptr = boost::none) const {
+    // If close to singularity, do not add measurement
+    if (std::abs(robotPose.rotation().pitch()) >= M_PI / 2.0 - 0.1 || std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
+      if (H_Ptr) {
+        (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
+      }
+      return gtsam::Vector1::Zero();
+    }
+
     // calculate error
     double yawError = robotPose.rotation().yaw(H_Ptr) - yaw_;
 

@@ -214,30 +214,47 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   updateImuIntegrators_(imuMeas);
 
   // 1.3 Predict propagated state via forward integration
+  // Previous pose
+  gtsam::Pose3 T_W_I_beforeInt = W_imuPropagatedState_.pose();
   if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
-    O_imuPropagatedState_ =
-        imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, O_imuPropagatedState_,
-                                                     optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector_);
     W_imuPropagatedState_ =
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
                                                      optimizedGraphState_.imuBias(), graphConfigPtr_->W_gravityVector_);
   } else {
-    O_imuPropagatedState_ =
-        imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, O_imuPropagatedState_,
-                                                     gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector_);
     W_imuPropagatedState_ =
         imuBufferPtr->integrateNavStateFromTimestamp(imuMeas.begin()->first, imuMeas.rbegin()->first, W_imuPropagatedState_,
                                                      gtsam::imuBias::ConstantBias(), graphConfigPtr_->W_gravityVector_);
   }
+  
+  // 1.4 Propagate to state in odom
+  // Delta pose
+  const gtsam::Pose3 T_W_I_afterInt = W_imuPropagatedState_.pose();
+  const gtsam::Pose3 T_Ikm1_Ik = T_W_I_beforeInt.between(T_W_I_afterInt);
+  // Pose of IMU in Odom
+  gtsam::Pose3 T_O_I = O_imuPropagatedState_.pose() * T_Ikm1_Ik;
+  // Get Gravity Alignment right also in Odom frame
+  const Eigen::Matrix3d& R_W_I = T_W_I_afterInt.rotation().matrix();
+  Eigen::Matrix3d R_O_I = T_O_I.rotation().matrix();
+  R_O_I.row(2) = R_W_I.row(2);  // Copy gravity direction
+  R_O_I.row(1) = R_O_I.row(2).cross(R_O_I.row(0)).normalized();
+  R_O_I.row(0) = R_O_I.row(1).cross(R_O_I.row(2)).normalized();
+  T_O_I = gtsam::Pose3(gtsam::Rot3(R_O_I), T_O_I.translation());
+  // Velocity
+  gtsam::Vector3 O_v_O_I = T_O_I.rotation() * W_imuPropagatedState_.bodyVelocity();
+  // Update the NavState
+  O_imuPropagatedState_ = gtsam::NavState(T_O_I.rotation(), T_O_I.translation(), O_v_O_I);
 
-  // 1.4 Fill in optimized state container
+  // 1.5 Fill in optimized state container
   if (optimizedGraphState_.isOptimized()) {
     newOptimizedNavStatePtr = std::make_shared<SafeNavStateWithCovarianceAndBias>(optimizedGraphState_);
   } else {
     newOptimizedNavStatePtr = nullptr;
   }
 
-  // 1.5 Return pre-integrated state
+  // 1.6 Transformation between World and Odom
+  T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+
+  // 1.7 Return pre-integrated state
   gtsam::NavState& T_O_Ik_nav = O_imuPropagatedState_;  // Alias
   // Assign poses and velocities
   returnPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
@@ -308,6 +325,15 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   }
 }
 
+// Set T_W_F
+bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
+  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>()
+          .setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
+  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix()
+            << std::endl;
+  return true;
+}
+
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
@@ -352,7 +378,6 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
                                               const double timeKm1, const double timeK, const double rate,
                                               const RobustNormEnum& robustNormEnum, const double robustNormConstant) {
   // Find corresponding keys in graph
-  // Find corresponding keys in graph
   const double maxLidarTimestampDistance = (1.0 / rate) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
   gtsam::Key closestKeyKm1, closestKeyK;
   double keyTimeStampDistance{0.0};
@@ -384,6 +409,10 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
       break;
     case RobustNormEnum::Tukey:
       robustErrorFunction = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noise);
+      break;
+    case RobustNormEnum::GemanMcClure:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noise);
       break;
   }
 
@@ -549,10 +578,13 @@ void GraphManager::updateGraph() {
   // A. NavState ------------------------------
   gtsam::NavState resultNavState =
       calculateNavStateAtGeneralKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
+  rtOptimizerPtr_->addLatestPoseBelief(resultNavState.pose());
   // B. Bias ------------------------------
   gtsam::imuBias::ConstantBias resultBias = rtOptimizerPtr_->calculateEstimatedBias(gtsam::symbol_shorthand::B(currentPropagatedKey));
-  // C. Compute & Transform Covariances ------------------------------
-  // Pose Covariance in World Frame
+  rtOptimizerPtr_->addLatestImuBiasBelief(resultBias);
+  // gtsam::Matrix resultAccBiasCov =
+  // rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::B(currentPropagatedKey)); C. Compute & Transform
+  // Covariances ------------------------------ Pose Covariance in World Frame
   gtsam::Matrix66 resultPoseCovarianceWorldFrame =
       calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
   // Velocity Covariance
@@ -700,7 +732,7 @@ void GraphManager::updateGraph() {
         catch (const std::out_of_range& exception) {
           // Only remove/deactivate measurements that are still active and have been optimized before
           if (framePairKeyMapIterator.second.getNumberStepsOptimized() > 0) {
-            REGULAR_COUT << RED_START << " OutOfRange-exception while querying the active transformation and/or covariance at key "
+            REGULAR_COUT << RED_START << " OutOfRange-Exception while querying the active transformation and/or covariance at key "
                          << gtsam::Symbol(gtsamKey) << ", for frame pair " << framePairKeyMapIterator.first.first << ","
                          << framePairKeyMapIterator.first.second << std::endl
                          << " This happens if the requested variable is outside of the smoother window (e.g. because corresponding "
@@ -768,16 +800,18 @@ void GraphManager::updateGraph() {
 
     // 3. State in Odom
     // Correct rotation only for roll and pitch, keep integrated yaw
-    gtsam::Rot3 R_O_I_rp_corrected =
-        gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
-                         W_imuPropagatedState_.pose().rotation().roll());
-    // Rotate corrected velocity to odom frame
-    gtsam::Vector3 O_v_O_I = R_O_I_rp_corrected * W_imuPropagatedState_.bodyVelocity();
+    // gtsam::Rot3 R_O_I_rp_corrected =
+    //     gtsam::Rot3::Ypr(O_imuPropagatedState_.pose().rotation().yaw(), W_imuPropagatedState_.pose().rotation().pitch(),
+    //                      W_imuPropagatedState_.pose().rotation().roll());
+    // TODO: Apply gravity correction
+    // gtsam::Rot3 R_O_I_rp_corrected = O_imuPropagatedState_.pose().rotation();
+    // // Rotate corrected velocity to odom frame
+    // gtsam::Vector3 O_v_O_I = R_O_I_rp_corrected * W_imuPropagatedState_.bodyVelocity();
     // Update the NavState
-    O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
+    // O_imuPropagatedState_ = gtsam::NavState(R_O_I_rp_corrected, O_imuPropagatedState_.pose().translation(), O_v_O_I);
 
-    // 4. Transformation between World and Odom
-    T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+    // // 4. Transformation between World and Odom
+    // T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
 
     // Update the time of the last optimized state
     lastOptimizedStateTime_ = currentPropagatedTime;

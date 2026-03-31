@@ -1,21 +1,21 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Usage &mdash; Holistic Fusion January 2025 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=82db1b9f"></script>
-      <script src="_static/doctools.js?v=888ff710"></script>
-      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="_static/documentation_options.js?v=88014068"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -80,8 +80,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="6_docker.html">Docker</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros1-noetic">ROS1 Noetic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="6_docker.html#ros2-humble">ROS2 Humble</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id1">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="6_docker.html#id2">Running the Docker Container</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
@@ -98,7 +106,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#building">Building</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
@@ -131,11 +139,11 @@
            <div itemprop="articleBody">
              
   <section id="usage">
-<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h1>
+<h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
 <p>The core library is plain C++ and can be used in any C++ project with CMake support.</p>
 <p>Moreover, we provide catkin and ament/colcon wrapper packages to conveniently use the library in ROS and ROS2 workspaces.</p>
 <section id="ros1-workspace">
-<h2>ROS1 Workspace<a class="headerlink" href="#ros1-workspace" title="Permalink to this heading"></a></h2>
+<h2>ROS1 Workspace<a class="headerlink" href="#ros1-workspace" title="Link to this heading"></a></h2>
 <p>For using <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> in a ROS1 workspace, we provide a package called <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code>.
 This package is exposing all <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> functionalities to the workspace, which can be used to compile the library with the catkin build system.
 To use <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> in a ROS1 workspace, you can directly include the <code class="docutils literal notranslate"><span class="pre">graph_msf_catkin</span></code> in you <code class="docutils literal notranslate"><span class="pre">package.xml</span></code> and <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> files as follows:</p>
@@ -179,8 +187,60 @@ To use <code class="docutils literal notranslate"><span class="pre">graph_msf</s
 </div>
 </section>
 <section id="ros2-workspace">
-<h2>ROS2 Workspace<a class="headerlink" href="#ros2-workspace" title="Permalink to this heading"></a></h2>
-<p>Under construction.</p>
+<h2>ROS2 Workspace<a class="headerlink" href="#ros2-workspace" title="Link to this heading"></a></h2>
+<p>For using <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> in a ROS2 workspace, we provide a package called <code class="docutils literal notranslate"><span class="pre">graph_msf_ros2</span></code>.
+This package is exposing all <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> functionalities to the workspace, which can be used to compile the library with the ament/colcon build system.
+To use <code class="docutils literal notranslate"><span class="pre">graph_msf</span></code> in a ROS2 workspace, you can directly include <code class="docutils literal notranslate"><span class="pre">graph_msf_ros2</span></code> in your <code class="docutils literal notranslate"><span class="pre">package.xml</span></code> and <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> files as follows:</p>
+<p>Package.xml:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;depend&gt;</span>graph_msf<span class="nt">&lt;/depend&gt;</span>
+<span class="nt">&lt;depend&gt;</span>graph_msf_ros2<span class="nt">&lt;/depend&gt;</span>
+</pre></div>
+</div>
+<p>CMakeLists.txt:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="c"># Find dependencies</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">ament_cmake</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">rclcpp</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">graph_msf_ros2</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+
+<span class="c"># Check if the target from graph_msf is already defined</span>
+<span class="nb">if</span><span class="p">(</span><span class="s">NOT</span><span class="w"> </span><span class="s">TARGET</span><span class="w"> </span><span class="s">graph_msf::graph_msf</span><span class="p">)</span>
+<span class="w">  </span><span class="nb">find_package</span><span class="p">(</span><span class="s">graph_msf</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">endif</span><span class="p">()</span>
+<span class="nb">if</span><span class="p">(</span><span class="s">NOT</span><span class="w"> </span><span class="s">TARGET</span><span class="w"> </span><span class="s">graph_msf_ros2::graph_msf_ros2</span><span class="p">)</span>
+<span class="w">  </span><span class="nb">find_package</span><span class="p">(</span><span class="s">graph_msf_ros2</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">endif</span><span class="p">()</span>
+
+<span class="c"># Includes</span>
+<span class="nb">include_directories</span><span class="p">(</span>
+<span class="w">  </span><span class="s">include</span>
+<span class="w">  </span><span class="o">${</span><span class="nv">EIGEN3_INCLUDE_DIR</span><span class="o">}</span>
+<span class="p">)</span>
+
+<span class="c"># Library</span>
+<span class="nb">add_library</span><span class="p">(</span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="w">  </span><span class="c"># Add your source files here</span>
+<span class="p">)</span>
+
+<span class="c"># Link against graph_msf and its dependencies</span>
+<span class="nb">ament_target_dependencies</span><span class="p">(</span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="w">  </span><span class="s">rclcpp</span>
+<span class="w">  </span><span class="s">graph_msf_ros2</span>
+<span class="w">  </span><span class="c"># Add other dependencies here</span>
+<span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="w">  </span><span class="s">graph_msf::graph_msf</span>
+<span class="p">)</span>
+
+<span class="c"># Install</span>
+<span class="nb">install</span><span class="p">(</span><span class="s">TARGETS</span><span class="w"> </span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="w">  </span><span class="s">ARCHIVE</span><span class="w"> </span><span class="s">DESTINATION</span><span class="w"> </span><span class="s">lib</span>
+<span class="w">  </span><span class="s">LIBRARY</span><span class="w"> </span><span class="s">DESTINATION</span><span class="w"> </span><span class="s">lib</span>
+<span class="w">  </span><span class="s">RUNTIME</span><span class="w"> </span><span class="s">DESTINATION</span><span class="w"> </span><span class="s">lib/</span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="p">)</span>
+
+<span class="nb">ament_package</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 </section>
 

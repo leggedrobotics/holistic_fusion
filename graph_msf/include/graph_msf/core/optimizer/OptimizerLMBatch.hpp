@@ -42,7 +42,7 @@ class OptimizerLMBatch : public OptimizerLM {
 
   // Add to graph without running optimization
   bool update(const gtsam::NonlinearFactorGraph& newGraphFactors, const gtsam::Values& newGraphValues,
-              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap) override {
+              const std::map<gtsam::Key, double>& newGraphKeysTimeStampMap, const int depth = 0) override {
     // Add Bundle Adjustement Smoother factors to batch without running optimization
     containerBatchSmootherFactors_.add(newGraphFactors);
     containerBatchSmootherValues_.insert(newGraphValues);
