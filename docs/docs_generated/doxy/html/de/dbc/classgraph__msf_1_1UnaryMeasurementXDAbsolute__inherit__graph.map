@@ -1,0 +1,12 @@
+<map id="graph_msf::UnaryMeasurementXDAbsolute&lt; MEASUREMENT_TYPE, DIM &gt;" name="graph_msf::UnaryMeasurementXDAbsolute&lt; MEASUREMENT_TYPE, DIM &gt;">
+<area shape="rect" id="Node000001" title="Class to represent x&#45;dimensional absolute unary measurement in the graph." alt="" coords="811,30,1037,85"/>
+<area shape="rect" id="Node000002" href="$d9/dc2/classgraph__msf_1_1UnaryMeasurementAbsolute.html" title="Class to represent an absolute unary measurement in the graph. Exact dimension is not known." alt="" coords="526,5,753,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="767,37,811,42,810,47,766,42"/>
+<area shape="rect" id="Node000003" href="$d0/da5/classgraph__msf_1_1UnaryMeasurement.html" title="Class to represent a unary measurement in the graph." alt="" coords="241,45,468,70"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="481,40,526,35,526,41,482,46"/>
+<area shape="rect" id="Node000005" href="$d5/d08/classgraph__msf_1_1UnaryMeasurementXD.html" title="Class to represent x&#45;dimensional unary measurement in the graph." alt="" coords="516,69,763,109"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="481,69,516,73,515,78,481,74"/>
+<area shape="rect" id="Node000004" href="$d0/d50/classgraph__msf_1_1Measurement.html" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="5,45,193,70"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="207,55,241,55,241,60,207,60"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="776,71,810,67,811,73,777,77"/>
+</map>
