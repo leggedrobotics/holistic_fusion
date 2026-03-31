@@ -1,0 +1,7 @@
+<map id="graph_msf::UnaryMeasurement" name="graph_msf::UnaryMeasurement">
+<area shape="rect" id="Node000001" title="Class to represent a unary measurement in the graph." alt="" coords="5,168,232,193"/>
+<area shape="rect" id="Node000002" href="$d0/d50/classgraph__msf_1_1Measurement.html" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="25,93,213,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="121,133,121,168,116,168,116,133"/>
+<area shape="rect" id="Node000003" href="$d8/d21/structgraph__msf_1_1RobustNorm.html" title="Class to represent a robust norm for a measurement." alt="" coords="29,5,208,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="121,45,121,93,116,93,116,45"/>
+</map>

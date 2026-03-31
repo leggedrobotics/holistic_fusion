@@ -1,0 +1,18 @@
+<map id="graph_msf/include/graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h" name="graph_msf/include/graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,224,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="87,372,185,397"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,61,69,112,42,179,33,216,30,253,34,289,46,323,66,346,93,364,90,368,63,350,42,325,28,290,24,253,28,215,37,178,65,110,94,59"/>
+<area shape="rect" id="Node000003" href="$d7/db7/Trajectory_8h.html" title=" " alt="" coords="57,196,215,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="120,60,135,182,129,182,115,61"/>
+<area shape="rect" id="Node000005" href="$dc/d38/TrajectoryAlignment_8h.html" title=" " alt="" coords="152,108,395,148"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="161,58,231,99,228,103,158,62"/>
+<area shape="rect" id="Node000004" href="$d7/db5/Pose_8h.html" title=" " alt="" coords="57,284,215,324"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="139,236,139,270,133,270,133,236"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="139,324,139,358,133,358,133,324"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="276,149,274,184,267,230,253,280,229,326,205,350,177,368,175,364,202,346,225,322,248,278,262,229,268,183,271,148"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="245,150,179,191,177,186,242,146"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="291,203,368,229"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="288,147,316,190,312,193,284,150"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="392,203,456,229"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="308,146,393,194,391,199,305,150"/>
+</map>
