@@ -34,7 +34,7 @@ class StaticTransformsUrdf : public StaticTransforms {
   std::shared_ptr<rclcpp::Node> privateNode_;
 
  private:
-  virtual void findTransformations() = 0;
+  virtual bool findTransformations() = 0;
 };
 
 }  // namespace graph_msf

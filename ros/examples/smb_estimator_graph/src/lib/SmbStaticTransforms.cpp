@@ -22,7 +22,7 @@ SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<ros::NodeHandle> 
   REGULAR_COUT << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
-void SmbStaticTransforms::findTransformations() {
+bool SmbStaticTransforms::findTransformations() {
   // Super Method
   graph_msf::StaticTransformsTf::findTransformations();
 
@@ -97,6 +97,7 @@ void SmbStaticTransforms::findTransformations() {
   lv_T_frame1_frame2(wheelLinearVelocityRightFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_).inverse();
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
+  return true;
 }
 
 }  // namespace smb_se

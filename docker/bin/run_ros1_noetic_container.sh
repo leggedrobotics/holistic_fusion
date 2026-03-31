@@ -19,12 +19,21 @@ set -e
 # Image name
 IMAGE="rslethz/holistic_fusion_ros1:latest"
 
+# Repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Entry point
 ENTRYPOINT="/entrypoint.sh"
 
 # Graphical output
 XSOCK=/tmp/.X11-unix
-XAUTH=/tmp/.docker.xauth
+XAUTH=$HOME/.docker.xauth
+
+# Set up X11 forwarding
+touch $XAUTH
+xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
+xhost +local:docker > /dev/null 2>&1 || true
 
 # Create symlinks to user configs within the build context.
 mkdir -p .etc && cd .etc
@@ -48,6 +57,8 @@ RUN_COMMAND="docker run \
   --privileged \
   --net=host \
   -eHOST_USERNAME=$(whoami) \
+  -eREPO_DIR=$REPO_DIR \
+  -v$REPO_DIR:/ros_ws/src/holistic_fusion \
   -v$HOME:$HOME \
   -v$(pwd)/.etc/shadow:/etc/shadow \
   -v$(pwd)/.etc/passwd:/etc/passwd \

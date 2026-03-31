@@ -14,12 +14,31 @@
 #=============================================================================
 figlet holistic_fusion
 #==
+# Set up the catkin workspace
+#==
+# Create symlink to the repo and import third-party dependencies
+if [ ! -d /ros_ws/src/kindr ]; then
+    echo "[entrypoint.sh]: Importing third-party dependencies into /ros_ws/src..."
+    cd /ros_ws/src && vcs import . < $REPO_DIR/catkin_workspace.vcs
+fi
+# Initialize catkin workspace if not yet done
+if [ ! -f /ros_ws/.catkin_tools/profiles/default/config.yaml ]; then
+    echo "[entrypoint.sh]: Initializing catkin workspace..."
+    cd /ros_ws && source /opt/ros/noetic/setup.bash \
+      && catkin init \
+      && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+fi
+
+# Ensure the host user owns the workspace
+chown -R $HOST_USERNAME:$HOST_USERNAME /ros_ws
+
+#==
 # Log into the container as the host user
 #==
 # set home for host user
 export HOME=/home/$HOST_USERNAME
 export USER=$HOST_USERNAME
-cd $HOME
+cd /ros_ws
 
 # Enable sudo access without password
 echo "root ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers

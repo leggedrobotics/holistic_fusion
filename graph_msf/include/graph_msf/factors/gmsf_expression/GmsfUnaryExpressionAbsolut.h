@@ -227,13 +227,6 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
           REGULAR_COUT << GREEN_START << " Adding relative RANDOM WALK constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
                        << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
 
-          // TODO: Remove
-          // Add prior to variable to check
-          // this->newOnlinePosePriorFactors_.emplace_back(graphKey.key(), T_W_fixedFrame_initial,
-          //                                               gtsam::noiseModel::Diagonal::Sigmas(Eigen::Matrix<double, 6, 1>::Identity() *
-          //                                               0.1));
-          // REGULAR_COUT << GREEN_START << " Adding prior to new keyframe " << gtsam::Symbol(graphKey.key()) << " with noise "
-          //              << Eigen::Matrix<double, 6, 1>::Identity() * 0.1 << COLOR_END << std::endl;
         }
         // b): Deterministic displacement modelled as equality constraint
         else {
