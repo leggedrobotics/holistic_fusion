@@ -1,0 +1,12 @@
+<map id="imu_integrator::ImuIntegrator" name="imu_integrator::ImuIntegrator">
+<area shape="rect" id="Node000001" title=" " alt="" coords="117,225,332,251"/>
+<area shape="rect" id="Node000002" href="$df/da6/classgraph__msf_1_1GraphMsfRos.html" title=" " alt="" coords="132,152,317,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="227,191,227,225,222,225,222,191"/>
+<area shape="rect" id="Node000003" href="$da/d66/classgraph__msf_1_1GraphMsfClassic.html" title=" " alt="" coords="5,79,212,104"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="140,109,207,149,204,154,137,113"/>
+<area shape="rect" id="Node000004" href="$de/d5e/classgraph__msf_1_1GraphMsf.html" title=" " alt="" coords="144,5,305,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="196,40,129,81,126,76,193,35"/>
+<area shape="rect" id="Node000005" href="$d9/d08/classgraph__msf_1_1GraphMsfHolistic.html" title=" " alt="" coords="237,79,447,104"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="257,35,324,76,321,81,254,40"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="313,113,245,154,242,149,310,109"/>
+</map>
