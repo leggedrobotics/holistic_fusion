@@ -4,32 +4,16 @@
 
 This documentation uses ReadTheDocs and Sphinx.
 
-### Dependencies
+### Building
 
-To build the documentation locally, you need to have Sphinx installed. You can install it via pip:
-
-```bash
-pip install sphinx
-```
-
-Moreover, as we use markdown files, you need to install the `myst_parser` package:
-
-```bash
-pip install myst-parser
-```
-
-Moreover, to make the documentation look nice, we use the `sphinx_rtd_theme`:
-
-```bash
-pip install sphinx_rtd_theme
-```
-
-Then, you can build the documentation by running:
+The documentation dependencies are managed via [uv](https://docs.astral.sh/uv/). To build:
 
 ```bash
 cd docs_src/read_the_docs
-make html
+uv run make html
 ```
+
+This automatically creates a local `.venv`, installs the required packages (`sphinx`, `myst-parser`, `sphinx-rtd-theme`), and runs the Sphinx build.
 
 After this, currently we are manually copying the content of the _build folder to the `docs` folder in the root of the
 repository, which is used by the Github pages.

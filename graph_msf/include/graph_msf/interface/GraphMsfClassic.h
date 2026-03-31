@@ -25,6 +25,9 @@ class GraphMsfClassic : virtual public GraphMsf {
 
   // Adder Functions for Holistic Fusion
   /// Unary Measurements
+  //// Absolute Measurements
+  void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) override;
+  void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) override;
   void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) override;
 
   /// Binary Measurements

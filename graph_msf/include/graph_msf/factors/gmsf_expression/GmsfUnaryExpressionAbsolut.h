@@ -57,6 +57,19 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Initial Guess
     gtsam::Pose3 T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
 
+    // If initial guess is externally set
+    bool initialGuessSetExternally = false;
+    if (gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getInitialGuessForFramePair(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
+                                                                                   gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
+                                                                                   T_W_fixedFrame_initial)) {
+      initialGuessSetExternally = true;
+      REGULAR_COUT << GREEN_START << " Initial guess for transform " << gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName() << " to "
+                   << gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() << " was set externally." << COLOR_END << std::endl;
+      // Remove from map
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeInitialGuessForFramePair(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
+                                                                                    gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName());
+    }
+
     // A. Search for the new graph key of T_fixedFrame_W -----------------------------------------------------
     bool newGraphKeyAddedFlag = false;
     const DynamicVariableType dynamicVariableType =
@@ -161,7 +174,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // D: Shift the measurement to the robot position and recompute initial guess if we create keyframes -----------------------------------
     // Has to be done here, as we did not know the keyframe position before
-    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) {
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && !initialGuessSetExternally) {
       // Shift the measurement to the robot position
       this->setMeasurementPosition(this->getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
       // Recompute initial guess
@@ -213,6 +226,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
           // Add prior from old keyframe to new keyframe
           REGULAR_COUT << GREEN_START << " Adding relative RANDOM WALK constraint from key " << gtsam::Symbol(oldGtsamKey) << " to key "
                        << gtsam::Symbol(graphKey.key()) << ": " << T_fixedFrameOld_fixedFrame << COLOR_END << std::endl;
+
         }
         // b): Deterministic displacement modelled as equality constraint
         else {

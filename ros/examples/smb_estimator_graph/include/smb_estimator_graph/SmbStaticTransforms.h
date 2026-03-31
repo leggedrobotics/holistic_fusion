@@ -31,7 +31,7 @@ class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getVioOdometryFrame() { return vioOdometryFrame_; }
 
  private:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Frames
   // LiDAR
