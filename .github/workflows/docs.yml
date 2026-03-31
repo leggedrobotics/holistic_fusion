@@ -32,7 +32,9 @@ jobs:
         run: uv run make html
 
       - name: Copy Sphinx output to docs
-        run: cp -r docs/docs_src/read_the_docs/_build/html/* docs/docs/
+        run: |
+          mkdir -p docs/docs
+          cp -r docs/docs_src/read_the_docs/_build/html/* docs/docs/
 
       # --- Doxygen ---
       - name: Install Doxygen
