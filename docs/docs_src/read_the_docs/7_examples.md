@@ -37,4 +37,62 @@ Some other more simplified examples are:
 
 ## ROS2 Examples
 
-Coming soon.
+### SuperMegaBot ROS2 Example
+
+The ROS2 port of the SMB estimator is available in the
+[smb_estimator_graph_ros2](https://github.com/leggedrobotics/holistic_fusion/tree/main/ros2/examples/smb_estimator_graph_ros2) package.
+It demonstrates fusing IMU, LiDAR odometry, wheel odometry, and optionally VIO for the Super Mega Bot.
+
+#### Fused Measurements
+
+The example supports the following measurement sources (individually toggleable via parameters):
+
+| Measurement | Type | ROS Topic | Factor Type |
+|-------------|------|-----------|-------------|
+| IMU | Core | `/imu/data_raw` | Preintegrated IMU factor |
+| LiDAR Odometry | Absolute (6D) | `/open3d/scan2map_odometry` | Unary Pose3 Absolute |
+| Wheel Odometry | Binary (6D) | `/wheel_odometry` | Binary Pose3 Between |
+| Wheel Velocities | Local (3D) | `/wheel_velocities` | Unary Velocity3 Local |
+| VIO Odometry | Binary (6D) | `/tracking_camera/odom/sample` | Binary Pose3 Between |
+
+#### Running
+
+Launch the estimator with:
+
+```bash
+ros2 launch smb_estimator_graph_ros2 smb_estimator_graph.launch.py
+```
+
+Topic names can be remapped via launch arguments:
+
+```bash
+ros2 launch smb_estimator_graph_ros2 smb_estimator_graph.launch.py \
+    imu_topic_name:=/my_imu/data \
+    lidar_odometry_topic_name:=/my_lidar/odom
+```
+
+Additional launch files are provided for replay and simulation:
+
+- `smb_estimator_graph_replay.launch.py` — for playing back rosbags.
+- `smb_estimator_graph_sim.launch.py` — for simulation environments.
+
+#### Configuration
+
+Parameters are split into two layers:
+
+- **Core parameters** (`config/core/`): General graph settings shared across applications.
+    - `core_graph_config.yaml` — high-level graph configuration.
+    - `core_graph_params.yaml` — IMU noise parameters and graph tuning.
+    - `core_extrinsic_params.yaml` — reference frame names.
+- **SMB-specific parameters** (`config/smb_specific/`): Sensor noise and extrinsics specific to SMB.
+    - `smb_graph_params.yaml` — sensor noise values and feature flags (e.g., `useLioOdometry`, `useWheelOdometryBetween`).
+    - `smb_extrinsic_params.yaml` — sensor frame extrinsic calibrations.
+
+#### Differences from the ROS1 Version
+
+The ROS2 SMB example is architecturally equivalent to the ROS1 version but uses:
+
+- `rclcpp::Node` and `ament_cmake` build system.
+- Python-based launch files instead of XML.
+- Dedicated worker threads for publishing to minimize latency.
+- Layered YAML parameter files loaded in the launch description.
