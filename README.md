@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs_src/img/logo.png" width="60%" height="60%">
+<img src="docs/docs_src/img/logo.png" width="60%" height="60%">
 </p>
 
 # Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs
@@ -42,7 +42,7 @@ future.
 **More instructions will be added to the ReadTheDocs page soon.**
 
 <p align="center">
-<img src="docs_src/img/hf_illustration.png" width="100%" height="60%">
+<img src="docs/docs_src/img/hf_illustration.png" width="100%" height="60%">
 </p>
 
 ## Modules and Packages
