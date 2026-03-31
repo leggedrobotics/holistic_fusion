@@ -1,0 +1,5 @@
+<map id="graph_msf::Measurement" name="graph_msf::Measurement">
+<area shape="rect" id="Node000001" title="Class to represent a measurement in the graph. It is a pure virtual class." alt="" coords="5,93,193,119"/>
+<area shape="rect" id="Node000002" href="$d8/d21/structgraph__msf_1_1RobustNorm.html" title="Class to represent a robust norm for a measurement." alt="" coords="10,5,189,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,45,102,93,97,93,97,45"/>
+</map>
