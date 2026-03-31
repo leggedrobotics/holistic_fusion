@@ -1,0 +1,223 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Docker &mdash; Holistic Fusion January 2025 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=88014068"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="7_examples.html" />
+    <link rel="prev" title="GTSAM Catkin" href="5_gtsam_catkin.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Holistic Fusion
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="1_installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#requirements">Requirements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1_installation.html#custom-build">Custom Build</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="1_installation.html#graph-msf-core">Graph MSF Core</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#eigen3">Eigen3</a></li>
+<li class="toctree-l5"><a class="reference internal" href="1_installation.html#gtsam">GTSAM</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#core-library">Core Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#catkin-workspace">Catkin Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_installation.html#colcon-workspace">Colcon Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="2_system_overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros1-workspace">ROS1 Workspace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_usage.html#ros2-workspace">ROS2 Workspace</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="4_parameters.html">Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#core-library-parameters">Core Library Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-extrinsic-parameters">Core Extrinsic Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-config">Core Graph Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="4_parameters.html#core-graph-parameters">Core Graph Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="4_parameters.html#applications-specific-parameters">Applications Specific Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="5_gtsam_catkin.html">GTSAM Catkin</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Docker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ros1-noetic">ROS1 Noetic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#building-the-docker-image">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#running-the-docker-container">Running the Docker Container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ros2-humble">ROS2 Humble</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Building the Docker Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Running the Docker Container</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="7_examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros1-examples">ROS1 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#anymal-example">ANYmal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#excavator-example">Excavator Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#supermegabot-example">SuperMegaBot Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#ground-generation-example">Ground Generation Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="7_examples.html#other-examples">Other Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="7_examples.html#ros2-examples">ROS2 Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="8_documentation.html">Building Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#read-the-docs">Read The Docs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="8_documentation.html#building">Building</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="8_documentation.html#doxygen">Doxygen</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Holistic Fusion</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Docker</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/6_docker.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="docker">
+<h1>Docker<a class="headerlink" href="#docker" title="Link to this heading"></a></h1>
+<p>We provide Dockerfiles for both ROS1 Noetic (Ubuntu 20.04) and ROS2 Humble (Ubuntu 22.04) with all dependencies installed.</p>
+<section id="ros1-noetic">
+<h2>ROS1 Noetic<a class="headerlink" href="#ros1-noetic" title="Link to this heading"></a></h2>
+<section id="building-the-docker-image">
+<h3>Building the Docker Image<a class="headerlink" href="#building-the-docker-image" title="Link to this heading"></a></h3>
+<p>To build the docker image, simply run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker/bin/build_ros1_noetic_image.sh
+</pre></div>
+</div>
+</section>
+<section id="running-the-docker-container">
+<h3>Running the Docker Container<a class="headerlink" href="#running-the-docker-container" title="Link to this heading"></a></h3>
+<p>To run the docker container, you can use the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker/bin/run_ros1_noetic_container.sh
+</pre></div>
+</div>
+<p>This will start a new container from the <code class="docutils literal notranslate"><span class="pre">$USER</span></code> (not sudo) to avoid permission issues with the workspace.
+The whole <code class="docutils literal notranslate"><span class="pre">$HOME</span></code> folder is shared with the container, so you can access and develop inside your workspace.
+The repository is mounted into <code class="docutils literal notranslate"><span class="pre">/ros_ws/src/holistic_fusion</span></code>, and third-party dependencies are automatically imported on first startup via <code class="docutils literal notranslate"><span class="pre">vcs</span> <span class="pre">import</span></code>.
+The catkin workspace is initialized with <code class="docutils literal notranslate"><span class="pre">cmake-args</span> <span class="pre">-DCMAKE_BUILD_TYPE=Release</span></code>.</p>
+</section>
+</section>
+<section id="ros2-humble">
+<h2>ROS2 Humble<a class="headerlink" href="#ros2-humble" title="Link to this heading"></a></h2>
+<section id="id1">
+<h3>Building the Docker Image<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<p>To build the docker image, simply run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker/bin/build_ros2_humble_image.sh
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>Running the Docker Container<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>To run the docker container, you can use the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker/bin/run_ros2_humble_container.sh
+</pre></div>
+</div>
+<p>This will start a new container from the <code class="docutils literal notranslate"><span class="pre">$USER</span></code> (not sudo) to avoid permission issues with the workspace.
+The whole <code class="docutils literal notranslate"><span class="pre">$HOME</span></code> folder is shared with the container, so you can access and develop inside your workspace.
+The repository is mounted into <code class="docutils literal notranslate"><span class="pre">/ros2_ws/src/holistic_fusion</span></code>, and third-party dependencies are automatically imported on first startup via <code class="docutils literal notranslate"><span class="pre">vcs</span> <span class="pre">import</span></code>.</p>
+<p>A convenience function <code class="docutils literal notranslate"><span class="pre">colcon_build_up_to</span></code> is available inside the container, e.g.:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>colcon_build_up_to<span class="w"> </span>smb_estimator_graph_ros2
+</pre></div>
+</div>
+<p>This wraps <code class="docutils literal notranslate"><span class="pre">colcon</span> <span class="pre">build</span> <span class="pre">--symlink-install</span> <span class="pre">--cmake-args</span> <span class="pre">-DPYTHON_EXECUTABLE=/usr/bin/python3</span> <span class="pre">-DCMAKE_BUILD_TYPE=RelWithDebInfo</span> <span class="pre">--event-handlers</span> <span class="pre">console_direct+</span> <span class="pre">--packages-up-to</span> <span class="pre">&lt;package&gt;</span></code>.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="5_gtsam_catkin.html" class="btn btn-neutral float-left" title="GTSAM Catkin" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="7_examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Julian Nubert, Turcan Tuna, Jonas Frey, Cesar Cadena, Katherine J. Kuchenbecker, Shehryar Khattak, Marco Hutter.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
