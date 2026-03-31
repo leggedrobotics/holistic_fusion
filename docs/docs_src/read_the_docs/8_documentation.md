@@ -1,5 +1,11 @@
 # Building Documentation
 
+Documentation is automatically built and deployed to GitHub Pages on every push to `main` via the
+[docs GitHub Action](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/docs.yml).
+On pull requests, the documentation is built (but not deployed) to catch errors early.
+
+The sections below describe how to build the documentation locally.
+
 ## Read The Docs
 
 This documentation uses ReadTheDocs and Sphinx.
@@ -15,8 +21,7 @@ uv run make html
 
 This automatically creates a local `.venv`, installs the required packages (`sphinx`, `myst-parser`, `sphinx-rtd-theme`), and runs the Sphinx build.
 
-After this, currently we are manually copying the content of the _build folder to the `docs` folder in the root of the
-repository, which is used by the Github pages.
+To update the served documentation locally, copy the build output:
 
 ```bash
 cd <repo_root>
