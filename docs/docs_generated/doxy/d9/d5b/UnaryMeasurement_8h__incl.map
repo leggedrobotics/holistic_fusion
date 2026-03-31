@@ -1,9 +1,0 @@
-<map id="graph_msf/include/graph_msf/measurements/UnaryMeasurement.h" name="graph_msf/include/graph_msf/measurements/UnaryMeasurement.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,307,45"/>
-<area shape="rect" id="Node000002" href="$d6/dc4/Measurement_8h.html" title=" " alt="" coords="59,93,253,133"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,46,159,79,153,79,153,46"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="56,181,155,207"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="146,135,123,171,118,168,141,132"/>
-<area shape="rect" id="Node000004" title=" " alt="" coords="179,181,237,207"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="171,132,195,168,190,171,166,135"/>
-</map>
