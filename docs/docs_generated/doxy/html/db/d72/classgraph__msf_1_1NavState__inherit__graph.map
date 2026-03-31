@@ -1,7 +1,0 @@
-<map id="graph_msf::NavState" name="graph_msf::NavState">
-<area shape="rect" id="Node000001" title=" " alt="" coords="138,5,297,31"/>
-<area shape="rect" id="Node000002" href="$d5/da0/classgraph__msf_1_1SafeIntegratedNavState.html" title=" " alt="" coords="5,79,200,119"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,41,132,81,129,76,187,36"/>
-<area shape="rect" id="Node000003" href="$db/d61/classgraph__msf_1_1SafeNavStateWithCovarianceAndBias.html" title=" " alt="" coords="225,79,442,119"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="248,36,307,76,304,81,245,41"/>
-</map>
