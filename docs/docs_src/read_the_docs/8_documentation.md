@@ -20,7 +20,7 @@ repository, which is used by the Github pages.
 
 ```bash
 cd <repo_root>
-cp -r docs/docs_src/read_the_docs/_build/html/* docs/docs_generated/docs/
+cp -r docs/docs_src/read_the_docs/_build/html/* docs/docs/
 ```
 
 ## Doxygen
