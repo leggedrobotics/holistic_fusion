@@ -1,0 +1,21 @@
+<map id="graph_msf::GraphManager" name="graph_msf::GraphManager">
+<area shape="rect" id="Node000001" title="GraphManager class." alt="" coords="1324,117,1519,142"/>
+<area shape="rect" id="Node000002" href="$d2/d67/classgraph__msf_1_1DynamicDictionaryContainer.html" title=" " alt="" coords="840,52,1063,92"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1077,81,1300,107,1348,114,1347,119,1300,112,1076,86"/>
+<area shape="rect" id="Node000003" href="$d7/d3f/classgraph__msf_1_1DynamicTransformDictionary.html" title=" " alt="" coords="303,5,525,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="539,32,816,56,840,58,840,64,816,61,538,38"/>
+<area shape="rect" id="Node000004" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="5,5,243,45"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="257,23,303,23,303,28,257,28"/>
+<area shape="rect" id="Node000005" href="$d7/d3f/classgraph__msf_1_1DynamicTransformDictionary.html" title=" " alt="" coords="303,69,525,109"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="538,83,840,73,840,78,539,88"/>
+<area shape="rect" id="Node000006" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="5,69,243,109"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="257,87,303,87,303,92,257,92"/>
+<area shape="rect" id="Node000007" href="$d5/d3f/classgraph__msf_1_1FileLogger.html" title=" " alt="" coords="869,117,1034,142"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1048,127,1324,127,1324,132,1048,132"/>
+<area shape="rect" id="Node000008" href="$db/d64/classgraph__msf_1_1GraphState.html" title=" " alt="" coords="866,166,1037,191"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1050,170,1170,160,1300,147,1349,139,1350,145,1300,152,1170,166,1051,175"/>
+<area shape="rect" id="Node000009" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="295,145,533,185"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="547,166,866,174,866,179,546,171"/>
+<area shape="rect" id="Node000010" href="$d3/da1/classgraph__msf_1_1TransformsDictionary.html" title=" " alt="" coords="292,220,536,260"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="549,242,679,239,748,233,815,223,872,207,920,189,922,194,874,212,817,228,749,238,679,244,549,248"/>
+</map>
