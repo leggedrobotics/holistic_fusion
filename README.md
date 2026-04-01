@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs_src/img/logo.png" width="60%" height="60%">
+<img src="docs/docs_src/img/logo.png" width="60%" height="60%">
 </p>
 
 # Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs
@@ -20,7 +20,7 @@
     <a href="https://leggedrobotics.github.io/holistic_fusion/">Homepage</a> |
     <a href="https://arxiv.org/abs/2504.06479">Paper</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs">Docs</a> |
-    <a href="https://leggedrobotics.github.io/holistic_fusion/doxy/html/">Doxygen</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/doxy/">Doxygen</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a> |
     <a href="https://www.youtube.com/leggedrobotics">Video</a> |
 </h4>
@@ -42,7 +42,7 @@ future.
 **More instructions will be added to the ReadTheDocs page soon.**
 
 <p align="center">
-<img src="docs_src/img/hf_illustration.png" width="100%" height="60%">
+<img src="docs/docs_src/img/hf_illustration.png" width="100%" height="60%">
 </p>
 
 ## Modules and Packages
@@ -81,7 +81,7 @@ regarding installation and usage.
 
 ## Code Documentation
 
-Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy/html) for documentation of the code.
+Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy) for documentation of the code.
 
 ## Paper
 

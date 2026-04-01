@@ -4,9 +4,11 @@
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # Documentation Artifacts
-docs_src/read_the_docs/_build
-docs_src/read_the_docs/_static
-docs_src/read_the_docs/_templates
+docs/docs_src/read_the_docs/_build
+docs/docs_src/read_the_docs/_static
+docs/docs_src/read_the_docs/_templates
+docs/docs/
+docs/doxy/
 *.doctree
 
 # Node artifact files
