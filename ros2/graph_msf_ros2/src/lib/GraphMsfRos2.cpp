@@ -49,6 +49,16 @@ struct HeadingSigmaEstimate {
   double sigmaRad = 0.0;
 };
 
+struct AttitudeSigmaEstimate {
+  bool valid = false;
+  double rollRad = 0.0;
+  double pitchRad = 0.0;
+  double yawRad = 0.0;
+  double rollSigmaRad = 0.0;
+  double pitchSigmaRad = 0.0;
+  double yawSigmaRad = 0.0;
+};
+
 struct HeadingMarkerStyle {
   std::string sourceLabel;
   std::string markerSuffix;
@@ -74,6 +84,16 @@ inline bool extractWorldHeading(const gtsam::Pose3& pose, double& headingRad) {
   return true;
 }
 
+inline bool extractWorldRoll(const gtsam::Pose3& pose, double& rollRad) {
+  rollRad = pose.rotation().roll();
+  return std::isfinite(rollRad);
+}
+
+inline bool extractWorldPitch(const gtsam::Pose3& pose, double& pitchRad) {
+  pitchRad = pose.rotation().pitch();
+  return std::isfinite(pitchRad);
+}
+
 gtsam::Pose3 perturbPose(const gtsam::Pose3& pose, const gtsam::Vector6& delta, const PoseTangentFrame tangentFrame) {
   const gtsam::Pose3 deltaPose = gtsam::Pose3::Expmap(delta);
   if (tangentFrame == PoseTangentFrame::kLeftWorld) {
@@ -82,19 +102,19 @@ gtsam::Pose3 perturbPose(const gtsam::Pose3& pose, const gtsam::Vector6& delta, 
   return pose.compose(deltaPose);
 }
 
-HeadingSigmaEstimate computeYawMeanSigmaNumeric(const gtsam::Pose3& pose,
-                                               const gtsam::Matrix66& covariance,
-                                               const PoseTangentFrame tangentFrame) {
-  HeadingSigmaEstimate result;
-  if (!extractWorldHeading(pose, result.yawRad)) {
+AttitudeSigmaEstimate computeAttitudeMeanSigmasNumeric(const gtsam::Pose3& pose,
+                                                       const gtsam::Matrix66& covariance,
+                                                       const PoseTangentFrame tangentFrame) {
+  AttitudeSigmaEstimate result;
+  if (!extractWorldRoll(pose, result.rollRad) || !extractWorldPitch(pose, result.pitchRad) ||
+      !extractWorldHeading(pose, result.yawRad)) {
     return result;
   }
 
-  // The covariance query and the yaw Jacobian live in the tangent space of the pose representation.
-  // We therefore estimate the scalar yaw Jacobian numerically in the same tangent convention as the covariance.
-  // For the optimized robot pose, GraphManager already mapped the covariance to left/world tangent coordinates.
+  // The covariance query and the angle Jacobians live in the tangent space of the pose representation.
+  // Estimate all three scalar Jacobians numerically in the same tangent convention as the covariance.
   constexpr double kEps = 1e-6;
-  Eigen::Matrix<double, 1, 6> J = Eigen::Matrix<double, 1, 6>::Zero();
+  Eigen::Matrix<double, 3, 6> J = Eigen::Matrix<double, 3, 6>::Zero();
   for (int i = 0; i < 6; ++i) {
     gtsam::Vector6 delta = gtsam::Vector6::Zero();
     delta(i) = kEps;
@@ -102,19 +122,47 @@ HeadingSigmaEstimate computeYawMeanSigmaNumeric(const gtsam::Pose3& pose,
     const gtsam::Pose3 posePlus = perturbPose(pose, delta, tangentFrame);
     const gtsam::Pose3 poseMinus = perturbPose(pose, -delta, tangentFrame);
 
+    double rollPlus = 0.0;
+    double pitchPlus = 0.0;
     double yawPlus = 0.0;
+    double rollMinus = 0.0;
+    double pitchMinus = 0.0;
     double yawMinus = 0.0;
-    if (!extractWorldHeading(posePlus, yawPlus) || !extractWorldHeading(poseMinus, yawMinus)) {
-      return HeadingSigmaEstimate{};
+    if (!extractWorldRoll(posePlus, rollPlus) || !extractWorldPitch(posePlus, pitchPlus) ||
+        !extractWorldHeading(posePlus, yawPlus) || !extractWorldRoll(poseMinus, rollMinus) ||
+        !extractWorldPitch(poseMinus, pitchMinus) || !extractWorldHeading(poseMinus, yawMinus)) {
+      return AttitudeSigmaEstimate{};
     }
-    J(i) = wrapAnglePi(yawPlus - yawMinus) / (2.0 * kEps);
+
+    J(0, i) = wrapAnglePi(rollPlus - rollMinus) / (2.0 * kEps);
+    J(1, i) = (pitchPlus - pitchMinus) / (2.0 * kEps);
+    J(2, i) = wrapAnglePi(yawPlus - yawMinus) / (2.0 * kEps);
   }
 
   const gtsam::Matrix66 symmetricCovariance = 0.5 * (covariance + covariance.transpose());
-  const double variance = (J * symmetricCovariance * J.transpose())(0, 0);
+  const Eigen::Matrix3d angleCovariance = J * symmetricCovariance * J.transpose();
+  if (!angleCovariance.allFinite()) {
+    return AttitudeSigmaEstimate{};
+  }
 
   result.valid = true;
-  result.sigmaRad = std::sqrt(std::max(0.0, variance));
+  result.rollSigmaRad = std::sqrt(std::max(0.0, angleCovariance(0, 0)));
+  result.pitchSigmaRad = std::sqrt(std::max(0.0, angleCovariance(1, 1)));
+  result.yawSigmaRad = std::sqrt(std::max(0.0, angleCovariance(2, 2)));
+  return result;
+}
+
+HeadingSigmaEstimate computeYawMeanSigmaNumeric(const gtsam::Pose3& pose,
+                                               const gtsam::Matrix66& covariance,
+                                               const PoseTangentFrame tangentFrame) {
+  HeadingSigmaEstimate result;
+  const AttitudeSigmaEstimate attitudeEstimate = computeAttitudeMeanSigmasNumeric(pose, covariance, tangentFrame);
+  if (!attitudeEstimate.valid) {
+    return result;
+  }
+  result.valid = true;
+  result.yawRad = attitudeEstimate.yawRad;
+  result.sigmaRad = attitudeEstimate.yawSigmaRad;
   return result;
 }
 
@@ -460,6 +508,8 @@ void GraphMsfRos2::initializePublishers() {
       this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_pos_variance", best_effort_qos);
   pubEstWorldRotVariance_ =
       this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/graph_msf/est_world_rot_variance", best_effort_qos);
+  pubAttitudeSigmas_ =
+      this->create_publisher<geometry_msgs::msg::TwistStamped>("/graph_msf/opt_attitude_sigmas", best_effort_qos);
 
   // Velocity Marker
   pubLinVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/lin_velocity_marker", best_effort_qos);
@@ -503,6 +553,7 @@ void GraphMsfRos2::initializeMessages() {
   // Vector3 Variances
   estWorldPosVarianceMsgPtr_ = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
   estWorldRotVarianceMsgPtr_ = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
+  attitudeSigmasMsgPtr_ = std::make_shared<geometry_msgs::msg::TwistStamped>();
 
   // Path
   estOdomImuPathPtr_ = std::make_shared<nav_msgs::msg::Path>();
@@ -811,6 +862,7 @@ void GraphMsfRos2::publishState(
       newOptimizedState && optimizedStateWithCovarianceAndBiasPtr != nullptr &&
       ((pubEstWorldPosVariance_->get_subscription_count() > 0) ||
        (pubEstWorldRotVariance_->get_subscription_count() > 0) ||
+       (pubAttitudeSigmas_->get_subscription_count() > 0) ||
        (pubEstOdomImuPath_->get_subscription_count() > 0) ||
        (pubEstWorldImuPath_->get_subscription_count() > 0) ||
        (pubOptWorldImuPath_->get_subscription_count() > 0) ||
@@ -907,6 +959,9 @@ void GraphMsfRos2::publishNonTimeCriticalData(
 
   // Publish Variances
   publishDiagVarianceVectors(positionVarianceRos, orientationVarianceRos, optimizedStateWithCovarianceAndBiasPtr->getTimeK());
+
+  // Publish exact roll/pitch/yaw sigmas from the fused pose marginal.
+  publishAttitudeSigmas(optimizedStateWithCovarianceAndBiasPtr);
 
   // Publish paths (data was already added at full rate in publishState)
   publishImuPaths();
@@ -1076,6 +1131,53 @@ void GraphMsfRos2::publishDiagVarianceVectors(const Eigen::Vector3d& posVariance
     estWorldRotVarianceMsgPtr_->vector.z = rotVarianceRos(2);
     pubEstWorldRotVariance_->publish(*estWorldRotVarianceMsgPtr_);
   }
+}
+
+void GraphMsfRos2::publishAttitudeSigmas(
+    const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishAttitudeSigmas");
+
+  if (pubAttitudeSigmas_->get_subscription_count() == 0 || optimizedStateWithCovarianceAndBiasPtr == nullptr ||
+      graphMgrPtr_ == nullptr) {
+    return;
+  }
+
+  gtsam::Pose3 T_W_I_fusedMarginal = gtsam::Pose3::Identity();
+  gtsam::Matrix66 fusedPoseCovarianceLeftWorld = gtsam::Z_6x6;
+  if (!graphMgrPtr_->calculateCurrentPoseMarginalInWorld(T_W_I_fusedMarginal, fusedPoseCovarianceLeftWorld)) {
+    RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                          "Attitude sigma publish skipped because the current pose marginal was unavailable this cycle.");
+    return;
+  }
+
+  std::shared_lock<std::shared_mutex> transformsLock(staticTransformsPtr_->mutex());
+  const std::string imuFrameName = staticTransformsPtr_->getImuFrame();
+  const std::string baseLinkFrameName = staticTransformsPtr_->getBaseLinkFrame();
+  const gtsam::Pose3 T_I_B(staticTransformsPtr_->rv_T_frame1_frame2(imuFrameName, baseLinkFrameName).matrix());
+  transformsLock.unlock();
+
+  // Right-composing the fixed IMU->base extrinsic preserves the left/world tangent covariance convention.
+  const gtsam::Pose3 T_W_B_fusedMarginal = T_W_I_fusedMarginal.compose(T_I_B);
+  const AttitudeSigmaEstimate attitudeEstimate =
+      computeAttitudeMeanSigmasNumeric(T_W_B_fusedMarginal, fusedPoseCovarianceLeftWorld, PoseTangentFrame::kLeftWorld);
+  if (!attitudeEstimate.valid) {
+    RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                          "Attitude sigma publish skipped because roll/pitch/yaw was ill-defined this cycle.");
+    return;
+  }
+
+  constexpr double kRadToDeg = 180.0 / M_PI;
+
+  // Overload TwistStamped.angular with exact attitude sigmas [deg] of T_W_base_link.
+  attitudeSigmasMsgPtr_->header.stamp = timeFromSec(optimizedStateWithCovarianceAndBiasPtr->getTimeK());
+  attitudeSigmasMsgPtr_->header.frame_id = baseLinkFrameName;
+  attitudeSigmasMsgPtr_->twist.linear.x = 0.0;
+  attitudeSigmasMsgPtr_->twist.linear.y = 0.0;
+  attitudeSigmasMsgPtr_->twist.linear.z = 0.0;
+  attitudeSigmasMsgPtr_->twist.angular.x = attitudeEstimate.rollSigmaRad * kRadToDeg;
+  attitudeSigmasMsgPtr_->twist.angular.y = attitudeEstimate.pitchSigmaRad * kRadToDeg;
+  attitudeSigmasMsgPtr_->twist.angular.z = attitudeEstimate.yawSigmaRad * kRadToDeg;
+  pubAttitudeSigmas_->publish(*attitudeSigmasMsgPtr_);
 }
 
 void GraphMsfRos2::publishVelocityMarkers(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const {
