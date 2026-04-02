@@ -16,8 +16,6 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     imu_topic_name = LaunchConfiguration('imu_topic_name')
     lidar_odometry_topic_name = LaunchConfiguration('lidar_odometry_topic_name')
-    wheel_odometry_topic_name = LaunchConfiguration('wheel_odometry_topic_name')
-    wheel_velocities_topic_name = LaunchConfiguration('wheel_velocities_topic_name')
     vio_odometry_topic_name = LaunchConfiguration('vio_odometry_topic_name')
     logging_dir_location = LaunchConfiguration('logging_dir_location')
 
@@ -44,16 +42,6 @@ def generate_launch_description():
             'lidar_odometry_topic_name',
             default_value='/open3d/scan2map_odometry',
             description='Lidar odometry topic name'
-        ),
-        DeclareLaunchArgument(
-            'wheel_odometry_topic_name',
-            default_value='/wheel_odometry',
-            description='Wheel odometry topic name'
-        ),
-        DeclareLaunchArgument(
-            'wheel_velocities_topic_name',
-            default_value='/wheel_velocities',
-            description='Wheel velocities topic name'
         ),
         DeclareLaunchArgument(
             'vio_odometry_topic_name',
@@ -84,8 +72,6 @@ def generate_launch_description():
             remappings=[
                 ('/imu_topic', imu_topic_name),
                 ('/lidar_odometry_topic', lidar_odometry_topic_name),
-                ('/wheel_odometry_topic', wheel_odometry_topic_name),
-                ('/wheel_velocities_topic', wheel_velocities_topic_name),
                 ('/vio_odometry_topic', vio_odometry_topic_name)
             ]
         )

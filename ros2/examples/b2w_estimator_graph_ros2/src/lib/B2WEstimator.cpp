@@ -104,8 +104,6 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("sensor_params.useGnss", false);
   this->declare_parameter("sensor_params.useLioOdometry", false);
   this->declare_parameter("sensor_params.useLioBetweenOdometry", false);
-  this->declare_parameter("sensor_params.useWheelOdometryBetween", false);
-  this->declare_parameter("sensor_params.useWheelLinearVelocities", false);
   this->declare_parameter("sensor_params.useVioOdometry", false);
   this->declare_parameter("sensor_params.useVioOdometryBetween", false);
 
@@ -133,8 +131,6 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("sensor_params.gnssRate", 0);
 
   this->declare_parameter("sensor_params.lioBetweenOdometryRate", 0);
-  this->declare_parameter("sensor_params.wheelOdometryBetweenRate", 0);
-  this->declare_parameter("sensor_params.wheelLinearVelocitiesRate", 0);
   this->declare_parameter("sensor_params.vioOdometryRate", 0);
   this->declare_parameter("sensor_params.vioOdometryBetweenRate", 0);
 
@@ -146,8 +142,6 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   // Noise parameters (vectors of double)
   this->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.lioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
-  this->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  this->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.gnssPositionOutlierThreshold", 1.0);
@@ -157,14 +151,8 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("extrinsics.betweenLidarOdometryFrame", std::string(""));
   this->declare_parameter("extrinsics.gnssFrame", std::string(""));
   this->declare_parameter("extrinsics.lidarBetweenFrame", std::string(""));
-  this->declare_parameter("extrinsics.wheelOdometryBetweenFrame", std::string(""));
-  this->declare_parameter("extrinsics.wheelLinearVelocityLeftFrame", std::string(""));
-  this->declare_parameter("extrinsics.wheelLinearVelocityRightFrame", std::string(""));
   this->declare_parameter("extrinsics.vioOdometryFrame", std::string(""));
   this->declare_parameter("extrinsics.vioOdometryBetweenFrame", std::string(""));
-
-  // Wheel Radius (double)
-  this->declare_parameter("sensor_params.wheelRadius", 0.0);
 
   // Create B2WStaticTransforms
   staticTransformsPtr_ = std::make_shared<B2WStaticTransforms>(this->shared_from_this());
@@ -197,6 +185,8 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
     }
   }
 
+  GraphMsfRos2::validateHeadingUncertaintyTransformsOrThrow();
+
   // Cache frequently used frame names + constant lever arm once (step 9.1)
   cacheFrames_();
 
@@ -213,9 +203,6 @@ void B2WEstimator::cacheFrames_() {
   gnssFrame_ = st->getGnssFrame();
   lioOdometryFrame_ = st->getLioOdometryFrame();
   lidarBetweenFrame_ = st->getLidarBetweenFrame();
-  wheelOdometryBetweenFrame_ = st->getWheelOdometryBetweenFrame();
-  wheelLinearVelocityLeftFrame_ = st->getWheelLinearVelocityLeftFrame();
-  wheelLinearVelocityRightFrame_ = st->getWheelLinearVelocityRightFrame();
   vioOdometryFrame_ = st->getVioOdometryFrame();
 
   if (useGnssFlag_) {
@@ -281,18 +268,15 @@ void B2WEstimator::initializeSubscribers() {
   // Per-stream groups so different sensors run concurrently on a MultiThreadedExecutor.
   auto cb_gnss  = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   auto cb_lidar = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto cb_wheel = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   auto cb_vio   = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   rclcpp::SubscriptionOptions so_gnss;  so_gnss.callback_group  = cb_gnss;
   rclcpp::SubscriptionOptions so_lidar; so_lidar.callback_group = cb_lidar;
-  rclcpp::SubscriptionOptions so_wheel; so_wheel.callback_group = cb_wheel;
   rclcpp::SubscriptionOptions so_vio;   so_vio.callback_group   = cb_vio;
 
   // Low-latency QoS: drop instead of backlog.
   const auto qosReliable = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
   const auto qos1 = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
-  const auto qos3 = rclcpp::QoS(rclcpp::KeepLast(3)).best_effort().durability_volatile();
 
   if (useGnssFlag_) {
     subGnssNavSatFix_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
@@ -316,22 +300,6 @@ void B2WEstimator::initializeSubscribers() {
         std::bind(&B2WEstimator::lidarBetweenOdometryCallback_, this, std::placeholders::_1),
         so_lidar);
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Between Odometry subscriber with topic: /between_lidar_odometry_topic\n";
-  }
-
-  if (useWheelOdometryBetweenFlag_) {
-    subWheelOdometryBetween_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "/wheel_odometry_topic", qos1,
-        std::bind(&B2WEstimator::wheelOdometryPoseCallback_, this, std::placeholders::_1),
-        so_wheel);
-    REGULAR_COUT << COLOR_END << " Initialized Wheel Odometry subscriber with topic: /wheel_odometry_topic\n";
-  }
-
-  if (useWheelLinearVelocitiesFlag_) {
-    subWheelLinearVelocities_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-        "/wheel_velocities_topic", qos1,
-        std::bind(&B2WEstimator::wheelLinearVelocitiesCallback_, this, std::placeholders::_1),
-        so_wheel);
-    REGULAR_COUT << COLOR_END << " Initialized Wheel Linear Velocities subscriber with topic: /wheel_velocities_topic\n";
   }
 
   if (useVioOdometryFlag_) {
@@ -751,6 +719,10 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   const std::string& lioOdometryFrame = lioOdometryFrame_;
   const std::string& lioFixedFrame = odomLidarPtr->header.frame_id;
 
+  // The heading-uncertainty disk is defined for the active world-to-fixed-frame alignment, where the fixed
+  // frame is the drifting LiDAR odometry/map frame carried in header.frame_id, not the sensor/body child frame.
+  setHeadingUncertaintyFixedFrame("lio", lioFixedFrame);
+
   if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
 
     const std::string& baseFrame =
@@ -814,88 +786,6 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
            odomLidarPtr->header.stamp, lio_T_M_Lk.translation(),
            static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
     pubMeasMapLioLidarPath_->publish(*measLio_mapLidarPathPtr_);
-  }
-}
-
-void B2WEstimator::wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& wheelOdometryKPtr) {
-  B2W_SCOPED_CB_TIMER("wheelOdometryPoseCallback_");
-
-  if (!areRollAndPitchInited()) {
-    return;
-  }
-
-  ++wheelOdometryCallbackCounter_;
-
-  Eigen::Isometry3d T_O_Bw_k;
-  graph_msf::odomMsgToEigen(*wheelOdometryKPtr, T_O_Bw_k.matrix());
-  const double wheelOdometryTimeK =
-      wheelOdometryKPtr->header.stamp.sec + wheelOdometryKPtr->header.stamp.nanosec * 1e-9;
-
-  if (wheelOdometryCallbackCounter_ == 0) {
-    T_O_Bw_km1_ = T_O_Bw_k;
-    wheelOdometryTimeKm1_ = wheelOdometryTimeK;
-    return;
-  }
-
-  // Frame name (cached)
-  const std::string& wheelOdometryFrame = wheelOdometryBetweenFrame_;
-
-  if (!areYawAndPositionInited()) {
-    if (!useLioOdometryFlag_) {
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelOdometryBetweenRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
-    }
-  } else if (wheelOdometryCallbackCounter_ % 5 == 0 && wheelOdometryCallbackCounter_ > 0) {
-    Eigen::Isometry3d T_Bkm1_Bk = T_O_Bw_km1_.inverse() * T_O_Bw_k;
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Wheel_odometry_6D", int(wheelOdometryBetweenRate_ / 5), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::Tukey(1.0), wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
-    this->addBinaryPose3Measurement(delta6DMeasurement);
-
-    T_O_Bw_km1_ = T_O_Bw_k;
-    wheelOdometryTimeKm1_ = wheelOdometryTimeK;
-  }
-}
-
-void B2WEstimator::wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64MultiArray::ConstSharedPtr& wheelsSpeedsPtr) {
-  B2W_SCOPED_CB_TIMER("wheelLinearVelocitiesCallback_");
-
-  if (!areRollAndPitchInited()) {
-    return;
-  }
-
-  const double timeK = wheelsSpeedsPtr->data[0];
-  const double leftWheelSpeedRps = wheelsSpeedsPtr->data[1];
-  const double rightWheelSpeedRps = wheelsSpeedsPtr->data[2];
-  const double leftWheelSpeedMs = leftWheelSpeedRps * wheelRadiusMeter_;
-  const double rightWheelSpeedMs = rightWheelSpeedRps * wheelRadiusMeter_;
-
-  // Frame names (cached)
-  const std::string& wheelLinearVelocityLeftFrame = wheelLinearVelocityLeftFrame_;
-  const std::string& wheelLinearVelocityRightFrame = wheelLinearVelocityRightFrame_;
-
-  if (!areYawAndPositionInited()) {
-    if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-          wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), timeK, 1.0,
-          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
-    }
-  } else {
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(
-        "Wheel_linear_velocity_left", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-        wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), timeK, 1.0,
-        Eigen::Vector3d(leftWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
-    this->addUnaryVelocity3LocalMeasurement(leftWheelLinearVelocityMeasurement);
-
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> rightWheelLinearVelocityMeasurement(
-        "Wheel_linear_velocity_right", int(wheelLinearVelocitiesRate_), wheelLinearVelocityRightFrame,
-        wheelLinearVelocityRightFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), timeK, 1.0,
-        Eigen::Vector3d(rightWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
-    this->addUnaryVelocity3LocalMeasurement(rightWheelLinearVelocityMeasurement);
   }
 }
 
@@ -975,6 +865,10 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
   // Frame name (cached)
   const std::string& vioOdometryFrame = vioOdometryFrame_;
   const std::string& vioFixedFrame = vioOdomPtr->header.frame_id;
+
+  // Publish a second alignment uncertainty disk for the active VIO odom/map frame.
+  setHeadingUncertaintyFixedFrame("vio", vioFixedFrame);
+
   if (vioFixedFrame.empty()) {
     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
                          "VIO header.frame_id is empty. Absolute pose unary will be ill-defined.");
@@ -990,7 +884,7 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
       int(vioOdometryRate_),
       vioOdometryFrame,
       vioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::DCS(2.0),
+      graph_msf::RobustNorm::DCS(1.0),
       // graph_msf::RobustNorm::None(),
       timeK,
       1.0,
@@ -1104,7 +998,7 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
         int(vioOdometryBetweenRate_),
         vioOdometryFrame,
         vioOdometryFrame + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::DCS(2.0),
+        graph_msf::RobustNorm::DCS(1.0),
         vioTimeKm1,
         timeK,
         T_Ckm1_Ck,

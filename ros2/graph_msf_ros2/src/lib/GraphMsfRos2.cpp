@@ -5,10 +5,18 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <shared_mutex>
+#include <std_msgs/msg/color_rgba.hpp>
 #include <std_srvs/srv/trigger.hpp>
 
 // std
+#include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+// GTSAM
+#include <gtsam/geometry/Pose3.h>
 
 // Timing (minimal additions)
 #include <atomic>
@@ -16,6 +24,7 @@
 #include <cstdint>
 
 // Workspace
+#include "graph_msf/core/GraphManager.h"
 #include "graph_msf_ros2/util/conversions.h"
 
 // Set to 0 to compile out function timing.
@@ -27,6 +36,259 @@ namespace {
 inline rclcpp::Time timeFromSec(double t_sec) {
   // Rounded to nearest nanosecond to avoid systematic truncation jitter.
   return rclcpp::Time(static_cast<int64_t>(std::llround(t_sec * 1e9)));
+}
+
+enum class PoseTangentFrame {
+  kRightLocal,
+  kLeftWorld,
+};
+
+struct HeadingSigmaEstimate {
+  bool valid = false;
+  double yawRad = 0.0;
+  double sigmaRad = 0.0;
+};
+
+struct HeadingMarkerStyle {
+  std::string sourceLabel;
+  std::string markerSuffix;
+  std_msgs::msg::ColorRGBA fillColor;
+  std_msgs::msg::ColorRGBA boundaryColor;
+  std_msgs::msg::ColorRGBA textColor;
+};
+
+inline double wrapAnglePi(double angle) {
+  while (angle <= -M_PI) angle += 2.0 * M_PI;
+  while (angle > M_PI) angle -= 2.0 * M_PI;
+  return angle;
+}
+
+inline bool extractWorldHeading(const gtsam::Pose3& pose, double& headingRad) {
+  const Eigen::Vector3d worldXAxis = pose.rotation().matrix().col(0);
+  const double horizontalNorm = worldXAxis.head<2>().norm();
+  if (horizontalNorm < 1e-6) {
+    return false;
+  }
+
+  headingRad = std::atan2(worldXAxis.y(), worldXAxis.x());
+  return true;
+}
+
+gtsam::Pose3 perturbPose(const gtsam::Pose3& pose, const gtsam::Vector6& delta, const PoseTangentFrame tangentFrame) {
+  const gtsam::Pose3 deltaPose = gtsam::Pose3::Expmap(delta);
+  if (tangentFrame == PoseTangentFrame::kLeftWorld) {
+    return deltaPose.compose(pose);
+  }
+  return pose.compose(deltaPose);
+}
+
+HeadingSigmaEstimate computeYawMeanSigmaNumeric(const gtsam::Pose3& pose,
+                                               const gtsam::Matrix66& covariance,
+                                               const PoseTangentFrame tangentFrame) {
+  HeadingSigmaEstimate result;
+  if (!extractWorldHeading(pose, result.yawRad)) {
+    return result;
+  }
+
+  // The covariance query and the yaw Jacobian live in the tangent space of the pose representation.
+  // We therefore estimate the scalar yaw Jacobian numerically in the same tangent convention as the covariance.
+  // For the optimized robot pose, GraphManager already mapped the covariance to left/world tangent coordinates.
+  constexpr double kEps = 1e-6;
+  Eigen::Matrix<double, 1, 6> J = Eigen::Matrix<double, 1, 6>::Zero();
+  for (int i = 0; i < 6; ++i) {
+    gtsam::Vector6 delta = gtsam::Vector6::Zero();
+    delta(i) = kEps;
+
+    const gtsam::Pose3 posePlus = perturbPose(pose, delta, tangentFrame);
+    const gtsam::Pose3 poseMinus = perturbPose(pose, -delta, tangentFrame);
+
+    double yawPlus = 0.0;
+    double yawMinus = 0.0;
+    if (!extractWorldHeading(posePlus, yawPlus) || !extractWorldHeading(poseMinus, yawMinus)) {
+      return HeadingSigmaEstimate{};
+    }
+    J(i) = wrapAnglePi(yawPlus - yawMinus) / (2.0 * kEps);
+  }
+
+  const gtsam::Matrix66 symmetricCovariance = 0.5 * (covariance + covariance.transpose());
+  const double variance = (J * symmetricCovariance * J.transpose())(0, 0);
+
+  result.valid = true;
+  result.sigmaRad = std::sqrt(std::max(0.0, variance));
+  return result;
+}
+
+geometry_msgs::msg::Point makeMarkerPoint(const Eigen::Vector3d& positionWorld) {
+  geometry_msgs::msg::Point point;
+  point.x = positionWorld.x();
+  point.y = positionWorld.y();
+  point.z = positionWorld.z();
+  return point;
+}
+
+std::string formatHeadingSigmaLabel(const std::string& label, const double sigmaRad) {
+  std::ostringstream ss;
+  const double sigmaDeg = sigmaRad * 180.0 / M_PI;
+  const int precision = sigmaDeg < 0.1 ? 3 : 2;
+  ss << label << " sigma=" << std::fixed << std::setprecision(precision) << sigmaDeg << " deg";
+  return ss.str();
+}
+
+HeadingMarkerStyle makeHeadingMarkerStyle(const std::string& sourceId) {
+  HeadingMarkerStyle style;
+  style.sourceLabel = sourceId;
+  style.markerSuffix = sourceId;
+
+  auto setColor = [](std_msgs::msg::ColorRGBA& color, const float r, const float g, const float b, const float a) {
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    color.a = a;
+  };
+
+  if (sourceId == "lio") {
+    style.sourceLabel = "LIO";
+    style.markerSuffix = "lio";
+    setColor(style.fillColor, 0.95F, 0.55F, 0.15F, 0.28F);
+    setColor(style.boundaryColor, 0.98F, 0.70F, 0.25F, 0.95F);
+    setColor(style.textColor, 0.98F, 0.85F, 0.70F, 0.98F);
+  } else if (sourceId == "fused") {
+    style.sourceLabel = "FUSED";
+    style.markerSuffix = "fused";
+    setColor(style.fillColor, 0.90F, 0.25F, 0.85F, 0.24F);
+    setColor(style.boundaryColor, 0.98F, 0.45F, 0.92F, 0.96F);
+    setColor(style.textColor, 1.00F, 0.82F, 0.98F, 0.98F);
+  } else if (sourceId == "vio") {
+    style.sourceLabel = "VIO";
+    style.markerSuffix = "vio";
+    setColor(style.fillColor, 0.20F, 0.65F, 0.95F, 0.24F);
+    setColor(style.boundaryColor, 0.35F, 0.85F, 1.00F, 0.95F);
+    setColor(style.textColor, 0.75F, 0.92F, 1.00F, 0.98F);
+  } else {
+    style.markerSuffix = sourceId.empty() ? "alignment" : sourceId;
+    setColor(style.fillColor, 0.80F, 0.80F, 0.80F, 0.20F);
+    setColor(style.boundaryColor, 0.92F, 0.92F, 0.92F, 0.90F);
+    setColor(style.textColor, 0.95F, 0.95F, 0.95F, 0.98F);
+  }
+
+  return style;
+}
+
+void fillHeadingUncertaintyDiskMarker(visualization_msgs::msg::Marker& marker,
+                                      const Eigen::Vector3d& robotPositionWorld,
+                                      const double meanHeadingRad,
+                                      const double sigmaHeadingRad,
+                                      const double diskRadius,
+                                      const double nSigmas,
+                                      const double zOffset) {
+  constexpr int kNumCircleSegments = 72;
+  marker.points.clear();
+
+  // A heading uncertainty is angular, not planar.
+  // We therefore draw a robot-centered disk sector that spans +/- N*sigma around the current world heading.
+  const double halfAngle = std::min(M_PI, std::max(0.0, nSigmas * sigmaHeadingRad));
+  const double startAngle = meanHeadingRad - halfAngle;
+  const double endAngle = meanHeadingRad + halfAngle;
+  const bool drawFullDisk = halfAngle >= M_PI - 1e-6;
+
+  const int numSegments = drawFullDisk ? kNumCircleSegments
+                                       : std::max(6, static_cast<int>(std::ceil((2.0 * halfAngle / (2.0 * M_PI)) *
+                                                                                static_cast<double>(kNumCircleSegments))));
+  const Eigen::Vector3d centerWorld = robotPositionWorld + Eigen::Vector3d(0.0, 0.0, zOffset);
+  const geometry_msgs::msg::Point centerPoint = makeMarkerPoint(centerWorld);
+
+  for (int i = 0; i < numSegments; ++i) {
+    const double angle0 = drawFullDisk
+                              ? (2.0 * M_PI * static_cast<double>(i)) / static_cast<double>(numSegments)
+                              : startAngle + (endAngle - startAngle) * static_cast<double>(i) / static_cast<double>(numSegments);
+    const double angle1 = drawFullDisk
+                              ? (2.0 * M_PI * static_cast<double>(i + 1)) / static_cast<double>(numSegments)
+                              : startAngle + (endAngle - startAngle) * static_cast<double>(i + 1) / static_cast<double>(numSegments);
+
+    const Eigen::Vector3d edge0 = centerWorld + Eigen::Vector3d(diskRadius * std::cos(angle0), diskRadius * std::sin(angle0), 0.0);
+    const Eigen::Vector3d edge1 = centerWorld + Eigen::Vector3d(diskRadius * std::cos(angle1), diskRadius * std::sin(angle1), 0.0);
+
+    marker.points.push_back(centerPoint);
+    marker.points.push_back(makeMarkerPoint(edge0));
+    marker.points.push_back(makeMarkerPoint(edge1));
+  }
+}
+
+void fillHeadingUncertaintyDiskOutlineMarker(visualization_msgs::msg::Marker& marker,
+                                             const Eigen::Vector3d& robotPositionWorld,
+                                             const double diskRadius,
+                                             const double zOffset) {
+  constexpr int kNumCircleSegments = 72;
+  marker.points.clear();
+
+  const Eigen::Vector3d centerWorld = robotPositionWorld + Eigen::Vector3d(0.0, 0.0, zOffset);
+  for (int i = 0; i <= kNumCircleSegments; ++i) {
+    const double angle = (2.0 * M_PI * static_cast<double>(i)) / static_cast<double>(kNumCircleSegments);
+    const Eigen::Vector3d pointWorld =
+        centerWorld + Eigen::Vector3d(diskRadius * std::cos(angle), diskRadius * std::sin(angle), 0.0);
+    marker.points.push_back(makeMarkerPoint(pointWorld));
+  }
+}
+
+void fillHeadingUncertaintySectorBoundaryMarker(visualization_msgs::msg::Marker& marker,
+                                                const Eigen::Vector3d& robotPositionWorld,
+                                                const double meanHeadingRad,
+                                                const double sigmaHeadingRad,
+                                                const double diskRadius,
+                                                const double nSigmas,
+                                                const double zOffset) {
+  constexpr int kNumCircleSegments = 72;
+  marker.points.clear();
+
+  const double halfAngle = std::min(M_PI, std::max(0.0, nSigmas * sigmaHeadingRad));
+  const double startAngle = meanHeadingRad - halfAngle;
+  const double endAngle = meanHeadingRad + halfAngle;
+  const bool drawFullDisk = halfAngle >= M_PI - 1e-6;
+
+  const Eigen::Vector3d centerWorld = robotPositionWorld + Eigen::Vector3d(0.0, 0.0, zOffset);
+  marker.points.push_back(makeMarkerPoint(centerWorld));
+
+  if (drawFullDisk) {
+    for (int i = 0; i <= kNumCircleSegments; ++i) {
+      const double angle = (2.0 * M_PI * static_cast<double>(i)) / static_cast<double>(kNumCircleSegments);
+      const Eigen::Vector3d pointWorld =
+          centerWorld + Eigen::Vector3d(diskRadius * std::cos(angle), diskRadius * std::sin(angle), 0.0);
+      marker.points.push_back(makeMarkerPoint(pointWorld));
+    }
+    marker.points.push_back(makeMarkerPoint(centerWorld));
+    return;
+  }
+
+  const int numSegments =
+      std::max(6, static_cast<int>(std::ceil((2.0 * halfAngle / (2.0 * M_PI)) * static_cast<double>(kNumCircleSegments))));
+  for (int i = 0; i <= numSegments; ++i) {
+    const double angle = startAngle + (endAngle - startAngle) * static_cast<double>(i) / static_cast<double>(numSegments);
+    const Eigen::Vector3d pointWorld =
+        centerWorld + Eigen::Vector3d(diskRadius * std::cos(angle), diskRadius * std::sin(angle), 0.0);
+    marker.points.push_back(makeMarkerPoint(pointWorld));
+  }
+  marker.points.push_back(makeMarkerPoint(centerWorld));
+}
+
+void fillHeadingArrowMarkerPoints(visualization_msgs::msg::Marker& marker,
+                                  const Eigen::Vector3d& robotPositionWorld,
+                                  const double meanHeadingRad,
+                                  const double diskRadius,
+                                  const double zOffset) {
+  marker.points.clear();
+
+  geometry_msgs::msg::Point startPoint;
+  startPoint.x = robotPositionWorld.x();
+  startPoint.y = robotPositionWorld.y();
+  startPoint.z = robotPositionWorld.z() + zOffset;
+
+  geometry_msgs::msg::Point endPoint;
+  endPoint.x = robotPositionWorld.x() + diskRadius * std::cos(meanHeadingRad);
+  endPoint.y = robotPositionWorld.y() + diskRadius * std::sin(meanHeadingRad);
+  endPoint.z = robotPositionWorld.z() + zOffset;
+
+  marker.points.push_back(startPoint);
+  marker.points.push_back(endPoint);
 }
 }  // namespace
 
@@ -202,6 +464,10 @@ void GraphMsfRos2::initializePublishers() {
   // Velocity Marker
   pubLinVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/lin_velocity_marker", best_effort_qos);
   pubAngularVelocityMarker_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_msf/angular_velocity_marker", best_effort_qos);
+  if (publishHeadingUncertaintyMarkersFlag_) {
+    pubHeadingUncertaintyMarkers_ =
+        this->create_publisher<visualization_msgs::msg::MarkerArray>("/graph_msf/heading_uncertainty_markers", best_effort_qos);
+  }
 
   // QoS profile for paths to be visualized in RViz (latching)
   // auto rviz_path_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
@@ -550,7 +816,8 @@ void GraphMsfRos2::publishState(
        (pubOptWorldImuPath_->get_subscription_count() > 0) ||
        (pubOptWorldImu_->get_subscription_count() > 0) ||
        (pubAccelBias_->get_subscription_count() > 0) ||
-       (pubGyroBias_->get_subscription_count() > 0));
+       (pubGyroBias_->get_subscription_count() > 0) ||
+       (pubHeadingUncertaintyMarkers_ != nullptr && pubHeadingUncertaintyMarkers_->get_subscription_count() > 0));
 
   // Covariances (only if needed)
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
@@ -649,6 +916,9 @@ void GraphMsfRos2::publishNonTimeCriticalData(
     std::lock_guard<std::mutex> lockPath(pathMsgMutex_);
     pubOptWorldImuPath_->publish(*optWorldImuPathPtr_);
   }
+
+  // Publish heading uncertainty visualization in the world frame.
+  publishHeadingUncertaintyMarkers(optimizedStateWithCovarianceAndBiasPtr);
 
   // Optimized estimate ----------------------
   publishOptimizedStateAndBias(optimizedStateWithCovarianceAndBiasPtr, poseCovarianceRos, twistCovarianceRos);
@@ -832,6 +1102,237 @@ void GraphMsfRos2::publishVelocityMarkers(const std::shared_ptr<const graph_msf:
                                 navStatePtr->getT_W_Ik(), angularVelocityMarker);
     pubAngularVelocityMarker_->publish(angularVelocityMarker);
   }
+}
+
+void GraphMsfRos2::validateHeadingUncertaintyTransformsOrThrow() const {
+  if (!publishHeadingUncertaintyMarkersFlag_) {
+    return;
+  }
+
+  std::shared_lock<std::shared_mutex> transformsLock(staticTransformsPtr_->mutex());
+  const std::string& imuFrameName = staticTransformsPtr_->getImuFrame();
+  const std::string& baseLinkFrameName = staticTransformsPtr_->getBaseLinkFrame();
+
+  if (baseLinkFrameName.empty()) {
+    throw std::runtime_error(
+        "Heading uncertainty markers require a non-empty base_link frame name because the visualization is robot-centered.");
+  }
+
+  if (!staticTransformsPtr_->isFramePairInDictionary(imuFrameName, baseLinkFrameName)) {
+    throw std::runtime_error("Heading uncertainty markers require the static transform " + imuFrameName + " -> " +
+                             baseLinkFrameName + " to exist. The visualization is defined in the robot/base frame and "
+                             "must not fall back to the IMU frame.");
+  }
+}
+
+void GraphMsfRos2::setHeadingUncertaintyFixedFrame(const std::string& sourceId, const std::string& fixedFrameName) {
+  std::lock_guard<std::mutex> lock(headingUncertaintyFixedFrameMutex_);
+  if (fixedFrameName.empty()) {
+    headingUncertaintyFixedFrames_.erase(sourceId);
+  } else {
+    headingUncertaintyFixedFrames_[sourceId] = fixedFrameName;
+  }
+}
+
+void GraphMsfRos2::publishHeadingUncertaintyMarkers(
+    const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishHeadingUncertaintyMarkers");
+
+  if (!publishHeadingUncertaintyMarkersFlag_ || pubHeadingUncertaintyMarkers_ == nullptr ||
+      pubHeadingUncertaintyMarkers_->get_subscription_count() == 0) {
+    return;
+  }
+
+  validateHeadingUncertaintyTransformsOrThrow();
+
+  std::shared_lock<std::shared_mutex> transformsLock(staticTransformsPtr_->mutex());
+  visualization_msgs::msg::MarkerArray markerArray;
+  const double timeStamp = optimizedStateWithCovarianceAndBiasPtr != nullptr ? optimizedStateWithCovarianceAndBiasPtr->getTimeK() : 0.0;
+  const rclcpp::Time stamp = timeFromSec(timeStamp);
+  const std::string& worldFrameName = staticTransformsPtr_->getWorldFrame();
+  const std::string& imuFrameName = staticTransformsPtr_->getImuFrame();
+  const std::string& baseLinkFrameName = staticTransformsPtr_->getBaseLinkFrame();
+  std::map<std::string, std::string> selectedFixedFrames;
+  {
+    std::lock_guard<std::mutex> lock(headingUncertaintyFixedFrameMutex_);
+    selectedFixedFrames = headingUncertaintyFixedFrames_;
+  }
+
+  // Dedicated topic: clearing first keeps the visualization consistent even when alignment frame sets change over time.
+  visualization_msgs::msg::Marker clearMarker;
+  clearMarker.header.frame_id = worldFrameName;
+  clearMarker.header.stamp = stamp;
+  clearMarker.action = visualization_msgs::msg::Marker::DELETEALL;
+  markerArray.markers.push_back(clearMarker);
+
+  if (optimizedStateWithCovarianceAndBiasPtr == nullptr) {
+    pubHeadingUncertaintyMarkers_->publish(markerArray);
+    return;
+  }
+
+  const gtsam::Pose3 T_W_I_snapshot(optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik().matrix());
+  const gtsam::Pose3 T_I_B(staticTransformsPtr_->rv_T_frame1_frame2(imuFrameName, baseLinkFrameName).matrix());
+  gtsam::Pose3 T_W_robot = T_W_I_snapshot.compose(T_I_B);
+  double robotHeadingYawRad = 0.0;
+
+  // Use the same projected-heading definition as the uncertainty Jacobian. This avoids spurious
+  // rejection when roll/pitch are large but the robot still has a well-defined horizontal heading.
+  if (!extractWorldHeading(T_W_robot, robotHeadingYawRad)) {
+    pubHeadingUncertaintyMarkers_->publish(markerArray);
+    return;
+  }
+
+  // Query the exact current fused pose marginal in world coordinates. This is the correct posterior quantity for
+  // the robot's current world-yaw uncertainty because the current pose marginal already contains the effect of the
+  // alignment states and all cross-correlations in the fixed-lag posterior.
+  HeadingSigmaEstimate fusedRobotHeadingEstimate;
+  gtsam::Pose3 T_W_I_fusedMarginal = gtsam::Pose3::Identity();
+  gtsam::Matrix66 fusedPoseCovarianceLeftWorld = gtsam::Z_6x6;
+  if (graphMgrPtr_ != nullptr &&
+      graphMgrPtr_->calculateCurrentPoseMarginalInWorld(T_W_I_fusedMarginal, fusedPoseCovarianceLeftWorld)) {
+    const gtsam::Pose3 T_W_B_fusedMarginal = T_W_I_fusedMarginal.compose(T_I_B);
+    fusedRobotHeadingEstimate =
+        computeYawMeanSigmaNumeric(T_W_B_fusedMarginal, fusedPoseCovarianceLeftWorld, PoseTangentFrame::kLeftWorld);
+    if (fusedRobotHeadingEstimate.valid) {
+      T_W_robot = T_W_B_fusedMarginal;
+      robotHeadingYawRad = fusedRobotHeadingEstimate.yawRad;
+    }
+  }
+
+  const Eigen::Vector3d robotPositionWorld = T_W_robot.translation();
+  const std::string robotHeadingLabel = "base";
+
+  const auto makeMarker = [&](const std::string& nameSpace, const int id, const int type) {
+    visualization_msgs::msg::Marker marker;
+    marker.header.frame_id = worldFrameName;
+    marker.header.stamp = stamp;
+    marker.ns = nameSpace;
+    marker.id = id;
+    marker.type = type;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.lifetime = rclcpp::Duration::from_seconds(0.0);
+    marker.frame_locked = false;
+    return marker;
+  };
+
+  const std::string markerNs = "heading_uncertainty_disk";
+
+  bool robotContextMarkersAdded = false;
+  auto ensureRobotContextMarkers = [&]() {
+    if (robotContextMarkersAdded) {
+      return;
+    }
+
+    visualization_msgs::msg::Marker diskOutlineMarker =
+        makeMarker(markerNs, 0, visualization_msgs::msg::Marker::LINE_STRIP);
+    diskOutlineMarker.scale.x = 0.04;
+    diskOutlineMarker.color.r = 0.85F;
+    diskOutlineMarker.color.g = 0.85F;
+    diskOutlineMarker.color.b = 0.85F;
+    diskOutlineMarker.color.a = 0.70F;
+    fillHeadingUncertaintyDiskOutlineMarker(diskOutlineMarker, robotPositionWorld, headingUncertaintyDiskRadius_,
+                                            headingUncertaintyZOffset_);
+    markerArray.markers.push_back(diskOutlineMarker);
+
+    visualization_msgs::msg::Marker arrowMarker =
+        makeMarker(markerNs, 3, visualization_msgs::msg::Marker::ARROW);
+    arrowMarker.scale.x = 0.08;
+    arrowMarker.scale.y = 0.14;
+    arrowMarker.scale.z = 0.16;
+    arrowMarker.color.r = 0.15F;
+    arrowMarker.color.g = 0.90F;
+    arrowMarker.color.b = 0.35F;
+    arrowMarker.color.a = 0.98F;
+    fillHeadingArrowMarkerPoints(arrowMarker, robotPositionWorld, robotHeadingYawRad,
+                                 headingUncertaintyDiskRadius_, headingUncertaintyZOffset_);
+    markerArray.markers.push_back(arrowMarker);
+
+    robotContextMarkersAdded = true;
+  };
+
+  auto appendHeadingUncertaintySector = [&](const std::string& sourceId, const std::string& labelSuffix, const double sigmaRad,
+                                            int& sourceIndex) {
+    ensureRobotContextMarkers();
+
+    const HeadingMarkerStyle style = makeHeadingMarkerStyle(sourceId);
+    const std::string sourceMarkerNs = markerNs + "_" + style.markerSuffix;
+
+    visualization_msgs::msg::Marker sectorFillMarker =
+        makeMarker(sourceMarkerNs, 10 * sourceIndex + 1, visualization_msgs::msg::Marker::TRIANGLE_LIST);
+    sectorFillMarker.scale.x = 1.0;
+    sectorFillMarker.scale.y = 1.0;
+    sectorFillMarker.scale.z = 1.0;
+    sectorFillMarker.color = style.fillColor;
+    fillHeadingUncertaintyDiskMarker(sectorFillMarker, robotPositionWorld, robotHeadingYawRad,
+                                     sigmaRad, headingUncertaintyDiskRadius_,
+                                     headingUncertaintyNSigmas_, headingUncertaintyZOffset_);
+    markerArray.markers.push_back(sectorFillMarker);
+
+    visualization_msgs::msg::Marker sectorBoundaryMarker =
+        makeMarker(sourceMarkerNs, 10 * sourceIndex + 2, visualization_msgs::msg::Marker::LINE_STRIP);
+    sectorBoundaryMarker.scale.x = 0.06;
+    sectorBoundaryMarker.color = style.boundaryColor;
+    fillHeadingUncertaintySectorBoundaryMarker(sectorBoundaryMarker, robotPositionWorld, robotHeadingYawRad,
+                                               sigmaRad, headingUncertaintyDiskRadius_,
+                                               headingUncertaintyNSigmas_, headingUncertaintyZOffset_);
+    markerArray.markers.push_back(sectorBoundaryMarker);
+
+    if (publishHeadingUncertaintyTextFlag_) {
+      visualization_msgs::msg::Marker textMarker =
+          makeMarker(sourceMarkerNs, 10 * sourceIndex + 3, visualization_msgs::msg::Marker::TEXT_VIEW_FACING);
+      textMarker.pose.position.x = robotPositionWorld.x();
+      textMarker.pose.position.y = robotPositionWorld.y();
+      textMarker.pose.position.z = robotPositionWorld.z() + headingUncertaintyZOffset_ + 0.22 + 0.18 * sourceIndex;
+      textMarker.pose.orientation.w = 1.0;
+      textMarker.scale.z = 0.24;
+      textMarker.color = style.textColor;
+      textMarker.text = formatHeadingSigmaLabel(robotHeadingLabel + " " + style.sourceLabel + " " + labelSuffix, sigmaRad);
+      markerArray.markers.push_back(textMarker);
+    }
+
+    ++sourceIndex;
+  };
+
+  // 2) Exact fused robot world-yaw uncertainty from the current pose marginal.
+  int sourceIndex = 0;
+  if (fusedRobotHeadingEstimate.valid) {
+    appendHeadingUncertaintySector("fused", "world_yaw", fusedRobotHeadingEstimate.sigmaRad, sourceIndex);
+  }
+
+  // 3) One colored sector per active alignment source. Each source uses its own targeted one-key marginal query.
+  for (const auto& selectedFrameEntry : selectedFixedFrames) {
+    const std::string& sourceId = selectedFrameEntry.first;
+    const std::string& selectedFixedFrame = selectedFrameEntry.second;
+    if (selectedFixedFrame.empty()) {
+      continue;
+    }
+
+    // The reference-frame publication path later adds a translation-only keyframe correction, but yaw depends only on
+    // the rotation of T_W_F, so the raw optimizer pose estimate is the correct input for this angular diagnostic.
+    gtsam::Pose3 T_W_selectedFixedFrame = gtsam::Pose3::Identity();
+    gtsam::Matrix66 selectedAlignmentCovariance = gtsam::Z_6x6;
+    if (graphMgrPtr_ == nullptr ||
+        !graphMgrPtr_->calculateActiveReferenceFramePoseMarginalInWorld(selectedFixedFrame, T_W_selectedFixedFrame,
+                                                                        selectedAlignmentCovariance)) {
+      RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                            "Heading uncertainty marker skipped source '%s' frame '%s' because the marginal was unavailable this cycle.",
+                            sourceId.c_str(), selectedFixedFrame.c_str());
+      continue;
+    }
+
+    const HeadingSigmaEstimate alignmentDiskEstimate =
+        computeYawMeanSigmaNumeric(T_W_selectedFixedFrame, selectedAlignmentCovariance, PoseTangentFrame::kRightLocal);
+    if (!alignmentDiskEstimate.valid) {
+      RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                            "Heading uncertainty marker skipped source '%s' frame '%s' because heading was ill-defined this cycle.",
+                            sourceId.c_str(), selectedFixedFrame.c_str());
+      continue;
+    }
+
+    appendHeadingUncertaintySector(sourceId, "align[" + selectedFixedFrame + "]", alignmentDiskEstimate.sigmaRad, sourceIndex);
+  }
+
+  pubHeadingUncertaintyMarkers_->publish(markerArray);
 }
 
 void GraphMsfRos2::publishImuPaths() const {

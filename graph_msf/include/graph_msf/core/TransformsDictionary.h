@@ -32,7 +32,7 @@ class TransformsDictionary {
 
   // Getters ------------------------------------------------------------
   // Check for specific transformation pair
-  bool isFramePairInDictionary(const std::string& frame1, const std::string& frame2) {
+  bool isFramePairInDictionary(const std::string& frame1, const std::string& frame2) const {
     std::pair<std::string, std::string> framePair(frame1, frame2);
     auto keyIterator = T_frame1_frame2_map_.find(framePair);
     return static_cast<bool>(keyIterator != T_frame1_frame2_map_.end());

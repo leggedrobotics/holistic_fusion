@@ -67,18 +67,16 @@ Eigen::Matrix<double, 6, 1> ImuBuffer::addToImuBuffer(double ts, const Eigen::Ve
     if (ts > tLatestInBuffer_) {
       tLatestInBuffer_ = ts;
     }
-  }
-
-  // If IMU buffer is too large, remove oldest element
-  if (timeToImuBuffer_.size() > imuBufferLength_) {
-    timeToImuBuffer_.erase(timeToImuBuffer_.begin());
-  }
-
-  if (timeToImuBuffer_.size() > imuBufferLength_) {
-    std::ostringstream errorStream;
-    errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains "
-                << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
-    throw std::runtime_error(errorStream.str());
+    // If IMU buffer is too large, remove oldest element (inside lock to avoid race)
+    if (timeToImuBuffer_.size() > imuBufferLength_) {
+      timeToImuBuffer_.erase(timeToImuBuffer_.begin());
+    }
+    if (timeToImuBuffer_.size() > imuBufferLength_) {
+      std::ostringstream errorStream;
+      errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains "
+                  << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
+      throw std::runtime_error(errorStream.str());
+    }
   }
 
   return filteredImuMeas;
@@ -104,8 +102,12 @@ bool ImuBuffer::getImuMeasurementAtTime(graph_msf::ImuMeasurement& returnedImuMe
 }
 
 void ImuBuffer::getLastTwoMeasurements(TimeToImuMap& imuMap) {
-  TimeToImuMap::iterator endItr = --(timeToImuBuffer_.end());
-  TimeToImuMap::iterator previousItr = --(--(timeToImuBuffer_.end()));
+  const std::lock_guard<std::mutex> lock(writeInBufferMutex_);
+  if (timeToImuBuffer_.size() < 2) {
+    return;
+  }
+  auto endItr = std::prev(timeToImuBuffer_.end());
+  auto previousItr = std::prev(endItr);
 
   // Write into IMU Map
   imuMap[previousItr->first] = previousItr->second;
@@ -214,28 +216,38 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double tsStart, const doub
 // than IMU measurements
 bool ImuBuffer::getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement,
                                          const double maxSearchDeviation, const double tK) {
-  std::_Rb_tree_iterator<std::pair<const double, ImuMeasurement>> upperIterator;
+  double timeDeviation;
   {
-    // Read from IMU buffer --> acquire mutex
+    // Read from IMU buffer --> acquire mutex; keep all iterator ops inside
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    upperIterator = timeToImuBuffer_.upper_bound(tK);
+
+    if (timeToImuBuffer_.empty()) {
+      std::cerr << YELLOW_START << "GMsf-ImuBuffer: Buffer is empty!" << COLOR_END << std::endl;
+      return false;
+    }
+
+    auto upperIterator = timeToImuBuffer_.upper_bound(tK);
+
+    // All entries are newer than tK — cannot decrement
+    if (upperIterator == timeToImuBuffer_.begin()) {
+      std::cerr << YELLOW_START << "GMsf-ImuBuffer" << RED_START
+                << " All IMU entries are newer than requested time " << tK << COLOR_END << std::endl;
+      return false;
+    }
+
+    auto lowerIterator = std::prev(upperIterator);
+
+    // Keep key which is closer to tK; handle the case where upperIterator == end()
+    if (upperIterator == timeToImuBuffer_.end() ||
+        std::abs(tK - lowerIterator->first) <= std::abs(upperIterator->first - tK)) {
+      returnedImuTimestamp = lowerIterator->first;
+      returnedImuMeasurement = lowerIterator->second;
+    } else {
+      returnedImuTimestamp = upperIterator->first;
+      returnedImuMeasurement = upperIterator->second;
+    }
+    timeDeviation = returnedImuTimestamp - tK;
   }
-
-  // Empty buffer
-  if (timeToImuBuffer_.empty()) {
-    std::cerr << YELLOW_START << "GMsf-ImuBuffer: Buffer is empty!" << COLOR_END << std::endl;
-    return false;
-  }
-
-  auto lowerIterator = upperIterator;
-  --lowerIterator;
-
-  // Keep key which is closer to tLidar
-  returnedImuTimestamp =
-      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  returnedImuMeasurement =
-      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
-  double timeDeviation = returnedImuTimestamp - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Searched time step: " << std::setprecision(14) << tK << std::endl;

@@ -80,7 +80,8 @@ class SafeIntegratedNavState : public NavState {
 
   SafeIntegratedNavState(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
                          const double timeK)
-      : NavState(T_W_Ik, I_v_W_I, I_w_W_I, timeK), T_O_Ik_gravityAligned_(T_W_Ik), T_W_O_(Eigen::Isometry3d::Identity()) {}
+      : NavState(T_W_Ik, I_v_W_I, I_w_W_I, timeK), T_O_Ik_gravityAligned_(T_W_Ik), T_W_O_(Eigen::Isometry3d::Identity()),
+        relocalizedWorldToOdom_(false) {}
 
   // Stters/updaters
   void update(const Eigen::Isometry3d& T_W_O, const Eigen::Isometry3d& T_O_Ik_gravityAligned, const Eigen::Vector3d& I_v_W_I,
@@ -98,7 +99,10 @@ class SafeIntegratedNavState : public NavState {
 
   const Eigen::Isometry3d& getT_O_Ik_gravityAligned() const { return T_O_Ik_gravityAligned_; }
 
-  bool isrelocalizedWorldToOdom() const { return relocalizedWorldToOdom_; }
+  bool isrelocalizedWorldToOdom() const {
+    const std::lock_guard<std::mutex> lock(stateUpdateMutex_);
+    return relocalizedWorldToOdom_;
+  }
 
  private:
   // Transformations
@@ -107,7 +111,7 @@ class SafeIntegratedNavState : public NavState {
   // Bool
   bool relocalizedWorldToOdom_;
   // Mutex
-  std::mutex stateUpdateMutex_;
+  mutable std::mutex stateUpdateMutex_;
 };
 
 // SafeNavStateWithCovarianceAndBias -------------------------------------------
