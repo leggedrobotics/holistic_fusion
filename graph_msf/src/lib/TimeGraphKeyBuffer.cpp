@@ -78,8 +78,7 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
     }
   } else {
     const auto lowerIterator = std::prev(upperIterator);
-    chosenIterator =
-        (std::abs(tK - lowerIterator->first) <= std::abs(upperIterator->first - tK)) ? lowerIterator : upperIterator;
+    chosenIterator = (std::abs(tK - lowerIterator->first) <= std::abs(upperIterator->first - tK)) ? lowerIterator : upperIterator;
   }
 
   // Keep key which is closer to tK.

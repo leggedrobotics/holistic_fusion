@@ -4,7 +4,13 @@ project(graph_msf_catkin)
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
 
-find_package(catkin REQUIRED)
+set(CATKIN_PACKAGE_DEPENDENCIES
+    gtsam_catkin
+)
+
+find_package(catkin REQUIRED COMPONENTS
+    ${CATKIN_PACKAGE_DEPENDENCIES}
+)
 
 # Color
 if(NOT WIN32)
@@ -29,6 +35,26 @@ if(NOT CATKIN_DEVEL_PREFIX)
     set(CATKIN_DEVEL_PREFIX "${CMAKE_BINARY_DIR}/devel")
 endif()
 
+# Force the wrapped native CMake project to use the GTSAM exported by gtsam_catkin.
+if(DEFINED gtsam_catkin_PREFIX)
+    set(_gtsam_catkin_gtsam_dir "${gtsam_catkin_PREFIX}/lib/cmake/GTSAM")
+    set(_gtsam_catkin_gtsam_unstable_dir "${gtsam_catkin_PREFIX}/lib/cmake/GTSAM_UNSTABLE")
+
+    if(NOT EXISTS "${_gtsam_catkin_gtsam_dir}/GTSAMConfig.cmake")
+        message(FATAL_ERROR "gtsam_catkin was found, but ${_gtsam_catkin_gtsam_dir}/GTSAMConfig.cmake does not exist.")
+    endif()
+
+    if(NOT EXISTS "${_gtsam_catkin_gtsam_unstable_dir}/GTSAM_UNSTABLEConfig.cmake")
+        message(FATAL_ERROR "gtsam_catkin was found, but ${_gtsam_catkin_gtsam_unstable_dir}/GTSAM_UNSTABLEConfig.cmake does not exist.")
+    endif()
+
+    set(GTSAM_DIR "${_gtsam_catkin_gtsam_dir}" CACHE PATH "GTSAM config directory exported by gtsam_catkin" FORCE)
+    set(GTSAM_UNSTABLE_DIR "${_gtsam_catkin_gtsam_unstable_dir}" CACHE PATH "GTSAM unstable config directory exported by gtsam_catkin" FORCE)
+
+    message(STATUS "Using GTSAM from gtsam_catkin: ${GTSAM_DIR}")
+    message(STATUS "Using GTSAM_UNSTABLE from gtsam_catkin: ${GTSAM_UNSTABLE_DIR}")
+endif()
+
 # Add the non-Catkin package ----------------------------------------------
 file(MAKE_DIRECTORY ${CATKIN_DEVEL_PREFIX}/include)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../graph_msf
@@ -43,10 +69,6 @@ add_custom_target(copy_graph_msf ALL
             "${CMAKE_SOURCE_DIR}/../../graph_msf/include/graph_msf"
             "${CATKIN_DEVEL_PREFIX}/include/graph_msf"
 )
-
-# GTSAM --> Also expose
-find_package(GTSAM REQUIRED)
-find_package(GTSAM_UNSTABLE REQUIRED)
 
 #############
 ## INSTALL ##
@@ -70,11 +92,6 @@ catkin_package(
     LIBRARIES
         ${CATKIN_DEVEL_PREFIX}/lib/libgraph_msf.so
         ${CS_PROJECT_LIBRARIES}
-        gtsam
-        gtsam_unstable
-        metis-gtsam
     CATKIN_DEPENDS
-        ${${PROJECT_NAME}_CATKIN_RUN_DEPENDS}
         ${CATKIN_PACKAGE_DEPENDENCIES}
 )
-

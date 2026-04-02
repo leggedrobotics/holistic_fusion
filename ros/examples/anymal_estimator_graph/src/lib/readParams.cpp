@@ -35,10 +35,10 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   lioOdometryRate_ =
       graph_msf::tryGetParamWithAliases<double>({"sensor_params/lioOdometryRate", "sensor_params/lidarOdometryRate"}, privateNode);
   // Keep a dedicated LiDAR-between rate so the between sensor can mirror the ROS 2 reference contract when configured.
-  lioBetweenOdometryRate_ = graph_msf::tryGetParamWithAliases<double>(
-      {"sensor_params/lioBetweenOdometryRate", "sensor_params/lioBetweenRate", "sensor_params/lioOdometryRate",
-       "sensor_params/lidarOdometryRate"},
-      privateNode);
+  lioBetweenOdometryRate_ =
+      graph_msf::tryGetParamWithAliases<double>({"sensor_params/lioBetweenOdometryRate", "sensor_params/lioBetweenRate",
+                                                 "sensor_params/lioOdometryRate", "sensor_params/lidarOdometryRate"},
+                                                privateNode);
   // Legged Between
   leggedOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/leggedOdometryBetweenRate", privateNode);
   leggedOdometryPoseDownsampleFactor_ = graph_msf::tryGetParam<int>("sensor_params/leggedOdometryPoseDownsampleFactor", privateNode);
@@ -111,14 +111,13 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Flags ---------------------------------------------------
   // Accept both the legacy ROS 1 launch flags and the B2W-style sensor flags so existing launch files
   // keep working while the estimator can also be driven with the newer ROS 2-like parameter layout.
-  useGnssUnaryFlag_ =
-      graph_msf::tryGetParamWithAliases<bool>({"launch/usingGnssUnary", "sensor_params/useGnss", "sensor_params/useGnssUnary"}, privateNode);
+  useGnssUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>(
+      {"launch/usingGnssUnary", "sensor_params/useGnss", "sensor_params/useGnssUnary"}, privateNode);
   useLioUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>(
       {"launch/usingLioUnary", "sensor_params/useLioOdometry", "sensor_params/useLioUnary"}, privateNode);
   useLioBetweenFlag_ = graph_msf::tryGetParamWithAliases<bool>(
       {"launch/usingLioBetween", "sensor_params/useLioBetweenOdometry", "sensor_params/useLioBetween"}, privateNode);
-  useVioOdometryFlag_ =
-      graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometry", "sensor_params/useVioOdometry"}, privateNode);
+  useVioOdometryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometry", "sensor_params/useVioOdometry"}, privateNode);
   useVioOdometryBetweenFlag_ =
       graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometryBetween", "sensor_params/useVioOdometryBetween"}, privateNode);
   // Legged Between Odometry
@@ -136,8 +135,8 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
     // Read Yaw initial guess options
     gnssHandlerPtr_->setUseYawInitialGuessFromFile(graph_msf::tryGetParamWithAliases<bool>(
         {"gnss/useYawInitialGuessFromFile", "gnss_params/useYawInitialGuessFromFile"}, privateNode));
-    gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(
-        graph_msf::tryGetParamWithAliases<bool>({"gnss/yawInitialGuessFromAlignment", "gnss_params/yawInitialGuessFromAlignment"}, privateNode));
+    gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(graph_msf::tryGetParamWithAliases<bool>(
+        {"gnss/yawInitialGuessFromAlignment", "gnss_params/yawInitialGuessFromAlignment"}, privateNode));
 
     // Alignment options.
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {

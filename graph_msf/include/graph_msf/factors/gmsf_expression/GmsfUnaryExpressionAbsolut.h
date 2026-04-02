@@ -108,37 +108,32 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     const auto getPriorBeliefAndCovarianceFromOldKey = [&](gtsam::Pose3& priorBelief, gtsam::Matrix66& priorCovariance) {
-          if (oldKeyPtr == nullptr) {
-            throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe is unavailable while preparing comeback prior.");
-          }
+      if (oldKeyPtr == nullptr) {
+        throw std::logic_error("GmsfUnaryExpressionAbsolut: Old keyframe is unavailable while preparing comeback prior.");
+      }
 
-          if (oldKeyPtr->getNumberStepsOptimized() > 0) {
-            priorBelief = oldKeyPtr->getTransformationAfterOptimization();
-            priorCovariance = oldKeyPtr->getCovarianceAfterOptimization();
-          } else {
-            priorBelief = oldKeyPtr->getApproximateTransformationBeforeOptimization();
-            priorCovariance = gtsam::Matrix66::Zero();
-            priorCovariance.diagonal() = gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise().array().square().matrix();
-          }
-        };
-    const auto computeCenteredKeyframeShift =
-        [&](const Eigen::Vector3d& newKeyframePosition) -> gtsam::Pose3 {
+      if (oldKeyPtr->getNumberStepsOptimized() > 0) {
+        priorBelief = oldKeyPtr->getTransformationAfterOptimization();
+        priorCovariance = oldKeyPtr->getCovarianceAfterOptimization();
+      } else {
+        priorBelief = oldKeyPtr->getApproximateTransformationBeforeOptimization();
+        priorCovariance = gtsam::Matrix66::Zero();
+        priorCovariance.diagonal() = gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise().array().square().matrix();
+      }
+    };
+    const auto computeCenteredKeyframeShift = [&](const Eigen::Vector3d& newKeyframePosition) -> gtsam::Pose3 {
       const gtsam::Point3 relativeKeyframeTranslation(newKeyframePosition - oldKeyframePosition);
       return gtsam::Pose3(gtsam::Rot3::Identity(), relativeKeyframeTranslation);
     };
-    const auto shiftCenteredPriorToCurrentKeyframe = [&](const gtsam::Pose3& priorBelief,
-                                                         const gtsam::Pose3& T_fixedFrameOld_fixedFrame) {
+    const auto shiftCenteredPriorToCurrentKeyframe = [&](const gtsam::Pose3& priorBelief, const gtsam::Pose3& T_fixedFrameOld_fixedFrame) {
       return priorBelief.compose(T_fixedFrameOld_fixedFrame);
     };
-    const auto buildRestartPriorNoiseModel = [&](const gtsam::Matrix66& oldPriorCovariance,
-                                                 const gtsam::Pose3& T_fixedFrameOld_fixedFrame,
+    const auto buildRestartPriorNoiseModel = [&](const gtsam::Matrix66& oldPriorCovariance, const gtsam::Pose3& T_fixedFrameOld_fixedFrame,
                                                  const double outageSeconds) {
       const gtsam::Matrix66 tangentFrameJacobian = T_fixedFrameOld_fixedFrame.inverse().AdjointMap();
-      const gtsam::Matrix66 transformedPriorCovariance =
-          tangentFrameJacobian * oldPriorCovariance * tangentFrameJacobian.transpose();
+      const gtsam::Matrix66 transformedPriorCovariance = tangentFrameJacobian * oldPriorCovariance * tangentFrameJacobian.transpose();
 
-      const Eigen::Matrix<double, 6, 1> transformedPriorSigmas =
-          transformedPriorCovariance.diagonal().array().max(0.0).sqrt().matrix();
+      const Eigen::Matrix<double, 6, 1> transformedPriorSigmas = transformedPriorCovariance.diagonal().array().max(0.0).sqrt().matrix();
       Eigen::Matrix<double, 6, 1> restartPriorSigmas =
           transformedPriorSigmas.cwiseMax(gmsfUnaryAbsoluteMeasurementPtr_->initialSe3AlignmentNoise());
 
@@ -147,8 +142,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         const double missedKeyframeCount = std::max(1.0, outageSeconds / effectiveKeyframePeriod);
         const Eigen::Matrix<double, 6, 1> outageSigmas =
             gmsfUnaryAbsoluteMeasurementPtr_->se3AlignmentRandomWalk() * std::sqrt(missedKeyframeCount);
-        restartPriorSigmas =
-            (restartPriorSigmas.array().square() + outageSigmas.array().square()).sqrt().matrix();
+        restartPriorSigmas = (restartPriorSigmas.array().square() + outageSigmas.array().square()).sqrt().matrix();
       }
 
       restartPriorSigmas = restartPriorSigmas.cwiseMax(Eigen::Matrix<double, 6, 1>::Constant(1e-9));
@@ -158,8 +152,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // C: Check if we need to create a new keyframe -----------------------------------------------------
     // Case 1: Old keyframe not active --> either reactivate it or explicitly restart the reference-frame chain from its prior.
     if (!oldVariableWasActive &&
-        gmsfUnaryAbsoluteMeasurementPtr_->alignmentRecoveryPolicy() ==
-            AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior) {
+        gmsfUnaryAbsoluteMeasurementPtr_->alignmentRecoveryPolicy() == AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior) {
       if (newGraphKeyAddedFlag) {
         throw std::logic_error("GmsfUnaryExpressionAbsolut: Old inactive keyframe cannot already be marked as newly added.");
       }
@@ -179,11 +172,11 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
           gmsfUnaryAbsoluteMeasurementPtr_->timeK(), T_W_fixedFrame_initial, dynamicVariableType);
       assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
 
-      const gtsam::Pose3 T_fixedFrameOld_fixedFrame =
-          computeCenteredKeyframeShift(graphKey.getReferenceFrameKeyframePosition());
+      const gtsam::Pose3 T_fixedFrameOld_fixedFrame = computeCenteredKeyframeShift(graphKey.getReferenceFrameKeyframePosition());
       restartedKeyPriorBelief = shiftCenteredPriorToCurrentKeyframe(restartedKeyPriorBelief, T_fixedFrameOld_fixedFrame);
-      restartedKeyPriorNoiseModelPtr = buildRestartPriorNoiseModel(
-          restartedKeyPriorCovariance, T_fixedFrameOld_fixedFrame, oldKeyPtr->computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK()));
+      restartedKeyPriorNoiseModelPtr =
+          buildRestartPriorNoiseModel(restartedKeyPriorCovariance, T_fixedFrameOld_fixedFrame,
+                                      oldKeyPtr->computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK()));
       T_W_fixedFrame_initial = restartedKeyPriorBelief;
 
       keyframeAge = graphKey.computeKeyframeAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());

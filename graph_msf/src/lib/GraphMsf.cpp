@@ -116,9 +116,6 @@ bool GraphMsf::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, con
     Eigen::Vector3d W_t_W_I0 =
         W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
 
-
-    
-
     // Set Position
     preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStartFlag_);
 
@@ -302,17 +299,17 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
 bool GraphMsf::addZeroMotionFactor(double timeKm1, double timeK, double noiseDensity) {
   static_cast<void>(graphMgrPtr_->addPoseBetweenFactor(gtsam::Pose3::Identity(), noiseDensity * Eigen::Matrix<double, 6, 1>::Ones(),
                                                        timeKm1, timeK, 10, RobustNormEnum::None, 0.0));
-  static_cast<void>(graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>,
-                                                           gtsam::symbol_shorthand::V>(
-      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
+  static_cast<void>(
+      graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
+          gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
 
   return true;
 }
 
 bool GraphMsf::addZeroVelocityFactor(double timeK, double noiseDensity) {
-  static_cast<void>(graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>,
-                                                           gtsam::symbol_shorthand::V>(
-      gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
+  static_cast<void>(
+      graphMgrPtr_->addUnaryFactorInImuFrame<gtsam::Vector3, 3, gtsam::PriorFactor<gtsam::Vector3>, gtsam::symbol_shorthand::V>(
+          gtsam::Vector3::Zero(), noiseDensity * Eigen::Matrix<double, 3, 1>::Ones(), timeK));
 
   return true;
 }
@@ -342,21 +339,19 @@ void GraphMsf::enqueueDeferredUnaryMeasurement_(const std::string& measurementNa
   workItem.sequenceNumber = deferredUnaryMeasurementSequenceCounter_++;
   workItem.measurementName = measurementName;
   workItem.addAttempt = addAttempt;
-  const auto insertIt = std::upper_bound(
-      deferredUnaryMeasurements_.begin(), deferredUnaryMeasurements_.end(), workItem,
-      [](const DeferredUnaryMeasurementWorkItem& lhs, const DeferredUnaryMeasurementWorkItem& rhs) {
-        if (lhs.measurementTime != rhs.measurementTime) {
-          return lhs.measurementTime < rhs.measurementTime;
-        }
-        return lhs.sequenceNumber < rhs.sequenceNumber;
-      });
+  const auto insertIt = std::upper_bound(deferredUnaryMeasurements_.begin(), deferredUnaryMeasurements_.end(), workItem,
+                                         [](const DeferredUnaryMeasurementWorkItem& lhs, const DeferredUnaryMeasurementWorkItem& rhs) {
+                                           if (lhs.measurementTime != rhs.measurementTime) {
+                                             return lhs.measurementTime < rhs.measurementTime;
+                                           }
+                                           return lhs.sequenceNumber < rhs.sequenceNumber;
+                                         });
   deferredUnaryMeasurements_.insert(insertIt, workItem);
 
   while (static_cast<int>(deferredUnaryMeasurements_.size()) > graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_) {
     const auto& droppedWorkItem = deferredUnaryMeasurements_.back();
-    REGULAR_COUT << RED_START << " Deferred unary queue is full. Dropping newest deferred measurement \""
-                 << droppedWorkItem.measurementName << "\" at time " << std::setprecision(14) << droppedWorkItem.measurementTime
-                 << "." << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " Deferred unary queue is full. Dropping newest deferred measurement \"" << droppedWorkItem.measurementName
+                 << "\" at time " << std::setprecision(14) << droppedWorkItem.measurementTime << "." << COLOR_END << std::endl;
     deferredUnaryMeasurements_.pop_back();
   }
 }
@@ -378,9 +373,9 @@ void GraphMsf::runOrDeferUnaryMeasurement_(const std::string& measurementName, c
 
       const double maxDeferredLeadSeconds = effectiveMaxDeferredUnaryFutureLeadSeconds_();
       if (outcome.futureLeadSeconds > maxDeferredLeadSeconds) {
-        REGULAR_COUT << RED_START << " Future unary measurement \"" << measurementName << "\" leads by "
-                     << 1000 * outcome.futureLeadSeconds << " ms, exceeding the deferred-unary limit of "
-                     << 1000 * maxDeferredLeadSeconds << " ms. Dropping it." << COLOR_END << std::endl;
+        REGULAR_COUT << RED_START << " Future unary measurement \"" << measurementName << "\" leads by " << 1000 * outcome.futureLeadSeconds
+                     << " ms, exceeding the deferred-unary limit of " << 1000 * maxDeferredLeadSeconds << " ms. Dropping it." << COLOR_END
+                     << std::endl;
         return;
       }
 
@@ -416,9 +411,8 @@ void GraphMsf::flushDeferredUnaryMeasurements_() {
     while (!deferredUnaryMeasurements_.empty()) {
       const auto& front = deferredUnaryMeasurements_.front();
       if (front.measurementTime < oldestBufferedKeyTime - graphConfigPtr_->maxSearchDeviation_) {
-        REGULAR_COUT << RED_START << " Deferred unary measurement \"" << front.measurementName << "\" at time "
-                     << std::setprecision(14) << front.measurementTime
-                     << " aged out of the graph-key buffer. Dropping it." << COLOR_END << std::endl;
+        REGULAR_COUT << RED_START << " Deferred unary measurement \"" << front.measurementName << "\" at time " << std::setprecision(14)
+                     << front.measurementTime << " aged out of the graph-key buffer. Dropping it." << COLOR_END << std::endl;
         deferredUnaryMeasurements_.pop_front();
         continue;
       }

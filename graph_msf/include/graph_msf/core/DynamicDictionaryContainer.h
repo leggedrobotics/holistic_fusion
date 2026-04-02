@@ -21,8 +21,7 @@ class DynamicDictionaryContainer {
  public:
   DynamicDictionaryContainer() = default;
   DynamicDictionaryContainer(const DynamicDictionaryContainer& other)
-      : gtsamPose3ExpressionKeys_(other.gtsamPose3ExpressionKeys_),
-        gtsamPoint3ExpressionKeys_(other.gtsamPoint3ExpressionKeys_) {}
+      : gtsamPose3ExpressionKeys_(other.gtsamPose3ExpressionKeys_), gtsamPoint3ExpressionKeys_(other.gtsamPoint3ExpressionKeys_) {}
   ~DynamicDictionaryContainer() = default;
 
   DynamicDictionaryContainer& operator=(const DynamicDictionaryContainer& other) {

@@ -84,8 +84,7 @@ class GraphManager {
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   UnaryAddOutcome addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
-                                           const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                           double measurementTime);
+                                           const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, double measurementTime);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
@@ -179,8 +178,8 @@ class GraphManager {
 
   void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, double measurementTime,
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
-  UnaryAddOutcome classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime,
-                                                const std::string& measurementName, double measurementTime);
+  UnaryAddOutcome classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime, const std::string& measurementName,
+                                                double measurementTime);
 
   // Buffers
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;

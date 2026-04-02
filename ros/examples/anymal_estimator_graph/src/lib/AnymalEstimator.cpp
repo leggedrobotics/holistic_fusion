@@ -121,10 +121,8 @@ void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
         privateNode.advertise<geometry_msgs::PoseWithCovarianceStamped>("/graph_msf/gnss_pose_with_covariance", ROS_QUEUE_SIZE);
     // Latch the status and reference topics so late subscribers receive the latest initialization state.
     pubStatus_ = privateNode.advertise<std_msgs::Bool>("/graph_msf/alignment_status", 1, true);
-    pubReferenceNavSatFixCoordinates_ =
-        privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position", 1, true);
-    pubReferenceNavSatFixCoordinatesENU_ =
-        privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position_enu", 1, true);
+    pubReferenceNavSatFixCoordinates_ = privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position", 1, true);
+    pubReferenceNavSatFixCoordinatesENU_ = privateNode.advertise<sensor_msgs::NavSatFix>("/graph_msf/reference_gnss_position_enu", 1, true);
   }
 
   // Markers
@@ -303,9 +301,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // absolute GNSS factor. Reuse the same path here instead of only reading the covariance diagonal.
   Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> PenuMap(gnssMsgPtr->position_covariance.data());
   Eigen::Matrix3d P_enu = 0.5 * (PenuMap + PenuMap.transpose());
-  Eigen::Matrix3d P_lv03 =
-      graph_msf::gnss_cov::rotateCov_ENU_to_LV03(*gnssHandlerPtr_, gnssMsgPtr->latitude, gnssMsgPtr->longitude,
-                                                 gnssMsgPtr->altitude, P_enu);
+  Eigen::Matrix3d P_lv03 = graph_msf::gnss_cov::rotateCov_ENU_to_LV03(*gnssHandlerPtr_, gnssMsgPtr->latitude, gnssMsgPtr->longitude,
+                                                                      gnssMsgPtr->altitude, P_enu);
   Eigen::Vector3d estStdDevXYZ(std::sqrt(P_lv03(0, 0)), std::sqrt(P_lv03(1, 1)), std::sqrt(P_lv03(2, 2)));
 
   // Accumulate the first N messages so the GNSS handler can choose a stable reference.
@@ -397,13 +394,12 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       double bestDt = 0.0;
       if (!getClosestLioPose_(timeK, T_M_B_t0, &bestDt)) {
         if (!std::isfinite(bestDt)) {
-          REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but LiDAR pose buffer is empty (cannot compute yaw(W<-B))."
+          REGULAR_COUT << YELLOW_START << "Trajectory alignment ready, but LiDAR pose buffer is empty (cannot compute yaw(W<-B))."
                        << COLOR_END << std::endl;
         } else {
           REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but no sufficiently time-synced LiDAR pose for yaw(W<-B). best_dt="
-                       << std::fixed << std::setprecision(3) << bestDt << " s" << COLOR_END << std::endl;
+                       << "Trajectory alignment ready, but no sufficiently time-synced LiDAR pose for yaw(W<-B). best_dt=" << std::fixed
+                       << std::setprecision(3) << bestDt << " s" << COLOR_END << std::endl;
         }
         return;
       }
@@ -419,8 +415,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
       pubStatus_.publish(statusMsg);
 
       REGULAR_COUT << GREEN_START << "Trajectory Alignment Successful. "
-                   << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI) << "  yaw(W<-B) [deg]="
-                   << (180.0 * initYaw_W_Base / M_PI) << COLOR_END << std::endl;
+                   << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI) << "  yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI) << COLOR_END
+                   << std::endl;
     }
 
     Eigen::Matrix3d R_W_B_forLever = Eigen::AngleAxisd(initYaw_W_Base, Eigen::Vector3d::UnitZ()).toRotationMatrix();
@@ -551,8 +547,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   if (lioFixedFrame.empty()) {
     ROS_WARN_THROTTLE(1.0, "LiDAR odometry header.frame_id is empty. Absolute pose unary will be ill-defined.");
   } else if (lioFixedFrame == lioOdomFrameName) {
-    ROS_WARN_THROTTLE(1.0,
-                      "LiDAR absolute pose uses the sensor/body frame as fixed frame (%s). Expected a map/odom-like reference frame.",
+    ROS_WARN_THROTTLE(1.0, "LiDAR absolute pose uses the sensor/body frame as fixed frame (%s). Expected a map/odom-like reference frame.",
                       lioFixedFrame.c_str());
   }
 
@@ -573,8 +568,8 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   }
 
   if (pubMeasMapLioPath_.getNumSubscribers() > 0 && areYawAndPositionInited()) {
-    addToPathMsg(measLio_mapLidarPathPtr_, lioFixedFrame + referenceFrameAlignedNameId, odomLidarPtr->header.stamp, lio_T_M_Lk.translation(),
-                 static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
+    addToPathMsg(measLio_mapLidarPathPtr_, lioFixedFrame + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
+                 lio_T_M_Lk.translation(), static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
     pubMeasMapLioPath_.publish(measLio_mapLidarPathPtr_);
   }
 }
@@ -639,7 +634,8 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
 
   // Visualization ----------------------------
   // Add to path message
-  addToPathMsg(measLio_mapLidarPathPtr_, worldFrame_, odomLidarPtr->header.stamp, lio_T_M_Lk.translation(), graphConfigPtr_->imuBufferLength_ * 4);
+  addToPathMsg(measLio_mapLidarPathPtr_, worldFrame_, odomLidarPtr->header.stamp, lio_T_M_Lk.translation(),
+               graphConfigPtr_->imuBufferLength_ * 4);
 
   // Publish Path
   pubMeasMapLioPath_.publish(measLio_mapLidarPathPtr_);
@@ -675,8 +671,7 @@ void AnymalEstimator::vioUnaryCallback_(const geometry_msgs::PoseWithCovarianceS
   if (vioFixedFrame.empty()) {
     ROS_WARN_THROTTLE(1.0, "VIO header.frame_id is empty. Absolute pose unary will be ill-defined.");
   } else if (vioFixedFrame == vioOdometryFrame) {
-    ROS_WARN_THROTTLE(1.0,
-                      "VIO absolute pose uses the sensor/body frame as fixed frame (%s). Expected a map/odom-like reference frame.",
+    ROS_WARN_THROTTLE(1.0, "VIO absolute pose uses the sensor/body frame as fixed frame (%s). Expected a map/odom-like reference frame.",
                       vioFixedFrame.c_str());
   }
 
@@ -860,7 +855,8 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryVelocityRate_), leggedOdometryFrame_, leggedOdometryFrame_ + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(), legPoseBetweenNoise_);
+          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
+          legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;

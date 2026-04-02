@@ -55,15 +55,14 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
     const std::string measurementName = R_T_R_S.measurementName();
     const double measurementTime = R_T_R_S.timeK();
     runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = R_T_R_S, addToOnlineSmootherFlag]() -> UnaryAddOutcome {
+        measurementName, measurementTime, [this, measurement = R_T_R_S, addToOnlineSmootherFlag]() -> UnaryAddOutcome {
           auto gmsfUnaryExpressionPose3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePose3>(
               std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>>(measurement), staticTransformsPtr_->getImuFrame(),
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), measurement.sensorFrameName()),
               graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
           return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr,
-                                                                                               addToOnlineSmootherFlag);
+                                                                                              addToOnlineSmootherFlag);
         });
   }
 }
@@ -90,15 +89,13 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
     const std::string measurementName = fixedFrame_t_fixedFrame_sensorFrame.measurementName();
     const double measurementTime = fixedFrame_t_fixedFrame_sensorFrame.timeK();
     runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = fixedFrame_t_fixedFrame_sensorFrame]() -> UnaryAddOutcome {
+        measurementName, measurementTime, [this, measurement = fixedFrame_t_fixedFrame_sensorFrame]() -> UnaryAddOutcome {
           auto gmsfUnaryExpressionPosition3Ptr = std::make_shared<GmsfUnaryExpressionAbsolutePosition3>(
               std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>>(measurement), staticTransformsPtr_->getImuFrame(),
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), measurement.sensorFrameName()),
               graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
-          return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(
-              gmsfUnaryExpressionPosition3Ptr);
+          return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
         });
   }
 }
@@ -128,17 +125,13 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
 
     const std::string measurementName = S_v_F_S.measurementName();
     const double measurementTime = S_v_F_S.timeK();
-    runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = S_v_F_S]() -> UnaryAddOutcome {
-          auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionLocalVelocity3>(
-              std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(measurement), staticTransformsPtr_->getImuFrame(),
-              staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), measurement.sensorFrameName()),
-              coreImuBufferPtr_);
+    runOrDeferUnaryMeasurement_(measurementName, measurementTime, [this, measurement = S_v_F_S]() -> UnaryAddOutcome {
+      auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionLocalVelocity3>(
+          std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(measurement), staticTransformsPtr_->getImuFrame(),
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), measurement.sensorFrameName()), coreImuBufferPtr_);
 
-          return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(
-              gmsfUnaryExpressionVelocity3SensorFramePtr);
-        });
+      return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+    });
   }
 }
 
@@ -167,15 +160,13 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLa
     const std::string measurementName = S_t_S_L.measurementName();
     const double measurementTime = S_t_S_L.timeK();
     runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = S_t_S_L, landmarkCreationCounter]() -> UnaryAddOutcome {
+        measurementName, measurementTime, [this, measurement = S_t_S_L, landmarkCreationCounter]() -> UnaryAddOutcome {
           auto gmsfUnaryExpressionPosition3LandmarkPtr = std::make_shared<GmsfUnaryExpressionLandmarkPosition3>(
               std::make_shared<UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>>(measurement), staticTransformsPtr_->getImuFrame(),
               staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), measurement.sensorFrameName()),
               landmarkCreationCounter);
 
-          return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLandmarkPosition3>(
-              gmsfUnaryExpressionPosition3LandmarkPtr);
+          return graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLandmarkPosition3>(gmsfUnaryExpressionPosition3LandmarkPtr);
         });
   }
 }

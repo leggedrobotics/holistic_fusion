@@ -42,13 +42,13 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
    * @param se3AlignmentRandomWalk Random walk for the SE3 alignment. If not provided or set to zero, no random walk is used but alignment
    * is treated as global variable.
    */
-  UnaryMeasurementAbsolute(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                           const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
-                           const double covarianceViolationThreshold, const std::string& fixedFrameName, const std::string& worldFrameName,
-                           const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
-                           const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
-                           const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy =
-                               AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
+  UnaryMeasurementAbsolute(
+      const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
+      const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
+      const double covarianceViolationThreshold, const std::string& fixedFrameName, const std::string& worldFrameName,
+      const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
+      const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
+      const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy = AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                          covarianceViolationThreshold),
         fixedFrameName_(fixedFrameName),
@@ -114,8 +114,7 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = Eigen::Matrix<double, 6, 1>::Zero();
   Eigen::Matrix<double, 6, 1> se3AlignmentRandomWalk_ = Eigen::Matrix<double, 6, 1>::Zero();
   bool modelAsRandomWalkFlag_ = false;
-  AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy_ =
-      AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue;
+  AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy_ = AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue;
 };
 
 }  // namespace graph_msf

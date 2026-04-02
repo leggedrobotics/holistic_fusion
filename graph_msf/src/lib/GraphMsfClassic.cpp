@@ -15,8 +15,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/GraphManager.h"
 
 // Unary Factors
-#include "graph_msf/factors/non_expression/unaryRollFactor.h"
 #include "graph_msf/factors/non_expression/unaryPitchFactor.h"
+#include "graph_msf/factors/non_expression/unaryRollFactor.h"
 #include "graph_msf/factors/non_expression/unaryYawFactor.h"
 
 namespace graph_msf {
@@ -41,22 +41,19 @@ void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbs
   if (!covarianceViolatedFlag) {
     const std::string measurementName = yaw_W_frame.measurementName();
     const double measurementTime = yaw_W_frame.timeK();
-    runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = yaw_W_frame]() -> UnaryAddOutcome {
-          gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(measurement.unaryMeasurement());
-          gtsam::Rot3 yawR_W_I =
-              yawR_W_frame *
-              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
-                              .rotation());
+    runOrDeferUnaryMeasurement_(measurementName, measurementTime, [this, measurement = yaw_W_frame]() -> UnaryAddOutcome {
+      gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(measurement.unaryMeasurement());
+      gtsam::Rot3 yawR_W_I =
+          yawR_W_frame *
+          gtsam::Rot3(
+              staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
-          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
-              yawR_W_I.yaw(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
-        });
+      return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
+          yawR_W_I.yaw(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+    });
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in yaw unary measurement at time " << yaw_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in yaw unary measurement at time "
+              << yaw_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 
@@ -74,22 +71,19 @@ void GraphMsfClassic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAb
   if (!covarianceViolatedFlag) {
     const std::string measurementName = roll_W_frame.measurementName();
     const double measurementTime = roll_W_frame.timeK();
-    runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = roll_W_frame]() -> UnaryAddOutcome {
-          gtsam::Rot3 rollR_W_frame = gtsam::Rot3::Roll(measurement.unaryMeasurement());
-          gtsam::Rot3 rollR_W_I =
-              rollR_W_frame *
-              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
-                              .rotation());
+    runOrDeferUnaryMeasurement_(measurementName, measurementTime, [this, measurement = roll_W_frame]() -> UnaryAddOutcome {
+      gtsam::Rot3 rollR_W_frame = gtsam::Rot3::Roll(measurement.unaryMeasurement());
+      gtsam::Rot3 rollR_W_I =
+          rollR_W_frame *
+          gtsam::Rot3(
+              staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
-          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
-              rollR_W_I.roll(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
-        });
+      return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
+          rollR_W_I.roll(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+    });
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in roll unary measurement at time " << roll_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in roll unary measurement at time "
+              << roll_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 
@@ -107,22 +101,19 @@ void GraphMsfClassic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDA
   if (!covarianceViolatedFlag) {
     const std::string measurementName = pitch_W_frame.measurementName();
     const double measurementTime = pitch_W_frame.timeK();
-    runOrDeferUnaryMeasurement_(
-        measurementName, measurementTime,
-        [this, measurement = pitch_W_frame]() -> UnaryAddOutcome {
-          gtsam::Rot3 pitchR_W_frame = gtsam::Rot3::Pitch(measurement.unaryMeasurement());
-          gtsam::Rot3 pitchR_W_I =
-              pitchR_W_frame *
-              gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame())
-                              .rotation());
+    runOrDeferUnaryMeasurement_(measurementName, measurementTime, [this, measurement = pitch_W_frame]() -> UnaryAddOutcome {
+      gtsam::Rot3 pitchR_W_frame = gtsam::Rot3::Pitch(measurement.unaryMeasurement());
+      gtsam::Rot3 pitchR_W_I =
+          pitchR_W_frame *
+          gtsam::Rot3(
+              staticTransformsPtr_->rv_T_frame1_frame2(measurement.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
 
-          return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
-              pitchR_W_I.pitch(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
-        });
+      return graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
+          pitchR_W_I.pitch(), measurement.unaryMeasurementNoiseDensity(), measurement.timeK());
+    });
   } else {
-    std::cout << YELLOW_START << "GMsf-Classic" << RED_START
-              << " Covariance violation detected in pitch unary measurement at time " << pitch_W_frame.timeK()
-              << ". Measurement not added to graph." << COLOR_END << std::endl;
+    std::cout << YELLOW_START << "GMsf-Classic" << RED_START << " Covariance violation detected in pitch unary measurement at time "
+              << pitch_W_frame.timeK() << ". Measurement not added to graph." << COLOR_END << std::endl;
   }
 }
 

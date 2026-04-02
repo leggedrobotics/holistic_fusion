@@ -34,7 +34,8 @@ class DynamicTransformDictionary : public TransformsDictionary<DynamicFactorGrap
  public:
   // Constructor
   DynamicTransformDictionary()
-      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>()) {}
+      : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>()) {
+  }
 
   DynamicTransformDictionary(const DynamicTransformDictionary& other)
       : TransformsDictionary<DynamicFactorGraphStateKey<GTSAM_DYNAMIC_STATE_TYPE>>(other),

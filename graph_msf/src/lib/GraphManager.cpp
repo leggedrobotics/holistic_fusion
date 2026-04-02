@@ -66,11 +66,12 @@ struct FunctionTimingStats {
 
 inline void atomicMax(std::atomic<std::int64_t>& a, std::int64_t v) {
   std::int64_t cur = a.load(std::memory_order_relaxed);
-  while (v > cur && !a.compare_exchange_weak(cur, v, std::memory_order_relaxed)) {}
+  while (v > cur && !a.compare_exchange_weak(cur, v, std::memory_order_relaxed)) {
+  }
 }
 
 class ScopedFunctionTimer {
-public:
+ public:
   explicit ScopedFunctionTimer(const char* name, FunctionTimingStats& stats)
       : name_(name), stats_(stats), start_(std::chrono::steady_clock::now()) {}
 
@@ -83,22 +84,19 @@ public:
     const std::int64_t total_ns = stats_.total_ns.fetch_add(dur_ns, std::memory_order_relaxed) + dur_ns;
     atomicMax(stats_.max_ns, dur_ns);
 
-    constexpr std::int64_t kReportPeriodNs =
-        static_cast<std::int64_t>(5) * static_cast<std::int64_t>(1000000000LL);
+    constexpr std::int64_t kReportPeriodNs = static_cast<std::int64_t>(5) * static_cast<std::int64_t>(1000000000LL);
 
     const std::int64_t now_ns = duration_cast<nanoseconds>(end.time_since_epoch()).count();
     std::int64_t last = stats_.last_report_ns.load(std::memory_order_relaxed);
-    if ((now_ns - last) >= kReportPeriodNs &&
-        stats_.last_report_ns.compare_exchange_strong(last, now_ns, std::memory_order_relaxed)) {
+    if ((now_ns - last) >= kReportPeriodNs && stats_.last_report_ns.compare_exchange_strong(last, now_ns, std::memory_order_relaxed)) {
       const double avg_ms = (n > 0) ? (static_cast<double>(total_ns) / 1e6) / static_cast<double>(n) : 0.0;
       const double max_ms = static_cast<double>(stats_.max_ns.load(std::memory_order_relaxed)) / 1e6;
-      REGULAR_COUT << " [T] " << name_ << ": n=" << static_cast<unsigned long long>(n)
-                   << " avg=" << avg_ms << " ms"
+      REGULAR_COUT << " [T] " << name_ << ": n=" << static_cast<unsigned long long>(n) << " avg=" << avg_ms << " ms"
                    << " max=" << max_ms << " ms" << std::endl;
     }
   }
 
-private:
+ private:
   const char* name_;
   FunctionTimingStats& stats_;
   std::chrono::steady_clock::time_point start_;
@@ -521,8 +519,7 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
   GRAPH_MSF_SCOPED_TIMER("GraphManager::setInitialWorldFrameToFixedFrameTransform");
 
   gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().setInitialGuessForFramePair(worldFrame_, fixedFrame, gtsam::Pose3(T_W_F.matrix()));
-  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix()
-            << std::endl;
+  std::cout << " Set world to fixed frame transform T_" << worldFrame_ << "_" << fixedFrame << " to: " << T_W_F.matrix() << std::endl;
   return true;
 }
 
@@ -542,15 +539,15 @@ UnaryAddOutcome GraphManager::classifyUnaryMeasurementTime_(gtsam::Key& returned
   }
 
   if (measurementTime < oldestBufferedTime - graphConfigPtr_->maxSearchDeviation_) {
-    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName << "\" at time " << std::setprecision(14)
-                 << measurementTime << " is older than the oldest buffered graph key time " << oldestBufferedTime
+    REGULAR_COUT << RED_START << " Unary measurement \"" << measurementName << "\" at time " << std::setprecision(14) << measurementTime
+                 << " is older than the oldest buffered graph key time " << oldestBufferedTime
                  << " by more than the admissible deviation of " << 1000 * graphConfigPtr_->maxSearchDeviation_
                  << " ms. Not adding to graph." << COLOR_END << std::endl;
     return {};
   }
 
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, measurementName,
-                                                      graphConfigPtr_->maxSearchDeviation_, measurementTime)) {
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, measurementName, graphConfigPtr_->maxSearchDeviation_,
+                                                      measurementTime)) {
     REGULAR_COUT << RED_START << " Time deviation of unary measurement \"" << measurementName << "\" at key " << returnedKey << " is "
                  << 1000 * std::abs(returnedGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
                  << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
@@ -749,10 +746,10 @@ void GraphManager::updateGraph() {
       }
     }
 
-    REGULAR_COUT << RED_START << " RT update diagnostics (" << reason << "): current=" << keyToString(gtsam::symbol_shorthand::X(currentPropagatedKey))
-                 << ", t=" << std::setprecision(14) << currentPropagatedTime << ", last_optimized_t=" << lastOptimizedStateTime_
-                 << ", dt_since_last_optimized=" << (currentPropagatedTime - lastOptimizedStateTime_) << "s."
-                 << COLOR_END << std::endl;
+    REGULAR_COUT << RED_START << " RT update diagnostics (" << reason
+                 << "): current=" << keyToString(gtsam::symbol_shorthand::X(currentPropagatedKey)) << ", t=" << std::setprecision(14)
+                 << currentPropagatedTime << ", last_optimized_t=" << lastOptimizedStateTime_
+                 << ", dt_since_last_optimized=" << (currentPropagatedTime - lastOptimizedStateTime_) << "s." << COLOR_END << std::endl;
     REGULAR_COUT << " Incoming batch sizes: factors=" << newRtGraphFactors.size() << ", values=" << newRtGraphValues.size()
                  << ", timestamps=" << newRtGraphKeysTimestampsMap.size() << ", optimizer_keys=" << optimizerKeys.size() << std::endl;
     REGULAR_COUT << " Incoming factor keys: " << formatKeySet(batchFactorKeys) << std::endl;
@@ -780,8 +777,8 @@ void GraphManager::updateGraph() {
     printKeyAvailability(gtsam::symbol_shorthand::B(currentPropagatedKey), "Current bias");
 
     if (!missingFactorKeys.empty()) {
-      REGULAR_COUT << RED_START << " Factor keys missing from optimizer+incoming-values: " << formatKeySet(missingFactorKeys)
-                   << COLOR_END << std::endl;
+      REGULAR_COUT << RED_START << " Factor keys missing from optimizer+incoming-values: " << formatKeySet(missingFactorKeys) << COLOR_END
+                   << std::endl;
     }
     if (!orphanValueKeys.empty()) {
       REGULAR_COUT << RED_START << " Incoming values not referenced by any factor: " << formatKeySet(orphanValueKeys) << COLOR_END
@@ -855,8 +852,7 @@ void GraphManager::updateGraph() {
           if (isInDictionary) {
             const auto& dynamicState = dynamicPoseDictionary.rv_T_frame1_frame2(framePair.first, framePair.second);
             dynamicKeyInfo << ", active=" << dynamicState.isVariableActive()
-                           << ", optimized_steps=" << dynamicState.getNumberStepsOptimized()
-                           << ", state_time=" << dynamicState.getTime();
+                           << ", optimized_steps=" << dynamicState.getNumberStepsOptimized() << ", state_time=" << dynamicState.getTime();
           }
         } else {
           dynamicKeyInfo << " -> no_frame_pair_mapping";
@@ -873,8 +869,8 @@ void GraphManager::updateGraph() {
   };
 
   auto restoreBufferedGraphWork = [&](const gtsam::NonlinearFactorGraph& factors, const gtsam::Values& values,
-                                      const std::map<gtsam::Key, double>& keyTimestamps, const bool restoreRt,
-                                      const bool restoreBatch, const std::string& reason) {
+                                      const std::map<gtsam::Key, double>& keyTimestamps, const bool restoreRt, const bool restoreBatch,
+                                      const std::string& reason) {
     if (factors.empty() && values.empty() && keyTimestamps.empty()) {
       return;
     }
@@ -961,8 +957,7 @@ void GraphManager::updateGraph() {
 
   // Return if optimization failed
   if (!successfulRtOptimizationFlag) {
-    restoreBufferedGraphWork(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, true, false,
-                             "real-time optimizer failure");
+    restoreBufferedGraphWork(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap, true, false, "real-time optimizer failure");
     restoreBufferedGraphWork(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, false, true,
                              "real-time optimizer failure");
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
@@ -984,8 +979,7 @@ void GraphManager::updateGraph() {
   if (!stateLookupSuccessfulFlag) {
     REGULAR_COUT << RED_START << " Optimizer update succeeded, but current propagated state x" << currentPropagatedKey
                  << " is not available in the real-time smoother anymore. "
-                 << "Skipping state publication/update for this cycle to avoid using inconsistent x/v/b keys." << COLOR_END
-                 << std::endl;
+                 << "Skipping state publication/update for this cycle to avoid using inconsistent x/v/b keys." << COLOR_END << std::endl;
     dumpRtFailureDiagnostics("current propagated pose missing after nominally successful update");
     return;
   }
@@ -1014,8 +1008,7 @@ void GraphManager::updateGraph() {
   resultPoseCovarianceWorldFrame =
       calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, gtsam::symbol_shorthand::X(currentPropagatedKey), __func__, resultNavState);
   // Velocity Covariance
-  resultVelocityCovariance =
-      rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
+  resultVelocityCovariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(gtsam::symbol_shorthand::V(currentPropagatedKey));
 #endif
 
   // D. Reference Frame Transformations ------------------------------
@@ -1102,7 +1095,7 @@ void GraphManager::updateGraph() {
           if (isLandmarkState) {
             // Write to landmark container
             resultLandmarkTransformations.set_T_frame1_frame2(framePairKeyMapIterator.first.first, framePairKeyMapIterator.first.second,
-                                                             Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
+                                                              Eigen::Isometry3d(T_frame1_frame2_corrected.matrix()));
             resultLandmarkTransformationsCovariance.set_T_frame1_frame2(framePairKeyMapIterator.first.first,
                                                                         framePairKeyMapIterator.first.second, T_frame1_frame2_covariance);
           }
@@ -1119,8 +1112,7 @@ void GraphManager::updateGraph() {
               if (realTimeReferenceFrameNamePairs_.find(framePairKeyMapIterator_first_first) == realTimeReferenceFrameNamePairs_.end()) {
                 realTimeReferenceFrameNamePairs_.insert(framePairKeyMapIterator_first_first);
                 REGULAR_COUT << " Added frame pair: " << framePairKeyMapIterator_first_first.first << " to "
-                             << framePairKeyMapIterator_first_first.second << " to real-time logging."
-                             << std::endl;
+                             << framePairKeyMapIterator_first_first.second << " to real-time logging." << std::endl;
               }
             }
           }
@@ -1155,7 +1147,7 @@ void GraphManager::updateGraph() {
                            << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                         framePairKeyMapIterator.first.second);
+                                                                                          framePairKeyMapIterator.first.second);
               break;
             }
           }
@@ -1173,7 +1165,7 @@ void GraphManager::updateGraph() {
                          << COLOR_END << std::endl;
             // Remove state from state dictionary
             gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                       framePairKeyMapIterator.first.second);
+                                                                                        framePairKeyMapIterator.first.second);
             return;
           }
           // If active but added newly but never optimized
@@ -1189,7 +1181,7 @@ void GraphManager::updateGraph() {
                            << COLOR_END << std::endl;
               // Remove state from state dictionary
               gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().removeOrDeactivateTransform(framePairKeyMapIterator.first.first,
-                                                                                         framePairKeyMapIterator.first.second);
+                                                                                          framePairKeyMapIterator.first.second);
             }
             // Otherwise keep for now and potentially print out
             else if (graphConfigPtr_->verboseLevel_ >= 1) {
@@ -1705,12 +1697,10 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
   // Perform update of the real-time smoother, including optimization
   bool successFlag = rtOptimizerPtr_->update(newRtGraphFactors, newRtGraphValues, newRtGraphKeysTimestampsMap);
 
-  const bool adaptiveAdditionalIterationsEnabled =
-      graphConfigPtr->useAdaptiveAdditionalOptimizationIterationsFlag_ &&
-      graphConfigPtr->realTimeSmootherUseIsamFlag_ &&
-      graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ > 0.0;
-  const bool printAdditionalOptimizationDiagnostics =
-      graphConfigPtr->printAdditionalOptimizationDiagnosticsFlag_;
+  const bool adaptiveAdditionalIterationsEnabled = graphConfigPtr->useAdaptiveAdditionalOptimizationIterationsFlag_ &&
+                                                   graphConfigPtr->realTimeSmootherUseIsamFlag_ &&
+                                                   graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ > 0.0;
+  const bool printAdditionalOptimizationDiagnostics = graphConfigPtr->printAdditionalOptimizationDiagnosticsFlag_;
 
   bool adaptiveFallbackToFixedIterations = !adaptiveAdditionalIterationsEnabled;
   double previousErrorAfter = std::numeric_limits<double>::quiet_NaN();
@@ -1722,26 +1712,21 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
       previousErrorAfter = initialDiagnostics.errorAfter;
       previousErrorAfterValid = true;
       if (printAdditionalOptimizationDiagnostics) {
-        REGULAR_COUT << GREEN_START
-                     << " Additional optimization initial update: errorBefore=" << std::setprecision(10)
-                     << initialDiagnostics.errorBefore
-                     << ", errorAfter=" << initialDiagnostics.errorAfter
+        REGULAR_COUT << GREEN_START << " Additional optimization initial update: errorBefore=" << std::setprecision(10)
+                     << initialDiagnostics.errorBefore << ", errorAfter=" << initialDiagnostics.errorAfter
                      << ", variablesRelinearized=" << initialDiagnostics.variablesRelinearized
-                     << ", variablesReeliminated=" << initialDiagnostics.variablesReeliminated
-                     << COLOR_END << std::endl;
+                     << ", variablesReeliminated=" << initialDiagnostics.variablesReeliminated << COLOR_END << std::endl;
       }
     } else if (printAdditionalOptimizationDiagnostics) {
-      REGULAR_COUT << YELLOW_START
-                   << " Additional optimization initial update: nonlinear error diagnostics are unavailable."
-                   << COLOR_END << std::endl;
+      REGULAR_COUT << YELLOW_START << " Additional optimization initial update: nonlinear error diagnostics are unavailable." << COLOR_END
+                   << std::endl;
     }
 
     if (adaptiveAdditionalIterationsEnabled && !previousErrorAfterValid) {
       adaptiveFallbackToFixedIterations = true;
       REGULAR_COUT << YELLOW_START
                    << " Adaptive additional optimization iterations requested, but nonlinear error diagnostics are unavailable. "
-                   << "Falling back to the fixed additionalOptimizationIterations cap."
-                   << COLOR_END << std::endl;
+                   << "Falling back to the fixed additionalOptimizationIterations cap." << COLOR_END << std::endl;
     }
   }
 
@@ -1755,47 +1740,35 @@ bool GraphManager::addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFacto
     const auto& diagnostics = rtOptimizerPtr_->getLastUpdateDiagnostics();
     const bool diagnosticsAvailable =
         diagnostics.nonlinearErrorAvailable && std::isfinite(diagnostics.errorAfter) && previousErrorAfterValid;
-    const double relativeImprovement =
-        diagnosticsAvailable ? (previousErrorAfter - diagnostics.errorAfter) /
-                                   std::max(std::abs(previousErrorAfter), 1e-12)
-                             : std::numeric_limits<double>::quiet_NaN();
+    const double relativeImprovement = diagnosticsAvailable
+                                           ? (previousErrorAfter - diagnostics.errorAfter) / std::max(std::abs(previousErrorAfter), 1e-12)
+                                           : std::numeric_limits<double>::quiet_NaN();
 
     if (printAdditionalOptimizationDiagnostics) {
       if (diagnosticsAvailable) {
-        REGULAR_COUT << GREEN_START
-                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
-                     << ": errorBefore=" << std::setprecision(10) << diagnostics.errorBefore
-                     << ", errorAfter=" << diagnostics.errorAfter
-                     << ", relative improvement=" << relativeImprovement
-                     << ", variablesRelinearized=" << diagnostics.variablesRelinearized
-                     << ", variablesReeliminated=" << diagnostics.variablesReeliminated
-                     << COLOR_END << std::endl;
+        REGULAR_COUT << GREEN_START << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": errorBefore=" << std::setprecision(10) << diagnostics.errorBefore << ", errorAfter=" << diagnostics.errorAfter
+                     << ", relative improvement=" << relativeImprovement << ", variablesRelinearized=" << diagnostics.variablesRelinearized
+                     << ", variablesReeliminated=" << diagnostics.variablesReeliminated << COLOR_END << std::endl;
       } else {
-        REGULAR_COUT << YELLOW_START
-                     << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
-                     << ": nonlinear error diagnostics are unavailable."
-                     << COLOR_END << std::endl;
+        REGULAR_COUT << YELLOW_START << " Additional optimization iteration " << (itr + 1) << "/" << additionalIterations
+                     << ": nonlinear error diagnostics are unavailable." << COLOR_END << std::endl;
       }
     }
 
     if (adaptiveAdditionalIterationsEnabled && !adaptiveFallbackToFixedIterations) {
       if (!diagnosticsAvailable) {
         adaptiveFallbackToFixedIterations = true;
-        REGULAR_COUT << YELLOW_START
-                     << " Lost nonlinear error diagnostics during adaptive additional optimization. "
-                     << "Falling back to the fixed additionalOptimizationIterations cap."
-                     << COLOR_END << std::endl;
+        REGULAR_COUT << YELLOW_START << " Lost nonlinear error diagnostics during adaptive additional optimization. "
+                     << "Falling back to the fixed additionalOptimizationIterations cap." << COLOR_END << std::endl;
         continue;
       }
 
-      if (relativeImprovement <
-          graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_) {
+      if (relativeImprovement < graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_) {
         if (printAdditionalOptimizationDiagnostics) {
-          REGULAR_COUT << GREEN_START
-                       << " Stopping adaptive additional optimization after " << (itr + 1)
-                       << " extra iteration(s) because the relative nonlinear-error improvement "
-                       << relativeImprovement << " fell below the threshold "
-                       << graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ << "."
+          REGULAR_COUT << GREEN_START << " Stopping adaptive additional optimization after " << (itr + 1)
+                       << " extra iteration(s) because the relative nonlinear-error improvement " << relativeImprovement
+                       << " fell below the threshold " << graphConfigPtr->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ << "."
                        << COLOR_END << std::endl;
         }
         break;
