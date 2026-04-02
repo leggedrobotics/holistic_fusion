@@ -3,3 +3,6 @@ extrinsics:
   lioOdometryFrame: lidar        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
   leggedOdometryFrame: base      #Tracked Legged odometry frame name
   gnssFrame: gps
+  # Mirror the ROS 2 B2W defaults so the ROS 1 wrapper uses the same VIO frame contract once VIO is enabled.
+  vioOdometryFrame: zed_camera_link
+  vioOdometryBetweenFrame: zed_camera_link

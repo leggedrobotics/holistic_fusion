@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef StaticTransformsUrdf_H
-#define StaticTransformsUrdf_H
+#ifndef GRAPH_MSF_ROS_STATIC_TRANSFORMS_TF_H
+#define GRAPH_MSF_ROS_STATIC_TRANSFORMS_TF_H
 
 // ROS
 #include <tf/transform_listener.h>
@@ -21,10 +21,10 @@ class StaticTransformsTf : public StaticTransforms {
   StaticTransformsTf() = default;
 
  protected:
-  void findTransformations() override;
+  bool findTransformations() override;
 
   // Members
   tf::TransformListener listener_;
 };
 }  // namespace graph_msf
-#endif  // end StaticTransformsUrdf_H
+#endif  // GRAPH_MSF_ROS_STATIC_TRANSFORMS_TF_H

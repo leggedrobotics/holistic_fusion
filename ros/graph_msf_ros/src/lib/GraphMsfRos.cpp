@@ -29,28 +29,36 @@ GraphMsfRos::GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr)
 void GraphMsfRos::setup(const std::shared_ptr<StaticTransforms> staticTransformsPtr) {
   REGULAR_COUT << GREEN_START << " GraphMsfRos-Setup called." << COLOR_END << std::endl;
 
-  // Check
-  if (staticTransformsPtr_ == nullptr) {
-    std::runtime_error("Static transforms not set. Has to be set.");
+  if (staticTransformsPtr == nullptr) {
+    throw std::runtime_error("Static transforms not set. Has to be set.");
   }
+  staticTransformsPtr_ = staticTransformsPtr;
 
   // Read parameters ----------------------------
-  GraphMsfRos::readParams(privateNode);
+  readParams(privateNode);
 
   // Call super class Setup ----------------------------
   GraphMsf::setup(graphConfigPtr_, staticTransformsPtr);
 
-  // Publishers ----------------------------
-  GraphMsfRos::initializePublishers(privateNode);
+  // Resolve static transforms before any ROS interfaces can consume them.
+  while (!resolveStaticTransforms()) {
+    ros::Duration(kStaticTransformRetrySleepSeconds).sleep();
+  }
 
-  // Subscribers ----------------------------
-  GraphMsfRos::initializeSubscribers(privateNode);
+  // Cache immutable frame metadata before derived interfaces come online.
+  cacheFrames();
 
   // Messages ----------------------------
-  GraphMsfRos::initializeMessages(privateNode);
+  initializeMessages(privateNode);
+
+  // Publishers ----------------------------
+  initializePublishers(privateNode);
+
+  // Subscribers ----------------------------
+  initializeSubscribers(privateNode);
 
   // Services ----------------------------
-  GraphMsfRos::initializeServices(privateNode);
+  initializeServices(privateNode);
 
   // Time
   startTime = std::chrono::high_resolution_clock::now();
@@ -120,6 +128,12 @@ void GraphMsfRos::initializeServices(ros::NodeHandle& privateNode) {
   srvLogRealTimeNavStates_ =
       privateNode.advertiseService("/graph_msf/log_real_time_nav_states", &GraphMsfRos::srvLogRealTimeNavStatesCallback, this);
 }
+
+bool GraphMsfRos::resolveStaticTransforms() {
+  return staticTransformsPtr_ != nullptr && staticTransformsPtr_->findTransformations();
+}
+
+void GraphMsfRos::cacheFrames() {}
 
 bool GraphMsfRos::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
                                                      graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {

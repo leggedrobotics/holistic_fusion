@@ -9,7 +9,11 @@ Please see the LICENSE file that has been included as part of this package.
 #define ANYMAL_ESTIMATOR_H
 
 // std
+#include <array>
 #include <chrono>
+#include <deque>
+#include <limits>
+#include <mutex>
 
 // ROS
 #include <geometry_msgs/Pose.h>
@@ -21,6 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -29,6 +34,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_anymal_msgs/AnymalState.h"
 
 // Workspace
+#include "graph_msf/gnss/GnssCovariance.h"
 #include "graph_msf/gnss/GnssHandler.h"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
@@ -38,6 +44,8 @@ Please see the LICENSE file that has been included as part of this package.
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20
 
 namespace anymal_se {
+
+class AnymalStaticTransforms;
 
 class AnymalEstimator : public graph_msf::GraphMsfRos {
  public:
@@ -50,10 +58,11 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
  protected:
   // Virtual Functions
+  void cacheFrames() override;
   void initializePublishers(ros::NodeHandle& privateNode) override;
   void initializeSubscribers(ros::NodeHandle& privateNode) override;
   void initializeMessages(ros::NodeHandle& privateNode) override;
-  void initializeServices_(ros::NodeHandle& privateNode);
+  void initializeServices(ros::NodeHandle& privateNode) override;
 
   // Parameter Loading
   void readParams(const ros::NodeHandle& privateNode) override;
@@ -63,22 +72,42 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
                                           graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
 
  private:
+  static int legIndexFromName_(const std::string& legName);
+
   // Callbacks
   // LIO
   void lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   void lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& lidar_odom_ptr);
   // GNSS
   void gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr& gnssPtr);
+  bool getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
   // Legged
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
   void leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
+  // VIO
+  void vioUnaryCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& vioOdomPtr);
+  void vioBetweenCallback_(const nav_msgs::Odometry::ConstPtr& vioOdomPtr);
 
   // GNSS Handler
   std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
 
   // TrajectoryAlignment Handler
   std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+
+  // Typed static transforms
+  std::shared_ptr<AnymalStaticTransforms> anymalStaticTransformsPtr_;
+
+  // Cached immutable frame names
+  std::string worldFrame_;
+  std::string baseLinkFrame_;
+  std::string gnssFrame_;
+  std::string lioOdometryFrame_;
+  std::string leggedOdometryFrame_;
+  std::string vioOdometryFrame_;
+
+  // The GNSS lever arm is immutable after TF resolution, so cache it once.
+  Eigen::Vector3d t_B_G_cached_ = Eigen::Vector3d::Zero();
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;
@@ -88,18 +117,23 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
 
   // Rates
   double lioOdometryRate_ = 5.0;
+  double lioBetweenOdometryRate_ = 5.0;
   double leggedOdometryBetweenRate_ = 400.0;
   int leggedOdometryPoseDownsampleFactor_ = 40;
   double leggedOdometryVelocityRate_ = 20.0;
   int leggedOdometryVelocityDownsampleFactor_ = 4;
   double leggedKinematicsRate_ = 400.0;
   int leggedKinematicsDownsampleFactor_ = 10;
+  double vioOdometryRate_ = 10.0;
+  double vioOdometryBetweenRate_ = 25.0;
   double gnssRate_ = 10.0;
 
   // Flags
   bool useGnssUnaryFlag_ = false;
   bool useLioUnaryFlag_ = true;
   bool useLioBetweenFlag_ = false;
+  bool useVioOdometryFlag_ = false;
+  bool useVioOdometryBetweenFlag_ = false;
   bool useLeggedBetweenFlag_ = false;
   bool useLeggedVelocityUnaryFlag_ = false;
   bool useLeggedKinematicsFlag_ = false;
@@ -107,11 +141,14 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> vioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
   double gnssPositionOutlierThreshold_ = 1.0;
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> vioPoseUnaryNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> legPoseBetweenNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 3, 1> legVelocityUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
   Eigen::Matrix<double, 3, 1> legKinematicsFootPositionUnaryNoise_ = 1.0 * Eigen::Matrix<double, 3, 1>::Ones();
@@ -132,10 +169,23 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // LIO
   // Unary
   int lidarUnaryCallbackCounter_{-1};
+  double lastLidarUnaryTime_{0.0};
   // Between
   int lidarBetweenCallbackCounter_{-1};
   double lidarBetweenTimeKm1_{0.0};
   Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
+  // Buffer of recent absolute LiDAR poses used to reproduce the ROS 2 GNSS alignment bootstrap.
+  mutable std::mutex lioPoseBufMutex_;
+  std::deque<std::pair<double, Eigen::Isometry3d>> lioPoseBuf_;
+  static constexpr double kLioBufKeepSec = 5.0;
+  static constexpr double kInitSyncMaxDt = 0.20;
+  // VIO
+  int vioUnaryCallbackCounter_{-1};
+  int vioBetweenCallbackCounter_{-1};
+  double lastVioUnaryTime_{0.0};
+  double lastVioBetweenTime_{0.0};
+  double vioBetweenTimeKm1_{0.0};
+  Eigen::Isometry3d vio_T_M_Ckm1_ = Eigen::Isometry3d::Identity();
   // Legged
   int leggedOdometryPoseCallbackCounter_{-1};
   int leggedOdometryOdomCallbackCounter_{-1};
@@ -150,6 +200,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   ros::Subscriber subGnssUnary_;
   ros::Subscriber subLioUnary_;
   ros::Subscriber subLioBetween_;
+  ros::Subscriber subVioOdometry_;
+  ros::Subscriber subVioBetween_;
   ros::Subscriber subLeggedBetween_;
   ros::Subscriber subLeggedVelocityUnary_;
   ros::Subscriber subLeggedKinematics_;
@@ -159,15 +211,26 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Path
   ros::Publisher pubMeasMapLioPath_;
   ros::Publisher pubMeasWorldGnssPath_;
+  ros::Publisher pubMeasMapVioPath_;
+  ros::Publisher pubMeasMapVioBetweenPath_;
+  ros::Publisher pubGnssPoseWithCov_;
+  ros::Publisher pubStatus_;
+  ros::Publisher pubReferenceNavSatFixCoordinates_;
+  ros::Publisher pubReferenceNavSatFixCoordinatesENU_;
   // Markers
   ros::Publisher pubFootContactMarkers_;
 
   // Messages
   nav_msgs::PathPtr measLio_mapLidarPathPtr_;
   nav_msgs::PathPtr measGnss_worldGnssPathPtr_;
+  nav_msgs::PathPtr measVio_mapCameraPathPtr_;
+  nav_msgs::PathPtr measVioBetween_mapCameraPathPtr_;
 
   // Servers
   ros::ServiceServer serverTransformGnssToEnu_;
+
+  // Mutex
+  std::mutex estimatorMutex_;
 };
 
 }  // namespace anymal_se

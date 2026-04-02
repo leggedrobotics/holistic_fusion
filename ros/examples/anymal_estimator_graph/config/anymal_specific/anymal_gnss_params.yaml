@@ -1,3 +1,5 @@
+# The ROS 1 loader accepts both this legacy `gnss` namespace and the ROS 2-style `gnss_params`
+# aliases. Keep a single authoritative copy here so the launch/YAML configuration stays readable.
 gnss:
   initYaw: 90.0  # Initial yaw in degrees. This is used if the initial guess from file is disabled.
   useYawInitialGuessFromFile: false  # If this and the next are false, 0 initial yaw is used.

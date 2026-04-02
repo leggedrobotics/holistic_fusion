@@ -27,19 +27,39 @@ inline void printKey(const std::string& key, std::vector<double> vector) {
   std::cout << std::endl;
 }
 
+template <typename T>
+inline bool tryGetParamImpl(const std::string& key, const ros::NodeHandle& privateNode, T& value) {
+  if (privateNode.getParam(key, value)) {
+    printKey(key, value);
+    return true;
+  }
+  if (privateNode.getParam("/" + key, value)) {
+    printKey("/" + key, value);
+    return true;
+  }
+  return false;
+}
+
+template <typename T>
+T tryGetParamWithAliases(const std::initializer_list<std::string>& keys, const ros::NodeHandle& privateNode) {
+  for (const auto& key : keys) {
+    T value;
+    if (tryGetParamImpl(key, privateNode, value)) {
+      return value;
+    }
+  }
+
+  if (keys.size() == 0) {
+    throw std::runtime_error("GraphMsfRos - empty parameter alias list.");
+  }
+
+  throw std::runtime_error("GraphMsfRos - none of the parameter aliases were specified. First alias: " + *keys.begin());
+}
+
 // Implementation of Templating
 template <typename T>
 T tryGetParam(const std::string& key, const ros::NodeHandle& privateNode) {
-  T value;
-  if (privateNode.getParam(key, value)) {
-    printKey(key, value);
-    return value;
-  } else if (privateNode.getParam("/" + key, value)) {
-    printKey("/" + key, value);
-    return value;
-  } else {
-    throw std::runtime_error("GraphMsfRos - " + key + " not specified.");
-  }
+  return tryGetParamWithAliases<T>({key}, privateNode);
 }
 
 }  // namespace graph_msf

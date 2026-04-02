@@ -12,4 +12,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 #define REGULAR_COUT std::cout << YELLOW_START << "GraphMsfRos" << COLOR_END
 
+namespace graph_msf {
+inline constexpr double kDefaultTfLookupTimeoutSeconds = 3.0;
+inline constexpr double kStaticTransformRetrySleepSeconds = 0.1;
+}  // namespace graph_msf
+
 #endif  // GraphMsfRos_CONSTANTS_H

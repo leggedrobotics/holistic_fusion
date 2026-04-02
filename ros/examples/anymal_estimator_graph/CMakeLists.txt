@@ -23,6 +23,7 @@ endif ()
 
 # Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
+        geometry_msgs
         graph_msf_ros
         graph_msf_ros_msgs
         nav_msgs
@@ -30,6 +31,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
         roscpp
         std_msgs
         tf
+        visualization_msgs
         graph_msf_anymal_msgs
 )
 

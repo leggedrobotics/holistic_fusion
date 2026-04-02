@@ -50,6 +50,8 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
   virtual void initializeSubscribers(ros::NodeHandle& privateNode);
   virtual void initializeMessages(ros::NodeHandle& privateNode);
   virtual void initializeServices(ros::NodeHandle& privateNode);
+  virtual bool resolveStaticTransforms();
+  virtual void cacheFrames();
 
   // Parameter Loading -----------------------------------
   virtual void readParams(const ros::NodeHandle& privateNode);

@@ -8,6 +8,8 @@
     <arg name="imu_topic_name" default="/sensors/imu"/>
     <arg name="gnss_topic_name" default="/rtk_gps_driver/position_receiver_0/ros/navsatfix"/>
     <arg name="lidar_odometry_topic_name" default="/open3d_slam/scan2map_odometry"/>
+    <arg name="vio_odometry_topic_name" default="/vio_odometry_topic"/>
+    <arg name="vio_odometry_between_topic_name" default="/vio_odometry_between_topic"/>
     <arg name="legged_odometry_pose_topic_name" default="/state_estimator/pose_in_odom"/>
     <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry"/>
     <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state"/>
@@ -20,6 +22,10 @@
     <arg name="using_gnss_unary" default="true"/>
     <arg name="using_lio_unary" default="true"/>
     <arg name="using_lio_between" default="false"/>
+    <!-- VIO is disabled by default so existing ANYmal launch setups keep working without
+         requiring a new TF frame or topic remaps. -->
+    <arg name="using_vio_odometry" default="false"/>
+    <arg name="using_vio_odometry_between" default="false"/>
     <arg name="using_legged_between" default="false"/>
     <arg name="using_legged_velocity_unary" default="true"/>
     <arg name="using_legged_kinematics" default="false"/>
@@ -57,6 +63,8 @@
         <param name="launch/usingGnssUnary" type="bool" value="$(arg using_gnss_unary)"/>
         <param name="launch/usingLioUnary" type="bool" value="$(arg using_lio_unary)"/>
         <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)"/>
+        <param name="launch/usingVioOdometry" type="bool" value="$(arg using_vio_odometry)"/>
+        <param name="launch/usingVioOdometryBetween" type="bool" value="$(arg using_vio_odometry_between)"/>
         <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)"/>
         <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)"/>
         <param name="launch/usingLeggedKinematics" type="bool" value="$(arg using_legged_kinematics)"/>
@@ -73,6 +81,8 @@
         <remap from="/imu_topic" to="$(arg imu_topic_name)"/>
         <remap from="/lidar_odometry_topic" to="$(arg lidar_odometry_topic_name)"/>
         <remap from="/gnss_topic" to="$(arg gnss_topic_name)"/>
+        <remap from="/vio_odometry_topic" to="$(arg vio_odometry_topic_name)"/>
+        <remap from="/vio_odometry_between_topic" to="$(arg vio_odometry_between_topic_name)"/>
         <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)"/>
         <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)"/>
         <remap from="/anymal_state_topic" to="$(arg legged_kinematics_topic_name)"/>

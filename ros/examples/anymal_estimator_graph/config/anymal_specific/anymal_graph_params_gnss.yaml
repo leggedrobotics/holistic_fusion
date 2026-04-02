@@ -1,6 +1,9 @@
 # Sensor Params
 sensor_params:
   lioOdometryRate: 5
+  lioBetweenOdometryRate: 5
+  vioOdometryRate: 10
+  vioOdometryBetweenRate: 25
   leggedOdometryBetweenRate: 400
   leggedOdometryPoseDownsampleFactor: 40
   leggedOdometryVelocityRate: 20
@@ -13,6 +16,8 @@ sensor_params:
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   lioSe3AlignmentRandomWalk: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  # Match the ROS 2 integration contract by exposing a dedicated VIO alignment random walk.
+  vioSe3AlignmentRandomWalk: [ 0.1, 0.5, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   #  lioSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters
@@ -24,6 +29,9 @@ noise_params:
   lioPoseUnaryNoiseDensity: [ 0.05, 0.05, 0.05, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Binary Noise
   lioPoseBetweenNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  ## VIO Odometry
+  vioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Legged Odometry
   ## Between Noise
   legPoseBetweenNoiseDensity: [ 0.2, 0.2, 0.2, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

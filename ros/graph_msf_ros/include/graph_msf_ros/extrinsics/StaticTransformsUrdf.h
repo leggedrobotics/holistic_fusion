@@ -5,8 +5,8 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#ifndef StaticTransformsUrdf_H
-#define StaticTransformsUrdf_H
+#ifndef GRAPH_MSF_ROS_STATIC_TRANSFORMS_URDF_H
+#define GRAPH_MSF_ROS_STATIC_TRANSFORMS_URDF_H
 
 // ROS
 #include <kdl/tree.hpp>
@@ -45,7 +45,7 @@ class StaticTransformsUrdf : public StaticTransforms {
   ros::NodeHandle privateNode_;
 
  private:
-  virtual void findTransformations() = 0;
+  virtual bool findTransformations() = 0;
 };
 }  // namespace graph_msf
-#endif  // end StaticTransformsUrdf_H
+#endif  // GRAPH_MSF_ROS_STATIC_TRANSFORMS_URDF_H
