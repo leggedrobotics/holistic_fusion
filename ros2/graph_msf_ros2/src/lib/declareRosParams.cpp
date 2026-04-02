@@ -113,6 +113,13 @@ void GraphMsfRos2::declareRosParams() {
 
   // Logging path
   this->declare_parameter("launch.optimizationResultLoggingPath", std::string(""));
+
+  // Visualization params
+  this->declare_parameter("visualization_params.publishHeadingUncertaintyMarkers", false);
+  this->declare_parameter("visualization_params.publishHeadingUncertaintyText", true);
+  this->declare_parameter("visualization_params.headingUncertaintyDiskRadius", 2.5);
+  this->declare_parameter("visualization_params.headingUncertaintyNSigmas", 2.0);
+  this->declare_parameter("visualization_params.headingUncertaintyZOffset", 0.2);
 }
 
 }  // namespace graph_msf

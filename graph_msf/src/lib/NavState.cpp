@@ -81,6 +81,7 @@ void SafeIntegratedNavState::update(const Eigen::Isometry3d& T_W_O, const Eigen:
   I_v_W_I_ = I_v_W_I;
   I_w_W_I_ = I_w_W_I;
   timeK_ = timeK;
+  relocalizedWorldToOdom_ = odomNotJump;
 }
 
 void SafeIntegratedNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I,
@@ -89,7 +90,11 @@ void SafeIntegratedNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, cons
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
   NavState::updateInWorld(T_W_Ik, I_v_W_I, I_w_W_I, timeK);
-  T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
+  if (odomNotJump) {
+    T_W_O_ = T_W_Ik_ * T_O_Ik_gravityAligned_.inverse();
+  } else {
+    T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
+  }
 }
 
 void SafeIntegratedNavState::updateYawInWorld(const double yaw_W_Ik, const bool odomNotJump) {

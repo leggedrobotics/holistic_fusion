@@ -4,8 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Status1
         - /TF1/Frames1
         - /PathInOdom1/Topic1
         - /PathInWorld1/Topic1
@@ -13,13 +11,14 @@ Panels:
         - /OptimizedPath1/Topic1
         - /VelocityMarker1/Topic1
         - /Raw_LiDAR1/Topic1
-        - /GnssPoseCovariance1
         - /GnssPoseCovariance1/Topic1
         - /GnssPoseCovariance1/Covariance1
         - /GnssPoseCovariance1/Covariance1/Position1
         - /Vio_Path1/Topic1
-      Splitter Ratio: 0.5028089880943298
-    Tree Height: 1153
+        - /UncertainityMarker1
+        - /UncertainityMarker1/Namespaces1
+      Splitter Ratio: 0.7543352842330933
+    Tree Height: 1077
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -68,8 +67,6 @@ Visualization Manager:
         All Enabled: true
         base:
           Value: true
-        base_graph_msf_aligned:
-          Value: true
         depth_camera_front_depth_frame:
           Value: true
         depth_camera_front_depth_optical_frame:
@@ -88,6 +85,8 @@ Visualization Manager:
           Value: true
         dlio_map:
           Value: true
+        dlio_map_graph_msf_aligned:
+          Value: true
         dlio_odom:
           Value: true
         gnss:
@@ -97,6 +96,8 @@ Visualization Manager:
         imu:
           Value: true
         lidar:
+          Value: true
+        map_zedx_graph_msf_aligned:
           Value: true
         odom_graph_msf:
           Value: true
@@ -111,8 +112,6 @@ Visualization Manager:
         zed_camera_center:
           Value: true
         zed_camera_link:
-          Value: true
-        zed_camera_link_graph_msf_aligned:
           Value: true
         zed_left_camera_frame:
           Value: true
@@ -139,6 +138,8 @@ Visualization Manager:
               depth_camera_rear_depth_frame:
                 depth_camera_rear_depth_optical_frame:
                   {}
+          dlio_map:
+            {}
           dlio_odom:
             {}
           head:
@@ -150,9 +151,9 @@ Visualization Manager:
               {}
           odom_graph_msf:
             world_graph_msf:
-              base_graph_msf_aligned:
+              dlio_map_graph_msf_aligned:
                 {}
-              zed_camera_link_graph_msf_aligned:
+              map_zedx_graph_msf_aligned:
                 {}
           optical_camera_front:
             {}
@@ -168,8 +169,6 @@ Visualization Manager:
               zed_right_camera_frame:
                 zed_right_camera_frame_optical:
                   {}
-        dlio_map:
-          {}
       Update Interval: 0
       Value: true
     - Angle Tolerance: 0
@@ -405,7 +404,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 107
+      Max Intensity: 104
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: Raw_LiDAR
@@ -514,11 +513,26 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /graph_msf/measVIO_Between_path_map_zed_base_link
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: UncertainityMarker
+      Namespaces:
+        heading_uncertainty_disk: true
+        heading_uncertainty_disk_fused: true
+        heading_uncertainty_disk_lio: true
+        heading_uncertainty_disk_vio: false
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /graph_msf/heading_uncertainty_markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
     Fixed Frame: world_graph_msf
-    Frame Rate: 30
+    Frame Rate: 60
   Name: root
   Tools:
     - Class: rviz_default_plugins/Interact
@@ -560,16 +574,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 6.013686180114746
+      Distance: 20.281475067138672
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.04623378813266754
-        Y: 1.273536205291748
-        Z: 0.40105095505714417
+        X: 0.8444318175315857
+        Y: 1.122115135192871
+        Z: 0.2765388488769531
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -578,15 +592,15 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: base
       Value: Orbit (rviz)
-      Yaw: 0.25174248218536377
+      Yaw: 3.7448859214782715
     Saved: ~
 Window Geometry:
   Displays:
-    collapsed: true
-  Height: 1376
-  Hide Left Dock: true
+    collapsed: false
+  Height: 1300
+  Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001b50000050afc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000003b0000050a000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000496fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b00000496000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007320000003efc0100000002fb0000000800540069006d00650000000000000007320000025300fffffffb0000000800540069006d006501000000000000045000000000000000000000045a0000050a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000015c000004befc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b000004be000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000496fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b00000496000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007320000003efc0100000002fb0000000800540069006d00650000000000000007320000025300fffffffb0000000800540069006d00650100000000000004500000000000000000000004e8000004be00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -595,6 +609,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1114
-  X: 1446
-  Y: 27
+  Width: 1610
+  X: 2560
+  Y: 8

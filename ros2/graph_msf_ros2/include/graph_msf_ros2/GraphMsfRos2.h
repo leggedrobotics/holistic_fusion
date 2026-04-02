@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -12,6 +13,7 @@
 
 // ROS2
 #include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
@@ -19,6 +21,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // Workspace
 #include "graph_msf/interface/GraphMsfClassic.h"
@@ -136,7 +139,13 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
   void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
                                   const double timeStamp) const;
+  void publishAttitudeSigmas(
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   void publishVelocityMarkers(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
+  void publishHeadingUncertaintyMarkers(
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  void validateHeadingUncertaintyTransformsOrThrow() const;
+  void setHeadingUncertaintyFixedFrame(const std::string& sourceId, const std::string& fixedFrameName);
   void publishImuPaths() const;
   void publishAddedImuMeas(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const rclcpp::Time& stamp) const;
 
@@ -166,6 +175,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubOptWorldImu_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubEstWorldPosVariance_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubEstWorldRotVariance_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pubAttitudeSigmas_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pubLinVelocityMarker_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubEstOdomImuPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubEstWorldImuPath_;
@@ -173,6 +183,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubAccelBias_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubGyroBias_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pubAngularVelocityMarker_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pubHeadingUncertaintyMarkers_;
 
   // Subscribers
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImu_;
@@ -183,6 +194,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   nav_msgs::msg::Odometry::SharedPtr optWorldImuMsgPtr_;
   geometry_msgs::msg::Vector3Stamped::SharedPtr estWorldPosVarianceMsgPtr_;
   geometry_msgs::msg::Vector3Stamped::SharedPtr estWorldRotVarianceMsgPtr_;
+  geometry_msgs::msg::TwistStamped::SharedPtr attitudeSigmasMsgPtr_;
   nav_msgs::msg::Path::SharedPtr estOdomImuPathPtr_;
   nav_msgs::msg::Path::SharedPtr estWorldImuPathPtr_;
   nav_msgs::msg::Path::SharedPtr optWorldImuPathPtr_;
@@ -196,6 +208,17 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
   double lastIntegratedStateTimestamp_ = 0.0;
+
+  // Heading uncertainty visualization.
+  // The marker visualizes world-referenced robot yaw uncertainty as robot-centered disk sectors,
+  // one per selected alignment source (for example LIO and VIO).
+  bool publishHeadingUncertaintyMarkersFlag_ = false;
+  bool publishHeadingUncertaintyTextFlag_ = true;
+  double headingUncertaintyDiskRadius_ = 2.5;                 // [m]
+  double headingUncertaintyNSigmas_ = 2.0;                    // [-]
+  double headingUncertaintyZOffset_ = 0.20;                   // [m]
+  std::map<std::string, std::string> headingUncertaintyFixedFrames_;
+  mutable std::mutex headingUncertaintyFixedFrameMutex_;
 
   // Non-time-critical data thread for paths, variances, markers, etc.
   std::queue<NonTimeCriticalData> nonTimeCriticalQueue_;

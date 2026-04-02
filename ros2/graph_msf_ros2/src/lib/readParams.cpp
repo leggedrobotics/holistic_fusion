@@ -6,6 +6,7 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // C++
+#include <algorithm>
 #include <filesystem>
 
 // Implementation
@@ -219,6 +220,21 @@ void GraphMsfRos2::readParams() {
 
   referenceFrameAlignedNameId = tryGetParam<std::string>(this, "name_ids.referenceFrameAligned");
   sensorFrameCorrectedNameId = tryGetParam<std::string>(this, "name_ids.sensorFrameCorrected");
+
+  // Visualization parameters
+  publishHeadingUncertaintyMarkersFlag_ =
+      tryGetParam<bool>(this, "visualization_params.publishHeadingUncertaintyMarkers");
+  publishHeadingUncertaintyTextFlag_ =
+      tryGetParam<bool>(this, "visualization_params.publishHeadingUncertaintyText");
+  headingUncertaintyDiskRadius_ =
+      tryGetParam<double>(this, "visualization_params.headingUncertaintyDiskRadius");
+  headingUncertaintyNSigmas_ =
+      tryGetParam<double>(this, "visualization_params.headingUncertaintyNSigmas");
+  headingUncertaintyZOffset_ =
+      tryGetParam<double>(this, "visualization_params.headingUncertaintyZOffset");
+
+  headingUncertaintyDiskRadius_ = std::max(0.1, headingUncertaintyDiskRadius_);
+  headingUncertaintyNSigmas_ = std::max(0.1, headingUncertaintyNSigmas_);
 
   // Logging path
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {

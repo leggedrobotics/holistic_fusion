@@ -33,7 +33,6 @@ Please see the LICENSE file that has been included as part of this package.
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 #include <sensor_msgs/msg/imu.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/bool.hpp>
 
 // Workspace
@@ -77,8 +76,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double gnssRate_ = 1.0;
   double lioBetweenOdometryRate_ = 10.0;
   double lioOdometryRate_ = 10.0;
-  double wheelOdometryBetweenRate_ = 50.0;
-  double wheelLinearVelocitiesRate_ = 50.0;
   double vioOdometryRate_ = 10.0;
   double vioOdometryBetweenRate_ = 25.0;
 
@@ -92,9 +89,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   // LiDAR Odometry
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
-  // Wheel Odometry
-  Eigen::Matrix<double, 6, 1> wheelPoseBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
-  Eigen::Matrix<double, 3, 1> wheelLinearVelocitiesNoise_ = 100.0 * Eigen::Matrix<double, 3, 1>::Ones();
   // VIO Odometry
   Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> vioPoseUnaryNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
@@ -105,8 +99,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   void lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarOdomPtr);
   void lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr);
   void gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr);
-  void wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& wheelOdomPtr);
-  void wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64MultiArray::ConstSharedPtr& wheelsSpeedsPtr);
   void vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& vioOdomPtr);
   void vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& vioOdomPtr);
 
@@ -166,9 +158,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
 
   int gnssCallbackCounter_ = -1;
   int lidarUnaryCallbackCounter_ = -1;
-  int wheelOdometryCallbackCounter_ = -1;
-  Eigen::Isometry3d T_O_Bw_km1_;
-  double wheelOdometryTimeKm1_ = 0.0;
 
   int num_imu_errors_ = 0;
   rclcpp::Time last_imu_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
@@ -177,8 +166,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGnssNavSatFix_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioBetweenOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subWheelOdometryBetween_;
-  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subWheelLinearVelocities_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subVioOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subVioOdometryBetween_;
 
@@ -218,13 +205,8 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   bool useGnssFlag_ = false;
   bool useLioBetweenOdometryFlag_ = false;
   bool useLioOdometryFlag_ = true;
-  bool useWheelOdometryBetweenFlag_ = false;
-  bool useWheelLinearVelocitiesFlag_ = false;
   bool useVioOdometryFlag_ = false;
   bool useVioOdometryBetweenFlag_ = false;
-
-  // Wheel Radius
-  double wheelRadiusMeter_ = 0.195;
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)
@@ -236,9 +218,6 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   std::string gnssFrame_;
   std::string lioOdometryFrame_;
   std::string lidarBetweenFrame_;
-  std::string wheelOdometryBetweenFrame_;
-  std::string wheelLinearVelocityLeftFrame_;
-  std::string wheelLinearVelocityRightFrame_;
   std::string vioOdometryFrame_;
 
   Eigen::Vector3d t_B_G_cached_ = Eigen::Vector3d::Zero();

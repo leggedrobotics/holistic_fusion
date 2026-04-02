@@ -32,18 +32,6 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
     lidarBetweenFrame_ = s;
     RCLCPP_INFO_STREAM(rclcpp::get_logger("B2WStaticTransforms"), "\033[92mSetting lidarBetweenFrame_ = " << s << "\033[0m");
   }
-  void setWheelOdometryBetweenFrame(const std::string& s) { 
-    wheelOdometryBetweenFrame_ = s;
-    RCLCPP_INFO_STREAM(rclcpp::get_logger("B2WStaticTransforms"), "\033[92mSetting wheelOdometryBetweenFrame_ = " << s << "\033[0m");
-  }
-  void setWheelLinearVelocityLeftFrame(const std::string& s) { 
-    wheelLinearVelocityLeftFrame_ = s;
-    RCLCPP_INFO_STREAM(rclcpp::get_logger("B2WStaticTransforms"), "\033[92mSetting wheelLinearVelocityLeftFrame_ = " << s << "\033[0m");
-  }
-  void setWheelLinearVelocityRightFrame(const std::string& s) { 
-    wheelLinearVelocityRightFrame_ = s;
-    RCLCPP_INFO_STREAM(rclcpp::get_logger("B2WStaticTransforms"), "\033[92mSetting wheelLinearVelocityRightFrame_ = " << s << "\033[0m");
-  }
   void setVioOdometryFrame(const std::string& s) { 
     vioOdometryFrame_ = s;
     RCLCPP_INFO_STREAM(rclcpp::get_logger("B2WStaticTransforms"), "\033[92mSetting vioOdometryFrame_ = " << s << "\033[0m");
@@ -58,9 +46,6 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getLioOdometryFrame() const { return lidarOdometryFrame_; }
   const std::string& getGnssFrame() const { return gnssFrame_; }
   const std::string& getLidarBetweenFrame() const { return lidarBetweenFrame_; }
-  const std::string& getWheelOdometryBetweenFrame() const { return wheelOdometryBetweenFrame_; }
-  const std::string& getWheelLinearVelocityLeftFrame() const { return wheelLinearVelocityLeftFrame_; }
-  const std::string& getWheelLinearVelocityRightFrame() const { return wheelLinearVelocityRightFrame_; }
   const std::string& getVioOdometryFrame() const { return vioOdometryFrame_; }
   const std::string& getVioOdometryBetweenFrame() const { return vioOdometryBetweenFrame_; }
 
@@ -71,8 +56,6 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   void setUseVioOdometryBetweenFlag(bool flag) { useVioOdometryBetweenFlag_ = flag; }
   void setUseGnssFlag(bool flag) { useGnssFlag_ = flag; }
   void setUseLioBetweenOdometryFlag(bool flag) { useLioBetweenOdometryFlag_ = flag; }
-  void setUseWheelOdometryBetweenFlag(bool flag) { useWheelOdometryBetweenFlag_ = flag; }
-  void setUseWheelLinearVelocitiesFlag(bool flag) { useWheelLinearVelocitiesFlag_ = flag; }
 
  private:
   bool findTransformations() override;
@@ -81,9 +64,6 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   std::string lidarOdometryFrame_ = "";
   std::string gnssFrame_ = "";
   std::string lidarBetweenFrame_ = "";
-  std::string wheelOdometryBetweenFrame_ = "";
-  std::string wheelLinearVelocityLeftFrame_ = "";
-  std::string wheelLinearVelocityRightFrame_ = "";
   std::string vioOdometryFrame_ = "";
   std::string vioOdometryBetweenFrame_ = "";
 
@@ -93,8 +73,6 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   bool useLioBetweenOdometryFlag_ = false;
   bool useVioOdometryFlag_ = false;
   bool useVioOdometryBetweenFlag_ = false;
-  bool useWheelOdometryBetweenFlag_ = false;
-  bool useWheelLinearVelocitiesFlag_ = false;
 };
 
 }  // namespace b2w_se

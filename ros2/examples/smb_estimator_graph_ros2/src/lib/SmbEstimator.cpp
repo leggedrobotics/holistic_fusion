@@ -82,6 +82,8 @@ void SmbEstimator::setup() {
     rclcpp::sleep_for(std::chrono::milliseconds(100));
   }
 
+  GraphMsfRos2::validateHeadingUncertaintyTransformsOrThrow();
+
   REGULAR_COUT << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
 }
 

@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // Set to 1 to skip expensive covariance computations in updateGraph() and publish zeros instead.
+// Targeted diagnostics should query the required marginal explicitly instead of enabling the full publication path.
 #define GRAPH_MSF_DISABLE_COVARIANCE_PUBLISHING 1
 
 // C++
@@ -701,8 +702,104 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
   return resultPoseCovarianceWorldFrame;
 }
 
+bool GraphManager::calculateCurrentPoseMarginalInWorld(gtsam::Pose3& T_W_I, gtsam::Matrix66& covarianceLeftWorld) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::calculateCurrentPoseMarginalInWorld");
+
+  T_W_I = gtsam::Pose3::Identity();
+  covarianceLeftWorld = gtsam::Z_6x6;
+
+  std::unique_lock<std::mutex> optimizerLock(realtimeOptimizerMutex_, std::try_to_lock);
+  if (!optimizerLock.owns_lock()) {
+    return false;
+  }
+
+  // Keep the marker path strictly best-effort: if the core graph thread is currently updating the
+  // optimized snapshot, do not wait here while holding the optimizer-query mutex.
+  std::unique_lock<std::mutex> graphDataLock(operateOnGraphDataMutex_, std::try_to_lock);
+  if (!graphDataLock.owns_lock()) {
+    return false;
+  }
+
+  if (!optimizedGraphState_.isOptimized()) {
+    return false;
+  }
+
+  const gtsam::Key optimizedPoseKey = gtsam::symbol_shorthand::X(optimizedGraphState_.key());
+  graphDataLock.unlock();
+
+  try {
+    T_W_I = rtOptimizerPtr_->calculateEstimatedPose3(optimizedPoseKey);
+    const gtsam::NavState optimizedNavState(T_W_I, gtsam::Vector3::Zero());
+    covarianceLeftWorld = calculatePoseCovarianceAtKeyInWorldFrame(rtOptimizerPtr_, optimizedPoseKey, __func__, optimizedNavState);
+    return true;
+  } catch (const std::exception&) {
+    return false;
+  }
+}
+
+bool GraphManager::calculateActiveReferenceFramePoseMarginalInWorld(const std::string& fixedFrame, gtsam::Pose3& T_W_F,
+                                                                    gtsam::Matrix66& covarianceRightLocal) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::calculateActiveReferenceFramePoseMarginalInWorld");
+
+  T_W_F = gtsam::Pose3::Identity();
+  covarianceRightLocal = gtsam::Z_6x6;
+
+  if (fixedFrame.empty()) {
+    return false;
+  }
+
+  std::unique_lock<std::mutex> optimizerLock(realtimeOptimizerMutex_, std::try_to_lock);
+  if (!optimizerLock.owns_lock()) {
+    return false;
+  }
+
+  auto& poseDictionary = gtsamDynamicExpressionKeys_.get<gtsam::Pose3>();
+  std::unique_lock<std::mutex> dictionaryLock(poseDictionary.mutex(), std::try_to_lock);
+  if (!dictionaryLock.owns_lock()) {
+    return false;
+  }
+
+  const auto queryPair = [&](const std::string& frame1, const std::string& frame2, const bool invertToWorldFixed) -> bool {
+    if (!poseDictionary.isFramePairInDictionary(frame1, frame2)) {
+      return false;
+    }
+
+    auto& stateKey = poseDictionary.lv_T_frame1_frame2(frame1, frame2);
+    if (!stateKey.isVariableActive() || stateKey.getVariableTypeEnum() != DynamicVariableTypeEnum::RefFrame ||
+        stateKey.getNumberStepsOptimized() == 0) {
+      return false;
+    }
+
+    try {
+      const gtsam::Pose3 estimatedPose = rtOptimizerPtr_->calculateEstimatedPose3(stateKey.key());
+      const gtsam::Matrix66 estimatedCovariance = rtOptimizerPtr_->calculateMarginalCovarianceMatrixAtKey(stateKey.key());
+
+      if (!invertToWorldFixed) {
+        T_W_F = estimatedPose;
+        covarianceRightLocal = estimatedCovariance;
+      } else {
+        // The optimizer stores the active variable exactly as keyed in the dictionary. If we need T_W_F but only
+        // the reverse T_F_W variable is active, transport the right/local covariance through the inverse map.
+        T_W_F = estimatedPose.inverse();
+        const gtsam::Matrix66 adjoint = estimatedPose.AdjointMap();
+        covarianceRightLocal = adjoint * estimatedCovariance * adjoint.transpose();
+      }
+      return true;
+    } catch (const std::exception&) {
+      return false;
+    }
+  };
+
+  if (queryPair(worldFrame_, fixedFrame, false)) {
+    return true;
+  }
+  return queryPair(fixedFrame, worldFrame_, true);
+}
+
 void GraphManager::updateGraph() {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::updateGraph");
+
+  std::lock_guard<std::mutex> optimizerLock(realtimeOptimizerMutex_);
 
   // At compile time get the symbols for the 6D and 3D states
   constexpr int numDynamic6DStates = countNDStates<6>();

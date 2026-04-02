@@ -59,6 +59,7 @@ Thumbs.db
 *.app
 *.exe
 *.war
+.codex
 
 # Large media files
 *.mp4

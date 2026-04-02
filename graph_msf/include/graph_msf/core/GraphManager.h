@@ -126,6 +126,9 @@ class GraphManager {
 
   // Comfort functions ---------------------------------------------------------
   gtsam::NavState calculateStateAtGeneralKey(bool& computeSuccessfulFlag, const gtsam::Key& generalKey);
+  bool calculateCurrentPoseMarginalInWorld(gtsam::Pose3& T_W_I, gtsam::Matrix66& covarianceLeftWorld);
+  bool calculateActiveReferenceFramePoseMarginalInWorld(const std::string& fixedFrame, gtsam::Pose3& T_W_F,
+                                                        gtsam::Matrix66& covarianceRightLocal);
 
   // Accessors
   /// Getters
@@ -218,6 +221,10 @@ class GraphManager {
   // Keys timestamp map
   std::shared_ptr<std::map<gtsam::Key, double>> rtGraphKeysTimestampsMapBufferPtr_;
   std::shared_ptr<std::map<gtsam::Key, double>> batchGraphKeysTimestampsMapBufferPtr_;
+
+  // Serialize direct optimizer queries with updateGraph(). The heading-uncertainty marker performs
+  // a narrow single-key marginal query against the active real-time smoother and must not race the update thread.
+  std::mutex realtimeOptimizerMutex_;
 
   // Preintegration
   /// Step Preintegrator
