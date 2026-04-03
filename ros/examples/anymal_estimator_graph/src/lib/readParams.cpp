@@ -110,30 +110,22 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionOutlierThreshold", privateNode);
 
   // Flags ---------------------------------------------------
-  // Accept both the legacy ROS 1 launch flags and the B2W-style sensor flags so existing launch files
-  // keep working while the estimator can also be driven with the newer ROS 2-like parameter layout.
-  useGnssUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>(
-      {"launch/usingGnssUnary", "sensor_params/useGnss", "sensor_params/useGnssUnary"}, privateNode);
-  useLioUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>(
-      {"launch/usingLioUnary", "sensor_params/useLioOdometry", "sensor_params/useLioUnary"}, privateNode);
-  useLioBetweenFlag_ = graph_msf::tryGetParamWithAliases<bool>(
-      {"launch/usingLioBetween", "sensor_params/useLioBetweenOdometry", "sensor_params/useLioBetween"}, privateNode);
-  useVioOdometryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometry", "sensor_params/useVioOdometry"}, privateNode);
-  useVioOdometryBetweenFlag_ =
-      graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometryBetween", "sensor_params/useVioOdometryBetween"}, privateNode);
+  // Read estimator enable flags from YAML sensor_params only.
+  // Keep the supported sensor_params aliases, but do not fall back to launch/ parameters.
+  useGnssUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useGnss", "sensor_params/useGnssUnary"}, privateNode);
+  useLioUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useLioOdometry", "sensor_params/useLioUnary"}, privateNode);
+  useLioBetweenFlag_ =
+      graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useLioBetweenOdometry", "sensor_params/useLioBetween"}, privateNode);
+  useVioOdometryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useVioOdometry"}, privateNode);
+  useVioOdometryBetweenFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useVioOdometryBetween"}, privateNode);
   // Legged Between Odometry
-  useLeggedBetweenFlag_ = graph_msf::tryGetParamWithAliases<bool>(
-      {"launch/usingLeggedBetween", "sensor_params/useLeggedOdometryBetween", "sensor_params/useLeggedBetween"}, privateNode);
+  useLeggedBetweenFlag_ =
+      graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useLeggedOdometryBetween", "sensor_params/useLeggedBetween"}, privateNode);
   // Legged Velocity Unary
-  useLeggedVelocityUnaryFlag_ =
-      graph_msf::tryGetParamWithAliases<bool>({"launch/usingLeggedVelocityUnary", "sensor_params/useLeggedVelocityUnary"}, privateNode);
+  useLeggedVelocityUnaryFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useLeggedVelocityUnary"}, privateNode);
   // Legged Kinematics
-  useLeggedKinematicsFlag_ =
-      graph_msf::tryGetParamWithAliases<bool>({"launch/usingLeggedKinematics", "sensor_params/useLeggedKinematics"}, privateNode);
+  useLeggedKinematicsFlag_ = graph_msf::tryGetParamWithAliases<bool>({"sensor_params/useLeggedKinematics"}, privateNode);
 
-  // Anymal-specific bridging for graph params that are present in the core YAMLs but are not
-  // loaded by the shared ROS 1 layer yet. Keep them strict here so the YAML value actually drives
-  // runtime behavior for this estimator.
   graphConfigPtr_->useAdaptiveAdditionalOptimizationIterationsFlag_ =
       graph_msf::tryGetParam<bool>("graph_params/useAdaptiveAdditionalOptimizationIterations", privateNode);
   graphConfigPtr_->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ =

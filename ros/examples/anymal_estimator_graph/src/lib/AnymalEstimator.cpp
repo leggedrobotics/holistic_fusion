@@ -23,7 +23,61 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <cmath>
+#include <cstdint>
+#include <deque>
+#include <iomanip>
 #include <limits>
+
+namespace {
+
+class FrequencyChecker {
+ public:
+  FrequencyChecker(std::size_t windowSize = 40, double reportPeriodS = 1.0) : windowSize_(windowSize), reportPeriodS_(reportPeriodS) {}
+
+  bool tick(double tS) {
+    if (!std::isfinite(tS)) {
+      return false;
+    }
+
+    timeWindow_.push_back(tS);
+    if (timeWindow_.size() > windowSize_) {
+      timeWindow_.pop_front();
+    }
+
+    lastWindowN_ = timeWindow_.size();
+    lastHz_ = 0.0;
+    if (lastWindowN_ >= 2) {
+      const double dt = timeWindow_.back() - timeWindow_.front();
+      if (dt > 1e-9) {
+        lastHz_ = static_cast<double>(lastWindowN_ - 1) / dt;
+      }
+    }
+
+    if (lastReportTS_ == 0.0) {
+      lastReportTS_ = tS;
+    }
+    if ((tS - lastReportTS_) >= reportPeriodS_) {
+      lastReportTS_ = tS;
+      return true;
+    }
+    return false;
+  }
+
+  double last_hz() const { return lastHz_; }
+  std::size_t last_window_n() const { return lastWindowN_; }
+
+ private:
+  std::size_t windowSize_;
+  double reportPeriodS_;
+
+  std::deque<double> timeWindow_;
+  double lastReportTS_ = 0.0;
+
+  double lastHz_ = 0.0;
+  std::size_t lastWindowN_ = 0;
+};
+
+}  // namespace
 
 namespace anymal_se {
 
@@ -272,6 +326,13 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   // Counter
   ++gnssCallbackCounter_;
 
+  static FrequencyChecker gnssFreqChecker(40, 5.0);
+  const double gnssTimeK = gnssMsgPtr->header.stamp.toSec();
+  if (gnssFreqChecker.tick(gnssTimeK)) {
+    REGULAR_COUT << GOLD_START << "[GNSS] callback frequency (avg last " << gnssFreqChecker.last_window_n() << "): " << std::fixed
+                 << std::setprecision(2) << gnssFreqChecker.last_hz() << " Hz" << COLOR_END << std::endl;
+  }
+
   // Convert to Eigen
   Eigen::Vector3d gnssCoord = Eigen::Vector3d(gnssMsgPtr->latitude, gnssMsgPtr->longitude, gnssMsgPtr->altitude);
   const Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> PenuMap(gnssMsgPtr->position_covariance.data());
@@ -491,13 +552,48 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
 
 // Priority: 2
 void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
+  static double lastLidarUnaryAcceptedTimeK = 0.0;
+  static std::uint64_t lidarUnaryRawCallbackCounter = 0;
+  static std::uint64_t lidarUnaryAcceptedCallbackCounter = 0;
+  static std::uint64_t lidarUnaryRateGateRejectedCounter = 0;
+  static FrequencyChecker lioRawStampFreqChecker(40, 5.0);
+  static FrequencyChecker lioAcceptedStampFreqChecker(40, 5.0);
+
+  const double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
+
+  ++lidarUnaryRawCallbackCounter;
+  const bool lioUnaryReportNow = lioRawStampFreqChecker.tick(lidarUnaryTimeK);
+
+  const auto reportLioUnaryRates = [&]() {
+    REGULAR_COUT << BLUE_START << "[LIO Unary] raw rate (header stamp, avg last " << lioRawStampFreqChecker.last_window_n()
+                 << "): " << std::fixed << std::setprecision(2) << lioRawStampFreqChecker.last_hz() << " Hz"
+                 << " | accepted rate (header stamp): " << lioAcceptedStampFreqChecker.last_hz() << " Hz"
+                 << " | accepted/raw: " << lidarUnaryAcceptedCallbackCounter << "/" << lidarUnaryRawCallbackCounter
+                 << " | rate-gated: " << lidarUnaryRateGateRejectedCounter << COLOR_END << std::endl;
+  };
+
+  if (lioOdometryRate_ > 0.0 && lastLidarUnaryAcceptedTimeK > 0.0 &&
+      (lidarUnaryTimeK - lastLidarUnaryAcceptedTimeK) < (1.0 / lioOdometryRate_)) {
+    ++lidarUnaryRateGateRejectedCounter;
+    if (lioUnaryReportNow) {
+      reportLioUnaryRates();
+    }
+    return;
+  }
+
+  lastLidarUnaryAcceptedTimeK = lidarUnaryTimeK;
+  ++lidarUnaryAcceptedCallbackCounter;
+  lioAcceptedStampFreqChecker.tick(lidarUnaryTimeK);
+
   // Counter
   ++lidarUnaryCallbackCounter_;
+  if (lioUnaryReportNow) {
+    reportLioUnaryRates();
+  }
 
   // Prepare Data
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-  double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
   {
     const std::lock_guard<std::mutex> lock(lioPoseBufMutex_);
     lioPoseBuf_.emplace_back(lidarUnaryTimeK, lio_T_M_Lk);
@@ -547,14 +643,48 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
     return;
   }
 
+  static double lastLidarBetweenAcceptedTimeK = 0.0;
+  static std::uint64_t lidarBetweenRawCallbackCounter = 0;
+  static std::uint64_t lidarBetweenAcceptedCallbackCounter = 0;
+  static std::uint64_t lidarBetweenRateGateRejectedCounter = 0;
+  static FrequencyChecker lioBetweenRawStampFreqChecker(40, 5.0);
+  static FrequencyChecker lioBetweenAcceptedStampFreqChecker(40, 5.0);
+
+  const double lidarBetweenTimeK = odomLidarPtr->header.stamp.toSec();
+
+  ++lidarBetweenRawCallbackCounter;
+  const bool lioBetweenReportNow = lioBetweenRawStampFreqChecker.tick(lidarBetweenTimeK);
+
+  const auto reportLioBetweenRates = [&]() {
+    REGULAR_COUT << BLUE_START << "[LIO Between] raw rate (header stamp, avg last " << lioBetweenRawStampFreqChecker.last_window_n()
+                 << "): " << std::fixed << std::setprecision(2) << lioBetweenRawStampFreqChecker.last_hz() << " Hz"
+                 << " | accepted rate (header stamp): " << lioBetweenAcceptedStampFreqChecker.last_hz() << " Hz"
+                 << " | accepted/raw: " << lidarBetweenAcceptedCallbackCounter << "/" << lidarBetweenRawCallbackCounter
+                 << " | rate-gated: " << lidarBetweenRateGateRejectedCounter << COLOR_END << std::endl;
+  };
+
+  if (lioBetweenOdometryRate_ > 0.0 && lastLidarBetweenAcceptedTimeK > 0.0 &&
+      (lidarBetweenTimeK - lastLidarBetweenAcceptedTimeK) < (1.0 / lioBetweenOdometryRate_)) {
+    ++lidarBetweenRateGateRejectedCounter;
+    if (lioBetweenReportNow) {
+      reportLioBetweenRates();
+    }
+    return;
+  }
+
+  lastLidarBetweenAcceptedTimeK = lidarBetweenTimeK;
+  ++lidarBetweenAcceptedCallbackCounter;
+  lioBetweenAcceptedStampFreqChecker.tick(lidarBetweenTimeK);
+
   // Counter
   ++lidarBetweenCallbackCounter_;
+  if (lioBetweenReportNow) {
+    reportLioBetweenRates();
+  }
 
   // Convert
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
-  // Get the time
-  double lidarBetweenTimeK = odomLidarPtr->header.stamp.toSec();
   {
     const std::lock_guard<std::mutex> lock(lioPoseBufMutex_);
     lioPoseBuf_.emplace_back(lidarBetweenTimeK, lio_T_M_Lk);
@@ -631,6 +761,12 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
   graph_msf::geometryPoseToEigen(*leggedOdometryPoseKPtr, T_O_Bl_k.matrix());
   double legOdometryTimeK = leggedOdometryPoseKPtr->header.stamp.toSec();
 
+  static FrequencyChecker leggedBetweenFreqChecker(50, 5.0);
+  if (leggedBetweenFreqChecker.tick(legOdometryTimeK)) {
+    REGULAR_COUT << GREEN_START << "[Legged Between] callback frequency (avg last " << leggedBetweenFreqChecker.last_window_n()
+                 << "): " << std::fixed << std::setprecision(2) << leggedBetweenFreqChecker.last_hz() << " Hz" << COLOR_END << std::endl;
+  }
+
   // At start
   if (leggedOdometryPoseCallbackCounter_ == 0) {
     T_O_Bl_km1_ = T_O_Bl_k;
@@ -687,13 +823,19 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   // Counter
   ++leggedOdometryOdomCallbackCounter_;
 
+  static FrequencyChecker leggedVelocityFreqChecker(50, 5.0);
+  const double leggedVelocityTimeK = leggedOdometryKPtr->header.stamp.toSec();
+  if (leggedVelocityFreqChecker.tick(leggedVelocityTimeK)) {
+    REGULAR_COUT << GREEN_START << "[Legged Velocity] callback frequency (avg last " << leggedVelocityFreqChecker.last_window_n()
+                 << "): " << std::fixed << std::setprecision(2) << leggedVelocityFreqChecker.last_hz() << " Hz" << COLOR_END << std::endl;
+  }
+
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_) {
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryVelocityRate_), leggedOdometryFrame_, leggedOdometryFrame_ + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
-          legPoseBetweenNoise_);
+          graph_msf::RobustNorm::None(), leggedVelocityTimeK, 1.0, Eigen::Isometry3d::Identity(), legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
@@ -715,7 +857,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
       // Create the unary measurement
       graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
           "LegVelocityUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, legVelocity, legVelocityUnaryNoise_);
+          graph_msf::RobustNorm::None(), leggedVelocityTimeK, 1.0, legVelocity, legVelocityUnaryNoise_);
 
       // Add to graph
       this->addUnaryVelocity3LocalMeasurement(legVelocityUnaryMeasurement);
@@ -731,12 +873,19 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
   // Counter
   ++leggedKinematicsCallbackCounter_;
 
+  static FrequencyChecker leggedKinematicsFreqChecker(50, 5.0);
+  const double leggedKinematicsTimeK = anymalStatePtr->header.stamp.toSec();
+  if (leggedKinematicsFreqChecker.tick(leggedKinematicsTimeK)) {
+    REGULAR_COUT << GREEN_START << "[Legged Kinematics] callback frequency (avg last " << leggedKinematicsFreqChecker.last_window_n()
+                 << "): " << std::fixed << std::setprecision(2) << leggedKinematicsFreqChecker.last_hz() << " Hz" << COLOR_END << std::endl;
+  }
+
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_ && !useLeggedVelocityUnaryFlag_) {
       // Measurement
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedKinematicsRate_), leggedOdometryFrame_, leggedOdometryFrame_ + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
+          graph_msf::RobustNorm::None(), leggedKinematicsTimeK, 1.0, Eigen::Isometry3d::Identity(),
           Eigen::Matrix<double, 6, 1>::Identity());
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged kinematics callback is setting global yaw, as it was not set so far." << COLOR_END
@@ -796,7 +945,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const anymal_msgs::AnymalState::
             std::string legIdentifier = legName;
             graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,  // graph_msf::RobustNorm::Huber(1)
+                graph_msf::RobustNorm::None(), leggedKinematicsTimeK, 1.0, B_t_B_foot,  // graph_msf::RobustNorm::Huber(1)
                 legKinematicsFootPositionUnaryNoise_, worldFrame_);
 
             // Add to graph
