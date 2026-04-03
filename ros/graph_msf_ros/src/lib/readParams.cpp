@@ -143,9 +143,7 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
 
   // Logging path in case we run offline optimization
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
-    // Get the path from YAML. Keep launch/ as a temporary fallback for stacks that have not been migrated yet.
-    optimizationResultLoggingPath = tryGetParamWithAliases<std::string>(
-        {"common_params/optimizationResultLoggingPath", "launch/optimizationResultLoggingPath"}, privateNode);
+    optimizationResultLoggingPath = tryGetParam<std::string>("common_params/optimizationResultLoggingPath", privateNode);
     // Make sure the path ends with a slash
     if (optimizationResultLoggingPath.back() != '/') {
       optimizationResultLoggingPath += "/";

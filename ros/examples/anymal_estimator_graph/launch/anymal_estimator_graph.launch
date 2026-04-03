@@ -14,9 +14,6 @@
     <arg name="legged_odometry_odom_topic_name" default="/state_estimator/odometry"/>
     <arg name="legged_kinematics_topic_name" default="/state_estimator/anymal_state"/>
 
-    <!-- Servers -->
-    <arg name="gnss_coordinates_to_enu_topic_name" default="/dual_graph_node/get_path_in_enu"/>
-
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
 
@@ -57,8 +54,6 @@
         <remap from="/legged_odometry_pose_topic" to="$(arg legged_odometry_pose_topic_name)"/>
         <remap from="/legged_odometry_odom_topic" to="$(arg legged_odometry_odom_topic_name)"/>
         <remap from="/anymal_state_topic" to="$(arg legged_kinematics_topic_name)"/>
-        <!-- Remapping of services -->
-        <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)"/>
     </node>
 
 </launch>

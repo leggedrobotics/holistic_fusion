@@ -204,9 +204,6 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Messages
   nav_msgs::PathPtr measLio_mapLidarPathPtr_;
   nav_msgs::PathPtr measGnss_worldGnssPathPtr_;
-
-  // Servers
-  ros::ServiceServer serverTransformGnssToEnu_;
 };
 
 }  // namespace anymal_se
