@@ -79,13 +79,20 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double vioOdometryRate_ = 10.0;
   double vioOdometryBetweenRate_ = 25.0;
 
+  // Extrinsic-calibration residual decimation
+  int gnssCalibrationResidualStride_ = 1;
+  int lioUnaryCalibrationResidualStride_ = 1;
+  int lioBetweenCalibrationResidualStride_ = 1;
+  int vioUnaryCalibrationResidualStride_ = 1;
+  int vioBetweenCalibrationResidualStride_ = 1;
+
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> vioSe3AlignmentRandomWalk_ = 0.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Noise
-  double gnssPositionOutlierThreshold_ = 1.0;
+  Eigen::Vector3d gnssPositionOutlierThreshold_ = Eigen::Vector3d::Ones();
   // LiDAR Odometry
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
   Eigen::Matrix<double, 6, 1> lioBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
@@ -193,6 +200,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   static constexpr double kLioBufKeepSec = 5.0;                  // [s]
   static constexpr double kInitSyncMaxDt = 0.20;                 // [s]
   bool getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
+  Eigen::Vector3d getBaseToGnssLeverArm_(const std::string& baseFrame) const;
   // --------------------------------------------------------------------------
 
   // GNSS Handler

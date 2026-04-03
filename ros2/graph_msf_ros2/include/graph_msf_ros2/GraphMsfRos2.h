@@ -80,6 +80,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
 
   // Setup
   void setup(std::shared_ptr<StaticTransforms> staticTransformsPtr);
+  void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;
 
  protected:
   // Functions that need implementation
@@ -144,10 +145,14 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   void publishVelocityMarkers(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& navStatePtr) const;
   void publishHeadingUncertaintyMarkers(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
+  void publishSlowStateTextMarkers(
+      const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
   void validateHeadingUncertaintyTransformsOrThrow() const;
   void setHeadingUncertaintyFixedFrame(const std::string& sourceId, const std::string& fixedFrameName);
   void publishImuPaths() const;
   void publishAddedImuMeas(const Eigen::Matrix<double, 6, 1>& addedImuMeas, const rclcpp::Time& stamp) const;
+  bool getLatestOptimizedTransform(const std::string& parentFrameName, const std::string& childFrameName,
+                                   Eigen::Isometry3d& T_parent_childFrame) const;
 
   // Measure time
   long secondsSinceStart();
@@ -184,6 +189,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pubGyroBias_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pubAngularVelocityMarker_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pubHeadingUncertaintyMarkers_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pubSlowStateTextMarkers_;
 
   // Subscribers
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImu_;
@@ -217,6 +223,9 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   double headingUncertaintyDiskRadius_ = 2.5;                 // [m]
   double headingUncertaintyNSigmas_ = 2.0;                    // [-]
   double headingUncertaintyZOffset_ = 0.20;                   // [m]
+  bool publishSlowStateTextMarkersFlag_ = false;
+  double slowStateTextZOffset_ = 1.20;                        // [m]
+  double slowStateTextScale_ = 0.20;                          // [m]
   std::map<std::string, std::string> headingUncertaintyFixedFrames_;
   mutable std::mutex headingUncertaintyFixedFrameMutex_;
 
@@ -245,6 +254,8 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
 
   // Mutex
   std::mutex rosPublisherMutex_;
+  mutable std::mutex latestOptimizedStateMutex_;
+  std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> latestOptimizedStateSnapshot_;
 
   // NEW (minimal): protects shared Path message objects from cross-thread publish vs modification
   mutable std::mutex pathMsgMutex_;

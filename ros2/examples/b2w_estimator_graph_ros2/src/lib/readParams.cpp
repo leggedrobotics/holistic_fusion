@@ -17,6 +17,50 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace b2w_se {
 
+namespace {
+
+int resolveLioBetweenRateParam(const rclcpp::Node* node) {
+  const int lioBetweenRate = graph_msf::tryGetParam<int>(node, "sensor_params.lioBetweenRate");
+  const int lioBetweenOdometryRate = graph_msf::tryGetParam<int>(node, "sensor_params.lioBetweenOdometryRate");
+
+  if (lioBetweenRate > 0 && lioBetweenOdometryRate > 0 && lioBetweenRate != lioBetweenOdometryRate) {
+    RCLCPP_WARN(node->get_logger(),
+                "Both sensor_params.lioBetweenRate (%d) and sensor_params.lioBetweenOdometryRate (%d) are set. "
+                "Using sensor_params.lioBetweenRate.",
+                lioBetweenRate, lioBetweenOdometryRate);
+    return lioBetweenRate;
+  }
+
+  if (lioBetweenRate > 0) {
+    return lioBetweenRate;
+  }
+
+  return lioBetweenOdometryRate;
+}
+
+std::string resolveLidarBetweenFrameParam(const rclcpp::Node* node) {
+  const std::string lidarBetweenFrame = graph_msf::tryGetParam<std::string>(node, "extrinsics.lidarBetweenFrame");
+  const std::string legacyBetweenLidarOdometryFrame =
+      graph_msf::tryGetParam<std::string>(node, "extrinsics.betweenLidarOdometryFrame");
+
+  if (!lidarBetweenFrame.empty() && !legacyBetweenLidarOdometryFrame.empty() &&
+      lidarBetweenFrame != legacyBetweenLidarOdometryFrame) {
+    RCLCPP_WARN(node->get_logger(),
+                "Both extrinsics.lidarBetweenFrame ('%s') and extrinsics.betweenLidarOdometryFrame ('%s') are set. "
+                "Using extrinsics.lidarBetweenFrame.",
+                lidarBetweenFrame.c_str(), legacyBetweenLidarOdometryFrame.c_str());
+    return lidarBetweenFrame;
+  }
+
+  if (!lidarBetweenFrame.empty()) {
+    return lidarBetweenFrame;
+  }
+
+  return legacyBetweenLidarOdometryFrame;
+}
+
+}  // namespace
+
 void B2WEstimator::readParams() {
   // Check
   if (!graphConfigPtr_) {
@@ -52,9 +96,23 @@ void B2WEstimator::readParams() {
   // Sensor Param as
   lioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioOdometryRate");
   gnssRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.gnssRate");
-  lioBetweenOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioBetweenOdometryRate");
+  lioBetweenOdometryRate_ = resolveLioBetweenRateParam(this);
   vioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryRate");
   vioOdometryBetweenRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryBetweenRate");
+
+  const auto readCalibrationStride = [this](const char* paramName) -> int {
+    const int value = graph_msf::tryGetParam<int>(this, paramName);
+    if (value < 1) {
+      RCLCPP_WARN(this->get_logger(), "%s is %d. Clamping to 1.", paramName, value);
+      return 1;
+    }
+    return value;
+  };
+  gnssCalibrationResidualStride_ = readCalibrationStride("calibration_residual_params.gnssStride");
+  lioUnaryCalibrationResidualStride_ = readCalibrationStride("calibration_residual_params.lioUnaryStride");
+  lioBetweenCalibrationResidualStride_ = readCalibrationStride("calibration_residual_params.lioBetweenStride");
+  vioUnaryCalibrationResidualStride_ = readCalibrationStride("calibration_residual_params.vioUnaryStride");
+  vioBetweenCalibrationResidualStride_ = readCalibrationStride("calibration_residual_params.vioBetweenStride");
 
   // Alignment Parameters
   const auto initialSe3AlignmentNoiseDensity =
@@ -135,8 +193,14 @@ if (useGnssFlag_) {
     RCLCPP_INFO(this->get_logger(), "Will wait for GNSS measurements to initialize reference coordinates.");
     }
 
-    // GNSS Outlier Threshold
-    gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>(this, "noise_params.gnssPositionOutlierThreshold");
+    // GNSS Outlier Threshold (per-axis: X, Y, Z)
+    {
+      auto v = graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.gnssPositionOutlierThreshold");
+      if (v.size() != 3) {
+        throw std::runtime_error("noise_params.gnssPositionOutlierThreshold must have exactly 3 elements [x, y, z]");
+      }
+      gnssPositionOutlierThreshold_ = Eigen::Vector3d(v[0], v[1], v[2]);
+    }
 }
 
   // Set frames
@@ -147,6 +211,10 @@ if (useGnssFlag_) {
   /// LiDAR odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarOdometryFrame"));
+
+  /// LiDAR between frame
+  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
+      ->setLidarBetweenFrame(resolveLidarBetweenFrameParam(this));
 
   /// VIO Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())

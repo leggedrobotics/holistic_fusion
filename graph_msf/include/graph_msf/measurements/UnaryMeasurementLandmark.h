@@ -35,9 +35,10 @@ class UnaryMeasurementLandmark : public virtual UnaryMeasurement {
    */
   UnaryMeasurementLandmark(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                            const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
-                           const double covarianceViolationThreshold, const std::string& worldFrameName)
+                           const double covarianceViolationThreshold, const std::string& worldFrameName,
+                           const int extrinsicCalibrationResidualStride = 1)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                         covarianceViolationThreshold),
+                         covarianceViolationThreshold, extrinsicCalibrationResidualStride),
         worldFrameName_(worldFrameName) {}
 
   // Destructor

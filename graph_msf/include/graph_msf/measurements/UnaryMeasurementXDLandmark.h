@@ -40,13 +40,15 @@ class UnaryMeasurementXDLandmark final : public virtual UnaryMeasurementLandmark
   UnaryMeasurementXDLandmark(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                              const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                              const double covarianceViolationThreshold, const MEASUREMENT_TYPE& unaryMeasurement,
-                             const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity, const std::string& worldFrameName)
+                             const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity, const std::string& worldFrameName,
+                             const int extrinsicCalibrationResidualStride = 1)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                         covarianceViolationThreshold),
+                         covarianceViolationThreshold, extrinsicCalibrationResidualStride),
         UnaryMeasurementLandmark(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                                 covarianceViolationThreshold, worldFrameName),
+                                 covarianceViolationThreshold, worldFrameName, extrinsicCalibrationResidualStride),
         UnaryMeasurementXD<MEASUREMENT_TYPE, DIM>(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm,
-                                                  timeStamp, covarianceViolationThreshold, unaryMeasurement, unaryMeasurementNoiseDensity) {
+                                                  timeStamp, covarianceViolationThreshold, unaryMeasurement, unaryMeasurementNoiseDensity,
+                                                  extrinsicCalibrationResidualStride) {
   }
 
   // Destructor

@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <algorithm>
 #include <filesystem>
+#include <stdexcept>
 
 // Implementation
 #include "graph_msf_ros2/GraphMsfRos2.h"
@@ -88,6 +89,12 @@ void GraphMsfRos2::readParams() {
       tryGetParam<bool>(this, "graph_params.optimizeReferenceFramePosesWrtWorld");
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ =
       tryGetParam<bool>(this, "graph_params.optimizeExtrinsicSensorToSensorCorrectedOffset");
+  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ &&
+      !graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
+    throw std::runtime_error(
+        "optimizeExtrinsicSensorToSensorCorrectedOffset=true requires optimizeReferenceFramePosesWrtWorld=true "
+        "because the current dynamic-transform result maintenance and publication path is shared.");
+  }
 
   // Alignment Parameters
   graphConfigPtr_->referenceFramePosesResetThreshold_ =
@@ -232,9 +239,16 @@ void GraphMsfRos2::readParams() {
       tryGetParam<double>(this, "visualization_params.headingUncertaintyNSigmas");
   headingUncertaintyZOffset_ =
       tryGetParam<double>(this, "visualization_params.headingUncertaintyZOffset");
+  publishSlowStateTextMarkersFlag_ =
+      tryGetParam<bool>(this, "visualization_params.publishSlowStateTextMarkers");
+  slowStateTextZOffset_ =
+      tryGetParam<double>(this, "visualization_params.slowStateTextZOffset");
+  slowStateTextScale_ =
+      tryGetParam<double>(this, "visualization_params.slowStateTextScale");
 
   headingUncertaintyDiskRadius_ = std::max(0.1, headingUncertaintyDiskRadius_);
   headingUncertaintyNSigmas_ = std::max(0.1, headingUncertaintyNSigmas_);
+  slowStateTextScale_ = std::max(0.05, slowStateTextScale_);
 
   // Logging path
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {

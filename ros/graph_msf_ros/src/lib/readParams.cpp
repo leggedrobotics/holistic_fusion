@@ -7,6 +7,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <boost/filesystem.hpp>
+#include <stdexcept>
 
 // Implementation
 #include "graph_msf_ros/GraphMsfRos.h"
@@ -73,6 +74,12 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   // Calibration
   graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ =
       tryGetParam<bool>("graph_params/optimizeExtrinsicSensorToSensorCorrectedOffset", privateNode);
+  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ &&
+      !graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
+    throw std::runtime_error(
+        "optimizeExtrinsicSensorToSensorCorrectedOffset=true requires optimizeReferenceFramePosesWrtWorld=true "
+        "because the current dynamic-transform result maintenance and publication path is shared.");
+  }
 
   // Noise Parameters
   /// IMU

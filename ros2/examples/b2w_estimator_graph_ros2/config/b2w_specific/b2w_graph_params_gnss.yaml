@@ -21,16 +21,33 @@
       lioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       vioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
+    # Extrinsic-calibration residual decimation.
+    # These parameters do NOT drop the normal sensor factors.
+    # They only decide how often an accepted factor is also allowed to couple to the online extrinsic-calibration state.
+    # Interpretation:
+    #   1  -> every accepted factor uses the calibration state
+    #   10 -> only every 10th accepted factor uses the calibration state
+    # This is useful when the calibration variables change slowly and you want fewer redundant calibration residuals in the graph.
+    calibration_residual_params:
+      gnssStride: 1       # GNSS absolute-position factors -> translation-only GNSS extrinsic correction
+      lioUnaryStride: 1   # LiDAR unary pose factors -> LiDAR/base Pose3 extrinsic correction
+      lioBetweenStride: 1 # LiDAR between pose factors -> LiDAR/base Pose3 extrinsic correction in between mode
+      vioUnaryStride: 1   # VIO unary pose factors -> camera Pose3 extrinsic correction
+      vioBetweenStride: 1 # VIO between pose factors -> camera Pose3 extrinsic correction in between mode
+
     visualization_params:
       publishHeadingUncertaintyMarkers: true
       publishHeadingUncertaintyText: false
       headingUncertaintyDiskRadius: 2.5
       headingUncertaintyNSigmas: 3.0
       headingUncertaintyZOffset: 0.20
+      publishSlowStateTextMarkers: true
+      slowStateTextZOffset: 1.20
+      slowStateTextScale: 0.20
 
     # Noise Parameters
     noise_params:
-      gnssPositionOutlierThreshold: 4.0 # meters
+      gnssPositionOutlierThreshold: [3.0, 3.0, 4.5] # meters, per-axis std dev threshold [x, y, z]
       ## LiDAR
       lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       lioPoseBetweenNoiseDensity: [ 0.02, 0.02, 0.02, 0.002, 0.002, 0.002 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

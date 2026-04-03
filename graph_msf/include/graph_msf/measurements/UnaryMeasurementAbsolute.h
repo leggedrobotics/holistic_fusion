@@ -48,9 +48,10 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
                            const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
                            const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
                            const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy =
-                               AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
+                               AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue,
+                           const int extrinsicCalibrationResidualStride = 1)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                         covarianceViolationThreshold),
+                         covarianceViolationThreshold, extrinsicCalibrationResidualStride),
         fixedFrameName_(fixedFrameName),
         worldFrameName_(worldFrameName),
         alignmentRecoveryPolicy_(alignmentRecoveryPolicy) {

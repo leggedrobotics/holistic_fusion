@@ -40,7 +40,7 @@ class GraphMsfHolistic : virtual public GraphMsf {
   void addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_bearing_S_L) override;
 
   /// Binary Measurements: Purely relative
-  // TODO: add binary measurements
+  void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;
 };
 
 }  // namespace graph_msf

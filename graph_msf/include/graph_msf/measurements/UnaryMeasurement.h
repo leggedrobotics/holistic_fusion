@@ -31,8 +31,9 @@ class UnaryMeasurement : public Measurement {
    */
   UnaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                    const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
-                   const double covarianceViolationThreshold)
-      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Unary),
+                   const double covarianceViolationThreshold, const int extrinsicCalibrationResidualStride = 1)
+      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Unary,
+                    extrinsicCalibrationResidualStride),
         timeK_(timeStamp),
         covarianceViolationThreshold_(covarianceViolationThreshold) {}
 

@@ -21,6 +21,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <set>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 // Timing (minimal additions)
@@ -37,6 +38,10 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/GraphManager.h"
+#include "graph_msf/measurements/BinaryMeasurement.h"
+#include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
+#include "graph_msf/measurements/UnaryMeasurement.h"
+#include "graph_msf/measurements/UnaryMeasurementLandmark.h"
 #include "graph_msf/geometry/conversions.h"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -52,6 +57,43 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Set to 0 to compile out function timing.
 #define GRAPH_MSF_ENABLE_FUNCTION_TIMING 0
+
+namespace {
+
+template <typename PARAMS, typename = void>
+struct HasSetBiasAccOmegaInit : std::false_type {};
+
+template <typename PARAMS>
+struct HasSetBiasAccOmegaInit<PARAMS, std::void_t<decltype(std::declval<PARAMS&>().setBiasAccOmegaInit(std::declval<gtsam::Matrix66>()))>>
+    : std::true_type {};
+
+template <typename PARAMS, typename = void>
+struct HasBiasAccOmegaInitMember : std::false_type {};
+
+template <typename PARAMS>
+struct HasBiasAccOmegaInitMember<PARAMS, std::void_t<decltype(std::declval<PARAMS&>().biasAccOmegaInit)>> : std::true_type {};
+
+template <typename PARAMS, typename = void>
+struct HasBiasAccOmegaIntMember : std::false_type {};
+
+template <typename PARAMS>
+struct HasBiasAccOmegaIntMember<PARAMS, std::void_t<decltype(std::declval<PARAMS&>().biasAccOmegaInt)>> : std::true_type {};
+
+template <typename PARAMS>
+void setBiasAccOmegaInitCompat(PARAMS& params, const gtsam::Matrix66& covariance) {
+  if constexpr (HasSetBiasAccOmegaInit<PARAMS>::value) {
+    params.setBiasAccOmegaInit(covariance);
+  } else if constexpr (HasBiasAccOmegaInitMember<PARAMS>::value) {
+    params.biasAccOmegaInit = covariance;
+  } else if constexpr (HasBiasAccOmegaIntMember<PARAMS>::value) {
+    params.biasAccOmegaInt = covariance;
+  } else {
+    static_cast<void>(params);
+    static_cast<void>(covariance);
+  }
+}
+
+}  // namespace
 
 namespace graph_msf {
 
@@ -243,6 +285,60 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
   }
 }
 
+std::string GraphManager::calibrationResidualCounterKey_(const Measurement& measurement) {
+  std::ostringstream oss;
+  const char* measurementTypeTag = "measurement";
+  if (dynamic_cast<const BinaryMeasurement*>(&measurement) != nullptr) {
+    measurementTypeTag = "binary";
+  } else if (dynamic_cast<const UnaryMeasurement*>(&measurement) != nullptr) {
+    measurementTypeTag = "unary";
+  }
+
+  oss << measurementTypeTag << '|' << measurement.measurementName() << '|' << measurement.sensorFrameName() << '|'
+      << measurement.sensorFrameCorrectedName();
+
+  if (const auto* absoluteMeasurement = dynamic_cast<const UnaryMeasurementAbsolute*>(&measurement)) {
+    oss << '|' << absoluteMeasurement->fixedFrameName() << '|' << absoluteMeasurement->worldFrameName();
+  } else if (const auto* landmarkMeasurement = dynamic_cast<const UnaryMeasurementLandmark*>(&measurement)) {
+    oss << '|' << landmarkMeasurement->worldFrameName();
+  }
+
+  return oss.str();
+}
+
+bool GraphManager::shouldUseExtrinsicCalibrationForMeasurement_(const Measurement& measurement) {
+  const int stride = measurement.extrinsicCalibrationResidualStride();
+  if (stride <= 1) {
+    return true;
+  }
+
+  const std::lock_guard<std::mutex> calibrationCounterLock(calibrationResidualCountersMutex_);
+  const std::string counterKey = calibrationResidualCounterKey_(measurement);
+  const std::uint64_t updatedCount = ++calibrationResidualCounters_[counterKey];
+  return (updatedCount % static_cast<std::uint64_t>(stride)) == 0U;
+}
+
+void GraphManager::rollbackExtrinsicCalibrationReservation_(const Measurement& measurement) {
+  const int stride = measurement.extrinsicCalibrationResidualStride();
+  if (stride <= 1) {
+    return;
+  }
+
+  const std::lock_guard<std::mutex> calibrationCounterLock(calibrationResidualCountersMutex_);
+  const std::string counterKey = calibrationResidualCounterKey_(measurement);
+  auto counterIt = calibrationResidualCounters_.find(counterKey);
+  if (counterIt == calibrationResidualCounters_.end()) {
+    return;
+  }
+
+  if (counterIt->second <= 1U) {
+    calibrationResidualCounters_.erase(counterIt);
+    return;
+  }
+
+  --counterIt->second;
+}
+
 // Initialization Interface ---------------------------------------------------
 bool GraphManager::initImuIntegrators(const double gravityValue) {
   GRAPH_MSF_SCOPED_TIMER("GraphManager::initImuIntegrators");
@@ -263,7 +359,7 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
-  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) * std::pow(graphConfigPtr_->biasAccOmegaInit_, 2));
+  setBiasAccOmegaInitCompat(*imuParamsPtr_, gtsam::Matrix66::Identity(6, 6) * std::pow(graphConfigPtr_->biasAccOmegaInit_, 2));
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior_, graphConfigPtr_->gyroBiasPrior_);

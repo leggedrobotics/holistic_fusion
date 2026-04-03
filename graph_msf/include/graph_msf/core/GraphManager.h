@@ -12,6 +12,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 #include <iomanip>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 // GTSAM
@@ -40,8 +41,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
 
-// General Binary Factor Interface
-// TODO: add binary factor interface
+// Binary expression factors are intentionally included at call sites to keep this header independent of concrete factor types.
 
 namespace graph_msf {
 
@@ -91,6 +91,9 @@ class GraphManager {
   template <class GMSF_EXPRESSION_TYPE>
   UnaryAddOutcome addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
                                                const bool addToOnlineSmootherFlag = true);
+
+  template <class GMSF_EXPRESSION_TYPE>
+  bool addBinaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfBinaryExpressionPtr);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
@@ -184,6 +187,9 @@ class GraphManager {
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
   UnaryAddOutcome classifyUnaryMeasurementTime_(gtsam::Key& returnedKey, double& returnedGraphTime,
                                                 const std::string& measurementName, double measurementTime);
+  bool shouldUseExtrinsicCalibrationForMeasurement_(const Measurement& measurement);
+  void rollbackExtrinsicCalibrationReservation_(const Measurement& measurement);
+  static std::string calibrationResidualCounterKey_(const Measurement& measurement);
 
   // Buffers
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
@@ -192,6 +198,8 @@ class GraphManager {
   std::string imuFrame_;
   std::string worldFrame_;
   DynamicDictionaryContainer gtsamDynamicExpressionKeys_;
+  std::mutex calibrationResidualCountersMutex_;
+  std::unordered_map<std::string, std::uint64_t> calibrationResidualCounters_;
 
   // File Logger
   FileLogger fileLogger_;

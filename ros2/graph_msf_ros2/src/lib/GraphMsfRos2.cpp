@@ -182,6 +182,43 @@ std::string formatHeadingSigmaLabel(const std::string& label, const double sigma
   return ss.str();
 }
 
+std_msgs::msg::ColorRGBA makeColor(const float r, const float g, const float b, const float a) {
+  std_msgs::msg::ColorRGBA color;
+  color.r = r;
+  color.g = g;
+  color.b = b;
+  color.a = a;
+  return color;
+}
+
+bool endsWith(const std::string& value, const std::string& suffix) {
+  if (suffix.size() > value.size()) {
+    return false;
+  }
+  return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin());
+}
+
+std::string formatVector3Compact(const Eigen::Vector3d& value, const int precision = 3) {
+  std::ostringstream ss;
+  ss << "[" << std::fixed << std::setprecision(precision)
+     << value.x() << " " << value.y() << " " << value.z() << "]";
+  return ss.str();
+}
+
+Eigen::Vector3d computeRpyDegrees(const Eigen::Matrix3d& rotation) {
+  const gtsam::Rot3 rot(rotation);
+  constexpr double kRadToDeg = 180.0 / M_PI;
+  return Eigen::Vector3d(rot.roll(), rot.pitch(), rot.yaw()) * kRadToDeg;
+}
+
+std::string makeCorrectionLabel(const std::string& parentFrame, const std::string& childFrame,
+                                const std::string& correctedSuffix) {
+  if (childFrame == parentFrame + correctedSuffix) {
+    return parentFrame + " corr";
+  }
+  return parentFrame + " -> " + childFrame;
+}
+
 HeadingMarkerStyle makeHeadingMarkerStyle(const std::string& sourceId) {
   HeadingMarkerStyle style;
   style.sourceLabel = sourceId;
@@ -419,6 +456,43 @@ GraphMsfRos2::GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOption
   tfTransformThread_ = std::thread(&GraphMsfRos2::tfTransformThreadFunction, this);
 }
 
+void GraphMsfRos2::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
+  if (graphConfigPtr_ != nullptr && graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_) {
+    GraphMsfHolistic::addBinaryPose3Measurement(deltaMeasurement);
+    return;
+  }
+
+  GraphMsfClassic::addBinaryPose3Measurement(deltaMeasurement);
+}
+
+bool GraphMsfRos2::getLatestOptimizedTransform(const std::string& parentFrameName, const std::string& childFrameName,
+                                               Eigen::Isometry3d& T_parent_childFrame) const {
+  std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateSnapshot;
+  {
+    const std::lock_guard<std::mutex> lock(latestOptimizedStateMutex_);
+    optimizedStateSnapshot = latestOptimizedStateSnapshot_;
+  }
+
+  if (optimizedStateSnapshot == nullptr) {
+    return false;
+  }
+
+  const auto& transforms = optimizedStateSnapshot->getReferenceFrameTransforms().getTransformsMap();
+  const auto itForward = transforms.find(std::make_pair(parentFrameName, childFrameName));
+  if (itForward != transforms.end()) {
+    T_parent_childFrame = itForward->second;
+    return true;
+  }
+
+  const auto itInverse = transforms.find(std::make_pair(childFrameName, parentFrameName));
+  if (itInverse != transforms.end()) {
+    T_parent_childFrame = itInverse->second.inverse();
+    return true;
+  }
+
+  return false;
+}
+
 GraphMsfRos2::~GraphMsfRos2() {
   GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::~GraphMsfRos2");
 
@@ -517,6 +591,10 @@ void GraphMsfRos2::initializePublishers() {
   if (publishHeadingUncertaintyMarkersFlag_) {
     pubHeadingUncertaintyMarkers_ =
         this->create_publisher<visualization_msgs::msg::MarkerArray>("/graph_msf/heading_uncertainty_markers", best_effort_qos);
+  }
+  if (publishSlowStateTextMarkersFlag_) {
+    pubSlowStateTextMarkers_ =
+        this->create_publisher<visualization_msgs::msg::MarkerArray>("/graph_msf/slow_state_text_markers", best_effort_qos);
   }
 
   // QoS profile for paths to be visualized in RViz (latching)
@@ -857,7 +935,17 @@ void GraphMsfRos2::publishState(
       optimizedStateWithCovarianceAndBiasPtr->getTimeK() - lastOptimizedStateTimestamp_ > 1e-03) {
     newOptimizedState = true;
   }
+  if (optimizedStateWithCovarianceAndBiasPtr != nullptr) {
+    const std::lock_guard<std::mutex> lock(latestOptimizedStateMutex_);
+    latestOptimizedStateSnapshot_ = optimizedStateWithCovarianceAndBiasPtr;
+  }
 
+  const bool hasSlowStateTextSubscribers =
+      (pubSlowStateTextMarkers_ != nullptr && pubSlowStateTextMarkers_->get_subscription_count() > 0);
+  const bool hasHeadingUncertaintySubscribers =
+      (pubHeadingUncertaintyMarkers_ != nullptr && pubHeadingUncertaintyMarkers_->get_subscription_count() > 0);
+
+  // Expensive non-time-critical visualization/publishing stays dormant unless there is at least one subscriber.
   const bool needNonTimeCritical =
       newOptimizedState && optimizedStateWithCovarianceAndBiasPtr != nullptr &&
       ((pubEstWorldPosVariance_->get_subscription_count() > 0) ||
@@ -869,7 +957,8 @@ void GraphMsfRos2::publishState(
        (pubOptWorldImu_->get_subscription_count() > 0) ||
        (pubAccelBias_->get_subscription_count() > 0) ||
        (pubGyroBias_->get_subscription_count() > 0) ||
-       (pubHeadingUncertaintyMarkers_ != nullptr && pubHeadingUncertaintyMarkers_->get_subscription_count() > 0));
+       hasSlowStateTextSubscribers ||
+       hasHeadingUncertaintySubscribers);
 
   // Covariances (only if needed)
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
@@ -974,6 +1063,9 @@ void GraphMsfRos2::publishNonTimeCriticalData(
 
   // Publish heading uncertainty visualization in the world frame.
   publishHeadingUncertaintyMarkers(optimizedStateWithCovarianceAndBiasPtr);
+
+  // Publish human-readable bias/extrinsic text markers for RViz.
+  publishSlowStateTextMarkers(optimizedStateWithCovarianceAndBiasPtr);
 
   // Optimized estimate ----------------------
   publishOptimizedStateAndBias(optimizedStateWithCovarianceAndBiasPtr, poseCovarianceRos, twistCovarianceRos);
@@ -1435,6 +1527,116 @@ void GraphMsfRos2::publishHeadingUncertaintyMarkers(
   }
 
   pubHeadingUncertaintyMarkers_->publish(markerArray);
+}
+
+void GraphMsfRos2::publishSlowStateTextMarkers(
+    const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishSlowStateTextMarkers");
+
+  const bool hasSlowStateTextSubscribers =
+      (pubSlowStateTextMarkers_ != nullptr && pubSlowStateTextMarkers_->get_subscription_count() > 0);
+  // Keep the RViz text overlay entirely dormant when nobody is listening.
+  if (!publishSlowStateTextMarkersFlag_ || !hasSlowStateTextSubscribers) {
+    return;
+  }
+
+  visualization_msgs::msg::MarkerArray markerArray;
+
+  std::string worldFrameName;
+  std::string imuFrameName;
+  std::string baseLinkFrameName;
+  Eigen::Isometry3d T_I_B = Eigen::Isometry3d::Identity();
+  {
+    std::shared_lock<std::shared_mutex> transformsLock(staticTransformsPtr_->mutex());
+    worldFrameName = staticTransformsPtr_->getWorldFrame();
+    imuFrameName = staticTransformsPtr_->getImuFrame();
+    baseLinkFrameName = staticTransformsPtr_->getBaseLinkFrame();
+    if (!baseLinkFrameName.empty() && staticTransformsPtr_->isFramePairInDictionary(imuFrameName, baseLinkFrameName)) {
+      T_I_B = staticTransformsPtr_->rv_T_frame1_frame2(imuFrameName, baseLinkFrameName);
+    }
+  }
+
+  const double timeStamp = optimizedStateWithCovarianceAndBiasPtr != nullptr ? optimizedStateWithCovarianceAndBiasPtr->getTimeK() : 0.0;
+  const rclcpp::Time stamp = timeFromSec(timeStamp);
+
+  visualization_msgs::msg::Marker clearMarker;
+  clearMarker.header.frame_id = worldFrameName;
+  clearMarker.header.stamp = stamp;
+  clearMarker.action = visualization_msgs::msg::Marker::DELETEALL;
+  markerArray.markers.push_back(clearMarker);
+
+  if (optimizedStateWithCovarianceAndBiasPtr == nullptr) {
+    pubSlowStateTextMarkers_->publish(markerArray);
+    return;
+  }
+
+  const Eigen::Isometry3d T_W_I = optimizedStateWithCovarianceAndBiasPtr->getT_W_Ik();
+  const Eigen::Isometry3d T_W_anchor = T_W_I * T_I_B;
+  const Eigen::Vector3d anchorWorld = T_W_anchor.translation();
+  const double lineSpacing = std::max(0.12, slowStateTextScale_ * 0.95);
+
+  const auto makeTextMarker = [&](const int id, const std::string& text, const Eigen::Vector3d& positionWorld,
+                                  const std_msgs::msg::ColorRGBA& color) {
+    visualization_msgs::msg::Marker marker;
+    marker.header.frame_id = worldFrameName;
+    marker.header.stamp = stamp;
+    marker.ns = "slow_state_text";
+    marker.id = id;
+    marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.lifetime = rclcpp::Duration::from_seconds(0.0);
+    marker.frame_locked = false;
+    marker.pose.position = makeMarkerPoint(positionWorld);
+    marker.pose.orientation.w = 1.0;
+    marker.scale.z = slowStateTextScale_;
+    marker.color = color;
+    marker.text = text;
+    return marker;
+  };
+
+  std::vector<std::pair<std::string, std_msgs::msg::ColorRGBA>> lines;
+  lines.emplace_back("acc bias [m/s^2] " + formatVector3Compact(optimizedStateWithCovarianceAndBiasPtr->getAccelerometerBias()),
+                     makeColor(0.95F, 0.78F, 0.30F, 0.98F));
+  lines.emplace_back("gyr bias [rad/s] " + formatVector3Compact(optimizedStateWithCovarianceAndBiasPtr->getGyroscopeBias()),
+                     makeColor(0.45F, 0.85F, 1.00F, 0.98F));
+
+  const auto& referenceTransforms = optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransforms();
+  const auto& referenceTransformCovariances = optimizedStateWithCovarianceAndBiasPtr->getReferenceFrameTransformsCovariance();
+  for (const auto& framePairTransform : referenceTransforms.getTransformsMap()) {
+    const std::string& frame1 = framePairTransform.first.first;
+    const std::string& frame2 = framePairTransform.first.second;
+    if (!endsWith(frame2, sensorFrameCorrectedNameId)) {
+      continue;
+    }
+
+    const Eigen::Isometry3d& T_frame1_frame2 = framePairTransform.second;
+    Eigen::Matrix<double, 6, 6> covariance = Eigen::Matrix<double, 6, 6>::Zero();
+    if (referenceTransformCovariances.isFramePairInDictionary(frame1, frame2)) {
+      covariance = referenceTransformCovariances.rv_T_frame1_frame2(frame1, frame2);
+    }
+
+    std::ostringstream ss;
+    ss << makeCorrectionLabel(frame1, frame2, sensorFrameCorrectedNameId)
+       << " t[m] " << formatVector3Compact(T_frame1_frame2.translation());
+
+    const Eigen::Matrix3d rotCov = covariance.block<3, 3>(0, 0);
+    const bool shouldShowRotation =
+        !T_frame1_frame2.rotation().isApprox(Eigen::Matrix3d::Identity(), 1e-9) ||
+        rotCov.cwiseAbs().maxCoeff() > 1e-12;
+    if (shouldShowRotation) {
+      ss << " rpy[deg] " << formatVector3Compact(computeRpyDegrees(T_frame1_frame2.rotation()));
+    }
+
+    lines.emplace_back(ss.str(), makeColor(0.90F, 0.90F, 0.90F, 0.98F));
+  }
+
+  for (std::size_t i = 0; i < lines.size(); ++i) {
+    Eigen::Vector3d linePosition = anchorWorld;
+    linePosition.z() += slowStateTextZOffset_ + lineSpacing * static_cast<double>(lines.size() - 1 - i);
+    markerArray.markers.push_back(makeTextMarker(static_cast<int>(i), lines[i].first, linePosition, lines[i].second));
+  }
+
+  pubSlowStateTextMarkers_->publish(markerArray);
 }
 
 void GraphMsfRos2::publishImuPaths() const {

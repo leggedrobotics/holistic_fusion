@@ -120,6 +120,9 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("visualization_params.headingUncertaintyDiskRadius", 2.5);
   this->declare_parameter("visualization_params.headingUncertaintyNSigmas", 2.0);
   this->declare_parameter("visualization_params.headingUncertaintyZOffset", 0.2);
+  this->declare_parameter("visualization_params.publishSlowStateTextMarkers", false);
+  this->declare_parameter("visualization_params.slowStateTextZOffset", 1.2);
+  this->declare_parameter("visualization_params.slowStateTextScale", 0.2);
 }
 
 }  // namespace graph_msf

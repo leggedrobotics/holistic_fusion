@@ -30,8 +30,10 @@ class BinaryMeasurement : public Measurement {
    *
    */
   BinaryMeasurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-                    const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const double timeKm1, const double timeK)
-      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Binary),
+                    const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const double timeKm1, const double timeK,
+                    const int extrinsicCalibrationResidualStride = 1)
+      : Measurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, MeasurementTypeEnum::Binary,
+                    extrinsicCalibrationResidualStride),
         timeKm1_(timeKm1),
         timeK_(timeK) {}
 

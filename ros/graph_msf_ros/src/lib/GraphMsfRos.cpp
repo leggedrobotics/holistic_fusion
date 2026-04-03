@@ -26,6 +26,15 @@ GraphMsfRos::GraphMsfRos(const std::shared_ptr<ros::NodeHandle>& privateNodePtr)
   graphConfigPtr_ = std::make_shared<GraphConfig>();
 }
 
+void GraphMsfRos::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
+  if (graphConfigPtr_ != nullptr && graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_) {
+    GraphMsfHolistic::addBinaryPose3Measurement(deltaMeasurement);
+    return;
+  }
+
+  GraphMsfClassic::addBinaryPose3Measurement(deltaMeasurement);
+}
+
 void GraphMsfRos::setup(const std::shared_ptr<StaticTransforms> staticTransformsPtr) {
   REGULAR_COUT << GREEN_START << " GraphMsfRos-Setup called." << COLOR_END << std::endl;
 

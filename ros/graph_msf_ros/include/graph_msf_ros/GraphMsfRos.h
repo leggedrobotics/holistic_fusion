@@ -43,6 +43,7 @@ class GraphMsfRos : public GraphMsfClassic, public GraphMsfHolistic {
 
   // Setup
   void setup(const std::shared_ptr<StaticTransforms> staticTransformsPtr);
+  void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;
 
  protected:
   // Functions that need implementation

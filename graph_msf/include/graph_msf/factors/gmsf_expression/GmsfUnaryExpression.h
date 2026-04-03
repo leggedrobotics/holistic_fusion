@@ -13,9 +13,11 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <type_traits>
 
 // Workspace
 #include "graph_msf/core/DynamicDictionaryContainer.h"
+#include "graph_msf/factors/gmsf_expression/Pose3CalibrationState.h"
 #include "graph_msf/measurements/UnaryMeasurement.h"
 
 namespace graph_msf {
@@ -62,7 +64,9 @@ class GmsfUnaryExpression {
                                                                       const gtsam::NavState& W_imuPropagatedState,
                                                                       const bool optimizeReferenceFramePosesWrtWorldFlag,
                                                                       const bool centerMeasurementsAtKeyframePositionBeforeAlignmentFlag,
-                                                                      const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
+                                                                      const bool optimizeExtrinsicSensorToSensorCorrectedOffsetFlag,
+                                                                      const bool useExtrinsicCalibrationResidualFlag,
+                                                                      const Eigen::Matrix<double, 6, 1>& initialCalibrationPriorSigmas) {
     // Measurement Pointer
     const auto& gmsfUnaryMeasurement = *getGmsfBaseUnaryMeasurementPtr();
 
@@ -88,8 +92,8 @@ class GmsfUnaryExpression {
     }
 
     // D. Extrinsic Calibration: Add correction to sensor pose -----------------------------------------
-    if (optimizeExtrinsicSensorToSensorCorrectedOffsetFlag) {
-      transformSensorFrameStateToSensorFrameCorrectedState(gtsamDynamicExpressionKeys);
+    if (optimizeExtrinsicSensorToSensorCorrectedOffsetFlag && useExtrinsicCalibrationResidualFlag) {
+      transformSensorFrameStateToSensorFrameCorrectedState(gtsamDynamicExpressionKeys, initialCalibrationPriorSigmas);
     }
 
     // Return
@@ -146,7 +150,19 @@ class GmsfUnaryExpression {
   virtual void transformImuStateToSensorFrameState() = 0;
 
   // iv) Extrinsic calibration
-  virtual void transformSensorFrameStateToSensorFrameCorrectedState(DynamicDictionaryContainer& gtsamDynamicExpressionKeys) {
+  virtual void transformSensorFrameStateToSensorFrameCorrectedState(
+      DynamicDictionaryContainer& gtsamDynamicExpressionKeys, const Eigen::Matrix<double, 6, 1>& initialCalibrationPriorSigmas) {
+    if constexpr (std::is_same_v<GTSAM_MEASUREMENT_TYPE, gtsam::Pose3>) {
+      const auto calibrationState = ensurePose3ExtrinsicCalibrationState<CALIBRATION_CHAR>(
+          gtsamDynamicExpressionKeys, gmsfBaseUnaryMeasurementPtr_->sensorFrameName(),
+          gmsfBaseUnaryMeasurementPtr_->sensorFrameCorrectedName(), gmsfBaseUnaryMeasurementPtr_->timeK(),
+          initialCalibrationPriorSigmas);
+      this->applyExtrinsicCalibrationCorrection(calibrationState.expression);
+      mergePose3CalibrationStateResult(calibrationState, newOnlineStateValues_, newOfflineStateValues_,
+                                       newOnlineDynamicPriorFactors_);
+      return;
+    }
+
     // Mutex because we are changing the dynamically allocated graphKeys
     std::lock_guard<std::mutex> modifyGraphKeysLock(gtsamDynamicExpressionKeys.get<gtsam::Pose3>().mutex());
 
@@ -171,11 +187,6 @@ class GmsfUnaryExpression {
       // Add value to new state values of online and offline graph
       newOnlineStateValues_.insert(graphKey.key(), initialGuess);
       newOfflineStateValues_.insert(graphKey.key(), initialGuess);
-      // Add prior factor to online graph --> make sure it is not fully unconstrained
-      //      newOnlineDynamicPriorFactors_.emplace_back(
-      //          graphKey.key(), initialGuess,
-      //          gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix::Identity(GTSAM_MEASUREMENT_TYPE::dimension,
-      //          GTSAM_MEASUREMENT_TYPE::dimension)));
       // New key has to be active
       assert(graphKey.isVariableActive());
     }

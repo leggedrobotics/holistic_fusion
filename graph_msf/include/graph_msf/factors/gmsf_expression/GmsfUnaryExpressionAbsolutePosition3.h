@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
+#include "graph_msf/factors/gmsf_expression/Point3CalibrationState.h"
 #include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
 
 namespace graph_msf {
@@ -96,6 +97,17 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
   }
 
   // iv) Extrinsic Calibration ---------------------------------------------------------------------
+  void transformSensorFrameStateToSensorFrameCorrectedState(
+      DynamicDictionaryContainer& gtsamDynamicExpressionKeys, const Eigen::Matrix<double, 6, 1>& initialCalibrationPriorSigmas) final {
+    const auto calibrationState = ensurePoint3ExtrinsicCalibrationState<'d'>(
+        gtsamDynamicExpressionKeys, positionUnaryMeasurementPtr_->sensorFrameName(),
+        positionUnaryMeasurementPtr_->sensorFrameCorrectedName(), positionUnaryMeasurementPtr_->timeK(),
+        initialCalibrationPriorSigmas);
+    this->applyExtrinsicCalibrationCorrection(calibrationState.expression);
+    mergePoint3CalibrationStateResult(calibrationState, this->newOnlineStateValues_, this->newOfflineStateValues_,
+                                      this->newOnlineDynamicPriorFactors_);
+  }
+
   void applyExtrinsicCalibrationCorrection(const gtsam::Point3_& exp_sensorFrame_t_sensorFrame_correctSensorFrame) final {
     // Apply Correction
     gtsam::Rot3_ exp_R_fixedFrame_sensorFrame = exp_R_fixedFrame_I_ * gtsam::Rot3_(gtsam::Rot3(T_I_sensorFrameInit_.rotation()));

@@ -10,6 +10,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/core/GraphManager.h"
+#ifdef REGULAR_COUT
+#undef REGULAR_COUT
+#endif
 #include "graph_msf/interface/constants.h"
 
 // Unary Expression Factors
@@ -23,7 +26,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLandmarkPosition3.h"
 
 // Binary Expression Factors
-// TODO: add binary factors
+#include "graph_msf/factors/gmsf_expression/GmsfBinaryExpressionPose3.h"
 
 namespace graph_msf {
 
@@ -186,5 +189,25 @@ void GraphMsfHolistic::addUnaryBearing3LandmarkMeasurement(UnaryMeasurementXDLan
 }
 
 // Binary Measurements: Purely relative --------------------------------------------------------
+void GraphMsfHolistic::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& deltaMeasurement) {
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  if (!initedGraphFlag_) {
+    return;
+  }
+
+  auto gmsfBinaryExpressionPose3Ptr = std::make_shared<GmsfBinaryExpressionPose3>(
+      std::make_shared<BinaryMeasurementXD<Eigen::Isometry3d, 6>>(deltaMeasurement), staticTransformsPtr_->getImuFrame(),
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()));
+
+  static_cast<void>(graphMgrPtr_->addBinaryGmsfExpressionFactor<GmsfBinaryExpressionPose3>(gmsfBinaryExpressionPose3Ptr));
+
+  {
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
+}
 
 }  // namespace graph_msf

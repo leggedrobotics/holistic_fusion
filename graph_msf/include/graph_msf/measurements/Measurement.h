@@ -67,13 +67,15 @@ class Measurement {
    *
    */
   Measurement(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
-              const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const MeasurementTypeEnum& measurementTypeEnum)
+              const std::string& sensorFrameCorrectedName, const RobustNorm& robustNorm, const MeasurementTypeEnum& measurementTypeEnum,
+              const int extrinsicCalibrationResidualStride = 1)
       : measurementName_(measurementName),
         measurementRate_(measurementRate),
         sensorFrameName_(sensorFrameName),
         sensorFrameCorrectedName_(sensorFrameCorrectedName),
         robustNorm_(robustNorm),
-        measurementTypeEnum_(measurementTypeEnum) {}
+        measurementTypeEnum_(measurementTypeEnum),
+        extrinsicCalibrationResidualStride_(extrinsicCalibrationResidualStride > 0 ? extrinsicCalibrationResidualStride : 1) {}
 
   // Destructor
   virtual ~Measurement() = default;
@@ -85,6 +87,8 @@ class Measurement {
   [[nodiscard]] const std::string& sensorFrameCorrectedName() const { return sensorFrameCorrectedName_; }
   /// Rest
   [[nodiscard]] int measurementRate() const { return measurementRate_; }
+  // Attach the calibration state only to every Nth accepted factor of this measurement stream.
+  [[nodiscard]] int extrinsicCalibrationResidualStride() const { return extrinsicCalibrationResidualStride_; }
   [[nodiscard]] const RobustNorm& robustNorm() const { return robustNorm_; }
   [[nodiscard]] const RobustNormEnum& robustNormEnum() const { return robustNorm_.robustNormEnum(); }
   [[nodiscard]] const double& robustNormConstant() const { return robustNorm_.robustNormConstant(); }
@@ -106,6 +110,7 @@ class Measurement {
   // Enum
   MeasurementTypeEnum measurementTypeEnum_;
   RobustNorm robustNorm_;
+  int extrinsicCalibrationResidualStride_ = 1;
 };
 
 }  // namespace graph_msf

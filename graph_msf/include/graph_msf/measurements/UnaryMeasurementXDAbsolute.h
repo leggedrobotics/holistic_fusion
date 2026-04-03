@@ -45,14 +45,16 @@ class UnaryMeasurementXDAbsolute final : public virtual UnaryMeasurementAbsolute
                              const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
                              const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none,
                              const AbsoluteUnaryAlignmentRecoveryPolicy alignmentRecoveryPolicy =
-                                 AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue)
+                                 AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue,
+                             const int extrinsicCalibrationResidualStride = 1)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                         covarianceViolationThreshold),
+                         covarianceViolationThreshold, extrinsicCalibrationResidualStride),
         UnaryMeasurementAbsolute(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                                  covarianceViolationThreshold, fixedFrameName, worldFrameName, initialSe3AlignmentNoise,
-                                 se3AlignmentRandomWalk, alignmentRecoveryPolicy),
+                                 se3AlignmentRandomWalk, alignmentRecoveryPolicy, extrinsicCalibrationResidualStride),
         UnaryMeasurementXD<MEASUREMENT_TYPE, DIM>(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm,
-                                                  timeStamp, covarianceViolationThreshold, unaryMeasurement, unaryMeasurementNoiseDensity) {
+                                                  timeStamp, covarianceViolationThreshold, unaryMeasurement, unaryMeasurementNoiseDensity,
+                                                  extrinsicCalibrationResidualStride) {
   }
 
   // Destructor

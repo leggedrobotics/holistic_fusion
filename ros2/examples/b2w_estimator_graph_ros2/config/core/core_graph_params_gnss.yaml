@@ -45,7 +45,7 @@
       centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
       createReferenceAlignmentKeyframeEveryNSeconds: 4.0   # Create a new keyframe for alignment every n seconds
       # Extrinsic Calibration
-      optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
+      optimizeExtrinsicSensorToSensorCorrectedOffset: true # If true, the extrinsic calibration is optimized
 
     # Noise Parameters
     noise_params:

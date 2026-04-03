@@ -134,6 +134,13 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("sensor_params.vioOdometryRate", 0);
   this->declare_parameter("sensor_params.vioOdometryBetweenRate", 0);
 
+  // Extrinsic calibration residual decimation
+  this->declare_parameter("calibration_residual_params.gnssStride", 1);
+  this->declare_parameter("calibration_residual_params.lioUnaryStride", 1);
+  this->declare_parameter("calibration_residual_params.lioBetweenStride", 1);
+  this->declare_parameter("calibration_residual_params.vioUnaryStride", 1);
+  this->declare_parameter("calibration_residual_params.vioBetweenStride", 1);
+
   // Alignment parameters (vector of double)
   this->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
@@ -144,7 +151,7 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("noise_params.lioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  this->declare_parameter("noise_params.gnssPositionOutlierThreshold", 1.0);
+  this->declare_parameter("noise_params.gnssPositionOutlierThreshold", std::vector<double>{1.0, 1.0, 1.0});
 
   // Extrinsic frames (string)
   this->declare_parameter("extrinsics.lidarOdometryFrame", std::string(""));
@@ -210,6 +217,29 @@ void B2WEstimator::cacheFrames_() {
   }
 
   framesCached_ = true;
+}
+
+Eigen::Vector3d B2WEstimator::getBaseToGnssLeverArm_(const std::string& baseFrame) const {
+  Eigen::Isometry3d T_base_gnss = Eigen::Isometry3d::Identity();
+  try {
+    T_base_gnss = staticTransformsPtr_->rv_T_frame1_frame2(baseFrame, gnssFrame_);
+  } catch (const std::exception&) {
+    if (baseFrame == baseLinkFrame_) {
+      return t_B_G_cached_;
+    }
+    throw;
+  }
+
+  if (!graphConfigPtr_ || !graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_) {
+    return T_base_gnss.translation();
+  }
+
+  Eigen::Isometry3d T_gnss_gnssCorrected = Eigen::Isometry3d::Identity();
+  if (!getLatestOptimizedTransform(gnssFrame_, gnssFrame_ + sensorFrameCorrectedNameId, T_gnss_gnssCorrected)) {
+    return T_base_gnss.translation();
+  }
+
+  return (T_base_gnss * T_gnss_gnssCorrected).translation();
 }
 
 bool B2WEstimator::getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out) const {
@@ -367,7 +397,8 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
     if (!useGnssFlag_ && !useLioOdometryFlag_) {
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(lioBetweenOdometryRate_), lioBetweenOdomFrameName, lioBetweenOdomFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+          graph_msf::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_,
+          lioBetweenCalibrationResidualStride_);
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << "\n";
       this->initYawAndPosition(unary6DMeasurement);
     }
@@ -375,7 +406,8 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
     const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
     graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
         "Lidar_between_6D", int(lioBetweenOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioBetweenNoise_);
+        graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioBetweenNoise_,
+        lioBetweenCalibrationResidualStride_);
     this->addBinaryPose3Measurement(delta6DMeasurement);
   }
 
@@ -508,7 +540,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     const std::string& gnssFrame = gnssFrame_;
 
     // Static lever arm
-    const Eigen::Vector3d t_B_G = t_B_G_cached_;
+    const Eigen::Vector3d t_B_G = getBaseToGnssLeverArm_(baseFrame);
 
     double initYaw_W_Base = 0.0;
 
@@ -594,12 +626,31 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     //     W_t_W_Gnss, estStdDevXYZ,
     //     fixedFrame, worldFrame_);
 
+    // Per-axis covariance violation check (replaces scalar threshold in core library)
+    bool covViolated = false;
+    for (int i = 0; i < 3; ++i) {
+      if (gnssPositionOutlierThreshold_(i) > 0.0 && estStdDevXYZ(i) > gnssPositionOutlierThreshold_(i)) {
+        covViolated = true;
+        break;
+      }
+    }
+    if (covViolated) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                           "GNSS covariance violation: std=[%.2f, %.2f, %.2f] > threshold=[%.2f, %.2f, %.2f]. Skipping.",
+                           estStdDevXYZ(0), estStdDevXYZ(1), estStdDevXYZ(2),
+                           gnssPositionOutlierThreshold_(0), gnssPositionOutlierThreshold_(1), gnssPositionOutlierThreshold_(2));
+      return;
+    }
+
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
         graph_msf::RobustNorm::Huber(0.25),
-        timestampSec, gnssPositionOutlierThreshold_,
+        timestampSec, 0.0 /* per-axis check already done above */,
         W_t_W_Gnss, estStdDevXYZ,
-        fixedFrame, worldFrame_);
+        fixedFrame, worldFrame_,
+        boost::none, boost::none,
+        graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue,
+        gnssCalibrationResidualStride_);
 
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
   }
@@ -729,9 +780,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
         odomLidarPtr->child_frame_id.empty() ? baseLinkFrame_ : odomLidarPtr->child_frame_id;
 
     // Prefer cached lever arm if the message base frame matches cached base link.
-    const Eigen::Vector3d t_B_G =
-        (baseFrame == baseLinkFrame_) ? t_B_G_cached_
-                                      : staticTransformsPtr_->rv_T_frame1_frame2(baseFrame, gnssFrame_).translation();
+    const Eigen::Vector3d t_B_G = getBaseToGnssLeverArm_(baseFrame);
 
     const Eigen::Vector3d p_G_in_M =
         lio_T_M_Lk.translation() + lio_T_M_Lk.rotation() * t_B_G;
@@ -766,7 +815,8 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
       lio_T_M_Lk, lioPoseUnaryNoise_,
       lioFixedFrame, worldFrame_,
       initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_,
-      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
+      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior,
+      lioUnaryCalibrationResidualStride_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;
@@ -894,7 +944,8 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
       worldFrame_,
       initialSe3AlignmentNoise_,
       vioSe3AlignmentRandomWalk_,
-      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
+      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior,
+      vioUnaryCalibrationResidualStride_);
 
   if (vioUnaryCallbackCounter <= 2) {
     // skip first few samples
@@ -1002,7 +1053,8 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
         vioTimeKm1,
         timeK,
         T_Ckm1_Ck,
-        vio_covariance);
+        vio_covariance,
+        vioBetweenCalibrationResidualStride_);
 
     this->addBinaryPose3Measurement(delta6DMeasurement);
   } else {

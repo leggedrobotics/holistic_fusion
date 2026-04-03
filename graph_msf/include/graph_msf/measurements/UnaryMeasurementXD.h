@@ -36,9 +36,10 @@ class UnaryMeasurementXD : public virtual UnaryMeasurement {
   UnaryMeasurementXD(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                      const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                      const double covarianceViolationThreshold, const MEASUREMENT_TYPE& unaryMeasurement,
-                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity)
+                     const Eigen::Matrix<double, DIM, 1>& unaryMeasurementNoiseDensity,
+                     const int extrinsicCalibrationResidualStride = 1)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
-                         covarianceViolationThreshold),
+                         covarianceViolationThreshold, extrinsicCalibrationResidualStride),
         unaryMeasurement_(unaryMeasurement),
         unaryMeasurementNoiseDensity_(unaryMeasurementNoiseDensity),
         unaryMeasurementNoiseVariances_(unaryMeasurementNoiseDensity.cwiseProduct(unaryMeasurementNoiseDensity)) {}

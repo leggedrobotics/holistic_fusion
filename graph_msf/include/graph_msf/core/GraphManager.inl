@@ -108,11 +108,21 @@ UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr
   }
 
   const double ts = gmsfUnaryExpressionPtr->getTimestamp();
+  // The pose/position factor is still added at the sensor rate. This flag only decides whether the residual also touches the
+  // shared extrinsic-calibration state for this particular factor instance.
+  const bool useExtrinsicCalibrationResidual =
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ &&
+      shouldUseExtrinsicCalibrationForMeasurement_(*gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr());
+  Eigen::Matrix<double, 6, 1> initialCalibrationPriorSigmas;
+  initialCalibrationPriorSigmas << graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialOrientationNoiseDensity_,
+      graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_,
+      graphConfigPtr_->initialPositionNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_;
 
   // Operating on graph data
   {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     DynamicDictionaryContainer dynamicExpressionKeysSnapshot;
+    bool factorCommitted = false;
     {
       std::scoped_lock snapshotLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
                                     gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
@@ -124,7 +134,8 @@ UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr
       const auto gmsfGtsamExpression = gmsfUnaryExpressionPtr->createAndReturnExpression(
           closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
           graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_,
-          graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
+          graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_, useExtrinsicCalibrationResidual,
+          initialCalibrationPriorSigmas);
 
       // Factor
       if (robustNormEnum == RobustNormEnum::None) {
@@ -141,11 +152,15 @@ UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr
               unaryExpressionFactorPtr.get(), ts, "GMSF-Expression", addToOnlineSmootherFlag);
 
       if (!success) {
+        if (useExtrinsicCalibrationResidual || unaryMeasurement.extrinsicCalibrationResidualStride() > 1) {
+          rollbackExtrinsicCalibrationReservation_(unaryMeasurement);
+        }
         std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
                                      gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
         gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
         return {UnaryAddStatus::Dropped, 0.0};
       }
+      factorCommitted = true;
 
       // B. Write to timestamp map for fixed lag smoother (writeKeyToKeyTimeStampMap_ handles "newer-than" internally)
       // B.a) Keys in expression factor
@@ -208,6 +223,9 @@ UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr
         batchFactorGraphBufferPtr_->add(gmsfUnaryExpressionPtr->getNewOnlineAndOfflinePoseBetweenFactors());
       }
     } catch (...) {
+      if (!factorCommitted && (useExtrinsicCalibrationResidual || unaryMeasurement.extrinsicCalibrationResidualStride() > 1)) {
+        rollbackExtrinsicCalibrationReservation_(unaryMeasurement);
+      }
       std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
                                    gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
       gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
@@ -227,6 +245,155 @@ UnaryAddOutcome GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr
   }
 
   return {UnaryAddStatus::Added, 0.0};
+}
+
+template <class GMSF_EXPRESSION_TYPE>
+bool GraphManager::addBinaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfBinaryExpressionPtr) {
+  const auto& binaryMeasurement = *gmsfBinaryExpressionPtr->getGmsfBaseBinaryMeasurementPtr();
+
+  const double maxTimestampDistance = (1.0 / binaryMeasurement.measurementRate()) + (2.0 * graphConfigPtr_->maxSearchDeviation_);
+  gtsam::Key closestKeyKm1 = 0;
+  gtsam::Key closestKeyK = 0;
+  double keyTimeStampDistance = 0.0;
+  if (!findGraphKeys_(closestKeyKm1, closestKeyK, keyTimeStampDistance, maxTimestampDistance, binaryMeasurement.timeKm1(),
+                      binaryMeasurement.timeK(), binaryMeasurement.measurementName())) {
+    return false;
+  }
+
+  // Binary factors follow the same policy: keep the motion factor, decimate only the coupling to the calibration state.
+  const bool useExtrinsicCalibrationResidual =
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_ &&
+      shouldUseExtrinsicCalibrationForMeasurement_(binaryMeasurement);
+
+  std::shared_ptr<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>> binaryExpressionFactorPtr;
+
+  auto noiseModel = gtsam::noiseModel::Diagonal::Sigmas(gmsfBinaryExpressionPtr->getNoiseDensity());  // rad,rad,rad,m,m,m
+  const RobustNormEnum robustNormEnum(binaryMeasurement.robustNormEnum());
+  const double robustNormConstant = binaryMeasurement.robustNormConstant();
+  std::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+
+  switch (robustNormEnum) {
+    case RobustNormEnum::Huber:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(robustNormConstant), noiseModel);
+      break;
+    case RobustNormEnum::Cauchy:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Cauchy::Create(robustNormConstant), noiseModel);
+      break;
+    case RobustNormEnum::Tukey:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), noiseModel);
+      break;
+    case RobustNormEnum::GemanMcClure:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), noiseModel);
+      break;
+    case RobustNormEnum::DCS:
+      robustErrorFunction =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::DCS::Create(robustNormConstant), noiseModel);
+      break;
+    case RobustNormEnum::None:
+      break;
+  }
+
+  Eigen::Matrix<double, 6, 1> initialCalibrationPriorSigmas;
+  initialCalibrationPriorSigmas << graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialOrientationNoiseDensity_,
+      graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_,
+      graphConfigPtr_->initialPositionNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_;
+
+  {
+    const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+    DynamicDictionaryContainer dynamicExpressionKeysSnapshot;
+    bool factorCommitted = false;
+    {
+      std::scoped_lock snapshotLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                    gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+      dynamicExpressionKeysSnapshot = DynamicDictionaryContainer(gtsamDynamicExpressionKeys_);
+    }
+
+    try {
+      const auto gmsfGtsamExpression =
+          gmsfBinaryExpressionPtr->createAndReturnExpression(closestKeyKm1, closestKeyK, gtsamDynamicExpressionKeys_,
+                                                             initialCalibrationPriorSigmas,
+                                                             graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_,
+                                                             useExtrinsicCalibrationResidual);
+      const auto scaledMeasurementValue = gmsfBinaryExpressionPtr->getScaledGtsamMeasurementValue(keyTimeStampDistance);
+
+      if (robustNormEnum == RobustNormEnum::None) {
+        binaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+            noiseModel, scaledMeasurementValue, gmsfGtsamExpression);
+      } else {
+        binaryExpressionFactorPtr = std::make_shared<gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>>(
+            robustErrorFunction, scaledMeasurementValue, gmsfGtsamExpression);
+      }
+
+      const bool success =
+          addFactorToRtAndBatchGraph_<const gtsam::ExpressionFactor<typename GMSF_EXPRESSION_TYPE::template_type>*>(
+              binaryExpressionFactorPtr.get(), binaryMeasurement.timeKm1(), "GMSF-BinaryExpression");
+      if (!success) {
+        if (useExtrinsicCalibrationResidual || binaryMeasurement.extrinsicCalibrationResidualStride() > 1) {
+          rollbackExtrinsicCalibrationReservation_(binaryMeasurement);
+        }
+        std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                     gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+        gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
+        return false;
+      }
+      factorCommitted = true;
+
+      for (const gtsam::Key& key : binaryExpressionFactorPtr->keys()) {
+        writeKeyToKeyTimeStampMap_(key, binaryMeasurement.timeK(), rtGraphKeysTimestampsMapBufferPtr_);
+        if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+          writeKeyToKeyTimeStampMap_(key, binaryMeasurement.timeK(), batchGraphKeysTimestampsMapBufferPtr_);
+        }
+      }
+
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestKeyKm1), binaryMeasurement.timeKm1(), rtGraphKeysTimestampsMapBufferPtr_);
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestKeyKm1), binaryMeasurement.timeKm1(), rtGraphKeysTimestampsMapBufferPtr_);
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestKeyKm1), binaryMeasurement.timeKm1(), rtGraphKeysTimestampsMapBufferPtr_);
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestKeyK), binaryMeasurement.timeK(), rtGraphKeysTimestampsMapBufferPtr_);
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestKeyK), binaryMeasurement.timeK(), rtGraphKeysTimestampsMapBufferPtr_);
+      writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestKeyK), binaryMeasurement.timeK(), rtGraphKeysTimestampsMapBufferPtr_);
+      if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestKeyKm1), binaryMeasurement.timeKm1(),
+                                   batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestKeyKm1), binaryMeasurement.timeKm1(),
+                                   batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestKeyKm1), binaryMeasurement.timeKm1(),
+                                   batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::X(closestKeyK), binaryMeasurement.timeK(), batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::V(closestKeyK), binaryMeasurement.timeK(), batchGraphKeysTimestampsMapBufferPtr_);
+        writeKeyToKeyTimeStampMap_(gtsam::symbol_shorthand::B(closestKeyK), binaryMeasurement.timeK(), batchGraphKeysTimestampsMapBufferPtr_);
+      }
+
+      if (!gmsfBinaryExpressionPtr->getNewOnlineGraphStateValues().empty()) {
+        writeValueKeysToKeyTimeStampMap_(gmsfBinaryExpressionPtr->getNewOnlineGraphStateValues(), binaryMeasurement.timeK(),
+                                         rtGraphKeysTimestampsMapBufferPtr_);
+        rtGraphValuesBufferPtr_->insert(gmsfBinaryExpressionPtr->getNewOnlineGraphStateValues());
+      }
+      if (!gmsfBinaryExpressionPtr->getNewOfflineGraphStateValues().empty()) {
+        batchGraphValuesBufferPtr_->insert(gmsfBinaryExpressionPtr->getNewOfflineGraphStateValues());
+        if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+          writeValueKeysToKeyTimeStampMap_(gmsfBinaryExpressionPtr->getNewOfflineGraphStateValues(), binaryMeasurement.timeK(),
+                                           batchGraphKeysTimestampsMapBufferPtr_);
+        }
+      }
+      if (!gmsfBinaryExpressionPtr->getNewOnlineDynamicPriorFactors().empty()) {
+        rtFactorGraphBufferPtr_->add(gmsfBinaryExpressionPtr->getNewOnlineDynamicPriorFactors());
+      }
+    } catch (...) {
+      if (!factorCommitted && (useExtrinsicCalibrationResidual || binaryMeasurement.extrinsicCalibrationResidualStride() > 1)) {
+        rollbackExtrinsicCalibrationReservation_(binaryMeasurement);
+      }
+      std::scoped_lock restoreLock(gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().mutex(),
+                                   gtsamDynamicExpressionKeys_.get<gtsam::Point3>().mutex());
+      gtsamDynamicExpressionKeys_ = dynamicExpressionKeysSnapshot;
+      throw;
+    }
+  }
+
+  return true;
 }
 
 // Private -----------------------------------------------------------------------------------------
