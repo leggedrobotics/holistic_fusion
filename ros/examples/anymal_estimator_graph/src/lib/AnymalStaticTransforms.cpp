@@ -12,9 +12,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 
+// std
+#include <array>
+
 // Workspace
 #include "anymal_estimator_graph/constants.h"
-#include "graph_msf_ros/constants.h"
+#include "graph_msf_ros/defaults.h"
 #include "graph_msf_ros/util/conversions.h"
 
 namespace anymal_se {
@@ -82,6 +85,26 @@ bool AnymalStaticTransforms::findTransformations() {
   // Call parent class
   if (!graph_msf::StaticTransformsTf::findTransformations()) {
     return false;
+  }
+
+  const std::array<std::string, 5> knownFrames = {imuFrame_, baseLinkFrame_, lioOdometryFrame_, gnssFrame_, vioOdometryFrame_};
+  for (const auto& frame1 : knownFrames) {
+    if (frame1.empty()) {
+      continue;
+    }
+    for (const auto& frame2 : knownFrames) {
+      if (frame2.empty() || frame1 == frame2 || isFramePairInDictionary(frame1, frame2)) {
+        continue;
+      }
+      if (!isFramePairInDictionary(frame1, imuFrame_) || !isFramePairInDictionary(imuFrame_, frame2)) {
+        continue;
+      }
+
+      // The estimator frequently queries sensor-to-sensor pairs directly, while TF lookup above only
+      // stores IMU-anchored transforms. Materialize the derived static pair here once at startup.
+      set_T_frame1_frame2_andInverse(frame1, frame2, rv_T_frame1_frame2(frame1, imuFrame_) * rv_T_frame1_frame2(imuFrame_, frame2));
+      REGULAR_COUT << " Cached derived transform from " << frame1 << " to " << frame2 << " via " << imuFrame_ << std::endl;
+    }
   }
 
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;

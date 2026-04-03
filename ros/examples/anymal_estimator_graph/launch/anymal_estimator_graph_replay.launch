@@ -8,18 +8,17 @@
     <arg name="rviz_file_path" default="$(find anymal_estimator_graph)/rviz/gnss_lidar.rviz"/>
 
     <!-- Config -->
-    <arg name="using_gnss_unary" default="true"/>
+    <arg name="core_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/core/core_graph_params_gnss.yaml"/>
+    <arg name="anymal_graph_param_file"
+         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_gnss.yaml"/>
 
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/sensors/imu"/>
     <arg name="lidar_odometry_topic_name"
-         default="/open3d_slam/scan2map_odometry"/>  <!--/compslam_lio/odom_aft_mapped_to_init_CORRECTED  -->
-    <!--    <arg name="lidar_odometry_topic_name"-->
-    <!--         default="/open3d_slam/optimized_poses_as_odometry"/>-->
-
+         default="/open3d_slam/scan2map_odometry"/>
 
     <!-- Load dumped parameters, mainly for description -->
-
     <rosparam command="load" file="$(arg dumped_param_file)"/>
 
     <!-- Launch Stack -->
@@ -27,20 +26,12 @@
         <!-- Parameters -->
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <!-- Config -->
-        <arg name="using_gnss_unary" value="$(arg using_gnss_unary)"/>
+        <arg name="core_graph_param_file" value="$(arg core_graph_param_file)"/>
+        <arg name="anymal_graph_param_file" value="$(arg anymal_graph_param_file)"/>
         <!-- Input Topics -->
         <arg name="imu_topic_name" value="$(arg imu_topic_name)"/>
         <arg name="lidar_odometry_topic_name" value="$(arg lidar_odometry_topic_name)"/>
     </include>
-
-    <!-- Elevation mapping node -->
-    <arg name="default_elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/default.yaml"/>
-    <arg name="elevation_mapping_parameter_file" default="$(dirname)/../config/elevation_mapping/online_vlp16.yaml"/>
-
-    <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="log">
-        <rosparam command="load" file="$(arg default_elevation_mapping_parameter_file)"/>
-        <rosparam command="load" file="$(arg elevation_mapping_parameter_file)"/>
-    </node>
 
     <!-- RVIZ for Visualization -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" required="true" output="screen"/>

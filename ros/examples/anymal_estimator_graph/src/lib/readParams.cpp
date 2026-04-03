@@ -20,6 +20,15 @@ namespace anymal_se {
 void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   graph_msf::GraphMsfRos::readParams(privateNode);
 
+  const auto requireVectorParam = [&privateNode](const std::string& key, const std::size_t expectedSize) {
+    const auto values = graph_msf::tryGetParam<std::vector<double>>(key, privateNode);
+    if (values.size() != expectedSize) {
+      throw std::runtime_error("AnymalEstimator: parameter '" + key + "' must contain " + std::to_string(expectedSize) +
+                               " entries, but got " + std::to_string(values.size()) + ".");
+    }
+    return values;
+  };
+
   // Check
   if (!graphConfigPtr_) {
     throw std::runtime_error("AnymalEstimator: graphConfigPtr must be initialized.");
@@ -54,59 +63,51 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   vioOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryBetweenRate", privateNode);
 
   // Alignment Parameters
-  const auto initialSe3AlignmentNoise =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+  const auto initialSe3AlignmentNoise = requireVectorParam("alignment_params/initialSe3AlignmentNoiseDensity", 6);
   initialSe3AlignmentNoise_ << initialSe3AlignmentNoise[0], initialSe3AlignmentNoise[1], initialSe3AlignmentNoise[2],
       initialSe3AlignmentNoise[3], initialSe3AlignmentNoise[4], initialSe3AlignmentNoise[5];
-  const auto lioSe3AlignmentRandomWalk =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
+  const auto lioSe3AlignmentRandomWalk = requireVectorParam("alignment_params/lioSe3AlignmentRandomWalk", 6);
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
-  const auto vioSe3AlignmentRandomWalk =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/vioSe3AlignmentRandomWalk", privateNode);
+  const auto vioSe3AlignmentRandomWalk = requireVectorParam("alignment_params/vioSe3AlignmentRandomWalk", 6);
   vioSe3AlignmentRandomWalk_ << vioSe3AlignmentRandomWalk[0], vioSe3AlignmentRandomWalk[1], vioSe3AlignmentRandomWalk[2],
       vioSe3AlignmentRandomWalk[3], vioSe3AlignmentRandomWalk[4], vioSe3AlignmentRandomWalk[5];
 
   // Noise Parameters ---------------------------------------------------
   /// LiDAR Odometry
-  const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+  const auto poseUnaryNoise = requireVectorParam("noise_params/lioPoseUnaryNoiseDensity", 6);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
 
   /// LiDAR Odometry as Between
-  const auto lioPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+  const auto lioPoseBetweenNoise = requireVectorParam("noise_params/lioPoseBetweenNoiseDensity", 6);  // roll,pitch,yaw,x,y,z
   lioPoseBetweenNoise_ << lioPoseBetweenNoise[0], lioPoseBetweenNoise[1], lioPoseBetweenNoise[2], lioPoseBetweenNoise[3],
       lioPoseBetweenNoise[4], lioPoseBetweenNoise[5];
 
   /// VIO Odometry Unary
-  const auto vioPoseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+  const auto vioPoseUnaryNoise = requireVectorParam("noise_params/vioPoseUnaryNoiseDensity", 6);  // roll,pitch,yaw,x,y,z
   vioPoseUnaryNoise_ << vioPoseUnaryNoise[0], vioPoseUnaryNoise[1], vioPoseUnaryNoise[2], vioPoseUnaryNoise[3], vioPoseUnaryNoise[4],
       vioPoseUnaryNoise[5];
 
   /// VIO Odometry Between
-  const auto vioPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+  const auto vioPoseBetweenNoise = requireVectorParam("noise_params/vioPoseBetweenNoiseDensity", 6);  // roll,pitch,yaw,x,y,z
   vioPoseBetweenNoise_ << vioPoseBetweenNoise[0], vioPoseBetweenNoise[1], vioPoseBetweenNoise[2], vioPoseBetweenNoise[3],
       vioPoseBetweenNoise[4], vioPoseBetweenNoise[5];
 
   /// Legged Odometry
-  const auto legPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/legPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+  const auto legPoseBetweenNoise = requireVectorParam("noise_params/legPoseBetweenNoiseDensity", 6);  // roll,pitch,yaw,x,y,z
   legPoseBetweenNoise_ << legPoseBetweenNoise[0], legPoseBetweenNoise[1], legPoseBetweenNoise[2], legPoseBetweenNoise[3],
       legPoseBetweenNoise[4], legPoseBetweenNoise[5];
 
   /// Legged Velocity Unary
-  const auto legVelocityUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/legVelocityUnaryNoiseDensity", privateNode);  // vx,vy,vz
+  const auto legVelocityUnaryNoise = requireVectorParam("noise_params/legVelocityUnaryNoiseDensity", 3);  // vx,vy,vz
   legVelocityUnaryNoise_ << legVelocityUnaryNoise[0], legVelocityUnaryNoise[1], legVelocityUnaryNoise[2];
 
   /// Legged Kinematics Foot Position Unary
   const auto legKinematicsFootPositionUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/legKinematicsFootPositionUnaryNoiseDensity", privateNode);  // x,y,z
+      requireVectorParam("noise_params/legKinematicsFootPositionUnaryNoiseDensity", 3);  // x,y,z
   legKinematicsFootPositionUnaryNoise_ << legKinematicsFootPositionUnaryNoise[0], legKinematicsFootPositionUnaryNoise[1],
       legKinematicsFootPositionUnaryNoise[2];
+  gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionOutlierThreshold", privateNode);
 
   // Flags ---------------------------------------------------
   // Accept both the legacy ROS 1 launch flags and the B2W-style sensor flags so existing launch files
@@ -121,66 +122,86 @@ void AnymalEstimator::readParams(const ros::NodeHandle& privateNode) {
   useVioOdometryBetweenFlag_ =
       graph_msf::tryGetParamWithAliases<bool>({"launch/usingVioOdometryBetween", "sensor_params/useVioOdometryBetween"}, privateNode);
   // Legged Between Odometry
-  useLeggedBetweenFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedBetween", privateNode);
+  useLeggedBetweenFlag_ = graph_msf::tryGetParamWithAliases<bool>(
+      {"launch/usingLeggedBetween", "sensor_params/useLeggedOdometryBetween", "sensor_params/useLeggedBetween"}, privateNode);
   // Legged Velocity Unary
-  useLeggedVelocityUnaryFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedVelocityUnary", privateNode);
+  useLeggedVelocityUnaryFlag_ =
+      graph_msf::tryGetParamWithAliases<bool>({"launch/usingLeggedVelocityUnary", "sensor_params/useLeggedVelocityUnary"}, privateNode);
   // Legged Kinematics
-  useLeggedKinematicsFlag_ = graph_msf::tryGetParam<bool>("launch/usingLeggedKinematics", privateNode);
+  useLeggedKinematicsFlag_ =
+      graph_msf::tryGetParamWithAliases<bool>({"launch/usingLeggedKinematics", "sensor_params/useLeggedKinematics"}, privateNode);
+
+  // Anymal-specific bridging for graph params that are present in the core YAMLs but are not
+  // loaded by the shared ROS 1 layer yet. Keep them strict here so the YAML value actually drives
+  // runtime behavior for this estimator.
+  graphConfigPtr_->useAdaptiveAdditionalOptimizationIterationsFlag_ =
+      graph_msf::tryGetParam<bool>("graph_params/useAdaptiveAdditionalOptimizationIterations", privateNode);
+  graphConfigPtr_->adaptiveAdditionalOptimizationMinRelativeErrorImprovement_ =
+      graph_msf::tryGetParam<double>("graph_params/adaptiveAdditionalOptimizationMinRelativeErrorImprovement", privateNode);
+  graphConfigPtr_->printAdditionalOptimizationDiagnosticsFlag_ =
+      graph_msf::tryGetParam<bool>("graph_params/printAdditionalOptimizationDiagnostics", privateNode);
+  graphConfigPtr_->deferFutureUnaryMeasurementsFlag_ =
+      graph_msf::tryGetParam<bool>("graph_params/deferFutureUnaryMeasurements", privateNode);
+  graphConfigPtr_->maxDeferredUnaryFutureLeadSeconds_ =
+      graph_msf::tryGetParam<double>("graph_params/maxDeferredUnaryFutureLeadSeconds", privateNode);
+  graphConfigPtr_->maxDeferredUnaryMeasurementsInQueue_ =
+      graph_msf::tryGetParam<int>("graph_params/maxDeferredUnaryMeasurementsInQueue", privateNode);
 
   // Gnss parameters ---------------------------------------------------
-  if (useGnssUnaryFlag_) {
-    // GNSS Handler
-    gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
 
-    // Read Yaw initial guess options
-    gnssHandlerPtr_->setUseYawInitialGuessFromFile(graph_msf::tryGetParamWithAliases<bool>(
-        {"gnss/useYawInitialGuessFromFile", "gnss_params/useYawInitialGuessFromFile"}, privateNode));
-    gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(graph_msf::tryGetParamWithAliases<bool>(
-        {"gnss/yawInitialGuessFromAlignment", "gnss_params/yawInitialGuessFromAlignment"}, privateNode));
+  const bool useYawInitialGuessFromFile =
+      graph_msf::tryGetParamWithAliases<bool>({"gnss/useYawInitialGuessFromFile", "gnss_params/useYawInitialGuessFromFile"}, privateNode);
+  const bool useYawInitialGuessFromAlignment = graph_msf::tryGetParamWithAliases<bool>(
+      {"gnss/yawInitialGuessFromAlignment", "gnss_params/yawInitialGuessFromAlignment"}, privateNode);
+  const double initYawDegFromFile = graph_msf::tryGetParamWithAliases<double>({"gnss/initYaw", "gnss_params/initYaw"}, privateNode);
+  const bool useGnssReference =
+      graph_msf::tryGetParamWithAliases<bool>({"gnss/useGnssReference", "gnss_params/useGnssReference"}, privateNode);
+  const double referenceLatitude =
+      graph_msf::tryGetParamWithAliases<double>({"gnss/referenceLatitude", "gnss_params/referenceLatitude"}, privateNode);
+  const double referenceLongitude =
+      graph_msf::tryGetParamWithAliases<double>({"gnss/referenceLongitude", "gnss_params/referenceLongitude"}, privateNode);
+  const double referenceAltitude =
+      graph_msf::tryGetParamWithAliases<double>({"gnss/referenceAltitude", "gnss_params/referenceAltitude"}, privateNode);
+  const double referenceHeading =
+      graph_msf::tryGetParamWithAliases<double>({"gnss/referenceHeading", "gnss_params/referenceHeading"}, privateNode);
 
-    // Alignment options.
-    if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-      // Make sure no dual true
-      gnssHandlerPtr_->setUseYawInitialGuessFromFile(false);
-      trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+  gnssHandlerPtr_->setUseYawInitialGuessFromFile(useYawInitialGuessFromFile);
+  gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(useYawInitialGuessFromAlignment);
+  gnssHandlerPtr_->setGlobalYawDegFromFile(initYawDegFromFile);
+  gnssHandlerPtr_->setUseGnssReferenceFlag(useGnssReference);
+  gnssHandlerPtr_->setGnssReferenceLatitude(referenceLatitude);
+  gnssHandlerPtr_->setGnssReferenceLongitude(referenceLongitude);
+  gnssHandlerPtr_->setGnssReferenceAltitude(referenceAltitude);
+  gnssHandlerPtr_->setGnssReferenceHeading(referenceHeading);
 
-      trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/lidarRate", privateNode));
-      trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>("trajectoryAlignment/gnssRate", privateNode));
+  const double trajectoryAlignmentLidarRate = graph_msf::tryGetParam<double>("trajectoryAlignment/lidarRate", privateNode);
+  const double trajectoryAlignmentGnssRate = graph_msf::tryGetParam<double>("trajectoryAlignment/gnssRate", privateNode);
+  const double trajectoryAlignmentMinDistanceHeadingInit =
+      graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode);
+  const double trajectoryAlignmentMinimumSpatialSpread =
+      graph_msf::tryGetParam<double>("trajectoryAlignment/minimumSpatialSpread", privateNode);
+  const double trajectoryAlignmentNoMovementDistance =
+      graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode);
+  const double trajectoryAlignmentNoMovementTime = graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode);
+  initSyncMaxDt_ = graph_msf::tryGetParam<double>("trajectoryAlignment/initSyncMaxDt", privateNode);
 
-      trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
-          graph_msf::tryGetParam<double>("trajectoryAlignment/minimumDistanceHeadingInit", privateNode));
-      trajectoryAlignmentHandler_->setMinimumSpatialSpread(
-          graph_msf::tryGetParam<double>("trajectoryAlignment/minimumSpatialSpread", privateNode));
-      trajectoryAlignmentHandler_->setNoMovementDistance(
-          graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementDistance", privateNode));
-      trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>("trajectoryAlignment/noMovementTime", privateNode));
+  if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+    gnssHandlerPtr_->setUseYawInitialGuessFromFile(false);
+    trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+    trajectoryAlignmentHandler_->setSe3Rate(trajectoryAlignmentLidarRate);
+    trajectoryAlignmentHandler_->setR3Rate(trajectoryAlignmentGnssRate);
+    trajectoryAlignmentHandler_->setMinDistanceHeadingInit(trajectoryAlignmentMinDistanceHeadingInit);
+    trajectoryAlignmentHandler_->setMinimumSpatialSpread(trajectoryAlignmentMinimumSpatialSpread);
+    trajectoryAlignmentHandler_->setNoMovementDistance(trajectoryAlignmentNoMovementDistance);
+    trajectoryAlignmentHandler_->setNoMovementTime(trajectoryAlignmentNoMovementTime);
+  }
 
-    } else if (!gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
-      gnssHandlerPtr_->setGlobalYawDegFromFile(
-          graph_msf::tryGetParamWithAliases<double>({"gnss/initYaw", "gnss_params/initYaw"}, privateNode));
-    }
-
-    // GNSS Reference
-    gnssHandlerPtr_->setUseGnssReferenceFlag(
-        graph_msf::tryGetParamWithAliases<bool>({"gnss/useGnssReference", "gnss_params/useGnssReference"}, privateNode));
-
-    if (gnssHandlerPtr_->getUseGnssReferenceFlag()) {
-      REGULAR_COUT << GREEN_START << " Using GNSS reference from parameters." << COLOR_END << std::endl;
-      gnssHandlerPtr_->setGnssReferenceLatitude(
-          graph_msf::tryGetParamWithAliases<double>({"gnss/referenceLatitude", "gnss_params/referenceLatitude"}, privateNode));
-      gnssHandlerPtr_->setGnssReferenceLongitude(
-          graph_msf::tryGetParamWithAliases<double>({"gnss/referenceLongitude", "gnss_params/referenceLongitude"}, privateNode));
-      gnssHandlerPtr_->setGnssReferenceAltitude(
-          graph_msf::tryGetParamWithAliases<double>({"gnss/referenceAltitude", "gnss_params/referenceAltitude"}, privateNode));
-      gnssHandlerPtr_->setGnssReferenceHeading(
-          graph_msf::tryGetParamWithAliases<double>({"gnss/referenceHeading", "gnss_params/referenceHeading"}, privateNode));
-    } else {
-      REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
-    }
-
-    // GNSS Outlier Threshold
-    gnssPositionOutlierThreshold_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionOutlierThreshold", privateNode);
-  }  // End GNSS Unary
+  if (gnssHandlerPtr_->getUseGnssReferenceFlag()) {
+    REGULAR_COUT << GREEN_START << " Using GNSS reference from parameters." << COLOR_END << std::endl;
+  } else {
+    REGULAR_COUT << GREEN_START << " Will wait for GNSS measurements to initialize reference coordinates." << COLOR_END << std::endl;
+  }
 
   // Coordinate Frames ---------------------------------------------------
   /// LiDAR frame

@@ -19,28 +19,13 @@
 
     <!-- Config -->
     <arg name="extrinsics_from_urdf" default="false"/>
-    <arg name="using_gnss_unary" default="true"/>
-    <arg name="using_lio_unary" default="true"/>
-    <arg name="using_lio_between" default="false"/>
-    <!-- VIO is disabled by default so existing ANYmal launch setups keep working without
-         requiring a new TF frame or topic remaps. -->
-    <arg name="using_vio_odometry" default="false"/>
-    <arg name="using_vio_odometry_between" default="false"/>
-    <arg name="using_legged_between" default="false"/>
-    <arg name="using_legged_velocity_unary" default="true"/>
-    <arg name="using_legged_kinematics" default="false"/>
 
     <!-- Config Files -->
-    <!-- GNSS Available -->
-    <arg if="$(arg using_gnss_unary)" name="core_graph_param_file"
+    <!-- Keep the ROS 1 default profile on the GNSS-enabled YAMLs; override these paths to switch profiles. -->
+    <arg name="core_graph_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_graph_params_gnss.yaml"/>
-    <arg if="$(arg using_gnss_unary)" name="anymal_graph_param_file"
+    <arg name="anymal_graph_param_file"
          default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_gnss.yaml"/>
-    <!-- GNSS Unavailable -->
-    <arg unless="$(arg using_gnss_unary)" name="core_graph_param_file"
-         default="$(find anymal_estimator_graph)/config/core/core_graph_params_no_gnss.yaml"/>
-    <arg unless="$(arg using_gnss_unary)" name="anymal_graph_param_file"
-         default="$(find anymal_estimator_graph)/config/anymal_specific/anymal_graph_params_no_gnss.yaml"/>
     <!-- GNSS Independent -->
     <arg name="core_graph_config_param_file"
          default="$(find anymal_estimator_graph)/config/core/core_graph_config.yaml"/>
@@ -60,14 +45,6 @@
     <node pkg="anymal_estimator_graph" type="anymal_estimator_graph_node" name="anymal_estimator_node"
           output="screen"> <!--launch-prefix="gdb -ex run -args"-->
         <!-- Launch Parameters -->
-        <param name="launch/usingGnssUnary" type="bool" value="$(arg using_gnss_unary)"/>
-        <param name="launch/usingLioUnary" type="bool" value="$(arg using_lio_unary)"/>
-        <param name="launch/usingLioBetween" type="bool" value="$(arg using_lio_between)"/>
-        <param name="launch/usingVioOdometry" type="bool" value="$(arg using_vio_odometry)"/>
-        <param name="launch/usingVioOdometryBetween" type="bool" value="$(arg using_vio_odometry_between)"/>
-        <param name="launch/usingLeggedBetween" type="bool" value="$(arg using_legged_between)"/>
-        <param name="launch/usingLeggedVelocityUnary" type="bool" value="$(arg using_legged_velocity_unary)"/>
-        <param name="launch/usingLeggedKinematics" type="bool" value="$(arg using_legged_kinematics)"/>
         <param name="launch/optimizationResultLoggingPath" type="str" value="$(arg logging_dir_location)"/>
         <!-- Parameter files -->
         <rosparam command="load" file="$(arg core_graph_config_param_file)"/>
@@ -89,8 +66,5 @@
         <!-- Remapping of services -->
         <remap from="/gnss_coordinates_to_enu_topic" to="$(arg gnss_coordinates_to_enu_topic_name)"/>
     </node>
-
-    <!-- TF for Aligning Compslam Map 
-    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_o3d map_graph_msf_ 10" />-->
 
 </launch>

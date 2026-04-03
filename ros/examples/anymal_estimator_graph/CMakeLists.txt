@@ -3,7 +3,12 @@ project(anymal_estimator_graph)
 
 ## Compile as C++17, supported in ROS Noetic and newer
 add_compile_options(-std=c++17)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Keep default Release flags and append what you need
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 # For FindGlog.cmake and FindGflags.cmake
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")

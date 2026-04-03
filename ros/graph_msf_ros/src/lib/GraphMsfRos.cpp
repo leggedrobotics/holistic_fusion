@@ -41,8 +41,15 @@ void GraphMsfRos::setup(const std::shared_ptr<StaticTransforms> staticTransforms
   GraphMsf::setup(graphConfigPtr_, staticTransformsPtr);
 
   // Resolve static transforms before any ROS interfaces can consume them.
-  while (!resolveStaticTransforms()) {
-    ros::Duration(kStaticTransformRetrySleepSeconds).sleep();
+  while (ros::ok() && !resolveStaticTransforms()) {
+    if (!ros::Duration(kStaticTransformRetrySleepSeconds).sleep()) {
+      break;
+    }
+  }
+
+  if (!ros::ok()) {
+    REGULAR_COUT << YELLOW_START << " Setup interrupted while waiting for static transforms." << COLOR_END << std::endl;
+    return;
   }
 
   // Cache immutable frame metadata before derived interfaces come online.

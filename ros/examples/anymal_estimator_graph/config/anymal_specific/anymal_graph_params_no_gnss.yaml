@@ -1,5 +1,15 @@
 # Sensor Params
 sensor_params:
+  ## Config
+  useGnss: false
+  useLioOdometry: true
+  useLioBetweenOdometry: false
+  useVioOdometry: false
+  useVioOdometryBetween: false
+  useLeggedOdometryBetween: false
+  useLeggedVelocityUnary: true
+  useLeggedKinematics: false
+  ## Rates
   lioOdometryRate: 5
   lioBetweenOdometryRate: 5
   vioOdometryRate: 10
@@ -21,6 +31,7 @@ alignment_params:
 # Noise Parameters
 noise_params:
   ## GNSS
+  gnssPositionOutlierThreshold: 3.0 # meters
   gnssPositionUnaryNoiseDensity: 0.01 # x, y, z of global position
   ## LiDAR Odometry
   ## Unary Noise
