@@ -27,7 +27,6 @@ sensor_params:
 alignment_params:
   initialSe3AlignmentNoiseDensity: [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   lioSe3AlignmentRandomWalk: [ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-  # Match the ROS 2 integration contract by exposing a dedicated VIO alignment random walk.
   vioSe3AlignmentRandomWalk: [ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
 # Noise Parameters

@@ -38,4 +38,29 @@
         <arg name="odometry_topic" value="$(arg o3d_prior_odometry_topic)"/>
     </include>
 
+     <arg name="description_name" default="anymal_description"/>
+     <!-- Publish frequency -->
+     <arg name="publish_frequency" default="100"/>
+     <!-- Topic of the anymal state -->
+     <arg name="anymal_state_subscriber_name" default="/state_estimator/anymal_state"/>
+
+     <!-- Publish robot state (base) as TF -->
+     <node name="anymal_tf_publisher" pkg="anymal_tf_publisher" type="anymal_tf_publisher_node" output="screen" respawn="true">
+     <param name="subscribers/anymal_state/topic"      value="$(arg anymal_state_subscriber_name)"/>
+     <param name="subscribers/anymal_state/queue_size" value="10"/>
+     <param name="subscribers/anymal_state/latch"      value="false"/>    
+     <param name="publishers/pose/topic"                  value="pose"/>
+     <param name="publishers/pose/latch"                  value="false"/>
+     <param name="publishers/pose/queue_size"             value="10"/>
+     <param name="publishers/joint_state/topic"           value="joint_state"/>
+     <param name="publishers/joint_state/latch"           value="false"/>
+     <param name="publishers/joint_state/queue_size"      value="10"/>
+     <param name="base_frame_id"                          value="base"/>
+     <param name="odom_frame_id"                          value="odom"/>
+     <param name="ignore_state"                           value="false"/>
+     <param name="publish_frequency"                      value="$(arg publish_frequency)"/>
+     <param name="robot_description"                      value="$(arg description_name)"/>
+     </node>
+
+
 </launch>
