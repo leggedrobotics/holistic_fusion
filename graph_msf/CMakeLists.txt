@@ -26,8 +26,8 @@ find_package(GTSAM REQUIRED)
 find_package(GTSAM_UNSTABLE REQUIRED)
 
 message("Eigen Version:: ${EIGEN3_VERSION_STRING}")
-message("Eigen Path:: ${EIGEN3_DIR}")
-message("GTSAM Include Path:: ${GTSAM_INCLUDE_DIRS}")
+message("Eigen Path:: ${EIGEN3_INCLUDE_DIR}")
+message("GTSAM Include Path:: ${GTSAM_INCLUDE_DIR}")
 
 # Color settings for terminal output
 if(NOT WIN32)
@@ -43,12 +43,6 @@ endif ()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-include_directories(
-        include
-        ${EIGEN3_INCLUDE_DIR}
-        ${GTSAM_INCLUDE_DIR}
-)
 
 add_library(${PROJECT_NAME} SHARED
         src/lib/eigen_wrapped_gtsam_utils.cpp
@@ -73,11 +67,12 @@ target_link_libraries(${PROJECT_NAME}
         gtsam
         gtsam_unstable
         metis-gtsam
+        Eigen3::Eigen
 )
 
 # Include directories for the library
 target_include_directories(${PROJECT_NAME}
-        PUBLIC
+    PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
