@@ -32,10 +32,10 @@ alignment_params:
 # Noise Parameters
 noise_params:
   ## GNSS
-  gnssPositionOutlierThreshold: 3.0 # meters
+  gnssPositionOutlierThreshold: 6.0 # meters
   ## LiDAR Odometry
   ## Unary Noise
-  lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  lioPoseUnaryNoiseDensity: [ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## Binary Noise
   lioPoseBetweenNoiseDensity: [ 0.05, 0.05, 0.05, 0.01, 0.01, 0.01 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   ## VIO Odometry

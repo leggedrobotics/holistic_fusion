@@ -9,6 +9,7 @@ sensor_params:
   useLeggedOdometryBetween: false
   useLeggedVelocityUnary: true
   useLeggedKinematics: false
+  
   ## Rates
   lioOdometryRate: 5
   lioBetweenOdometryRate: 5
