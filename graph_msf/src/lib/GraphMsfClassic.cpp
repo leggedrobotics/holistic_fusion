@@ -136,8 +136,8 @@ void GraphMsfClassic::addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen:
 
   Eigen::Isometry3d T_fkm1_fk = deltaMeasurement.deltaMeasurement();
 
-  // Check frame of measuremnts
-  if (deltaMeasurement.measurementName() != staticTransformsPtr_->getImuFrame()) {
+  // Check frame of measurements.
+  if (deltaMeasurement.sensorFrameName() != staticTransformsPtr_->getImuFrame()) {
     T_fkm1_fk = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), deltaMeasurement.sensorFrameName()) *
                 T_fkm1_fk *
                 staticTransformsPtr_->rv_T_frame1_frame2(deltaMeasurement.sensorFrameName(), staticTransformsPtr_->getImuFrame());
