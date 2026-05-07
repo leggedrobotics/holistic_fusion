@@ -8,6 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "b2w_estimator_graph_ros2/B2WEstimator.h"
 
+#include <algorithm>
+
 // Project
 #include "b2w_estimator_graph_ros2/B2WStaticTransforms.h"
 #include "b2w_estimator_graph_ros2/constants.h"
@@ -101,6 +103,9 @@ if (useGnssFlag_) {
     // Read Yaw initial guess options
     gnssHandlerPtr_->setUseYawInitialGuessFromFile(graph_msf::tryGetParam<bool>(this, "gnss_params.useYawInitialGuessFromFile"));
     gnssHandlerPtr_->setUseYawInitialGuessFromAlignment(graph_msf::tryGetParam<bool>(this, "gnss_params.yawInitialGuessFromAlignment"));
+    useYawInitialGuessFromHeading_ = graph_msf::tryGetParam<bool>(this, "gnss_params.useYawInitialGuessFromHeading");
+    initialHeadingMaxAgeSec_ = std::max(0.0, graph_msf::tryGetParam<double>(this, "gnss_params.initialHeadingMaxAgeSec"));
+    initialHeadingWaitTimeoutSec_ = std::max(0.0, graph_msf::tryGetParam<double>(this, "gnss_params.initialHeadingWaitTimeoutSec"));
 
     // Alignment options
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {

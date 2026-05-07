@@ -99,6 +99,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   void lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarOdomPtr);
   void lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr);
   void gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr);
+  void initialYawCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& initialYawPtr);
   void vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& vioOdomPtr);
   void vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& vioOdomPtr);
 
@@ -164,6 +165,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
 
   // Subscribers
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGnssNavSatFix_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subInitialYaw_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioBetweenOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subVioOdometry_;
@@ -207,6 +209,22 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   bool useLioOdometryFlag_ = true;
   bool useVioOdometryFlag_ = false;
   bool useVioOdometryBetweenFlag_ = false;
+
+  // Optional initial yaw from a standard PoseWithCovarianceStamped message.
+  bool useYawInitialGuessFromHeading_ = true;
+  double initialHeadingMaxAgeSec_ = 2.0;
+  double initialHeadingWaitTimeoutSec_ = 3.0;
+  mutable std::mutex initialYawMutex_;
+  bool haveInitialYaw_ = false;
+  double initialYawRad_ = 0.0;
+  double initialYawStampSec_ = 0.0;
+  double initialYawVariance_ = 0.0;
+  double firstInitialYawWaitTimeSec_ = 0.0;
+  bool initialYawUsedLogged_ = false;
+  bool initialYawFallbackLogged_ = false;
+  static double normalizeYaw_(double yawRad);
+  static double yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q);
+  bool getFreshInitialYaw_(double queryTimeSec, double& yawRad, double& yawVariance) const;
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)

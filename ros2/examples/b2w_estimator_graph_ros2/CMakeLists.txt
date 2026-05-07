@@ -23,6 +23,7 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(novatel_oem7_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Glog REQUIRED)
@@ -70,6 +71,10 @@ add_library(${PROJECT_NAME}
     src/lib/B2WStaticTransforms.cpp
 )
 
+add_library(${PROJECT_NAME}_novatel_adapter_conversions
+    src/lib/NovatelOem7AdapterConversions.cpp
+)
+
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
     graph_msf_ros2::graph_msf_ros2
@@ -89,12 +94,19 @@ ament_target_dependencies(${PROJECT_NAME}
     std_msgs
     sensor_msgs
     nav_msgs
+    geometry_msgs
     tf2
     tf2_ros
     Glog
     gflags
     graph_msf_ros2
     graph_msf_ros2_msgs
+)
+
+ament_target_dependencies(${PROJECT_NAME}_novatel_adapter_conversions
+    geometry_msgs
+    novatel_oem7_msgs
+    sensor_msgs
 )
 
 # Executable
@@ -112,6 +124,18 @@ ament_target_dependencies(${PROJECT_NAME}_node
     tf2_ros
 )
 
+add_executable(novatel_oem7_adapter_node src/novatel_oem7_adapter_node.cpp)
+target_link_libraries(novatel_oem7_adapter_node
+    ${PROJECT_NAME}_novatel_adapter_conversions
+)
+
+ament_target_dependencies(novatel_oem7_adapter_node
+    geometry_msgs
+    novatel_oem7_msgs
+    rclcpp
+    sensor_msgs
+)
+
 # Add clang tooling
 find_package(cmake_clang_tools QUIET)
 if(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
@@ -124,13 +148,13 @@ if(cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
 endif()
 
 # Install targets
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_novatel_adapter_conversions
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
 
-install(TARGETS ${PROJECT_NAME}_node
+install(TARGETS ${PROJECT_NAME}_node novatel_oem7_adapter_node
     DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -142,6 +166,23 @@ install(DIRECTORY include/${PROJECT_NAME}/
 install(DIRECTORY launch rviz config
     DESTINATION share/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+    find_package(ament_cmake_gtest REQUIRED)
+    ament_add_gtest(test_novatel_oem7_adapter_conversions
+        test/test_novatel_oem7_adapter_conversions.cpp
+    )
+    if(TARGET test_novatel_oem7_adapter_conversions)
+        target_link_libraries(test_novatel_oem7_adapter_conversions
+            ${PROJECT_NAME}_novatel_adapter_conversions
+        )
+        ament_target_dependencies(test_novatel_oem7_adapter_conversions
+            geometry_msgs
+            novatel_oem7_msgs
+            sensor_msgs
+        )
+    endif()
+endif()
 
 # Export include directories
 ament_export_include_directories(include)

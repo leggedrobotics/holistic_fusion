@@ -111,6 +111,9 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("gnss_params.initYaw", 90.0);
   this->declare_parameter("gnss_params.useYawInitialGuessFromFile", false);
   this->declare_parameter("gnss_params.yawInitialGuessFromAlignment", true);
+  this->declare_parameter("gnss_params.useYawInitialGuessFromHeading", true);
+  this->declare_parameter("gnss_params.initialHeadingMaxAgeSec", 2.0);
+  this->declare_parameter("gnss_params.initialHeadingWaitTimeoutSec", 3.0);
   this->declare_parameter("gnss_params.useGnssReference", false);
   this->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
   this->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
@@ -288,6 +291,14 @@ void B2WEstimator::initializeSubscribers() {
         std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1),
         so_gnss);
     REGULAR_COUT << COLOR_END << " Initialized GNSS NavSatFix subscriber with topic: /gnss_topic\n";
+
+    if (useYawInitialGuessFromHeading_) {
+      subInitialYaw_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+          "/initial_yaw_topic", qosReliable,
+          std::bind(&B2WEstimator::initialYawCallback_, this, std::placeholders::_1),
+          so_gnss);
+      REGULAR_COUT << COLOR_END << " Initialized initial yaw subscriber with topic: /initial_yaw_topic\n";
+    }
   }
 
   if (useLioOdometryFlag_) {
@@ -334,6 +345,76 @@ void B2WEstimator::initializeMessages() {
 
 void B2WEstimator::initializeServices() {
   // Nothing for now
+}
+
+double B2WEstimator::normalizeYaw_(double yawRad) {
+  constexpr double kPi = 3.14159265358979323846;
+  while (yawRad <= -kPi) {
+    yawRad += 2.0 * kPi;
+  }
+  while (yawRad > kPi) {
+    yawRad -= 2.0 * kPi;
+  }
+  return yawRad;
+}
+
+double B2WEstimator::yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q) {
+  const double norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+  if (!std::isfinite(norm) || norm < 1e-9) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  const double x = q.x / norm;
+  const double y = q.y / norm;
+  const double z = q.z / norm;
+  const double w = q.w / norm;
+  return normalizeYaw_(std::atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)));
+}
+
+bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad, double& yawVariance) const {
+  std::lock_guard<std::mutex> lock(initialYawMutex_);
+  if (!haveInitialYaw_) {
+    return false;
+  }
+
+  const double ageSec = std::abs(queryTimeSec - initialYawStampSec_);
+  if (!std::isfinite(ageSec) || ageSec > initialHeadingMaxAgeSec_) {
+    return false;
+  }
+
+  yawRad = initialYawRad_;
+  yawVariance = initialYawVariance_;
+  return true;
+}
+
+void B2WEstimator::initialYawCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& initialYawPtr) {
+  const double yawRad = yawFromQuaternion_(initialYawPtr->pose.pose.orientation);
+  if (!std::isfinite(yawRad)) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                         "Initial yaw message has invalid orientation. Skipping.");
+    return;
+  }
+
+  const double yawVariance = initialYawPtr->pose.covariance[35];
+  if (!std::isfinite(yawVariance) || yawVariance < 0.0) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                         "Initial yaw message has invalid yaw covariance. Skipping.");
+    return;
+  }
+
+  double stampSec =
+      initialYawPtr->header.stamp.sec + initialYawPtr->header.stamp.nanosec * 1e-9;
+  if (stampSec <= 0.0) {
+    stampSec = this->now().seconds();
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(initialYawMutex_);
+    haveInitialYaw_ = true;
+    initialYawRad_ = yawRad;
+    initialYawStampSec_ = stampSec;
+    initialYawVariance_ = yawVariance;
+  }
 }
 
 void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr) {
@@ -519,56 +600,100 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     bool have_R_W_B_full = false;
     Eigen::Matrix3d R_W_B_full = Eigen::Matrix3d::Identity();
 
-    if (gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
-      initYaw_W_Base = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
-    } else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-
-      if (gnssCallbackCounter_ % 20 == 0) {
-        REGULAR_COUT << YELLOW_START << " Adding GNSS measurement to trajectory alignment." << "\n";
-      }
-
-      trajectoryAlignmentHandler_->addR3Position(W_t_W_Gnss, timeK);
-
-      double yaw_W_M = 0.0;
-      Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
-      if (!trajectoryAlignmentHandler_->alignTrajectories(yaw_W_M, T_W_M)) {
-        if (gnssCallbackCounter_ % 10 == 0) {
-          REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment not ready. Waiting for more motion."
+    bool useConfiguredFallback = true;
+    if (useYawInitialGuessFromHeading_) {
+      double headingYaw = 0.0;
+      double headingYawVariance = 0.0;
+      if (getFreshInitialYaw_(timeK, headingYaw, headingYawVariance)) {
+        initYaw_W_Base = headingYaw;
+        useConfiguredFallback = false;
+        if (!initialYawUsedLogged_) {
+          REGULAR_COUT << GREEN_START
+                       << "GNSS initialization using NovAtel heading initial yaw. "
+                       << "yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI)
+                       << " variance=" << headingYawVariance
                        << COLOR_END << "\n";
+          initialYawUsedLogged_ = true;
         }
-        return;
-      }
-
-      // Use the helper (step 9.2)
-      Eigen::Isometry3d T_M_B_t0 = Eigen::Isometry3d::Identity();
-      double best_dt = 0.0;
-      if (!getClosestLioPose_(timeK, T_M_B_t0, &best_dt)) {
-        if (!std::isfinite(best_dt)) {
-          REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but LIO pose buffer is empty (cannot compute yaw(W<-B))."
-                       << COLOR_END << "\n";
-        } else {
-          REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but no sufficiently time-synced LIO pose for yaw(W<-B). "
-                       << "best_dt=" << std::fixed << std::setprecision(3) << best_dt << " s"
-                       << COLOR_END << "\n";
+      } else {
+        if (firstInitialYawWaitTimeSec_ <= 0.0) {
+          firstInitialYawWaitTimeSec_ = timeK;
         }
-        return;
+
+        const double waitedSec = timeK - firstInitialYawWaitTimeSec_;
+        if (waitedSec < initialHeadingWaitTimeoutSec_) {
+          if (gnssCallbackCounter_ % 10 == 0) {
+            REGULAR_COUT << YELLOW_START
+                         << "Waiting for fresh initial yaw before GNSS initialization. "
+                         << "waited=" << std::fixed << std::setprecision(2) << waitedSec << " s"
+                         << COLOR_END << "\n";
+          }
+          return;
+        }
+
+        if (!initialYawFallbackLogged_) {
+          REGULAR_COUT << YELLOW_START
+                       << "No fresh initial yaw arrived within "
+                       << initialHeadingWaitTimeoutSec_
+                       << " s. Falling back to configured GNSS yaw initialization."
+                       << COLOR_END << "\n";
+          initialYawFallbackLogged_ = true;
+        }
       }
+    }
 
-      R_W_B_full = T_W_M.rotation() * T_M_B_t0.rotation();
-      have_R_W_B_full = true;
+    if (useConfiguredFallback) {
+      if (gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
+        initYaw_W_Base = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
+      } else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
 
-      const Eigen::Vector3d x_W = R_W_B_full.col(0);
-      initYaw_W_Base = std::atan2(x_W.y(), x_W.x());
+        if (gnssCallbackCounter_ % 20 == 0) {
+          REGULAR_COUT << YELLOW_START << " Adding GNSS measurement to trajectory alignment." << "\n";
+        }
 
-      pubStatus_->publish(std_msgs::msg::Bool().set__data(true));
-      REGULAR_COUT << GREEN_START
-                   << "Trajectory Alignment Successful. "
-                   << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI)
-                   << "  yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI)
-                   << COLOR_END << "\n";
+        trajectoryAlignmentHandler_->addR3Position(W_t_W_Gnss, timeK);
+
+        double yaw_W_M = 0.0;
+        Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
+        if (!trajectoryAlignmentHandler_->alignTrajectories(yaw_W_M, T_W_M)) {
+          if (gnssCallbackCounter_ % 10 == 0) {
+            REGULAR_COUT << YELLOW_START
+                         << "Trajectory alignment not ready. Waiting for more motion."
+                         << COLOR_END << "\n";
+          }
+          return;
+        }
+
+        // Use the helper (step 9.2)
+        Eigen::Isometry3d T_M_B_t0 = Eigen::Isometry3d::Identity();
+        double best_dt = 0.0;
+        if (!getClosestLioPose_(timeK, T_M_B_t0, &best_dt)) {
+          if (!std::isfinite(best_dt)) {
+            REGULAR_COUT << YELLOW_START
+                         << "Trajectory alignment ready, but LIO pose buffer is empty (cannot compute yaw(W<-B))."
+                         << COLOR_END << "\n";
+          } else {
+            REGULAR_COUT << YELLOW_START
+                         << "Trajectory alignment ready, but no sufficiently time-synced LIO pose for yaw(W<-B). "
+                         << "best_dt=" << std::fixed << std::setprecision(3) << best_dt << " s"
+                         << COLOR_END << "\n";
+          }
+          return;
+        }
+
+        R_W_B_full = T_W_M.rotation() * T_M_B_t0.rotation();
+        have_R_W_B_full = true;
+
+        const Eigen::Vector3d x_W = R_W_B_full.col(0);
+        initYaw_W_Base = std::atan2(x_W.y(), x_W.x());
+
+        pubStatus_->publish(std_msgs::msg::Bool().set__data(true));
+        REGULAR_COUT << GREEN_START
+                     << "Trajectory Alignment Successful. "
+                     << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI)
+                     << "  yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI)
+                     << COLOR_END << "\n";
+      }
     }
 
     Eigen::Matrix3d R_W_B_forLever = Eigen::AngleAxisd(initYaw_W_Base, Eigen::Vector3d::UnitZ()).toRotationMatrix();
