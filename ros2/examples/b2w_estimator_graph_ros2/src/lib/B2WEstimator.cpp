@@ -254,13 +254,17 @@ void B2WEstimator::initializePublishers() {
       .reliable()
       .keep_last(1);
 
-    pubStatus_ = this->create_publisher<std_msgs::msg::Bool>("/graph_msf/alignment_status", qos_reliable_latched);
+    rclcpp::PublisherOptions latched_pub_opts;
+    latched_pub_opts.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
+
+    pubStatus_ = this->create_publisher<std_msgs::msg::Bool>(
+      "/graph_msf/alignment_status", qos_reliable_latched, latched_pub_opts);
 
     pubReferenceNavSatFixCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
-      "/graph_msf/reference_gnss_position", qos_reliable_latched);
+      "/graph_msf/reference_gnss_position", qos_reliable_latched, latched_pub_opts);
 
     pubReferenceNavSatFixCoordinatesENU_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
-      "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
+      "/graph_msf/reference_gnss_position_enu", qos_reliable_latched, latched_pub_opts);
   }
 }
 

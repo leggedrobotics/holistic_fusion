@@ -18,6 +18,30 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf_ros2/constants.h"
 #include "graph_msf_ros2/util/conversions.h"
 
+namespace {
+
+rclcpp::SubscriptionOptions makeDefaultTfSubOptions() {
+  rclcpp::SubscriptionOptions options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{
+      rclcpp::QosPolicyKind::Depth,
+      rclcpp::QosPolicyKind::Durability,
+      rclcpp::QosPolicyKind::History,
+      rclcpp::QosPolicyKind::Reliability};
+  return options;
+}
+
+rclcpp::SubscriptionOptions makeDefaultTfStaticSubOptions() {
+  rclcpp::SubscriptionOptions options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{
+      rclcpp::QosPolicyKind::Depth,
+      rclcpp::QosPolicyKind::History,
+      rclcpp::QosPolicyKind::Reliability};
+  options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
+  return options;
+}
+
+}  // namespace
+
 namespace graph_msf {
 
 StaticTransformsTf::StaticTransformsTf(const rclcpp::Node::SharedPtr& node)
@@ -25,7 +49,8 @@ StaticTransformsTf::StaticTransformsTf(const rclcpp::Node::SharedPtr& node)
       tf_buffer_(std::make_shared<tf2_ros::Buffer>(node->get_clock())),
       // Minimal robustness improvement: let the TF listener spin internally so transforms can arrive
       // even if the main executor isn't spinning yet.
-      tf_listener_(*tf_buffer_, node, /*spin_thread=*/true) {
+      tf_listener_(*tf_buffer_, node, /*spin_thread=*/true, tf2_ros::DynamicListenerQoS(),
+                   tf2_ros::StaticListenerQoS(), makeDefaultTfSubOptions(), makeDefaultTfStaticSubOptions()) {
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "StaticTransformsTf - Initializing static transforms...");
 }
 
