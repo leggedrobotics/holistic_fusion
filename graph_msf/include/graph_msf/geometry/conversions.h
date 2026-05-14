@@ -15,7 +15,7 @@ namespace graph_msf {
  * @param covGtsam The 6x6 covariance matrix in GTSAM convention.
  * @return The 6x6 covariance matrix in ROS convention.
  */
-Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam) {
+inline Eigen::Matrix<double, 6, 6> convertCovarianceGtsamConventionToRosConvention(const Eigen::Matrix<double, 6, 6>& covGtsam) {
   Eigen::Matrix<double, 6, 6> covRos;
   covRos.setZero();
   covRos.block<3, 3>(0, 0) = covGtsam.block<3, 3>(3, 3);
