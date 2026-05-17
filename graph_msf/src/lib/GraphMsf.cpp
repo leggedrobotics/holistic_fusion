@@ -224,35 +224,7 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
       }
       return false;
     } else {  // Case 1.2: IMU alignment succeeded --> continue next call iteration
-      Eigen::Matrix3d R_W_I0_attitude = gtsam::Rot3::Ypr(0.0, imuAttitudePitch, imuAttitudeRoll).matrix();
-      gtsam::Rot3 R_W_Init0_attitude(
-          R_W_I0_attitude *
-          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
-              .rotation()
-              .matrix());
-      // Set yaw of base frame to zero
-      // Set yaw of base frame to zero
-      R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
-      R_W_I0_attitude =
-          R_W_Init0_attitude.matrix() *
-          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getInitializationFrame(), staticTransformsPtr_->getImuFrame())
-              .rotation()
-              .matrix();
-      Eigen::Isometry3d T_O_Ik_attitude = Eigen::Isometry3d::Identity();
-      T_O_Ik_attitude.matrix().block<3, 3>(0, 0) = R_W_I0_attitude;
-      Eigen::Vector3d O_t_O_Ik =
-          Eigen::Vector3d(0, 0, 0) -
-          R_W_I0_attitude *
-              staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
-                  .translation();
-      T_O_Ik_attitude.matrix().block<3, 1>(0, 3) = O_t_O_Ik;
-      REGULAR_COUT << " Setting zero position of " << staticTransformsPtr_->getInitializationFrame()
-                   << ", hence iniital position of IMU is: " << O_t_O_Ik.transpose() << std::endl;
-      Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
-      preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
-      REGULAR_COUT << GREEN_START << " IMU aligned. Initial pre-integrated state in odom frame: "
-                   << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << COLOR_END << std::endl;
-      alignedImuFlag_ = true;
+      primePreIntegratedStateFromAttitude_(imuAttitudeRoll, imuAttitudePitch, imuTimeK);
       return false;
     }
   } else if (!areYawAndPositionInited()) {  // Case 2: IMU aligned, but yaw and position not initialized, waiting for external
@@ -345,6 +317,56 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
   } else {
     return false;
   }
+}
+
+void GraphMsf::primePreIntegratedStateFromAttitude_(const double imuAttitudeRoll, const double imuAttitudePitch, const double imuTimeK) {
+  // Build R_W_I0 from roll/pitch (yaw is intentionally zeroed; it is set later via initYawAndPosition*).
+  Eigen::Matrix3d R_W_I0_attitude = gtsam::Rot3::Ypr(0.0, imuAttitudePitch, imuAttitudeRoll).matrix();
+  gtsam::Rot3 R_W_Init0_attitude(
+      R_W_I0_attitude *
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+          .rotation()
+          .matrix());
+  // Set yaw of base frame to zero
+  R_W_Init0_attitude = gtsam::Rot3::Ypr(0.0, R_W_Init0_attitude.pitch(), R_W_Init0_attitude.roll());
+  R_W_I0_attitude =
+      R_W_Init0_attitude.matrix() *
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getInitializationFrame(), staticTransformsPtr_->getImuFrame())
+          .rotation()
+          .matrix();
+  Eigen::Isometry3d T_O_Ik_attitude = Eigen::Isometry3d::Identity();
+  T_O_Ik_attitude.matrix().block<3, 3>(0, 0) = R_W_I0_attitude;
+  Eigen::Vector3d O_t_O_Ik =
+      Eigen::Vector3d(0, 0, 0) -
+      R_W_I0_attitude *
+          staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getInitializationFrame())
+              .translation();
+  T_O_Ik_attitude.matrix().block<3, 1>(0, 3) = O_t_O_Ik;
+  REGULAR_COUT << " Setting zero position of " << staticTransformsPtr_->getInitializationFrame()
+               << ", hence iniital position of IMU is: " << O_t_O_Ik.transpose() << std::endl;
+  Eigen::Vector3d zeroPVeloctiy = Eigen::Vector3d(0, 0, 0);
+  preIntegratedNavStatePtr_ = std::make_shared<SafeIntegratedNavState>(T_O_Ik_attitude, zeroPVeloctiy, zeroPVeloctiy, imuTimeK);
+  REGULAR_COUT << GREEN_START << " IMU aligned. Initial pre-integrated state in odom frame: "
+               << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << COLOR_END << std::endl;
+  alignedImuFlag_ = true;
+}
+
+bool GraphMsf::setExternalImuAttitude(const double imuAttitudeRoll, const double imuAttitudePitch, const double imuTimeK) {
+  // Lock the same mutex used by the IMU callback / initYawAndPosition* to keep the alignment
+  // transition atomic with respect to those code paths.
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+
+  if (alignedImuFlag_) {
+    REGULAR_COUT << RED_START << " setExternalImuAttitude(): IMU has already been aligned. Ignoring." << COLOR_END << std::endl;
+    return false;
+  }
+
+  REGULAR_COUT << GREEN_START << " setExternalImuAttitude(): Skipping IMU-buffer averaging. Using externally provided RPY (deg): "
+               << imuAttitudeRoll * 180.0 / M_PI << ", " << imuAttitudePitch * 180.0 / M_PI << ", 0.0 at time " << imuTimeK
+               << "." << COLOR_END << std::endl;
+
+  primePreIntegratedStateFromAttitude_(imuAttitudeRoll, imuAttitudePitch, imuTimeK);
+  return true;
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw

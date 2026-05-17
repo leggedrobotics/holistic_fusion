@@ -45,6 +45,17 @@ class GraphMsf {
   bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
   bool initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
 
+  /// Skip the IMU-based gravity-direction estimation and instead set the initial IMU attitude
+  /// (roll & pitch) externally together with the corresponding timestamp.
+  ///
+  /// Yaw is intentionally zeroed and is expected to be set later via initYawAndPosition*(),
+  /// matching the behavior of the internal IMU alignment path.
+  /// The gyroscope and accelerometer bias priors are not modified.
+  ///
+  /// On success, alignedImuFlag_ is set to true so that subsequent IMU callbacks proceed past
+  /// the alignment stage. Returns false if the IMU has already been aligned.
+  bool setExternalImuAttitude(double imuAttitudeRoll, double imuAttitudePitch, double imuTimeK);
+
   // Trigger offline smoother optimization
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
 
@@ -143,6 +154,9 @@ class GraphMsf {
   /// Worker functions
   //// Set Imu Attitude
   bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
+  //// Build the initial pre-integrated nav state from a roll/pitch + timestamp.
+  //// Shared between the IMU-buffer alignment path and the externally-provided attitude path.
+  void primePreIntegratedStateFromAttitude_(double imuAttitudeRoll, double imuAttitudePitch, double imuTimeK);
   //// Initialize the graph
   void initGraph_(const double timeStamp_k);
   //// Updating the factor graph
