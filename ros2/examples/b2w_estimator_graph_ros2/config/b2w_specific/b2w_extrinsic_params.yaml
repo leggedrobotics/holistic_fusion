@@ -2,8 +2,8 @@
   ros__parameters:
     #External Prior/Transform Input
     extrinsics:
-      gnssFrame: "gnss"            #GNSS frame name - used to lookup GNSS-to-ExternalSensor Frame
-      lidarOdometryFrame: "base"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
-      lidarBetweenFrame: "base"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+      gnssFrame: "cpt7_imu"            #GNSS frame name - used to lookup GNSS-to-ExternalSensor Frame
+      lidarOdometryFrame: "pps_origin"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
+      lidarBetweenFrame: "pps_origin"        #LiDAR frame name - used to lookup LiDAR-to-ExternalSensor Frame
       vioOdometryFrame: "zed_camera_link"        #VIO odometry frame name - used to lookup VIO-to-ExternalSensor Frame
       vioOdometryBetweenFrame: "zed_camera_link" #VIO odometry frame name - used to lookup VIO-to-ExternalSensor Frame

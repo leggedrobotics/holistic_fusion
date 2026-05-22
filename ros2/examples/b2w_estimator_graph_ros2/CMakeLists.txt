@@ -106,7 +106,6 @@ ament_target_dependencies(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME}_novatel_adapter_conversions
     geometry_msgs
     novatel_oem7_msgs
-    sensor_msgs
 )
 
 # Executable
@@ -133,7 +132,6 @@ ament_target_dependencies(novatel_oem7_adapter_node
     geometry_msgs
     novatel_oem7_msgs
     rclcpp
-    sensor_msgs
 )
 
 # Add clang tooling
@@ -179,7 +177,6 @@ if(BUILD_TESTING)
         ament_target_dependencies(test_novatel_oem7_adapter_conversions
             geometry_msgs
             novatel_oem7_msgs
-            sensor_msgs
         )
     endif()
 endif()

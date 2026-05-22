@@ -1,5 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -20,11 +21,9 @@ def generate_launch_description():
     vio_odometry_between_topic_name = LaunchConfiguration("vio_odometry_between_topic_name")
     logging_dir_location = LaunchConfiguration("logging_dir_location")
 
-    bestpos_topic = LaunchConfiguration("bestpos_topic")
     heading2_topic = LaunchConfiguration("heading2_topic")
-    navsatfix_topic = LaunchConfiguration("navsatfix_topic")
     initial_yaw_topic = LaunchConfiguration("initial_yaw_topic")
-    use_ellipsoid_altitude = LaunchConfiguration("use_ellipsoid_altitude")
+    sensor_frame_id = LaunchConfiguration("sensor_frame_id")
     heading_yaw_offset_deg = LaunchConfiguration("heading_yaw_offset_deg")
     use_initial_heading = LaunchConfiguration("use_initial_heading")
     initial_heading_max_age_sec = LaunchConfiguration("initial_heading_max_age_sec")
@@ -38,7 +37,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use simulation time"),
-        DeclareLaunchArgument("imu_topic_name", default_value="/imu_sensor_broadcaster/imu", description="IMU topic name"),
+        DeclareLaunchArgument("imu_topic_name", default_value="/gt_box/livox/imu_si_compliant", description="IMU topic name"),
         DeclareLaunchArgument("lidar_odometry_topic_name", default_value="/dlio/odom_node/map_pose",
                               description="Lidar odometry topic name"),
         DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio2/odom_node/odom22",
@@ -47,43 +46,38 @@ def generate_launch_description():
                               description="VIO odometry topic name"),
         DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/zed/zed_node/odom",
                               description="Between VIO odometry topic name"),
-        DeclareLaunchArgument("gnss_topic_name", default_value="/navsatfix", description="Estimator GNSS NavSatFix topic"),
+        DeclareLaunchArgument("gnss_topic_name", default_value="/gt_box/cpt7/gps/fix",
+                              description="Estimator live GNSS NavSatFix topic"),
         DeclareLaunchArgument("logging_dir_location", default_value=os.path.join(pkg_dir, "logging"),
                               description="Logging directory location"),
 
-        DeclareLaunchArgument("bestpos_topic", default_value="/novatel/oem7/bestpos",
-                              description="Bridged NovAtel BESTPOS topic"),
-        DeclareLaunchArgument("heading2_topic", default_value="/novatel/oem7/heading2",
+        DeclareLaunchArgument("heading2_topic", default_value="/gt_box/cpt7/heading2",
                               description="Bridged NovAtel HEADING2 topic"),
-        DeclareLaunchArgument("navsatfix_topic", default_value="/navsatfix",
-                              description="Converted NavSatFix output topic"),
         DeclareLaunchArgument("initial_yaw_topic", default_value="/gnss/initial_yaw",
                               description="Converted initial yaw output topic"),
-        DeclareLaunchArgument("use_ellipsoid_altitude", default_value="true",
-                              description="Publish BESTPOS hgt + undulation as NavSatFix altitude"),
+        DeclareLaunchArgument("sensor_frame_id", default_value="cpt7_imu",
+                              description="Header frame_id for the converted initial-yaw message"),
         DeclareLaunchArgument("heading_yaw_offset_deg", default_value="0.0",
-                              description="Yaw offset from NovAtel heading frame to base_link"),
+                              description="Yaw offset from NovAtel HEADING2 yaw to sensor_frame_id"),
         DeclareLaunchArgument("use_initial_heading", default_value="true",
                               description="Use converted HEADING2 as estimator initial yaw"),
         DeclareLaunchArgument("initial_heading_max_age_sec", default_value="2.0",
                               description="Maximum age of initial yaw relative to GNSS time"),
         DeclareLaunchArgument("initial_heading_wait_timeout_sec", default_value="3.0",
-                              description="Time to wait for initial yaw before falling back to trajectory alignment"),
+                              description="Legacy wait parameter; heading-enabled startup waits for fresh yaw without alignment fallback"),
 
         Node(
             package="b2w_estimator_graph_ros2",
             executable="novatel_oem7_adapter_node",
             name="novatel_oem7_adapter",
             output="screen",
+            condition=IfCondition(use_initial_heading),
             parameters=[
                 {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)},
-                {"bestpos_topic": bestpos_topic},
                 {"heading2_topic": heading2_topic},
-                {"navsatfix_topic": navsatfix_topic},
                 {"initial_yaw_topic": initial_yaw_topic},
-                {"use_ellipsoid_altitude": ParameterValue(use_ellipsoid_altitude, value_type=bool)},
                 {"heading_yaw_offset_deg": ParameterValue(heading_yaw_offset_deg, value_type=float)},
-                {"frame_id": "gnss"},
+                {"sensor_frame_id": sensor_frame_id},
             ],
         ),
 

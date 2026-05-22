@@ -33,12 +33,13 @@ def generate_launch_description():
         # Declare arguments
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use simulation time"),
         DeclareLaunchArgument("use_gnss_unary", default_value="true", description="Enable GNSS unary factor"),
-        DeclareLaunchArgument("imu_topic_name", default_value="/imu_sensor_broadcaster/imu", description="IMU topic name"),
+        DeclareLaunchArgument("imu_topic_name", default_value="/gt_box/livox/imu_si_compliant", description="IMU topic name"),
         DeclareLaunchArgument("lidar_odometry_topic_name", default_value="/dlio/odom_node/map_pose", description="Lidar odometry topic name"),
         DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio2/odom_node/odom22", description="Between lidar odometry topic name"),
         DeclareLaunchArgument("vio_odometry_topic_name", default_value="/zed/zed_node/pose_with_covariance", description="VIO odometry topic name"),
         DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/zed/zed_node/odom", description="Between VIO odometry topic name"),
-        DeclareLaunchArgument("gnss_topic_name", default_value="/navsatfix", description="GNSS topic name"),
+        DeclareLaunchArgument("gnss_topic_name", default_value="/gt_box/cpt7/gps/fix",
+                              description="Live GNSS fix topic name"),
         DeclareLaunchArgument("logging_dir_location", default_value=os.path.join(pkg_dir, "logging"), description="Logging directory location"),
 
         # Main Node without GNSS

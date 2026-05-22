@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <cmath>
 #include <limits>
 #include <mutex>
+#include <string>
 #include <utility>
 
 // Eigen
@@ -98,7 +99,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarOdomPtr);
   void lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr);
-  void gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr);
+  void gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& gnssFixPtr);
   void initialYawCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& initialYawPtr);
   void vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& vioOdomPtr);
   void vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& vioOdomPtr);
@@ -164,7 +165,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Time last_imu_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   // Subscribers
-  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGnssNavSatFix_;
+  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGnssFix_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subInitialYaw_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioBetweenOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;
@@ -179,8 +180,8 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioLidarPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapVioPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapVioBetweenPath_;
-  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr pubReferenceNavSatFixCoordinates_;
-  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr pubReferenceNavSatFixCoordinatesENU_;
+  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr pubReferenceGnssCoordinates_;
+  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr pubReferenceGnssCoordinatesENU_;
 
   // Messages
   std::shared_ptr<nav_msgs::msg::Path> measLio_mapLidarPathPtr_;
@@ -216,15 +217,15 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double initialHeadingWaitTimeoutSec_ = 3.0;
   mutable std::mutex initialYawMutex_;
   bool haveInitialYaw_ = false;
+  std::string initialYawFrame_;
   double initialYawRad_ = 0.0;
   double initialYawStampSec_ = 0.0;
   double initialYawVariance_ = 0.0;
   double firstInitialYawWaitTimeSec_ = 0.0;
   bool initialYawUsedLogged_ = false;
-  bool initialYawFallbackLogged_ = false;
   static double normalizeYaw_(double yawRad);
   static double yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q);
-  bool getFreshInitialYaw_(double queryTimeSec, double& yawRad, double& yawVariance) const;
+  bool getFreshInitialYaw_(double queryTimeSec, double& yawRad, double& yawVariance, std::string& yawFrame) const;
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)

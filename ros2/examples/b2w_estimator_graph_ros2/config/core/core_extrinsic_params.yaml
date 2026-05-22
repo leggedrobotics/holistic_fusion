@@ -6,9 +6,9 @@
       worldFrame: "world_graph_msf"
       odomFrame: "odom_graph_msf"
       # Used for estimation
-      imuFrame: "imu"
-      baseLinkFrame: "base"
-      initializeZeroYawAndPositionOfFrame: "base" # Initialize the yaw and position of the base frame to zero
+      imuFrame: "livox_imu"
+      baseLinkFrame: "pps_origin"
+      initializeZeroYawAndPositionOfFrame: "pps_origin" # Initialize the yaw and position of the base frame to zero
       # this is just meant to avoid any jump after getting the first true measurements
 
     name_ids:

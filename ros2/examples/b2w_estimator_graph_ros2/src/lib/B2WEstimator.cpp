@@ -263,10 +263,10 @@ void B2WEstimator::initializePublishers() {
     pubStatus_ = this->create_publisher<std_msgs::msg::Bool>(
       "/graph_msf/alignment_status", qos_reliable_latched, latched_pub_opts);
 
-    pubReferenceNavSatFixCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
+    pubReferenceGnssCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position", qos_reliable_latched, latched_pub_opts);
 
-    pubReferenceNavSatFixCoordinatesENU_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
+    pubReferenceGnssCoordinatesENU_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position_enu", qos_reliable_latched, latched_pub_opts);
   }
 }
@@ -286,11 +286,11 @@ void B2WEstimator::initializeSubscribers() {
   const auto qos1 = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
 
   if (useGnssFlag_) {
-    subGnssNavSatFix_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+    subGnssFix_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
         "/gnss_topic", qosReliable,
-        std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1),
+        std::bind(&B2WEstimator::gnssFixCallback_, this, std::placeholders::_1),
         so_gnss);
-    REGULAR_COUT << COLOR_END << " Initialized GNSS NavSatFix subscriber with topic: /gnss_topic\n";
+    REGULAR_COUT << COLOR_END << " Initialized GNSS fix subscriber with topic: /gnss_topic\n";
 
     if (useYawInitialGuessFromHeading_) {
       subInitialYaw_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -371,9 +371,9 @@ double B2WEstimator::yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q)
   return normalizeYaw_(std::atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)));
 }
 
-bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad, double& yawVariance) const {
+bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad, double& yawVariance, std::string& yawFrame) const {
   std::lock_guard<std::mutex> lock(initialYawMutex_);
-  if (!haveInitialYaw_) {
+  if (!haveInitialYaw_ || initialYawFrame_.empty()) {
     return false;
   }
 
@@ -384,10 +384,18 @@ bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad
 
   yawRad = initialYawRad_;
   yawVariance = initialYawVariance_;
+  yawFrame = initialYawFrame_;
   return true;
 }
 
 void B2WEstimator::initialYawCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& initialYawPtr) {
+  const std::string yawFrame = initialYawPtr->header.frame_id;
+  if (yawFrame.empty()) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                         "Initial yaw message has empty header.frame_id. Skipping.");
+    return;
+  }
+
   const double yawRad = yawFromQuaternion_(initialYawPtr->pose.pose.orientation);
   if (!std::isfinite(yawRad)) {
     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
@@ -411,6 +419,7 @@ void B2WEstimator::initialYawCallback_(const geometry_msgs::msg::PoseWithCovaria
   {
     std::lock_guard<std::mutex> lock(initialYawMutex_);
     haveInitialYaw_ = true;
+    initialYawFrame_ = yawFrame;
     initialYawRad_ = yawRad;
     initialYawStampSec_ = stampSec;
     initialYawVariance_ = yawVariance;
@@ -438,7 +447,7 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
     lidarBetweenTimeKm1_ = lidarBetweenTimeK;
   }
 
-  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && trajectoryAlignmentHandler_) {
     trajectoryAlignmentHandler_->addSe3Position(lio_T_M_Lk.translation(), lidarBetweenTimeK);
   }
 
@@ -475,11 +484,11 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
   }
 }
 
-void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr) {
-  B2W_SCOPED_CB_TIMER("gnssNavSatFixCallback_");
+void B2WEstimator::gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& gnssFixPtr) {
+  B2W_SCOPED_CB_TIMER("gnssFixCallback_");
 
   // 0) Fast validity checks
-  const auto status = navSatFixPtr->status.status;
+  const auto status = gnssFixPtr->status.status;
   if (status != sensor_msgs::msg::NavSatStatus::STATUS_FIX &&
       status != sensor_msgs::msg::NavSatStatus::STATUS_SBAS_FIX &&
       status != sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX) {
@@ -489,17 +498,29 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     return;
   }
 
-  if (navSatFixPtr->position_covariance_type != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_KNOWN) {
+  const auto covarianceType = gnssFixPtr->position_covariance_type;
+  if (covarianceType != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_APPROXIMATED &&
+      covarianceType != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN &&
+      covarianceType != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_KNOWN) {
     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-                         "GNSS message has unknown covariance type. Skipping.");
+                         "GNSS message has unsupported covariance type (%u). Skipping.",
+                         static_cast<unsigned int>(covarianceType));
     return;
   }
-  if (navSatFixPtr->position_covariance[0] < 0.0) {
+
+  bool covarianceFinite = true;
+  for (const auto covarianceValue : gnssFixPtr->position_covariance) {
+    covarianceFinite = covarianceFinite && std::isfinite(covarianceValue);
+  }
+  if (!covarianceFinite ||
+      gnssFixPtr->position_covariance[0] < 0.0 ||
+      gnssFixPtr->position_covariance[4] < 0.0 ||
+      gnssFixPtr->position_covariance[8] < 0.0) {
     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
                          "GNSS message has invalid covariance. Skipping.");
     return;
   }
-  if (!std::isfinite(navSatFixPtr->latitude) || !std::isfinite(navSatFixPtr->longitude) || !std::isfinite(navSatFixPtr->altitude)) {
+  if (!std::isfinite(gnssFixPtr->latitude) || !std::isfinite(gnssFixPtr->longitude) || !std::isfinite(gnssFixPtr->altitude)) {
     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
                          "GNSS message contains non-finite values. Skipping.");
     return;
@@ -509,7 +530,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
   // Timestamp [s] (avoid rclcpp::Time construction)
   const double timeK =
-      navSatFixPtr->header.stamp.sec + navSatFixPtr->header.stamp.nanosec * 1e-9;
+      gnssFixPtr->header.stamp.sec + gnssFixPtr->header.stamp.nanosec * 1e-9;
 
   static FrequencyChecker gnss_freq_checker(40, 5.0);
   if (gnss_freq_checker.tick(timeK)) {
@@ -521,13 +542,19 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
                  << COLOR_END << "\n";
   }
 
-  Eigen::Vector3d gnssCoord(navSatFixPtr->latitude, navSatFixPtr->longitude, navSatFixPtr->altitude);
+  Eigen::Vector3d gnssCoord(gnssFixPtr->latitude, gnssFixPtr->longitude, gnssFixPtr->altitude);
 
-  Eigen::Map<const Eigen::Matrix<double,3,3,Eigen::RowMajor>> Penu_map(navSatFixPtr->position_covariance.data());
+  Eigen::Map<const Eigen::Matrix<double,3,3,Eigen::RowMajor>> Penu_map(gnssFixPtr->position_covariance.data());
   Eigen::Matrix3d P_enu = 0.5 * (Penu_map + Penu_map.transpose());
 
   Eigen::Matrix3d P_lv03 = graph_msf::gnss_cov::rotateCov_ENU_to_LV03(
-      *gnssHandlerPtr_, navSatFixPtr->latitude, navSatFixPtr->longitude, navSatFixPtr->altitude, P_enu);
+      *gnssHandlerPtr_, gnssFixPtr->latitude, gnssFixPtr->longitude, gnssFixPtr->altitude, P_enu);
+
+  if (!P_lv03.allFinite() || P_lv03(0,0) < 0.0 || P_lv03(1,1) < 0.0 || P_lv03(2,2) < 0.0) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                         "GNSS covariance is invalid after ENU-to-LV03 rotation. Skipping.");
+    return;
+  }
 
   Eigen::Vector3d estStdDevXYZ(std::sqrt(P_lv03(0,0)),
                                std::sqrt(P_lv03(1,1)),
@@ -545,11 +572,11 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     gnssHandlerPtr_->initHandler(avgGnssCoord);
 
     auto referenceGNSSmsg = std::make_shared<sensor_msgs::msg::NavSatFix>();
-    referenceGNSSmsg->header = navSatFixPtr->header;
+    referenceGNSSmsg->header = gnssFixPtr->header;
     referenceGNSSmsg->latitude  = gnssHandlerPtr_->getGnssReferenceLatitude();
     referenceGNSSmsg->longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
     referenceGNSSmsg->altitude  = gnssHandlerPtr_->getGnssReferenceAltitude();
-    pubReferenceNavSatFixCoordinates_->publish(*referenceGNSSmsg);
+    pubReferenceGnssCoordinates_->publish(*referenceGNSSmsg);
 
     REGULAR_COUT << "\033[1;36m"
                  << "==================== GNSS REFERENCE ====================\n"
@@ -563,11 +590,11 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     Eigen::Vector3d originAsENU = Eigen::Vector3d::Zero();
     gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, originAsENU);
 
-    referenceGNSSmsgENU->header   = navSatFixPtr->header;
+    referenceGNSSmsgENU->header   = gnssFixPtr->header;
     referenceGNSSmsgENU->latitude = originAsENU(0);
     referenceGNSSmsgENU->longitude= originAsENU(1);
     referenceGNSSmsgENU->altitude = originAsENU(2);
-    pubReferenceNavSatFixCoordinatesENU_->publish(*referenceGNSSmsgENU);
+    pubReferenceGnssCoordinatesENU_->publish(*referenceGNSSmsgENU);
 
     REGULAR_COUT << "\033[1;36m"
                  << "==================== GNSS REFERENCE ENU ====================\n"
@@ -592,25 +619,28 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     const std::string& baseFrame = baseLinkFrame_;
     const std::string& gnssFrame = gnssFrame_;
 
-    // Static lever arm
-    const Eigen::Vector3d t_B_G = t_B_G_cached_;
-
-    double initYaw_W_Base = 0.0;
+    double initYaw_W_Frame = 0.0;
+    Eigen::Vector3d W_t_W_InitPosition = W_t_W_Gnss;
+    std::string initYawFrame = baseFrame;
+    std::string initPositionFrame = gnssFrame;
 
     bool have_R_W_B_full = false;
     Eigen::Matrix3d R_W_B_full = Eigen::Matrix3d::Identity();
 
-    bool useConfiguredFallback = true;
+    bool useConfiguredFallback = !useYawInitialGuessFromHeading_;
     if (useYawInitialGuessFromHeading_) {
       double headingYaw = 0.0;
       double headingYawVariance = 0.0;
-      if (getFreshInitialYaw_(timeK, headingYaw, headingYawVariance)) {
-        initYaw_W_Base = headingYaw;
-        useConfiguredFallback = false;
+      std::string headingFrame;
+      if (getFreshInitialYaw_(timeK, headingYaw, headingYawVariance, headingFrame)) {
+        initYaw_W_Frame = headingYaw;
+        initYawFrame = headingFrame;
+        initPositionFrame = gnssFrame;
+        W_t_W_InitPosition = W_t_W_Gnss;
         if (!initialYawUsedLogged_) {
           REGULAR_COUT << GREEN_START
                        << "GNSS initialization using NovAtel heading initial yaw. "
-                       << "yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI)
+                       << "yaw(W<-" << initYawFrame << ") [deg]=" << (180.0 * initYaw_W_Frame / M_PI)
                        << " variance=" << headingYawVariance
                        << COLOR_END << "\n";
           initialYawUsedLogged_ = true;
@@ -621,31 +651,31 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
         }
 
         const double waitedSec = timeK - firstInitialYawWaitTimeSec_;
-        if (waitedSec < initialHeadingWaitTimeoutSec_) {
-          if (gnssCallbackCounter_ % 10 == 0) {
-            REGULAR_COUT << YELLOW_START
-                         << "Waiting for fresh initial yaw before GNSS initialization. "
-                         << "waited=" << std::fixed << std::setprecision(2) << waitedSec << " s"
-                         << COLOR_END << "\n";
-          }
-          return;
-        }
-
-        if (!initialYawFallbackLogged_) {
+        if (gnssCallbackCounter_ % 10 == 0) {
           REGULAR_COUT << YELLOW_START
-                       << "No fresh initial yaw arrived within "
-                       << initialHeadingWaitTimeoutSec_
-                       << " s. Falling back to configured GNSS yaw initialization."
+                       << "Waiting for fresh NovAtel initial yaw before GNSS initialization. "
+                       << "waited=" << std::fixed << std::setprecision(2) << waitedSec << " s, "
+                       << "max_age=" << initialHeadingMaxAgeSec_ << " s. "
+                       << "No trajectory-alignment fallback is used while heading initialization is enabled."
                        << COLOR_END << "\n";
-          initialYawFallbackLogged_ = true;
         }
+        return;
       }
     }
 
     if (useConfiguredFallback) {
+      // Static lever arm for the non-heading/manual initialization path.
+      const Eigen::Vector3d t_B_G = t_B_G_cached_;
+
       if (gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
-        initYaw_W_Base = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
+        initYaw_W_Frame = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
       } else if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+        if (!trajectoryAlignmentHandler_) {
+          REGULAR_COUT << RED_START
+                       << "Trajectory alignment yaw initialization requested, but handler is not available."
+                       << COLOR_END << "\n";
+          return;
+        }
 
         if (gnssCallbackCounter_ % 20 == 0) {
           REGULAR_COUT << YELLOW_START << " Adding GNSS measurement to trajectory alignment." << "\n";
@@ -685,27 +715,33 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
         have_R_W_B_full = true;
 
         const Eigen::Vector3d x_W = R_W_B_full.col(0);
-        initYaw_W_Base = std::atan2(x_W.y(), x_W.x());
+        initYaw_W_Frame = std::atan2(x_W.y(), x_W.x());
 
         pubStatus_->publish(std_msgs::msg::Bool().set__data(true));
         REGULAR_COUT << GREEN_START
                      << "Trajectory Alignment Successful. "
                      << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI)
-                     << "  yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Base / M_PI)
+                     << "  yaw(W<-B) [deg]=" << (180.0 * initYaw_W_Frame / M_PI)
                      << COLOR_END << "\n";
       }
+
+      Eigen::Matrix3d R_W_B_forLever = Eigen::AngleAxisd(initYaw_W_Frame, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+      if (have_R_W_B_full) {
+        R_W_B_forLever = R_W_B_full;
+      }
+      W_t_W_InitPosition = W_t_W_Gnss - R_W_B_forLever * t_B_G;
+      initYawFrame = baseFrame;
+      initPositionFrame = baseFrame;
     }
 
-    Eigen::Matrix3d R_W_B_forLever = Eigen::AngleAxisd(initYaw_W_Base, Eigen::Vector3d::UnitZ()).toRotationMatrix();
-    if (have_R_W_B_full) {
-      R_W_B_forLever = R_W_B_full;
-    }
-    const Eigen::Vector3d W_t_W_Base = W_t_W_Gnss - R_W_B_forLever * t_B_G;
-
-    if (this->initYawAndPositionInWorld(initYaw_W_Base, W_t_W_Base,
-                                        /*frame1=*/baseFrame,
-                                        /*frame2=*/baseFrame)) {
-      REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << COLOR_END << "\n";
+    if (this->initYawAndPositionInWorld(initYaw_W_Frame, W_t_W_InitPosition,
+                                        /*frame1=*/initYawFrame,
+                                        /*frame2=*/initPositionFrame)) {
+      REGULAR_COUT << GREEN_START
+                   << " GNSS initialization of yaw and position successful. "
+                   << "yaw_frame=" << initYawFrame
+                   << " position_frame=" << initPositionFrame
+                   << COLOR_END << "\n";
     } else {
       REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << COLOR_END << "\n";
     }
@@ -714,7 +750,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
     const std::string& gnssFrameName = gnssFrame_;
     const double timestampSec =
-        navSatFixPtr->header.stamp.sec + navSatFixPtr->header.stamp.nanosec * 1e-9;
+        gnssFixPtr->header.stamp.sec + gnssFixPtr->header.stamp.nanosec * 1e-9;
 
     // graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
     //     "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
@@ -741,7 +777,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
   if (pubGnssPoseWithCov->get_subscription_count() > 0) {
     geometry_msgs::msg::PoseWithCovarianceStamped pwc;
     pwc.header.frame_id = fixedFrame;
-    pwc.header.stamp = navSatFixPtr->header.stamp;
+    pwc.header.stamp = gnssFixPtr->header.stamp;
     pwc.pose.pose.position.x = W_t_W_Gnss.x();
     pwc.pose.pose.position.y = W_t_W_Gnss.y();
     pwc.pose.pose.position.z = W_t_W_Gnss.z();
@@ -765,7 +801,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
   // GNSS path: do work only if needed (step 9.3)
   if (pubMeasGNSSPath_->get_subscription_count() > 0) {
-    addToPathMsg(measGnssPathPtr_, fixedFrame, navSatFixPtr->header.stamp, W_t_W_Gnss, static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
+    addToPathMsg(measGnssPathPtr_, fixedFrame, gnssFixPtr->header.stamp, W_t_W_Gnss, static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
     pubMeasGNSSPath_->publish(*measGnssPathPtr_);
   }
 }
@@ -852,7 +888,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   // frame is the drifting LiDAR odometry/map frame carried in header.frame_id, not the sensor/body child frame.
   setHeadingUncertaintyFixedFrame("lio", lioFixedFrame);
 
-  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && trajectoryAlignmentHandler_) {
 
     const std::string& baseFrame =
         odomLidarPtr->child_frame_id.empty() ? baseLinkFrame_ : odomLidarPtr->child_frame_id;

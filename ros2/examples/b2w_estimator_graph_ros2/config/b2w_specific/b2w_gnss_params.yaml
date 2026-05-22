@@ -3,7 +3,7 @@
     gnss_params:
       initYaw: 90.0  # Initial yaw in degrees. This is used if the initial guess from file is disabled.
       useYawInitialGuessFromFile: false  # If this and the next are false, 0 initial yaw is used.
-      yawInitialGuessFromAlignment: true  # Overrides the initial guess from file option.
+      yawInitialGuessFromAlignment: false  # Overrides the initial guess from file option.
       useYawInitialGuessFromHeading: true
       initialHeadingMaxAgeSec: 2.0
       initialHeadingWaitTimeoutSec: 3.0
