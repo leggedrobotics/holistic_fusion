@@ -35,8 +35,19 @@ if(NOT CATKIN_DEVEL_PREFIX)
     set(CATKIN_DEVEL_PREFIX "${CMAKE_BINARY_DIR}/devel")
 endif()
 
-# Force the wrapped native CMake project to use the GTSAM exported by gtsam_catkin.
-if(DEFINED gtsam_catkin_PREFIX)
+# Force the wrapped native CMake project to use the same GTSAM as gtsam_catkin.
+if(DEFINED ENV{GTSAM_DIR} AND EXISTS "$ENV{GTSAM_DIR}/GTSAMConfig.cmake")
+    set(GTSAM_DIR "$ENV{GTSAM_DIR}" CACHE PATH "GTSAM config directory from the build environment" FORCE)
+
+    if(NOT DEFINED ENV{GTSAM_UNSTABLE_DIR} OR NOT EXISTS "$ENV{GTSAM_UNSTABLE_DIR}/GTSAM_UNSTABLEConfig.cmake")
+        message(FATAL_ERROR "GTSAM_DIR is set, but GTSAM_UNSTABLE_DIR does not point to GTSAM_UNSTABLEConfig.cmake.")
+    endif()
+
+    set(GTSAM_UNSTABLE_DIR "$ENV{GTSAM_UNSTABLE_DIR}" CACHE PATH "GTSAM unstable config directory from the build environment" FORCE)
+
+    message(STATUS "Using GTSAM from environment: ${GTSAM_DIR}")
+    message(STATUS "Using GTSAM_UNSTABLE from environment: ${GTSAM_UNSTABLE_DIR}")
+elseif(DEFINED gtsam_catkin_PREFIX)
     set(_gtsam_catkin_gtsam_dir "${gtsam_catkin_PREFIX}/lib/cmake/GTSAM")
     set(_gtsam_catkin_gtsam_unstable_dir "${gtsam_catkin_PREFIX}/lib/cmake/GTSAM_UNSTABLE")
 
