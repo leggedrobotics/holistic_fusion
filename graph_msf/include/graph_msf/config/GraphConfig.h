@@ -26,6 +26,7 @@ struct GraphConfig {
   // General Config
   int verboseLevel_ = 0;
   bool odomNotJumpAtStartFlag_ = false;
+  bool publishStateBeforeYawPositionInitFlag_ = true;
   bool logRealTimeStateToMemoryFlag_ = false;
   bool logLatencyAndUpdateDurationToMemoryFlag_ = false;
 

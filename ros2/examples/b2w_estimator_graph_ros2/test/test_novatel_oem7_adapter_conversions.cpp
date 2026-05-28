@@ -1,5 +1,7 @@
 #include <cmath>
 
+#include <Eigen/Geometry>
+
 #include <gtest/gtest.h>
 
 #include "b2w_estimator_graph_ros2/NovatelOem7AdapterConversions.h"
@@ -49,6 +51,15 @@ TEST(NovatelOem7AdapterConversions, HeadingDegreesConvertToEstimatorYawRadians) 
 TEST(NovatelOem7AdapterConversions, HeadingYawOffsetIsAppliedBeforeNormalization) {
   EXPECT_NEAR(b2w_se::novatel_oem7_adapter::headingDegToYawRad(90.0, 15.0), 15.0 * kPi / 180.0, kTolerance);
   EXPECT_NEAR(b2w_se::novatel_oem7_adapter::headingDegToYawRad(0.0, 180.0), -0.5 * kPi, kTolerance);
+}
+
+TEST(NovatelOem7AdapterConversions, SourceYawTransformsToTargetFrameYaw) {
+  const double yawWorldSource = 30.0 * kPi / 180.0;
+  const Eigen::Matrix3d R_source_target =
+      Eigen::AngleAxisd(15.0 * kPi / 180.0, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+
+  EXPECT_NEAR(b2w_se::novatel_oem7_adapter::yawInTargetFrame(yawWorldSource, R_source_target),
+              45.0 * kPi / 180.0, kTolerance);
 }
 
 TEST(NovatelOem7AdapterConversions, Heading2ToInitialYawCarriesHeaderYawAndCovariance) {

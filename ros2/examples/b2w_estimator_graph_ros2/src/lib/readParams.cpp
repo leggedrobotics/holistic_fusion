@@ -106,6 +106,8 @@ if (useGnssFlag_) {
     useYawInitialGuessFromHeading_ = graph_msf::tryGetParam<bool>(this, "gnss_params.useYawInitialGuessFromHeading");
     initialHeadingMaxAgeSec_ = std::max(0.0, graph_msf::tryGetParam<double>(this, "gnss_params.initialHeadingMaxAgeSec"));
     initialHeadingWaitTimeoutSec_ = std::max(0.0, graph_msf::tryGetParam<double>(this, "gnss_params.initialHeadingWaitTimeoutSec"));
+    initialHeadingBaseFrame_ = graph_msf::tryGetParam<std::string>(this, "gnss_params.initialHeadingBaseFrame");
+    initialHeadingRoverFrame_ = graph_msf::tryGetParam<std::string>(this, "gnss_params.initialHeadingRoverFrame");
 
     // Alignment options
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {

@@ -3,6 +3,7 @@
     #Common
     common_params:
       verbosity: 0                         #Debug Output, 0: only important events, 1: optimization duration, 2: added factors
-      odomNotJumpAtStart: false   #Whether the World->Map transform should be updated in the beginning (odom start at identity)
+      odomNotJumpAtStart: true   # Keep odom local at initialization and put global yaw/position into world->odom.
+      publishStateBeforeYawPositionInit: false # Delay public odometry/TF/path until GNSS position + initial yaw are initialized
       logRealTimeStateToMemory: false  # Whether the real-time state should be logged to memory (for logging purposes)
       logLatencyAndUpdateDurationToMemory: false # Whether the latency and update duration should be logged to memory (for logging purposes)

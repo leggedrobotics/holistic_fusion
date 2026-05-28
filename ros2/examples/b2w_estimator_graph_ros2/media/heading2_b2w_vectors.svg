@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" role="img" aria-labelledby="title desc">
+  <title id="title">B2W NovAtel HEADING2 antenna baseline convention</title>
+  <desc id="desc">
+    Top-down illustration of the PPS/B2W vehicle showing that NovAtel HEADING2 is the yaw of
+    the cpt7_antenna_front to cpt7_antenna_back baseline, not the yaw of livox_imu.
+  </desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#1f5fbf"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#c9332b"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L10,5.5 L1,10 Z" fill="#238b45"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L9,5 L1,9 Z" fill="#5f6b7a"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .panel { fill: #f7f8fa; stroke: #cfd6df; stroke-width: 1.5; }
+      .vehicle { fill: #e9edf2; stroke: #6b7684; stroke-width: 2.5; }
+      .vehicle-front { fill: #d8e3f2; stroke: #6b7684; stroke-width: 2.5; }
+      .sensor { fill: #ffffff; stroke: #2f3947; stroke-width: 2; }
+      .antenna-front { fill: #2f80ed; stroke: #174a8b; stroke-width: 2; }
+      .antenna-back { fill: #e24a3b; stroke: #8e261e; stroke-width: 2; }
+      .imu { fill: #222831; stroke: #ffffff; stroke-width: 2; }
+      .axis-blue { stroke: #1f5fbf; stroke-width: 5; marker-end: url(#arrow-blue); fill: none; }
+      .baseline-red { stroke: #c9332b; stroke-width: 5; marker-end: url(#arrow-red); fill: none; }
+      .world-green { stroke: #238b45; stroke-width: 4; marker-end: url(#arrow-green); fill: none; }
+      .world-gray { stroke: #5f6b7a; stroke-width: 3; marker-end: url(#arrow-gray); fill: none; }
+      .helper { stroke: #7c8794; stroke-width: 2; stroke-dasharray: 7 6; fill: none; }
+      .arc { stroke: #9b5de5; stroke-width: 3; fill: none; marker-end: url(#arrow-gray); }
+      .label { font-family: Arial, Helvetica, sans-serif; fill: #17202a; font-size: 20px; }
+      .small { font-family: Arial, Helvetica, sans-serif; fill: #293544; font-size: 16px; }
+      .tiny { font-family: Arial, Helvetica, sans-serif; fill: #4a5563; font-size: 13px; }
+      .callout { font-family: Arial, Helvetica, sans-serif; fill: #17202a; font-size: 17px; font-weight: 700; }
+      .code { font-family: "DejaVu Sans Mono", Consolas, monospace; fill: #17202a; font-size: 15px; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="980" height="620"/>
+
+  <text class="label" x="34" y="42" font-weight="700">B2W NovAtel HEADING2 yaw initialization convention</text>
+  <text class="small" x="34" y="70">HEADING2.heading is the heading of the base-to-rover antenna vector. It is not IMU yaw.</text>
+
+  <rect class="panel" x="34" y="98" width="912" height="398" rx="8"/>
+
+  <!-- Vehicle, top-down, vehicle +X / forward to the right. -->
+  <g id="vehicle" transform="translate(110 122)">
+    <path class="vehicle" d="M75,190 L120,120 L555,120 L650,190 L555,260 L120,260 Z"/>
+    <path class="vehicle-front" d="M555,120 L650,190 L555,260 Z"/>
+    <text class="tiny" x="575" y="193">front</text>
+
+    <!-- IMU/body forward direction. -->
+    <line class="axis-blue" x1="330" y1="190" x2="520" y2="190"/>
+    <text class="callout" x="360" y="178" fill="#1f5fbf">livox_imu +X</text>
+    <text class="small" x="377" y="220" fill="#1f5fbf">robot forward / estimator IMU yaw</text>
+
+    <!-- CPT7 IMU and antennas. Positions mirror calibration: front x positive, back x negative. -->
+    <circle class="imu" cx="330" cy="190" r="12"/>
+    <text class="small" x="286" y="166">cpt7_imu</text>
+
+    <circle class="antenna-front" cx="420" cy="236" r="14"/>
+    <text class="small" x="366" y="277">cpt7_antenna_front</text>
+    <text class="tiny" x="376" y="296">initialHeadingBaseFrame</text>
+
+    <circle class="antenna-back" cx="165" cy="236" r="14"/>
+    <text class="small" x="95" y="277">cpt7_antenna_back</text>
+    <text class="tiny" x="106" y="296">initialHeadingRoverFrame</text>
+
+    <!-- HEADING2 baseline points from front to back. -->
+    <line class="baseline-red" x1="420" y1="236" x2="165" y2="236"/>
+    <text class="callout" x="184" y="224" fill="#c9332b">HEADING2 base-to-rover vector</text>
+    <text class="small" x="196" y="255" fill="#c9332b">front -> back, about 180 deg in livox_imu</text>
+
+    <!-- Alignment helper lines. -->
+    <line class="helper" x1="165" y1="236" x2="165" y2="320"/>
+    <line class="helper" x1="420" y1="236" x2="420" y2="320"/>
+    <line class="helper" x1="330" y1="190" x2="330" y2="92"/>
+  </g>
+
+  <!-- World heading convention inset. -->
+  <g id="world-inset" transform="translate(690 132)">
+    <rect class="panel" x="0" y="0" width="220" height="230" rx="6"/>
+    <text class="callout" x="18" y="30">World yaw convention</text>
+    <line class="world-gray" x1="58" y1="175" x2="58" y2="66"/>
+    <text class="small" x="67" y="78">True North</text>
+    <line class="world-green" x1="58" y1="175" x2="168" y2="175"/>
+    <text class="small" x="145" y="165">East</text>
+    <path class="arc" d="M58,74 A102,102 0 0 1 156,143"/>
+    <text class="tiny" x="86" y="106">HEADING2.heading</text>
+    <text class="tiny" x="100" y="124">clockwise</text>
+    <line class="baseline-red" x1="58" y1="175" x2="148" y2="140"/>
+    <text class="tiny" x="20" y="207">yaw_W_baseline = 90 deg - heading</text>
+  </g>
+
+  <!-- Conversion equation. -->
+  <g id="equation" transform="translate(76 520)">
+    <rect class="panel" x="0" y="0" width="870" height="70" rx="8"/>
+    <text class="callout" x="22" y="28">Estimator initialization uses:</text>
+    <text class="code" x="22" y="53">yaw_W_livox_imu = wrap_to_pi(yaw_W_baseline - yaw_livox_imu_baseline)</text>
+    <text class="small" x="612" y="31">Do not hide the 180 deg antenna geometry</text>
+    <text class="small" x="612" y="52">with heading_yaw_offset_deg:=180.0.</text>
+  </g>
+</svg>

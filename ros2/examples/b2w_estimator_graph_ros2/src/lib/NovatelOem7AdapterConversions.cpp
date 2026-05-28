@@ -10,6 +10,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include <algorithm>
 #include <cmath>
 
+#include <Eigen/Geometry>
+
 namespace b2w_se::novatel_oem7_adapter {
 namespace {
 
@@ -51,6 +53,13 @@ double headingDegToYawRad(const double headingDeg, const double yawOffsetDeg) {
 double headingStdDevDegToYawVariance(const double headingStdDevDeg) {
   const double yawStdDevRad = headingStdDevDeg * kDegToRad;
   return yawStdDevRad * yawStdDevRad;
+}
+
+double yawInTargetFrame(const double yawWorldSourceRad, const Eigen::Matrix3d& R_source_target) {
+  const Eigen::Matrix3d R_world_source =
+      Eigen::AngleAxisd(yawWorldSourceRad, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  const Eigen::Vector3d targetXAxisInWorld = R_world_source * R_source_target.col(0);
+  return normalizeAngle(std::atan2(targetXAxisInWorld.y(), targetXAxisInWorld.x()));
 }
 
 void fillInitialYawFromHeading2(const novatel_oem7_msgs::msg::HEADING2& heading2, const double yawOffsetDeg,

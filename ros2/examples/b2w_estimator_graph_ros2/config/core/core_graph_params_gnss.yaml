@@ -2,7 +2,7 @@
   ros__parameters:
     # Sensor Params
     sensor_params:
-      imuRate: 400.0                            #Rate of IMU input (Hz)
+      imuRate: 200.0                            # Rate of Livox IMU input (Hz); used for graph-key timestamp search tolerance.
       createStateEveryNthImuMeasurement: 5    # Create a new state every n-th IMU measurement
       useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
       imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
@@ -43,7 +43,7 @@
       optimizeReferenceFramePosesWrtWorld: true   # If true, the poses of the fixed frames are optimized w.r.t. world
       referenceFramePosesResetThreshold: 3.0      # Reset T_M_W if distance between initial guess and optimization are too big, [SE(3) distance]
       centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
-      createReferenceAlignmentKeyframeEveryNSeconds: 4.0   # Create a new keyframe for alignment every n seconds
+      createReferenceAlignmentKeyframeEveryNSeconds: 1.0   # Keep alignment keyframes inside the 2s fixed-lag smoother window.
       # Extrinsic Calibration
       optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
 

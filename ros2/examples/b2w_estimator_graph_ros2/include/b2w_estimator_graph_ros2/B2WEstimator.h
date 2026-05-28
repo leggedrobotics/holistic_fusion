@@ -215,6 +215,10 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   bool useYawInitialGuessFromHeading_ = true;
   double initialHeadingMaxAgeSec_ = 2.0;
   double initialHeadingWaitTimeoutSec_ = 3.0;
+  std::string initialHeadingBaseFrame_;
+  std::string initialHeadingRoverFrame_;
+  double lastInitialHeadingBaselineYawInImuRad_ = std::numeric_limits<double>::quiet_NaN();
+  bool lastInitialHeadingUsedBaselineFrames_ = false;
   mutable std::mutex initialYawMutex_;
   bool haveInitialYaw_ = false;
   std::string initialYawFrame_;
@@ -223,9 +227,14 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double initialYawVariance_ = 0.0;
   double firstInitialYawWaitTimeSec_ = 0.0;
   bool initialYawUsedLogged_ = false;
+  bool initialYawConsumed_ = false;
   static double normalizeYaw_(double yawRad);
   static double yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q);
+  bool transformInitialHeadingBaselineToImu_(double yawWorldBaselineRad, double& yawWorldImuRad);
+  bool transformInitialYawToImu_(double yawWorldSourceRad, const std::string& sourceFrame,
+                                 double& yawWorldImuRad);
   bool getFreshInitialYaw_(double queryTimeSec, double& yawRad, double& yawVariance, std::string& yawFrame) const;
+  void consumeInitialYaw_();
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)

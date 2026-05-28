@@ -824,6 +824,10 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
   if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel,
                                                  imuMsgPtr->header.stamp.sec + 1e-9 * imuMsgPtr->header.stamp.nanosec,
                                                  preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
+    if (!graphConfigPtr_->publishStateBeforeYawPositionInitFlag_ && !this->areYawAndPositionInited()) {
+      return;
+    }
+
     // Publish Odometry
     this->publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
   } else if (GraphMsf::isGraphInited()) {

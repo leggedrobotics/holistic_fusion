@@ -42,7 +42,7 @@ def generate_launch_description():
                               description="VIO odometry topic name"),
         DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/zed/zed_node/odom",
                               description="Between VIO odometry topic name"),
-        DeclareLaunchArgument("gnss_topic_name", default_value="/gt_box/cpt7/gps/fix",
+        DeclareLaunchArgument("gnss_topic_name", default_value="/gnss/novatel/fix",
                               description="Live GNSS fix topic name"),
         DeclareLaunchArgument("logging_dir_location", default_value=os.path.join(pkg_dir, "logging"),
                               description="Logging directory location"),

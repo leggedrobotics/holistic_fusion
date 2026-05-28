@@ -7,9 +7,15 @@ message("Building ${PROJECT_NAME} library -----------------------------")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(
-  -O3 -mtune=native -flto -funroll-loops
-  -std=c++17 -fno-math-errno)
+option(PPS_REPLAY_FAST_BUILD "Disable expensive optimization flags for replay verification builds" OFF)
+if(PPS_REPLAY_FAST_BUILD)
+  message(STATUS "PPS replay fast build enabled for ${PROJECT_NAME}")
+  add_compile_options(-O1 -fno-lto -std=c++17 -fno-math-errno)
+else()
+  add_compile_options(
+    -O3 -mtune=native -flto -funroll-loops
+    -std=c++17 -fno-math-errno)
+endif()
 
 # If build variables not set, set them to default values
 if (NOT DEFINED CMAKE_BUILD_LIBDIR)

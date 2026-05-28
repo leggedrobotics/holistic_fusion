@@ -49,6 +49,9 @@ class B2WStaticTransforms : public graph_msf::StaticTransformsTf {
   const std::string& getVioOdometryFrame() const { return vioOdometryFrame_; }
   const std::string& getVioOdometryBetweenFrame() const { return vioOdometryBetweenFrame_; }
 
+  bool lookupAndStoreTransform(const std::string& frame1, const std::string& frame2,
+                               Eigen::Isometry3d& T_frame1_frame2, double timeoutSeconds = 1.0);
+
 
   // Set flags
   void setUseLioOdometryFlag(bool flag) { useLioOdometryFlag_ = flag; }

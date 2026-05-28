@@ -5,12 +5,20 @@ project(b2w_estimator_graph_ros2)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Keep default Release flags and append what you need
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+option(PPS_REPLAY_FAST_BUILD "Disable expensive optimization flags for replay verification builds" OFF)
+if(PPS_REPLAY_FAST_BUILD)
+  message(STATUS "PPS replay fast build enabled for ${PROJECT_NAME}")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1 -DNDEBUG")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF)
+  add_compile_options(-fopenmp)
+else()
+  # Keep default Release flags and append what you need
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
-# Global extra flags (avoid repeating -std and -O3 here)
-add_compile_options(-mtune=native -funroll-loops -fopenmp)
+  # Global extra flags (avoid repeating -std and -O3 here)
+  add_compile_options(-mtune=native -funroll-loops -fopenmp)
+endif()
 
 # For FindGlog.cmake and FindGflags.cmake
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
@@ -78,6 +86,7 @@ add_library(${PROJECT_NAME}_novatel_adapter_conversions
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
     graph_msf_ros2::graph_msf_ros2
+    ${PROJECT_NAME}_novatel_adapter_conversions
     ${GLOG_LIBRARIES}
     ${gflags_LIBRARIES}
 )
@@ -106,6 +115,9 @@ ament_target_dependencies(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME}_novatel_adapter_conversions
     geometry_msgs
     novatel_oem7_msgs
+)
+target_link_libraries(${PROJECT_NAME}_novatel_adapter_conversions
+    Eigen3::Eigen
 )
 
 # Executable

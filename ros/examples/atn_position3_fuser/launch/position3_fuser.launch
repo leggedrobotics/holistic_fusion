@@ -7,7 +7,7 @@
     <!-- Input Topics -->
     <arg name="imu_topic_name" default="/gt_box/ap20/imu"/>
     <arg name="prism_position_topic_name" default="/gt_box/ap20/prism_position"/>
-    <arg name="gnss_position_topic_name" default="/gt_box/cpt7/gps/fix"/>
+    <arg name="gnss_position_topic_name" default="/gnss/novatel/fix"/>
     <arg name="gnss_offline_pose_topic_name" default="/gt_box/inertial_explorer/odometry"/>
 
     <!-- Config Files -->

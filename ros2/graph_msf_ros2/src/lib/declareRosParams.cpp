@@ -97,6 +97,7 @@ void GraphMsfRos2::declareRosParams() {
   // Common Params
   this->declare_parameter("common_params.verbosity", 0);
   this->declare_parameter("common_params.odomNotJumpAtStart", false);
+  this->declare_parameter("common_params.publishStateBeforeYawPositionInit", true);
   this->declare_parameter("common_params.logRealTimeStateToMemory", false);
   this->declare_parameter("common_params.logLatencyAndUpdateDurationToMemory", false);
 

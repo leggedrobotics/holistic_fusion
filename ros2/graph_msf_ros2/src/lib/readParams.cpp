@@ -206,6 +206,8 @@ void GraphMsfRos2::readParams() {
   // Common Parameters
   graphConfigPtr_->verboseLevel_ = tryGetParam<int>(this, "common_params.verbosity");
   graphConfigPtr_->odomNotJumpAtStartFlag_ = tryGetParam<bool>(this, "common_params.odomNotJumpAtStart");
+  graphConfigPtr_->publishStateBeforeYawPositionInitFlag_ =
+      tryGetParam<bool>(this, "common_params.publishStateBeforeYawPositionInit");
   graphConfigPtr_->logRealTimeStateToMemoryFlag_ = tryGetParam<bool>(this, "common_params.logRealTimeStateToMemory");
   graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_ =
       tryGetParam<bool>(this, "common_params.logLatencyAndUpdateDurationToMemory");

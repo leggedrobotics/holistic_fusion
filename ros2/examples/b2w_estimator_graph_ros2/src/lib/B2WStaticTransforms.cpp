@@ -23,6 +23,24 @@ B2WStaticTransforms::B2WStaticTransforms(const rclcpp::Node::SharedPtr& nodePtr)
   REGULAR_COUT << GREEN_START << " Initializing b2w static transforms..." << COLOR_END << std::endl;
 }
 
+bool B2WStaticTransforms::lookupAndStoreTransform(const std::string& frame1, const std::string& frame2,
+                                                  Eigen::Isometry3d& T_frame1_frame2,
+                                                  const double timeoutSeconds) {
+  try {
+    const auto transform =
+        tf_buffer_->lookupTransform(frame1, frame2, tf2::TimePointZero, tf2::durationFromSec(timeoutSeconds));
+    T_frame1_frame2 = tf2::transformToEigen(transform.transform);
+    lv_T_frame1_frame2(frame1, frame2) = T_frame1_frame2;
+    lv_T_frame1_frame2(frame2, frame1) = T_frame1_frame2.inverse();
+    return true;
+  } catch (const tf2::TransformException& exception) {
+    RCLCPP_WARN(rclcpp::get_logger("B2WStaticTransforms"),
+                "Could not lookup transform %s <- %s: %s",
+                frame1.c_str(), frame2.c_str(), exception.what());
+    return false;
+  }
+}
+
 bool B2WStaticTransforms::findTransformations() {
   // Super Method
   // Need to find the transformations in the TF-tree

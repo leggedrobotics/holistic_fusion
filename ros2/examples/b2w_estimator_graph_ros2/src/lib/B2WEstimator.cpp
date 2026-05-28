@@ -10,6 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Project
 #include "b2w_estimator_graph_ros2/B2WStaticTransforms.h"
+#include "b2w_estimator_graph_ros2/NovatelOem7AdapterConversions.h"
 
 // Workspace
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
@@ -22,6 +23,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Timing (minimal additions)
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <limits>
 
 // Set to 0 to compile out callback timing.
@@ -114,6 +116,8 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("gnss_params.useYawInitialGuessFromHeading", true);
   this->declare_parameter("gnss_params.initialHeadingMaxAgeSec", 2.0);
   this->declare_parameter("gnss_params.initialHeadingWaitTimeoutSec", 3.0);
+  this->declare_parameter("gnss_params.initialHeadingBaseFrame", "");
+  this->declare_parameter("gnss_params.initialHeadingRoverFrame", "");
   this->declare_parameter("gnss_params.useGnssReference", false);
   this->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
   this->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
@@ -371,9 +375,58 @@ double B2WEstimator::yawFromQuaternion_(const geometry_msgs::msg::Quaternion& q)
   return normalizeYaw_(std::atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)));
 }
 
+bool B2WEstimator::transformInitialHeadingBaselineToImu_(const double yawWorldBaselineRad,
+                                                         double& yawWorldImuRad) {
+  lastInitialHeadingUsedBaselineFrames_ = false;
+  lastInitialHeadingBaselineYawInImuRad_ = std::numeric_limits<double>::quiet_NaN();
+
+  if (initialHeadingBaseFrame_.empty() || initialHeadingRoverFrame_.empty() || staticTransformsPtr_ == nullptr) {
+    return false;
+  }
+
+  auto* b2wStaticTransforms = dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get());
+  if (b2wStaticTransforms == nullptr) {
+    return false;
+  }
+
+  const std::string& imuFrame = staticTransformsPtr_->getImuFrame();
+
+  auto lookupTransform = [&](const std::string& frame, Eigen::Isometry3d& T_imu_frame) -> bool {
+    try {
+      T_imu_frame = staticTransformsPtr_->rv_T_frame1_frame2(imuFrame, frame);
+      return true;
+    } catch (const std::exception&) {
+      return b2wStaticTransforms->lookupAndStoreTransform(imuFrame, frame, T_imu_frame);
+    }
+  };
+
+  Eigen::Isometry3d T_imu_base = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d T_imu_rover = Eigen::Isometry3d::Identity();
+  if (!lookupTransform(initialHeadingBaseFrame_, T_imu_base) ||
+      !lookupTransform(initialHeadingRoverFrame_, T_imu_rover)) {
+    return false;
+  }
+
+  Eigen::Vector3d baseline_imu = T_imu_rover.translation() - T_imu_base.translation();
+  baseline_imu.z() = 0.0;
+  const double baselineHorizontalLength = baseline_imu.norm();
+  if (!std::isfinite(baselineHorizontalLength) || baselineHorizontalLength < 1e-6) {
+    RCLCPP_WARN(this->get_logger(),
+                "Initial HEADING2 baseline frames '%s' -> '%s' have no usable horizontal separation in IMU frame '%s'.",
+                initialHeadingBaseFrame_.c_str(), initialHeadingRoverFrame_.c_str(), imuFrame.c_str());
+    return false;
+  }
+
+  const double baselineYawInImu = std::atan2(baseline_imu.y(), baseline_imu.x());
+  yawWorldImuRad = normalizeYaw_(yawWorldBaselineRad - baselineYawInImu);
+  lastInitialHeadingBaselineYawInImuRad_ = baselineYawInImu;
+  lastInitialHeadingUsedBaselineFrames_ = true;
+  return std::isfinite(yawWorldImuRad);
+}
+
 bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad, double& yawVariance, std::string& yawFrame) const {
   std::lock_guard<std::mutex> lock(initialYawMutex_);
-  if (!haveInitialYaw_ || initialYawFrame_.empty()) {
+  if (initialYawConsumed_ || !haveInitialYaw_ || initialYawFrame_.empty()) {
     return false;
   }
 
@@ -386,6 +439,47 @@ bool B2WEstimator::getFreshInitialYaw_(const double queryTimeSec, double& yawRad
   yawVariance = initialYawVariance_;
   yawFrame = initialYawFrame_;
   return true;
+}
+
+bool B2WEstimator::transformInitialYawToImu_(const double yawWorldSourceRad, const std::string& sourceFrame,
+                                             double& yawWorldImuRad) {
+  if (sourceFrame.empty() || staticTransformsPtr_ == nullptr) {
+    return false;
+  }
+
+  if (transformInitialHeadingBaselineToImu_(yawWorldSourceRad, yawWorldImuRad)) {
+    return true;
+  }
+
+  lastInitialHeadingUsedBaselineFrames_ = false;
+  lastInitialHeadingBaselineYawInImuRad_ = std::numeric_limits<double>::quiet_NaN();
+
+  const std::string& imuFrame = staticTransformsPtr_->getImuFrame();
+  try {
+    const Eigen::Matrix3d R_source_imu =
+        staticTransformsPtr_->rv_T_frame1_frame2(sourceFrame, imuFrame).rotation();
+    yawWorldImuRad = novatel_oem7_adapter::yawInTargetFrame(yawWorldSourceRad, R_source_imu);
+  } catch (const std::exception& exception) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                         "Could not transform initial yaw from '%s' to IMU frame '%s': %s",
+                         sourceFrame.c_str(), imuFrame.c_str(), exception.what());
+    return false;
+  }
+
+  return std::isfinite(yawWorldImuRad);
+}
+
+void B2WEstimator::consumeInitialYaw_() {
+  {
+    std::lock_guard<std::mutex> lock(initialYawMutex_);
+    initialYawConsumed_ = true;
+    haveInitialYaw_ = false;
+  }
+
+  if (subInitialYaw_) {
+    subInitialYaw_.reset();
+    REGULAR_COUT << GREEN_START << " Initial yaw consumed once; initial yaw subscription stopped." << COLOR_END << "\n";
+  }
 }
 
 void B2WEstimator::initialYawCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& initialYawPtr) {
@@ -418,6 +512,9 @@ void B2WEstimator::initialYawCallback_(const geometry_msgs::msg::PoseWithCovaria
 
   {
     std::lock_guard<std::mutex> lock(initialYawMutex_);
+    if (initialYawConsumed_) {
+      return;
+    }
     haveInitialYaw_ = true;
     initialYawFrame_ = yawFrame;
     initialYawRad_ = yawRad;
@@ -626,6 +723,7 @@ void B2WEstimator::gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstShar
 
     bool have_R_W_B_full = false;
     Eigen::Matrix3d R_W_B_full = Eigen::Matrix3d::Identity();
+    bool usedInitialHeading = false;
 
     bool useConfiguredFallback = !useYawInitialGuessFromHeading_;
     if (useYawInitialGuessFromHeading_) {
@@ -633,16 +731,33 @@ void B2WEstimator::gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstShar
       double headingYawVariance = 0.0;
       std::string headingFrame;
       if (getFreshInitialYaw_(timeK, headingYaw, headingYawVariance, headingFrame)) {
-        initYaw_W_Frame = headingYaw;
-        initYawFrame = headingFrame;
+        double imuYaw = 0.0;
+        if (!transformInitialYawToImu_(headingYaw, headingFrame, imuYaw)) {
+          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                               "Waiting for static transform before converting initial yaw from '%s' to IMU frame.",
+                               headingFrame.c_str());
+          return;
+        }
+
+        initYaw_W_Frame = imuYaw;
+        initYawFrame = staticTransformsPtr_->getImuFrame();
         initPositionFrame = gnssFrame;
         W_t_W_InitPosition = W_t_W_Gnss;
+        usedInitialHeading = true;
         if (!initialYawUsedLogged_) {
-          REGULAR_COUT << GREEN_START
-                       << "GNSS initialization using NovAtel heading initial yaw. "
-                       << "yaw(W<-" << initYawFrame << ") [deg]=" << (180.0 * initYaw_W_Frame / M_PI)
-                       << " variance=" << headingYawVariance
-                       << COLOR_END << "\n";
+          REGULAR_COUT << GREEN_START << "GNSS initialization using NovAtel HEADING2 initial yaw. "
+                       << "measured yaw(W<-base_to_rover) [deg]=" << (180.0 * headingYaw / M_PI);
+          if (lastInitialHeadingUsedBaselineFrames_) {
+            std::cout << " base_frame=" << initialHeadingBaseFrame_
+                      << " rover_frame=" << initialHeadingRoverFrame_
+                      << " baseline_yaw(" << initYawFrame << "<-base_to_rover) [deg]="
+                      << (180.0 * lastInitialHeadingBaselineYawInImuRad_ / M_PI);
+          } else {
+            std::cout << " source_frame=" << headingFrame;
+          }
+          std::cout << " transformed yaw(W<-" << initYawFrame << ") [deg]=" << (180.0 * initYaw_W_Frame / M_PI)
+                    << " variance=" << headingYawVariance
+                    << COLOR_END << "\n";
           initialYawUsedLogged_ = true;
         }
       } else {
@@ -737,6 +852,9 @@ void B2WEstimator::gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstShar
     if (this->initYawAndPositionInWorld(initYaw_W_Frame, W_t_W_InitPosition,
                                         /*frame1=*/initYawFrame,
                                         /*frame2=*/initPositionFrame)) {
+      if (usedInitialHeading) {
+        consumeInitialYaw_();
+      }
       REGULAR_COUT << GREEN_START
                    << " GNSS initialization of yaw and position successful. "
                    << "yaw_frame=" << initYawFrame
@@ -931,7 +1049,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
       lio_T_M_Lk, lioPoseUnaryNoise_,
       lioFixedFrame, worldFrame_,
       initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_,
-      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
+      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
     return;
@@ -1059,7 +1177,7 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
       worldFrame_,
       initialSe3AlignmentNoise_,
       vioSe3AlignmentRandomWalk_,
-      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
+      graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::ReactivateAndContinue);
 
   if (vioUnaryCallbackCounter <= 2) {
     // skip first few samples

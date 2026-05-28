@@ -9,9 +9,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ## Compile as C++17, supported in ROS Noetic and newer
 # add_compile_options(-std=c++17)
 
-add_compile_options(
-  -O3 -mtune=native -flto -funroll-loops
-  -fno-math-errno)
+option(PPS_REPLAY_FAST_BUILD "Disable expensive optimization flags for replay verification builds" OFF)
+if(PPS_REPLAY_FAST_BUILD)
+  message(STATUS "PPS replay fast build enabled for ${PROJECT_NAME}")
+  add_compile_options(-O1 -fno-lto -fno-math-errno)
+else()
+  add_compile_options(
+    -O3 -mtune=native -flto -funroll-loops
+    -fno-math-errno)
+endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
