@@ -263,7 +263,7 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
-  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) * std::pow(graphConfigPtr_->biasAccOmegaInit_, 2));
+  // GTSAM removed setBiasAccOmegaInit(); initial bias uncertainty is handled by the bias prior factor below.
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior_, graphConfigPtr_->gyroBiasPrior_);
