@@ -6,7 +6,7 @@
       useGnss: true
       useLioOdometry: true
       useLioBetweenOdometry: false
-      useVioOdometry: true
+      useVioOdometry: false
       useVioOdometryBetween: false
       ## Rates
       lioOdometryRate: 10
