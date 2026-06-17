@@ -30,9 +30,9 @@
 
     # Noise Parameters
     noise_params:
-      gnssPositionOutlierThreshold: 5.0 # meters
+      gnssPositionOutlierThreshold: 15.0 # meters
       ## LiDAR
-      lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioPoseUnaryNoiseDensity: [ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       lioPoseBetweenNoiseDensity: [ 0.02, 0.02, 0.02, 0.002, 0.002, 0.002 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       ## VIO
       vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)

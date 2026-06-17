@@ -870,16 +870,9 @@ void B2WEstimator::gnssFixCallback_(const sensor_msgs::msg::NavSatFix::ConstShar
     const double timestampSec =
         gnssFixPtr->header.stamp.sec + gnssFixPtr->header.stamp.nanosec * 1e-9;
 
-    // graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
-    //     "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
-    //     graph_msf::RobustNorm::None(),
-    //     timestampSec, gnssPositionOutlierThreshold_,
-    //     W_t_W_Gnss, estStdDevXYZ,
-    //     fixedFrame, worldFrame_);
-
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::Huber(0.25),
+        graph_msf::RobustNorm::None(),
         timestampSec, gnssPositionOutlierThreshold_,
         W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, worldFrame_);
