@@ -255,6 +255,11 @@ void B2WEstimator::initializePublishers() {
       .keep_last(1);
 
     pubStatus_ = this->create_publisher<std_msgs::msg::Bool>("/graph_msf/alignment_status", qos_reliable_latched);
+    alignmentStatus_.store(false, std::memory_order_relaxed);
+    alignmentStatusTimer_ = this->create_wall_timer(std::chrono::seconds(1), [this]() {
+      publishAlignmentStatus_();
+    });
+    publishAlignmentStatus_();
 
     pubReferenceNavSatFixCoordinates_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position", qos_reliable_latched);
@@ -262,6 +267,16 @@ void B2WEstimator::initializePublishers() {
     pubReferenceNavSatFixCoordinatesENU_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(
       "/graph_msf/reference_gnss_position_enu", qos_reliable_latched);
   }
+}
+
+void B2WEstimator::publishAlignmentStatus_() {
+  if (!pubStatus_) {
+    return;
+  }
+
+  std_msgs::msg::Bool statusMsg;
+  statusMsg.data = alignmentStatus_.load(std::memory_order_relaxed);
+  pubStatus_->publish(statusMsg);
 }
 
 void B2WEstimator::initializeSubscribers() {
@@ -493,7 +508,8 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
                  << "\033[0m";
 
     REGULAR_COUT << " GNSS Handler initialized." << COLOR_END << "\n";
-    pubStatus_->publish(std_msgs::msg::Bool().set__data(false));
+    alignmentStatus_.store(false, std::memory_order_relaxed);
+    publishAlignmentStatus_();
   }
 
   Eigen::Vector3d W_t_W_Gnss = Eigen::Vector3d::Zero();
@@ -514,6 +530,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
     bool have_R_W_B_full = false;
     Eigen::Matrix3d R_W_B_full = Eigen::Matrix3d::Identity();
+    bool trajectoryAlignmentSucceeded = false;
 
     if (gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
       initYaw_W_Base = gnssHandlerPtr_->getGlobalYawDegFromFile() / 180.0 * M_PI;
@@ -559,7 +576,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
       const Eigen::Vector3d x_W = R_W_B_full.col(0);
       initYaw_W_Base = std::atan2(x_W.y(), x_W.x());
 
-      pubStatus_->publish(std_msgs::msg::Bool().set__data(true));
+      trajectoryAlignmentSucceeded = true;
       REGULAR_COUT << GREEN_START
                    << "Trajectory Alignment Successful. "
                    << "yaw(W<-M) [deg]=" << (180.0 * yaw_W_M / M_PI)
@@ -573,11 +590,18 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     }
     const Eigen::Vector3d W_t_W_Base = W_t_W_Gnss - R_W_B_forLever * t_B_G;
 
-    if (this->initYawAndPositionInWorld(initYaw_W_Base, W_t_W_Base,
-                                        /*frame1=*/baseFrame,
-                                        /*frame2=*/baseFrame)) {
+    const bool yawPositionInitSucceeded = this->initYawAndPositionInWorld(initYaw_W_Base, W_t_W_Base,
+                                                                          /*frame1=*/baseFrame,
+                                                                          /*frame2=*/baseFrame);
+    if (yawPositionInitSucceeded) {
+      if (trajectoryAlignmentSucceeded) {
+        alignmentStatus_.store(true, std::memory_order_relaxed);
+        publishAlignmentStatus_();
+      }
       REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << COLOR_END << "\n";
     } else {
+      alignmentStatus_.store(false, std::memory_order_relaxed);
+      publishAlignmentStatus_();
       REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << COLOR_END << "\n";
     }
 

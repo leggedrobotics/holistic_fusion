@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #pragma once
 
 // std
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <deque>
@@ -101,6 +102,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   void gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr);
   void vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& vioOdomPtr);
   void vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& vioOdomPtr);
+  void publishAlignmentStatus_();
 
   class FrequencyChecker {
    public:
@@ -172,6 +174,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   // Publishers
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pubGnssPoseWithCov;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pubStatus_;
+  rclcpp::TimerBase::SharedPtr alignmentStatusTimer_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasGNSSPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioPath_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubMeasMapLioLidarPath_;
@@ -207,6 +210,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   bool useLioOdometryFlag_ = true;
   bool useVioOdometryFlag_ = false;
   bool useVioOdometryBetweenFlag_ = false;
+  std::atomic_bool alignmentStatus_{false};
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)

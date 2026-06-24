@@ -47,6 +47,8 @@ def generate_launch_description():
             executable="b2w_estimator_graph_ros2_node",
             name="b2w_estimator_node",
             output="screen",
+            respawn=True,
+            respawn_delay=2.0,
             parameters=[
                 {"use_sim_time": use_sim_time},
                 {"launch/optimizationResultLoggingPath": logging_dir_location},
