@@ -30,6 +30,9 @@ void GraphMsfRos2::declareRosParams() {
 
   // Topics
   this->declare_parameter("topics.imu", std::string(""));
+  if (!this->has_parameter("tf_prefix")) {
+    this->declare_parameter("tf_prefix", std::string(""));
+  }
 
   // Initialization Params
   this->declare_parameter("initialization_params.estimateGravityFromImu", false);

@@ -146,6 +146,7 @@ void GraphMsfRos2::readParams() {
   if (imuTopic_.empty() || imuTopic_ == "__REQUIRED__" || imuTopic_ == "TODO") {
     throw std::runtime_error("GraphMsfRos2: topics.imu must be set (empty/placeholder).");
   }
+  tfPrefix_ = stripFrameSlashes(tryGetParam<std::string>(this, "tf_prefix"));
 
   // Set frames
   staticTransformsPtr_->setWorldFrame(tryGetParam<std::string>(this, "extrinsics.worldFrame"));
