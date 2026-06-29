@@ -617,8 +617,8 @@ void GraphMsfRos2::publishTfTreeTransform(const std::string& parentFrameName, co
                                           const Eigen::Isometry3d& T_frame_childFrame) const {
   geometry_msgs::msg::TransformStamped transformStamped;
   transformStamped.header.stamp = rclcpp::Time(timeStamp * 1e9);
-  transformStamped.header.frame_id = parentFrameName;
-  transformStamped.child_frame_id = childFrameName;
+  transformStamped.header.frame_id = frameWithTfPrefix(parentFrameName);
+  transformStamped.child_frame_id = frameWithTfPrefix(childFrameName);
   transformStamped.transform.translation.x = T_frame_childFrame.translation().x();
   transformStamped.transform.translation.y = T_frame_childFrame.translation().y();
   transformStamped.transform.translation.z = T_frame_childFrame.translation().z();
@@ -632,6 +632,33 @@ void GraphMsfRos2::publishTfTreeTransform(const std::string& parentFrameName, co
   //   tf2::convert(T_frame_childFrame, transformStamped.transform);
 
   tfBroadcaster_->sendTransform(transformStamped);
+}
+
+std::string GraphMsfRos2::stripFrameSlashes(const std::string& frameName) {
+  std::string stripped = frameName;
+  while (!stripped.empty() && stripped.front() == '/') {
+    stripped.erase(stripped.begin());
+  }
+  while (!stripped.empty() && stripped.back() == '/') {
+    stripped.pop_back();
+  }
+  return stripped;
+}
+
+std::string GraphMsfRos2::frameWithTfPrefix(const std::string& frameName) const {
+  const std::string strippedFrame = stripFrameSlashes(frameName);
+  if (tfPrefix_.empty() || strippedFrame.empty()) {
+    return strippedFrame;
+  }
+
+  const std::string worldFrame = staticTransformsPtr_ ? stripFrameSlashes(staticTransformsPtr_->getWorldFrame()) : "";
+  if (!worldFrame.empty() && strippedFrame == worldFrame) {
+    return strippedFrame;
+  }
+  if (strippedFrame == tfPrefix_ || strippedFrame.rfind(tfPrefix_ + "/", 0) == 0) {
+    return strippedFrame;
+  }
+  return tfPrefix_ + "/" + strippedFrame;
 }
 
 void GraphMsfRos2::publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,

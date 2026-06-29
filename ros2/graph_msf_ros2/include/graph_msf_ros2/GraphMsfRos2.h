@@ -132,6 +132,7 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
 
   void publishTfTreeTransform(const std::string& frameName, const std::string& childFrameName, double timeStamp,
                               const Eigen::Isometry3d& T_frame_childFrame) const;
+  std::string frameWithTfPrefix(const std::string& frameName) const;
   void publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
   void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,
@@ -158,8 +159,11 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   std::string referenceFrameAlignedNameId = "_graph_msf_aligned";
   std::string sensorFrameCorrectedNameId = "_graph_msf_corrected";
   std::string optimizationResultLoggingPath = "";
+  std::string tfPrefix_ = "";
 
  private:
+  static std::string stripFrameSlashes(const std::string& frameName);
+
   // Topics
   std::string imuTopic_ = "";
 
