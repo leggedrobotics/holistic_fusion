@@ -10,6 +10,8 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/base/types.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
