@@ -85,7 +85,12 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
-  imuParamsPtr_->setBiasAccOmegaInit(gtsam::Matrix66::Identity(6, 6) * std::pow(graphConfigPtr_->biasAccOmegaInit_, 2));
+  gtsam::Matrix66 bias_covariance_for_integration = gtsam::Matrix66::Zero();
+  bias_covariance_for_integration.topLeftCorner<3, 3>() =
+      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasAccStdDevForIntegration_, 2);
+  bias_covariance_for_integration.bottomRightCorner<3, 3>() =
+      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasOmegaStdDevForIntegration_, 2);
+  imuParamsPtr_->setBiasAccOmegaInit(bias_covariance_for_integration);
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior_, graphConfigPtr_->gyroBiasPrior_);
@@ -101,17 +106,17 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialOrientationNoiseDensity_,
-       graphConfigPtr_->initialOrientationNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_,
-       graphConfigPtr_->initialPositionNoiseDensity_, graphConfigPtr_->initialPositionNoiseDensity_)
+      (gtsam::Vector(6) << graphConfigPtr_->initialOrientationStdDev_, graphConfigPtr_->initialOrientationStdDev_,
+       graphConfigPtr_->initialOrientationStdDev_, graphConfigPtr_->initialPositionStdDev_,
+       graphConfigPtr_->initialPositionStdDev_, graphConfigPtr_->initialPositionStdDev_)
           .finished());                                                                                             // rad,rad,rad,m, m, m
-  auto priorVelocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, graphConfigPtr_->initialVelocityNoiseDensity_);  // m/s
-  auto priorBiasNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasNoiseDensity_,  // m/s^2
-                                                             graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
-                                                             graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
-                                                             graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
-                                                             graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
-                                                             graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
+  auto priorVelocityNoise = gtsam::noiseModel::Isotropic::Sigma(3, graphConfigPtr_->initialVelocityStdDev_);  // m/s
+  auto priorBiasNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasStdDev_,  // m/s^2
+                                                             graphConfigPtr_->initialAccBiasStdDev_,                      // m/s^2
+                                                             graphConfigPtr_->initialAccBiasStdDev_,                      // m/s^2
+                                                             graphConfigPtr_->initialGyroBiasStdDev_,                     // rad/s
+                                                             graphConfigPtr_->initialGyroBiasStdDev_,                     // rad/s
+                                                             graphConfigPtr_->initialGyroBiasStdDev_)                     // rad/s
                                                                 .finished());  // acc, acc, acc, gyro, gyro, gyro
 
   // Pre-allocate

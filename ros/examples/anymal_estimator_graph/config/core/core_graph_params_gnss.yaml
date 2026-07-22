@@ -51,16 +51,17 @@ noise_params:
   ### Bias
   accBiasRandomWalkNoiseDensity: 1.0e-02  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]
   gyrBiasRandomWalkNoiseDensity: 9.33e-03 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz]
-  biasAccOmegaInit: 1.0e-02               # StdDev of bias at start
+  biasAccStdDevForIntegration: 1.0e-02    # Accelerometer bias StdDev used for IMU preintegration
+  biasOmegaStdDevForIntegration: 1.0e-02  # Gyroscope bias StdDev used for IMU preintegration
   accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
   gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
   ## Initial State
   ### With GNSS
-  initialPositionNoiseDensity: 10.0    # Prior/starting value of position
-  initialOrientationNoiseDensity: 3.14 # Prior/starting value of orientation
-  initialVelocityNoiseDensity: 10.0 # Prior/starting value of velocity
-  initialAccBiasNoiseDensity: 1.0e-03  # Prior/starting value of accelerometer bias
-  initialGyroBiasNoiseDensity: 1.0e-03 # Prior/starting value of gyroscope bias
+  initialPositionStdDev: 10.0       # Initial position prior StdDev [m]
+  initialOrientationStdDev: 3.14    # Initial orientation prior StdDev [rad]
+  initialVelocityStdDev: 10.0       # Initial velocity prior StdDev [m/s]
+  initialAccBiasStdDev: 1.0e-03     # Initial accelerometer-bias prior StdDev [m/s^2]
+  initialGyroBiasStdDev: 1.0e-03    # Initial gyroscope-bias prior StdDev [rad/s]
 
 # Relinearization
 relinearization_params:

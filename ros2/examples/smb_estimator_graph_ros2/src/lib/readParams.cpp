@@ -40,10 +40,10 @@ void SmbEstimator::readParams() {
   vioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryRate");
 
   // Alignment Parameters
-  const auto initialSe3AlignmentNoiseDensity =
-      graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.initialSe3AlignmentNoiseDensity");
-  initialSe3AlignmentNoise_ << initialSe3AlignmentNoiseDensity[0], initialSe3AlignmentNoiseDensity[1], initialSe3AlignmentNoiseDensity[2],
-      initialSe3AlignmentNoiseDensity[3], initialSe3AlignmentNoiseDensity[4], initialSe3AlignmentNoiseDensity[5];
+  const auto initialSe3AlignmentStdDev =
+      graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.initialSe3AlignmentStdDev");
+  initialSe3AlignmentNoise_ << initialSe3AlignmentStdDev[0], initialSe3AlignmentStdDev[1], initialSe3AlignmentStdDev[2],
+      initialSe3AlignmentStdDev[3], initialSe3AlignmentStdDev[4], initialSe3AlignmentStdDev[5];
   const auto lioSe3AlignmentRandomWalk =
       graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.lioSe3AlignmentRandomWalk");
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
@@ -52,7 +52,7 @@ void SmbEstimator::readParams() {
   // Noise Parameters
   /// LiDAR Odometry
   const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseUnaryNoiseDensity");  // roll,pitch,yaw,x,y,z
+            graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseUnaryStdDev");  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
   /// Between

@@ -252,21 +252,21 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << this->latestPose_ << std::endl;
         // Uncertainty
         const auto priorBiasNoise =
-            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasNoiseDensity_,  // m/s^2
-                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
-                                                 graphConfigPtr_->initialAccBiasNoiseDensity_,                      // m/s^2
-                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
-                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_,                     // rad/s
-                                                 graphConfigPtr_->initialGyroBiasNoiseDensity_)                     // rad/s
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialAccBiasStdDev_,  // m/s^2
+                                                 graphConfigPtr_->initialAccBiasStdDev_,                      // m/s^2
+                                                 graphConfigPtr_->initialAccBiasStdDev_,                      // m/s^2
+                                                 graphConfigPtr_->initialGyroBiasStdDev_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasStdDev_,                     // rad/s
+                                                 graphConfigPtr_->initialGyroBiasStdDev_)                     // rad/s
                                                     .finished());  // acc, acc, acc, gyro, gyro, gyro
 
         const auto priorPoseNoise =
-            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialOrientationNoiseDensity_,  // rad
-                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
-                                                 graphConfigPtr_->initialOrientationNoiseDensity_,                      // rad
-                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
-                                                 graphConfigPtr_->initialPositionNoiseDensity_,                         // m
-                                                 graphConfigPtr_->initialPositionNoiseDensity_)                         // m
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << graphConfigPtr_->initialOrientationStdDev_,  // rad
+                                                 graphConfigPtr_->initialOrientationStdDev_,                      // rad
+                                                 graphConfigPtr_->initialOrientationStdDev_,                      // rad
+                                                 graphConfigPtr_->initialPositionStdDev_,                         // m
+                                                 graphConfigPtr_->initialPositionStdDev_,                         // m
+                                                 graphConfigPtr_->initialPositionStdDev_)                         // m
                                                     .finished());
         // Add additional factor for bias
         gtsam::NonlinearFactorGraph newGraphFactorsExtended = newGraphFactors;

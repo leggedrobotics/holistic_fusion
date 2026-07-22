@@ -63,14 +63,15 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("noise_params.omegaCoriolis", 0.0);
   this->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.biasAccOmegaInit", 0.0);
+  this->declare_parameter("noise_params.biasAccStdDevForIntegration", 0.0);
+  this->declare_parameter("noise_params.biasOmegaStdDevForIntegration", 0.0);
   this->declare_parameter("noise_params.accBiasPrior", 0.0);
   this->declare_parameter("noise_params.gyrBiasPrior", 0.0);
-  this->declare_parameter("noise_params.initialPositionNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.initialOrientationNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.initialVelocityNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.initialAccBiasNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.initialGyroBiasNoiseDensity", 0.0);
+  this->declare_parameter("noise_params.initialPositionStdDev", 0.0);
+  this->declare_parameter("noise_params.initialOrientationStdDev", 0.0);
+  this->declare_parameter("noise_params.initialVelocityStdDev", 0.0);
+  this->declare_parameter("noise_params.initialAccBiasStdDev", 0.0);
+  this->declare_parameter("noise_params.initialGyroBiasStdDev", 0.0);
 
   // Re-linearization Params
   this->declare_parameter("relinearization_params.positionReLinTh", 0.0);

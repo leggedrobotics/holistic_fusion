@@ -40,11 +40,11 @@ void ExcavatorEstimator::readParams(const ros::NodeHandle& privateNode) {
 
   // Alignment Parameters ----------------------------
   /// Initial Se3 Alignment
-  auto initialSe3AlignmentNoiseDensity =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
-  initialSe3AlignmentNoiseDensity_ << initialSe3AlignmentNoiseDensity[0], initialSe3AlignmentNoiseDensity[1],
-      initialSe3AlignmentNoiseDensity[2], initialSe3AlignmentNoiseDensity[3], initialSe3AlignmentNoiseDensity[4],
-      initialSe3AlignmentNoiseDensity[5];
+  auto initialSe3AlignmentStdDev =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
+  initialSe3AlignmentStdDev_ << initialSe3AlignmentStdDev[0], initialSe3AlignmentStdDev[1],
+      initialSe3AlignmentStdDev[2], initialSe3AlignmentStdDev[3], initialSe3AlignmentStdDev[4],
+      initialSe3AlignmentStdDev[5];
   ///
   auto lioSe3AlignmentRandomWalk = graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
@@ -53,7 +53,7 @@ void ExcavatorEstimator::readParams(const ros::NodeHandle& privateNode) {
   /// Noise Parameters ----
   /// LiDAR Odometry
   const auto lioPoseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << lioPoseUnaryNoise[0], lioPoseUnaryNoise[1], lioPoseUnaryNoise[2], lioPoseUnaryNoise[3], lioPoseUnaryNoise[4],
       lioPoseUnaryNoise[5];
   /// Gnss

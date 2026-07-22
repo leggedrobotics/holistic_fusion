@@ -94,7 +94,10 @@ void GraphMsfRos2::readParams() {
       tryGetParam<double>(this, "noise_params.accBiasRandomWalkNoiseDensity");
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ =
       tryGetParam<double>(this, "noise_params.gyrBiasRandomWalkNoiseDensity");
-  graphConfigPtr_->biasAccOmegaInit_ = tryGetParam<double>(this, "noise_params.biasAccOmegaInit");
+  graphConfigPtr_->biasAccStdDevForIntegration_ =
+      tryGetParam<double>(this, "noise_params.biasAccStdDevForIntegration");
+  graphConfigPtr_->biasOmegaStdDevForIntegration_ =
+      tryGetParam<double>(this, "noise_params.biasOmegaStdDevForIntegration");
 
   const double accBiasPrior = tryGetParam<double>(this, "noise_params.accBiasPrior");
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
@@ -103,15 +106,11 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
 
   // Initial State
-  graphConfigPtr_->initialPositionNoiseDensity_ =
-      tryGetParam<double>(this, "noise_params.initialPositionNoiseDensity");
-  graphConfigPtr_->initialOrientationNoiseDensity_ =
-      tryGetParam<double>(this, "noise_params.initialOrientationNoiseDensity");
-  graphConfigPtr_->initialVelocityNoiseDensity_ =
-      tryGetParam<double>(this, "noise_params.initialVelocityNoiseDensity");
-  graphConfigPtr_->initialAccBiasNoiseDensity_ = tryGetParam<double>(this, "noise_params.initialAccBiasNoiseDensity");
-  graphConfigPtr_->initialGyroBiasNoiseDensity_ =
-      tryGetParam<double>(this, "noise_params.initialGyroBiasNoiseDensity");
+  graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>(this, "noise_params.initialPositionStdDev");
+  graphConfigPtr_->initialOrientationStdDev_ = tryGetParam<double>(this, "noise_params.initialOrientationStdDev");
+  graphConfigPtr_->initialVelocityStdDev_ = tryGetParam<double>(this, "noise_params.initialVelocityStdDev");
+  graphConfigPtr_->initialAccBiasStdDev_ = tryGetParam<double>(this, "noise_params.initialAccBiasStdDev");
+  graphConfigPtr_->initialGyroBiasStdDev_ = tryGetParam<double>(this, "noise_params.initialGyroBiasStdDev");
 
   // Re-linearization
   graphConfigPtr_->positionReLinTh_ = tryGetParam<double>(this, "relinearization_params.positionReLinTh");

@@ -36,10 +36,10 @@ void SmbEstimator::readParams(const ros::NodeHandle& privateNode) {
   vioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
 
   // Alignment Parameters
-  const auto initialSe3AlignmentNoiseDensity =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
-  initialSe3AlignmentNoise_ << initialSe3AlignmentNoiseDensity[0], initialSe3AlignmentNoiseDensity[1], initialSe3AlignmentNoiseDensity[2],
-      initialSe3AlignmentNoiseDensity[3], initialSe3AlignmentNoiseDensity[4], initialSe3AlignmentNoiseDensity[5];
+  const auto initialSe3AlignmentStdDev =
+      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
+  initialSe3AlignmentNoise_ << initialSe3AlignmentStdDev[0], initialSe3AlignmentStdDev[1], initialSe3AlignmentStdDev[2],
+      initialSe3AlignmentStdDev[3], initialSe3AlignmentStdDev[4], initialSe3AlignmentStdDev[5];
   const auto lioSe3AlignmentRandomWalk =
       graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
@@ -48,7 +48,7 @@ void SmbEstimator::readParams(const ros::NodeHandle& privateNode) {
   // Noise Parameters
   /// LiDAR Odometry
   const auto poseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+            graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
   /// Between

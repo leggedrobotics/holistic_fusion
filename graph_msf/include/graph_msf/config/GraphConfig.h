@@ -79,15 +79,16 @@ struct GraphConfig {
   // Bias
   double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
   double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]
-  double biasAccOmegaInit_ = 0.0;
+  double biasAccStdDevForIntegration_ = 0.0;
+  double biasOmegaStdDevForIntegration_ = 0.0;
   Eigen::Vector3d accBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
   Eigen::Vector3d gyroBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
   // Initial State
-  double initialPositionNoiseDensity_ = 1e-01;
-  double initialOrientationNoiseDensity_ = 1e-01;
-  double initialVelocityNoiseDensity_ = 1e-01;
-  double initialAccBiasNoiseDensity_ = 1e-01;
-  double initialGyroBiasNoiseDensity_ = 1e-01;
+  double initialPositionStdDev_ = 1e-01;
+  double initialOrientationStdDev_ = 1e-01;
+  double initialVelocityStdDev_ = 1e-01;
+  double initialAccBiasStdDev_ = 1e-01;
+  double initialGyroBiasStdDev_ = 1e-01;
 
   // Relinearization
   // Thresholds

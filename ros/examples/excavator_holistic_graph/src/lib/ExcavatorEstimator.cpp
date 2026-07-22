@@ -117,7 +117,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
       lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, staticTransformsPtr_->getWorldFrame(),
-      initialSe3AlignmentNoiseDensity_, lioSe3AlignmentRandomWalk_);
+      initialSe3AlignmentStdDev_, lioSe3AlignmentRandomWalk_);
 
   if (lidarOdometryCallbackCounter__ <= 2) {
     return;
