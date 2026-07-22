@@ -34,8 +34,8 @@ noise_params:
   gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
   omegaCoriolis: 0.0                      #Coriolis effect
   ### Bias
-  accBiasRandomWalk: 1.0e-05 #gnss:1.0e-06 #lidar: 1e-01              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
-  gyrBiasRandomWalk: 9.33e-08 #gnss:9.33e-08 #lidar: 9.33e-01            #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08
+  accBiasRandomWalkNoiseDensity: 1.0e-05 # Continuous-time accelerometer bias random-walk StdDev [m/s^3/√Hz]
+  gyrBiasRandomWalkNoiseDensity: 9.33e-08 # Continuous-time gyroscope bias random-walk StdDev [rad/s^2/√Hz]
   biasAccStdDevForIntegration: 1.0e-03      # Accelerometer bias StdDev used for IMU preintegration
   biasOmegaStdDevForIntegration: 1.0e-03    # Gyroscope bias StdDev used for IMU preintegration
   accBiasPrior: 0.0                        #Prior/starting value of accelerometer bias
