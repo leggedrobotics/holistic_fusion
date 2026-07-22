@@ -39,7 +39,6 @@ relative measurements.
 **Disclaimer:**
 The framework is still under development and will be updated, extended, and more generalized in the
 future.
-**More instructions will be added to the ReadTheDocs page soon.**
 
 <p align="center">
 <img src="docs/docs_src/img/hf_illustration.png" width="100%" height="60%">
@@ -53,31 +52,34 @@ This repository contains the following modules:
    can be used with any communication layer (including ROS1 and ROS2).
 2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for GraphMsf in ROS. It is dependent on
    GraphMsf and ROS.
-3. [ROS1 Examples](./examples/ros): Examples on how to use GraphMsf and GraphMsfRos.
-    - [ANYmal Estimator - Quadrupedal Robot](./examples/ros/anymal_estimator_graph): This is the implementation of the
+3. [Graph MSF ROS2](./ros2/graph_msf_ros2): The ROS2 integration layer for GraphMsf, including ROS2 publishers,
+   subscribers, services, parameter handling, and TF-based static transforms.
+4. [ROS1 Examples](./ros/examples): Examples on how to use GraphMsf and GraphMsfRos.
+    - [ANYmal Estimator - Quadrupedal Robot](./ros/examples/anymal_estimator_graph): This is the implementation of the
       ANYmal quadrupedal robot estimator as presented in [1], including IMU, GNSS, leg odometry, and absolute LiDAR
       measurements.
-    - [HEAP - Excavator](./examples/ros/excavator_holistic_graph): This is the implementation of the HEAP excavator as
+    - [HEAP - Excavator](./ros/examples/excavator_holistic_graph): This is the implementation of the HEAP excavator as
       presented in [1], including IMU, two GNSS antennas, and absolute LiDAR measurements.
-    - [Grand Tour GT Generation - Leica Total Station Position & GNSS](./examples/ros/atn_position3_fuser): The GT
+    - [Grand Tour GT Generation - Leica Total Station Position & GNSS](./ros/examples/atn_position3_fuser): The GT
       generation estimator aligning two non-drifting trajectories: i) the Leica total station R3 position, and ii) the
       Novotel offline optimized SE(3) trajectory.
-    - [Super Mega Bot - Robot for Teaching Purposes](./examples/ros/smb_estimator_graph): A wheeled robot integrating
+    - [Super Mega Bot - Robot for Teaching Purposes](./ros/examples/smb_estimator_graph): A wheeled robot integrating
       IMU, absolute LiDAR poses, and wheel encoders.
-    - [Pure IMU Integration](./examples/ros/pure_imu_integration): A simple example of performing pure IMU integration
+    - [Pure IMU Integration](./ros/examples/pure_imu_integration): A simple example of performing pure IMU integration
       for dead-reckoning performance testing.
-    - [IMU Pose3 Fuser](./examples/ros/imu_pose3_fuser): A simple example of fusing an IMU and an SE(3) pose
+    - [IMU Pose3 Fuser](./ros/examples/imu_pose3_fuser): A simple example of fusing an IMU and an SE(3) pose
       measurement.
-    - [Graph MSF ROS Examples](./examples/ros/graph_msf_ros_examples): A meta-package bundling all the aforementioned
+    - [Graph MSF ROS Examples](./ros/examples/graph_msf_ros_examples): A meta-package bundling all the aforementioned
       ROS examples in one package for convenience.
-4. [ROS2 Examples](./examples/ros2): COMING SOON
+5. [ROS2 Examples](./ros2/examples): Examples built on GraphMsfRos2.
+    - [Super Mega Bot Estimator](./ros2/examples/smb_estimator_graph_ros2): A ROS2 estimator demonstrating IMU fusion
+      with configurable absolute LiDAR odometry, VIO, wheel-odometry between factors, and wheel linear-velocity
+      factors. The package includes launch files for live operation, simulation, and rosbag replay.
 
 ## Instructions
 
 Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions
 regarding installation and usage.
-
-***Note that the documentation is still under construction and will be updated soon.**
 
 ## Code Documentation
 
@@ -87,13 +89,17 @@ Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/d
 
 If you find this code useful or use it in your work, please consider citing:
 
-**[1] arXiv 2025**
+### [1] Holistic Fusion
 
-* [Project Page](https://leggedrobotics.github.io/holistic_fusion/)
-* [Paper](https://arxiv.org/abs/2504.06479)
-* [Video](https://youtube.com/leggedrobotics)
+*Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs*
 
-```
+arXiv, 2025
+
+[Project page](https://leggedrobotics.github.io/holistic_fusion/) ·
+[Paper](https://arxiv.org/abs/2504.06479) ·
+[Video](https://youtube.com/leggedrobotics)
+
+```bibtex
 @misc{nubert2025holisticfusiontasksetupagnostic,
       title={Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs}, 
       author={Julian Nubert and Turcan Tuna and Jonas Frey and Cesar Cadena and Katherine J. Kuchenbecker and Shehryar Khattak and Marco Hutter},
@@ -105,13 +111,17 @@ If you find this code useful or use it in your work, please consider citing:
 }
 ```
 
-**[2] ICRA2022, Philadelphia**
+### [2] Graph-Based Multi-Sensor Fusion
 
-* [Project Page](https://sites.google.com/leggedrobotics.com/gmfcl).
-* [Paper](https://arxiv.org/pdf/2203.01389.pdf)
-* [Video](https://youtu.be/syTV7Ui36jg)
+*Graph-Based Multi-Sensor Fusion for Consistent Localization of Autonomous Construction Robots*
 
-```
+IEEE International Conference on Robotics and Automation (ICRA), Philadelphia, 2022
+
+[Project page](https://sites.google.com/leggedrobotics.com/gmfcl) ·
+[Paper](https://arxiv.org/abs/2203.01389) ·
+[Video](https://youtu.be/syTV7Ui36jg)
+
+```bibtex
 @inproceedings{nubert2022graph,
   title={Graph-based Multi-sensor Fusion for Consistent Localization of Autonomous Construction Robots},
   author={Nubert, Julian and Khattak, Shehryar and Hutter, Marco},
