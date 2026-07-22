@@ -39,11 +39,11 @@ void SmbEstimator::setup() {
   this->declare_parameter("sensor_params.vioOdometryRate", 0);
 
   // Alignment parameters (vector of double)
-  this->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("alignment_params.initialSe3AlignmentStdDev", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
   // Noise parameters (vectors of double)
-  this->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.lioPoseUnaryStdDev", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.wheelPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.wheelLinearVelocitiesNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});

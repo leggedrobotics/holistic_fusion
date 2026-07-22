@@ -6,7 +6,7 @@ sensor_params:
 
 # Alignment Parameters
 alignment_params:
-  initialSe3AlignmentNoiseDensity: [ 100.0, 100.0, 100.0, 100.0, 100.0, 100.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+  initialSe3AlignmentStdDev: [ 100.0, 100.0, 100.0, 100.0, 100.0, 100.0 ] # ORDER RPY(rad) - XYZ(meters)
   gnssSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
   prismSe3AlignmentRandomWalk: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 

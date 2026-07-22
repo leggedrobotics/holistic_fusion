@@ -36,7 +36,7 @@ void Position3Estimator::readParams(const ros::NodeHandle& privateNode) {
   // Alignment Parameters ----------------------------
   // Initial SE3 Alignment Noise
   const auto poseAlignmentNoise =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentNoiseDensity", privateNode);
+    graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
   initialSe3AlignmentNoise_ << poseAlignmentNoise[0], poseAlignmentNoise[1], poseAlignmentNoise[2], poseAlignmentNoise[3],
       poseAlignmentNoise[4], poseAlignmentNoise[5];
   // Random Walk

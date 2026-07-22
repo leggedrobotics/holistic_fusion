@@ -86,17 +86,20 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   //// Bias
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/accBiasRandomWalkNoiseDensity", privateNode);
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/gyrBiasRandomWalkNoiseDensity", privateNode);
-  graphConfigPtr_->biasAccOmegaInit_ = tryGetParam<double>("noise_params/biasAccOmegaInit", privateNode);
+  graphConfigPtr_->biasAccStdDevForIntegration_ =
+      tryGetParam<double>("noise_params/biasAccStdDevForIntegration", privateNode);
+  graphConfigPtr_->biasOmegaStdDevForIntegration_ =
+      tryGetParam<double>("noise_params/biasOmegaStdDevForIntegration", privateNode);
   const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
   const double gyroBiasPrior = tryGetParam<double>("noise_params/gyrBiasPrior", privateNode);
   graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
   // Initial State
-  graphConfigPtr_->initialPositionNoiseDensity_ = tryGetParam<double>("noise_params/initialPositionNoiseDensity", privateNode);
-  graphConfigPtr_->initialOrientationNoiseDensity_ = tryGetParam<double>("noise_params/initialOrientationNoiseDensity", privateNode);
-  graphConfigPtr_->initialVelocityNoiseDensity_ = tryGetParam<double>("noise_params/initialVelocityNoiseDensity", privateNode);
-  graphConfigPtr_->initialAccBiasNoiseDensity_ = tryGetParam<double>("noise_params/initialAccBiasNoiseDensity", privateNode);
-  graphConfigPtr_->initialGyroBiasNoiseDensity_ = tryGetParam<double>("noise_params/initialGyroBiasNoiseDensity", privateNode);
+  graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>("noise_params/initialPositionStdDev", privateNode);
+  graphConfigPtr_->initialOrientationStdDev_ = tryGetParam<double>("noise_params/initialOrientationStdDev", privateNode);
+  graphConfigPtr_->initialVelocityStdDev_ = tryGetParam<double>("noise_params/initialVelocityStdDev", privateNode);
+  graphConfigPtr_->initialAccBiasStdDev_ = tryGetParam<double>("noise_params/initialAccBiasStdDev", privateNode);
+  graphConfigPtr_->initialGyroBiasStdDev_ = tryGetParam<double>("noise_params/initialGyroBiasStdDev", privateNode);
 
   // Re-linearization
   /// Thresholds
