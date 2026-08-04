@@ -19,4 +19,6 @@
     <exec_depend>Eigen3</exec_depend>
     <exec_depend>GTSAM</exec_depend>
 
+    <test_depend>gtest</test_depend>
+
 </package>

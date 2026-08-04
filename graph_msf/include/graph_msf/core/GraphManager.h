@@ -9,8 +9,13 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MANAGER_HPP
 
 // C++
+#include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <mutex>
+#include <string>
 #include <vector>
 
 // GTSAM
@@ -41,6 +46,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+enum class UnaryFactorKeyStatus { Ready, Future, Rejected };
+
+struct UnaryFactorStatistics {
+  std::uint64_t added = 0;
+  std::uint64_t deferred = 0;
+  std::uint64_t rejected = 0;
+};
+
 /**
  * @brief GraphManager class
  * @details The GraphManager class is the central class of the GraphMSF library. It manages the graph, the optimization, and the
@@ -51,6 +64,10 @@ class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
   ~GraphManager() {
+    const UnaryFactorStatistics unaryFactorStatistics = getUnaryFactorStatistics();
+    std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END << " Unary factor summary: added="
+              << unaryFactorStatistics.added << ", deferred=" << unaryFactorStatistics.deferred
+              << ", rejected=" << unaryFactorStatistics.rejected << "." << std::endl;
     std::cout << YELLOW_START << "GraphMSF: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
     if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       std::cout << YELLOW_START << "GraphMSF: GraphManager" << COLOR_END
@@ -65,24 +82,27 @@ class GraphManager {
   bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
 
   // IMU at the core -----------------------------------------------------------
-  void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
-                               std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                               const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
+  std::size_t addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
+                                      std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
+                                      const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
 
   // All other measurements -----------------------------------------------------
 
   // Unary commodity methods --> Key Lookup
-  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
+  UnaryFactorKeyStatus getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                const UnaryMeasurement& unaryMeasurement);
+  UnaryFactorKeyStatus getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                const std::string& measurementName, double measurementTime);
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
-  void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                double measurementTime);
+  bool addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+                                const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, double measurementTime);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+  bool addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
                                     const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
@@ -128,6 +148,7 @@ class GraphManager {
   //  auto iterations() const { return additonalIterations_; }
   const GraphState& getOptimizedGraphState() { return optimizedGraphState_; }
   const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
+  UnaryFactorStatistics getUnaryFactorStatistics() const;
 
  protected:
   // Calculate state at key for graph
@@ -173,8 +194,22 @@ class GraphManager {
   void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, double measurementTime,
                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
 
+  void deferUnaryFactor_(double measurementTime, std::string measurementName, std::function<bool()> addFactor);
+  std::size_t addReadyDeferredUnaryFactors_();
+
   // Buffers
   std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
+  struct DeferredUnaryFactor {
+    std::string measurementName;
+    std::function<bool()> addFactor;
+  };
+  std::multimap<double, DeferredUnaryFactor> deferredUnaryFactors_;
+  std::mutex deferredUnaryFactorsMutex_;
+  static constexpr std::size_t kMaxDeferredUnaryFactors_ = 100;
+  static constexpr double kMaxDeferredUnaryFactorFutureSeconds_ = 1.0;
+  std::atomic<std::uint64_t> unaryFactorsAdded_{0};
+  std::atomic<std::uint64_t> unaryFactorsDeferred_{0};
+  std::atomic<std::uint64_t> unaryFactorsRejected_{0};
 
   // Optimization Transformations
   std::string imuFrame_;

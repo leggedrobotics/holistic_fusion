@@ -197,16 +197,17 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 }
 
 // IMU at the core --------------------------------------------------------------
-void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
-                                           std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
-                                           const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK, bool createNewStateFlag) {
+std::size_t GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
+                                                  std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
+                                                  const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK,
+                                                  bool createNewStateFlag) {
   // Logging of latency
   if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
     latencyStartTime_ = std::chrono::high_resolution_clock::now();
   }
 
   // Looking up from IMU buffer --> acquire mutex (otherwise values for key might not be set)
-  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  std::unique_lock<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
 
   // Part 1 (ALWAYS): Propagate state and imu measurement to pre-integrator -----------------------
   // 1.1 Get last two measurements from buffer to determine dt
@@ -328,6 +329,9 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     std::chrono::duration<double> latencyDuration = latencyEndTime_ - latencyStartTime_;
     latencyContainer_[imuTimeK] = latencyDuration.count();
   }
+
+  operateOnGraphDataLock.unlock();
+  return addReadyDeferredUnaryFactors_();
 }
 
 // Set T_W_F
@@ -341,41 +345,78 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
 
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
-bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
-  // Find the closest key in existing graph
-  // Case 1: Can't add immediately
-  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
-                                                      graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
-    // Measurement coming from the future
-    if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
-      // Not too far in the future --> add to buffer and add later
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
-        // TODO: Add to buffer and return --> still add it until we are there
-        return true;
-      }
-      // Too far in the future --> do not add it
-      else {
-        std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
-        std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
-        REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
-                     << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
-                     << " ms, being larger than admissible deviation of " << 4 * 1000 * graphConfigPtr_->maxSearchDeviation_
-                     << " ms. Not adding to graph." << COLOR_END << std::endl;
-        return false;
-      }
+UnaryFactorKeyStatus GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                            const UnaryMeasurement& unaryMeasurement) {
+  return getUnaryFactorGeneralKey(returnedKey, returnedGraphTime, unaryMeasurement.measurementName(), unaryMeasurement.timeK());
+}
+
+UnaryFactorKeyStatus GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
+                                                            const std::string& measurementName, const double measurementTime) {
+  const double latestGraphTime = timeToKeyBufferPtr_->getLatestTimestampInBuffer();
+  returnedGraphTime = latestGraphTime;
+  returnedKey = 0;
+  const bool foundKey = timeToKeyBufferPtr_->getClosestKeyAndTimestamp(
+      returnedGraphTime, returnedKey, measurementName, graphConfigPtr_->maxSearchDeviation_, measurementTime);
+
+  if (measurementTime > latestGraphTime) {
+    const double futureSeconds = measurementTime - latestGraphTime;
+    if (futureSeconds <= kMaxDeferredUnaryFactorFutureSeconds_) {
+      return UnaryFactorKeyStatus::Future;
     }
-    // Measurement coming from the past, but could not find suitable key
-    else {  // Otherwise do not add it
-      REGULAR_COUT << RED_START << " Time deviation of " << typeid(unaryMeasurement).name() << " at key " << returnedKey << " is "
-                   << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK()) << " ms, being larger than admissible deviation of "
-                   << 1000 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
-      return false;
+
+    REGULAR_COUT << RED_START << " Factor '" << measurementName << "' is " << 1000.0 * futureSeconds
+                 << " ms newer than the latest graph key, exceeding the "
+                 << 1000.0 * kMaxDeferredUnaryFactorFutureSeconds_ << " ms deferred-factor window. Not adding to graph." << COLOR_END
+                 << std::endl;
+    return UnaryFactorKeyStatus::Rejected;
+  }
+
+  if (foundKey) {
+    return UnaryFactorKeyStatus::Ready;
+  }
+
+  REGULAR_COUT << RED_START << " Time deviation of factor '" << measurementName << "' at key " << returnedKey << " is "
+               << 1000.0 * std::abs(returnedGraphTime - measurementTime) << " ms, being larger than admissible deviation of "
+               << 1000.0 * graphConfigPtr_->maxSearchDeviation_ << " ms. Not adding to graph." << COLOR_END << std::endl;
+  return UnaryFactorKeyStatus::Rejected;
+}
+
+void GraphManager::deferUnaryFactor_(const double measurementTime, std::string measurementName, std::function<bool()> addFactor) {
+  const std::lock_guard<std::mutex> deferredFactorsLock(deferredUnaryFactorsMutex_);
+  if (deferredUnaryFactors_.size() >= kMaxDeferredUnaryFactors_) {
+    REGULAR_COUT << RED_START << " Deferred unary factor queue is full. Dropping oldest factor '"
+                 << deferredUnaryFactors_.begin()->second.measurementName << "'." << COLOR_END << std::endl;
+    deferredUnaryFactors_.erase(deferredUnaryFactors_.begin());
+    ++unaryFactorsRejected_;
+  }
+
+  deferredUnaryFactors_.emplace(measurementTime, DeferredUnaryFactor{std::move(measurementName), std::move(addFactor)});
+  ++unaryFactorsDeferred_;
+}
+
+std::size_t GraphManager::addReadyDeferredUnaryFactors_() {
+  const double latestGraphTime = timeToKeyBufferPtr_->getLatestTimestampInBuffer();
+  std::vector<DeferredUnaryFactor> readyFactors;
+  {
+    const std::lock_guard<std::mutex> deferredFactorsLock(deferredUnaryFactorsMutex_);
+    auto factorIterator = deferredUnaryFactors_.begin();
+    while (factorIterator != deferredUnaryFactors_.end() && factorIterator->first <= latestGraphTime) {
+      readyFactors.push_back(std::move(factorIterator->second));
+      factorIterator = deferredUnaryFactors_.erase(factorIterator);
     }
   }
-  // Case 2: Can add immediately
-  else {
-    return true;
+
+  std::size_t addedFactorCount = 0;
+  for (auto& factor : readyFactors) {
+    if (factor.addFactor()) {
+      ++addedFactorCount;
+    }
   }
+  return addedFactorCount;
+}
+
+UnaryFactorStatistics GraphManager::getUnaryFactorStatistics() const {
+  return UnaryFactorStatistics{unaryFactorsAdded_.load(), unaryFactorsDeferred_.load(), unaryFactorsRejected_.load()};
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------
