@@ -11,6 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 // C++
 #include <map>
 #include <mutex>
+#include <stdexcept>
 
 // GTSAM
 #include <gtsam/base/Vector.h>
@@ -23,7 +24,11 @@ typedef std::map<gtsam::Key, double> KeyToTimeMap;
 class TimeGraphKeyBuffer {
  public:
   // Constructor
-  TimeGraphKeyBuffer(const int bufferLength, const int verboseLevel) : bufferLength_(bufferLength), verboseLevel_(verboseLevel){};
+  TimeGraphKeyBuffer(const int bufferLength, const int verboseLevel) : bufferLength_(bufferLength), verboseLevel_(verboseLevel) {
+    if (bufferLength_ <= 0) {
+      throw std::invalid_argument("TimeGraphKeyBuffer: buffer length must be positive.");
+    }
+  };
 
   // Destructor
   ~TimeGraphKeyBuffer() = default;
@@ -31,9 +36,9 @@ class TimeGraphKeyBuffer {
   // Getters
   bool getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName, const double maxSearchDeviation,
                                  const double tK);
-  double getLatestTimestampInBuffer() const { return tLatestInBuffer_; }
-  const TimeToKeyMap& getTimeToKeyBuffer() { return timeToKeyBuffer_; }
-  const KeyToTimeMap& getKeyToTimeBuffer() { return keyToTimeBuffer_; }
+  double getLatestTimestampInBuffer() const;
+  TimeToKeyMap getTimeToKeyBuffer() const;
+  KeyToTimeMap getKeyToTimeBuffer() const;
 
   // Add to buffers
   void addToBuffer(const double ts, const gtsam::Key& key);
@@ -43,7 +48,7 @@ class TimeGraphKeyBuffer {
   TimeToKeyMap timeToKeyBuffer_;
   KeyToTimeMap keyToTimeBuffer_;
   // Mutex
-  std::mutex writeInBufferMutex_;
+  mutable std::mutex writeInBufferMutex_;
   // Verbose level
   int verboseLevel_ = 0;
   int bufferLength_ = -1;

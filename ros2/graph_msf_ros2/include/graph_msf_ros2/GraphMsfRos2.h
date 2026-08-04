@@ -5,6 +5,8 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -199,6 +201,12 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   // Last Optimized State Timestamp
   double lastOptimizedStateTimestamp_ = 0.0;
   double lastIntegratedStateTimestamp_ = 0.0;
+
+  // Main IMU callback timing diagnostics
+  std::uint64_t imuMessagesReceived_ = 0;
+  std::uint64_t estimatedMissingImuMessages_ = 0;
+  double lastImuMessageTimestamp_ = std::numeric_limits<double>::quiet_NaN();
+  double maximumImuMessageGapSeconds_ = 0.0;
 
   // Non-time-critical data thread for paths, variances, markers, etc.
   std::queue<NonTimeCriticalData> nonTimeCriticalQueue_;

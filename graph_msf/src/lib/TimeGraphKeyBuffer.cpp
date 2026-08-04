@@ -9,6 +9,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/TimeGraphKeyBuffer.h"
 #include "graph_msf/interface/Terminal.h"
 
+// C++
+#include <iterator>
+
 namespace graph_msf {
 
 void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
@@ -17,46 +20,55 @@ void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
               << std::setprecision(14) << ts << std::endl;
   }
 
-  // Mutex block
-  {
-    // Writing to IMU buffer --> acquire mutex
-    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    timeToKeyBuffer_[ts] = key;
-    keyToTimeBuffer_[key] = ts;
-    if (ts > tLatestInBuffer_) {
-      tLatestInBuffer_ = ts;
-    }
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+
+  // Keep the forward and reverse maps one-to-one when a timestamp or key is replaced.
+  if (const auto existingKey = timeToKeyBuffer_.find(ts); existingKey != timeToKeyBuffer_.end()) {
+    keyToTimeBuffer_.erase(existingKey->second);
+  }
+  if (const auto existingTime = keyToTimeBuffer_.find(key); existingTime != keyToTimeBuffer_.end()) {
+    timeToKeyBuffer_.erase(existingTime->second);
   }
 
-  // If Key buffer is too large, remove first element
-  if (timeToKeyBuffer_.size() > bufferLength_) {
-    timeToKeyBuffer_.erase(timeToKeyBuffer_.begin());
-    keyToTimeBuffer_.erase(keyToTimeBuffer_.begin());
+  timeToKeyBuffer_[ts] = key;
+  keyToTimeBuffer_[key] = ts;
+
+  while (timeToKeyBuffer_.size() > static_cast<std::size_t>(bufferLength_)) {
+    const auto oldest = timeToKeyBuffer_.begin();
+    keyToTimeBuffer_.erase(oldest->second);
+    timeToKeyBuffer_.erase(oldest);
   }
+
+  tLatestInBuffer_ = timeToKeyBuffer_.rbegin()->first;
 }
 
 bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
                                                    const double maxSearchDeviation, const double tK) {
-  std::_Rb_tree_iterator<std::pair<const double, gtsam::Key>> upperIterator;
+  double latestTimestamp = 0.0;
   {
-    // Read from IMU buffer --> acquire mutex
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    upperIterator = timeToKeyBuffer_.upper_bound(tK);
+    if (timeToKeyBuffer_.empty()) {
+      std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << "called from " << callingName << ": Buffer is empty!"
+                << COLOR_END << std::endl;
+      return false;
+    }
+
+    const auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
+    TimeToKeyMap::const_iterator closestIterator;
+    if (upperIterator == timeToKeyBuffer_.begin()) {
+      closestIterator = upperIterator;
+    } else if (upperIterator == timeToKeyBuffer_.end()) {
+      closestIterator = std::prev(timeToKeyBuffer_.end());
+    } else {
+      const auto lowerIterator = std::prev(upperIterator);
+      closestIterator = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator : upperIterator;
+    }
+
+    tInGraph = closestIterator->first;
+    key = closestIterator->second;
+    latestTimestamp = tLatestInBuffer_;
   }
 
-  // Empty buffer
-  if (timeToKeyBuffer_.empty()) {
-    std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << "called from " << callingName << ": Buffer is empty!" << COLOR_END
-              << std::endl;
-    return false;
-  }
-
-  auto lowerIterator = upperIterator;
-  --lowerIterator;
-
-  // Keep key which is closer to tLidar
-  tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
   double timeDeviation = tInGraph - tK;
 
   if (verboseLevel_ >= 2) {
@@ -66,8 +78,8 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
               << " found time step: " << tInGraph << " at key " << key << std::endl;
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation
               << " ms" << std::endl;
-    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
-              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
+    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << latestTimestamp
+              << ", hence absolut delay of measurement is " << 1000 * (latestTimestamp - tK) << "ms." << std::endl;
   }
 
   // Check for error and warn user
@@ -76,6 +88,21 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
   }
 
   return true;
+}
+
+double TimeGraphKeyBuffer::getLatestTimestampInBuffer() const {
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+  return tLatestInBuffer_;
+}
+
+TimeToKeyMap TimeGraphKeyBuffer::getTimeToKeyBuffer() const {
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+  return timeToKeyBuffer_;
+}
+
+KeyToTimeMap TimeGraphKeyBuffer::getKeyToTimeBuffer() const {
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+  return keyToTimeBuffer_;
 }
 
 }  // namespace graph_msf

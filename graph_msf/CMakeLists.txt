@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(graph_msf)
 
+include(CTest)
+
 message("Building ${PROJECT_NAME} library -----------------------------")
 
 # Build config
@@ -105,6 +107,14 @@ if (cmake_clang_tools_FOUND AND NOT DEFINED NO_CLANG_TOOLING)
         CT_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
         CF_FIX
     )
+endif()
+
+if(BUILD_TESTING)
+    find_package(GTest REQUIRED)
+    add_executable(time_graph_key_buffer_test test/TimeGraphKeyBufferTest.cpp src/lib/TimeGraphKeyBuffer.cpp)
+    target_include_directories(time_graph_key_buffer_test PRIVATE include)
+    target_link_libraries(time_graph_key_buffer_test PRIVATE gtsam GTest::gtest_main)
+    add_test(NAME time_graph_key_buffer_test COMMAND time_graph_key_buffer_test)
 endif()
 
 #############

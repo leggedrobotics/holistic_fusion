@@ -4,6 +4,7 @@
 // ROS2
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <cmath>
 #include <shared_mutex>
 #include <std_srvs/srv/trigger.hpp>
 
@@ -11,6 +12,10 @@
 #include "graph_msf_ros2/util/conversions.h"
 
 namespace graph_msf {
+
+namespace {
+constexpr std::size_t kImuSubscriptionQueueDepth = 100;
+}
 
 GraphMsfRos2::GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOptions& options) : Node(nodeName, options) {
   RCLCPP_INFO(this->get_logger(), "GraphMsfRos2-Constructor called.");
@@ -31,6 +36,9 @@ GraphMsfRos2::GraphMsfRos2(const std::string& nodeName, const rclcpp::NodeOption
 
 GraphMsfRos2::~GraphMsfRos2() {
   RCLCPP_INFO(this->get_logger(), "GraphMsfRos2-Destructor called.");
+  RCLCPP_INFO(this->get_logger(), "Main IMU timing summary: received=%llu, estimated_missing=%llu, maximum_gap=%.3f ms.",
+              static_cast<unsigned long long>(imuMessagesReceived_),
+              static_cast<unsigned long long>(estimatedMissingImuMessages_), 1000.0 * maximumImuMessageGapSeconds_);
 
   // Signal all threads to shutdown
   shutdownRequested_ = true;
@@ -136,7 +144,7 @@ void GraphMsfRos2::initializeSubscribers() {
   RCLCPP_INFO(this->get_logger(), "Initializing subscribers.");
 
   // Imu
-  subImu_ = this->create_subscription<sensor_msgs::msg::Imu>(imuTopic_, rclcpp::QoS(ROS_QUEUE_SIZE).best_effort(),
+  subImu_ = this->create_subscription<sensor_msgs::msg::Imu>(imuTopic_, rclcpp::QoS(kImuSubscriptionQueueDepth).best_effort(),
                                                              std::bind(&GraphMsfRos2::imuCallback, this, std::placeholders::_1));
 
   RCLCPP_INFO(this->get_logger(), "GraphMsfRos2 Initialized main IMU subscriber with topic: %s", subImu_->get_topic_name());
@@ -399,6 +407,29 @@ long GraphMsfRos2::secondsSinceStart() {
 
 // Main IMU Callback
 void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr) {
+  const double imuTimestamp = imuMsgPtr->header.stamp.sec + 1e-9 * imuMsgPtr->header.stamp.nanosec;
+  ++imuMessagesReceived_;
+  if (std::isfinite(lastImuMessageTimestamp_)) {
+    const double imuGapSeconds = imuTimestamp - lastImuMessageTimestamp_;
+    if (imuGapSeconds <= 0.0) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                           "Main IMU timestamp is not strictly increasing: previous=%.9f, current=%.9f.",
+                           lastImuMessageTimestamp_, imuTimestamp);
+    } else {
+      maximumImuMessageGapSeconds_ = std::max(maximumImuMessageGapSeconds_, imuGapSeconds);
+      const double expectedPeriodSeconds = 1.0 / graphConfigPtr_->imuRate_;
+      if (imuGapSeconds > 1.5 * expectedPeriodSeconds) {
+        const auto estimatedMissing =
+            static_cast<std::uint64_t>(std::max(0LL, std::llround(imuGapSeconds / expectedPeriodSeconds) - 1));
+        estimatedMissingImuMessages_ += estimatedMissing;
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                             "Main IMU timestamp gap %.3f ms indicates approximately %llu missing sample(s).",
+                             1000.0 * imuGapSeconds, static_cast<unsigned long long>(estimatedMissing));
+      }
+    }
+  }
+  lastImuMessageTimestamp_ = imuTimestamp;
+
   // Convert to Eigen
   Eigen::Vector3d linearAcc(imuMsgPtr->linear_acceleration.x, imuMsgPtr->linear_acceleration.y, imuMsgPtr->linear_acceleration.z);
   Eigen::Vector3d angularVel(imuMsgPtr->angular_velocity.x, imuMsgPtr->angular_velocity.y, imuMsgPtr->angular_velocity.z);
@@ -409,8 +440,7 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
   std::shared_ptr<SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr = nullptr;
 
   // Add measurement and get state
-  if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel,
-                                                 imuMsgPtr->header.stamp.sec + 1e-9 * imuMsgPtr->header.stamp.nanosec,
+  if (GraphMsf::addCoreImuMeasurementAndGetState(linearAcc, angularVel, imuTimestamp,
                                                  preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, addedImuMeasurements)) {
     // // Encountered Delay
     // auto now = clock_->now();

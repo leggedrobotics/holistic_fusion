@@ -276,8 +276,13 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
   // Only create state every n-th measurements (or at first successful iteration)
   bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0 || !normalOperationFlag_;
   // Add IMU factor and return propagated & optimized state
-  graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, coreImuBufferPtr_,
-                                        imuTimeK, createNewStateFlag);
+  const std::size_t addedDeferredUnaryFactors =
+      graphMgrPtr_->addImuFactorAndGetState(*preIntegratedNavStatePtr_, returnOptimizedStateWithCovarianceAndBiasPtr, coreImuBufferPtr_,
+                                            imuTimeK, createNewStateFlag);
+  if (addedDeferredUnaryFactors > 0) {
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
   returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
 
   // Set to normal operation
