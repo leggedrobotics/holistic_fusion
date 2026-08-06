@@ -11,10 +11,12 @@ Please see the LICENSE file that has been included as part of this package.
 // GTSAM
 #include <gtsam/base/types.h>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/slam/expressions.h>
 
 // Workspace
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocal.h"
+#include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 
 namespace graph_msf {
@@ -28,12 +30,15 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
       : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame),
         velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
         exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
-        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {
+        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()),
+        exp_I_w_W_I_(gtsam::Point3(gtsam::Point3::Zero())) {
     // Find Angular Velocity in IMU Buffer which is closest to the measurement time
     // Check whether we can find an IMU measurement corresponding to the velocity measurement
     double imuTimestamp;
     graph_msf::ImuMeasurement imuMeasurement = graph_msf::ImuMeasurement();
-    if (!imuBufferPtr->getClosestImuMeasurement(imuTimestamp, imuMeasurement, 0.1, velocityUnaryMeasurementPtr->timeK())) { // previously 0.02
+    foundImuMeasurementFlag_ =
+        imuBufferPtr->getClosestImuMeasurement(imuTimestamp, imuMeasurement, 0.1, velocityUnaryMeasurementPtr->timeK()); // previously 0.02
+    if (!foundImuMeasurementFlag_) {
       REGULAR_COUT << RED_START << " No IMU Measurement (in time interval) found, assuming 0 angular velocity for the factor." << COLOR_END
                    << std::endl;
     }
@@ -69,6 +74,17 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
     // Express velocity in sensor frame
     exp_sensorFrame_v_fixedFrame_sensorFrame_ =
         gtsam::rotate(inverseRot3(exp_R_fixedFrame_I_), exp_fixedFrame_v_fixedFrame_sensorFrame_);  // I_v_W_I at this point
+
+    // Angular velocity corrected by the estimated gyroscope bias --> makes the bias observable
+    // through the lever-arm term in transformImuStateToSensorFrameState()
+    if (foundImuMeasurementFlag_) {
+      const gtsam::Expression<gtsam::imuBias::ConstantBias> exp_imuBias(gtsam::symbol_shorthand::B(closestGeneralKey));
+      exp_I_w_W_I_ = gtsam::Point3_(exp_imuBias, &gtsam::imuBias::ConstantBias::correctGyroscope, gtsam::Point3_(angularVelocity_));
+    } else {
+      // No gyro sample --> keep the assumed zero angular velocity; subtracting the bias from it
+      // would inject a spurious -bias x leverArm term
+      exp_I_w_W_I_ = gtsam::Point3_(angularVelocity_);
+    }
   }
 
   // iii) Transform Measurement to Core Imu Frame
@@ -76,13 +92,9 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
     // Get relative translation
     Eigen::Vector3d I_t_I_sensorFrame = T_I_sensorFrameInit_.translation();
 
-    // Angular velocity in the sensor frame
-    // TODO: Add angular velocity bias
-    gtsam::Point3_ I_w_W_I(angularVelocity_);
-
-    // Compute Velocity of the Sensor Frame with Angular Velocity
+    // Compute Velocity of the Sensor Frame with (bias-corrected) Angular Velocity
     exp_sensorFrame_v_fixedFrame_sensorFrame_ =
-        exp_sensorFrame_v_fixedFrame_sensorFrame_ + gtsam::cross(I_w_W_I, I_t_I_sensorFrame);  // I_v_W_sensorFrame at this point
+        exp_sensorFrame_v_fixedFrame_sensorFrame_ + gtsam::cross(exp_I_w_W_I_, I_t_I_sensorFrame);  // I_v_W_sensorFrame at this point
 
     // Get Rotation from Sensor Frame to Inertial Frame
     gtsam::Rot3 R_sensorFrame_I = gtsam::Rot3(T_I_sensorFrameInit_.rotation().inverse());
@@ -114,10 +126,12 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
 
   // Angular Velocity
   gtsam::Point3 angularVelocity_;  // Angular Velocity
+  bool foundImuMeasurementFlag_ = false;
 
   // Expression
   gtsam::Expression<gtsam::Point3> exp_sensorFrame_v_fixedFrame_sensorFrame_;  // Translation
   gtsam::Expression<gtsam::Rot3> exp_R_fixedFrame_I_;                          // Rotation
+  gtsam::Expression<gtsam::Point3> exp_I_w_W_I_;                               // Bias-corrected Angular Velocity
 };
 }  // namespace graph_msf
 
