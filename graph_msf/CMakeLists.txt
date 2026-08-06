@@ -97,6 +97,24 @@ else()
     message(WARNING "GTSAM imported targets not found! Using legacy variables which is not recommended with modern CMake.")
 endif()
 
+##########
+## Test ##
+##########
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(GTest REQUIRED)
+    include(GoogleTest)
+
+    add_executable(test_graph_msf
+        test/test_absolute_velocity_expression.cpp
+        test/test_buffer_lookup.cpp
+        test/test_pose3_attitude_factor.cpp
+    )
+    target_link_libraries(test_graph_msf PRIVATE ${PROJECT_NAME} GTest::gtest_main)
+    gtest_discover_tests(test_graph_msf DISCOVERY_MODE PRE_TEST)
+endif()
+
 # -------------------------------------------------------------------------------------------------
 # Clang tooling (optional)
 find_package(cmake_clang_tools QUIET)

@@ -415,6 +415,7 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
                            "Main IMU timestamp is not strictly increasing: previous=%.9f, current=%.9f.",
                            lastImuMessageTimestamp_, imuTimestamp);
+      return;
     } else {
       maximumImuMessageGapSeconds_ = std::max(maximumImuMessageGapSeconds_, imuGapSeconds);
       const double expectedPeriodSeconds = 1.0 / graphConfigPtr_->imuRate_;

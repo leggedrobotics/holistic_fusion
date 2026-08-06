@@ -236,6 +236,146 @@ bool GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRE
   return true;
 }
 
+template <class FIRST_GMSF_EXPRESSION_TYPE, class SECOND_GMSF_EXPRESSION_TYPE>
+bool GraphManager::addUnaryGmsfExpressionFactorPair(
+    const std::shared_ptr<FIRST_GMSF_EXPRESSION_TYPE> firstExpressionPtr,
+    const std::shared_ptr<SECOND_GMSF_EXPRESSION_TYPE> secondExpressionPtr, const bool addToOnlineSmootherFlag) {
+  if (firstExpressionPtr->getGmsfBaseUnaryMeasurementPtr() != secondExpressionPtr->getGmsfBaseUnaryMeasurementPtr()) {
+    throw std::invalid_argument("Grouped GMSF expression factors must share one measurement.");
+  }
+
+  using FirstMeasurementType = typename FIRST_GMSF_EXPRESSION_TYPE::template_type;
+  using SecondMeasurementType = typename SECOND_GMSF_EXPRESSION_TYPE::template_type;
+  const auto& unaryMeasurement = *firstExpressionPtr->getGmsfBaseUnaryMeasurementPtr();
+
+  // Extrinsic calibration can allocate dynamic graph state while an expression is being constructed. Reject that mode before either
+  // expression is evaluated so the grouped path inserts both component factors or neither.
+  if (graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_) {
+    REGULAR_COUT << YELLOW_START << " Grouped expression factors do not support online extrinsic calibration; not adding either component."
+                 << COLOR_END << std::endl;
+    ++unaryFactorsRejected_;
+    return false;
+  }
+
+  // Keep key lookup, delay validation, expression construction, and both graph insertions atomic with respect to graph updates.
+  std::unique_lock<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+
+  gtsam::Key closestGeneralKey;
+  double closestGeneralKeyTime;
+  const UnaryFactorKeyStatus keyStatus = getUnaryFactorGeneralKey(closestGeneralKey, closestGeneralKeyTime, unaryMeasurement);
+  if (keyStatus == UnaryFactorKeyStatus::Future) {
+    operateOnGraphDataLock.unlock();
+    deferUnaryFactor_(unaryMeasurement.timeK(), unaryMeasurement.measurementName(),
+                      [this, firstExpressionPtr, secondExpressionPtr, addToOnlineSmootherFlag]() {
+                        return addUnaryGmsfExpressionFactorPair<FIRST_GMSF_EXPRESSION_TYPE, SECOND_GMSF_EXPRESSION_TYPE>(
+                            firstExpressionPtr, secondExpressionPtr, addToOnlineSmootherFlag);
+                      });
+    return false;
+  }
+  if (keyStatus == UnaryFactorKeyStatus::Rejected) {
+    ++unaryFactorsRejected_;
+    return false;
+  }
+
+  const double measurementTimestamp = unaryMeasurement.timeK();
+  if (timeToKeyBufferPtr_->getLatestTimestampInBuffer() - measurementTimestamp >
+      (graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME)) {
+    REGULAR_COUT << RED_START << " GMSF-Expression-measurement delay is larger than the smootherLag - WORST_CASE_OPTIMIZATION_TIME, hence "
+                                   "skipping both grouped factors."
+                 << COLOR_END << std::endl;
+    ++unaryFactorsRejected_;
+    return false;
+  }
+
+  const auto firstGtsamExpression = firstExpressionPtr->createAndReturnExpression(
+      closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
+      graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_,
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
+  const auto secondGtsamExpression = secondExpressionPtr->createAndReturnExpression(
+      closestGeneralKey, gtsamDynamicExpressionKeys_, W_imuPropagatedState_, graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_,
+      graphConfigPtr_->centerMeasurementsAtKeyframePositionBeforeAlignmentFlag_,
+      graphConfigPtr_->optimizeExtrinsicSensorToSensorCorrectedOffsetFlag_);
+
+  const auto createNoiseModel = [](const auto& expressionPtr) {
+    const auto diagonalNoise = gtsam::noiseModel::Diagonal::Sigmas(expressionPtr->getNoiseDensity());
+    const auto& measurement = *expressionPtr->getGmsfBaseUnaryMeasurementPtr();
+    const double robustNormConstant = measurement.robustNormConstant();
+    switch (measurement.robustNormEnum()) {
+      case RobustNormEnum::None:
+        return gtsam::SharedNoiseModel(diagonalNoise);
+      case RobustNormEnum::Huber:
+        return gtsam::SharedNoiseModel(gtsam::noiseModel::Robust::Create(
+            gtsam::noiseModel::mEstimator::Huber::Create(robustNormConstant), diagonalNoise));
+      case RobustNormEnum::Cauchy:
+        return gtsam::SharedNoiseModel(gtsam::noiseModel::Robust::Create(
+            gtsam::noiseModel::mEstimator::Cauchy::Create(robustNormConstant), diagonalNoise));
+      case RobustNormEnum::Tukey:
+        return gtsam::SharedNoiseModel(gtsam::noiseModel::Robust::Create(
+            gtsam::noiseModel::mEstimator::Tukey::Create(robustNormConstant), diagonalNoise));
+      case RobustNormEnum::GemanMcClure:
+        return gtsam::SharedNoiseModel(gtsam::noiseModel::Robust::Create(
+            gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustNormConstant), diagonalNoise));
+      case RobustNormEnum::DCS:
+        return gtsam::SharedNoiseModel(
+            gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::DCS::Create(robustNormConstant), diagonalNoise));
+    }
+    throw std::logic_error("Unknown robust norm for grouped GMSF factors.");
+  };
+
+  const gtsam::ExpressionFactor<FirstMeasurementType> firstFactor(
+      createNoiseModel(firstExpressionPtr), firstExpressionPtr->getGtsamMeasurementValue(), firstGtsamExpression);
+  const gtsam::ExpressionFactor<SecondMeasurementType> secondFactor(
+      createNoiseModel(secondExpressionPtr), secondExpressionPtr->getGtsamMeasurementValue(), secondGtsamExpression);
+
+  if (firstFactor.keys() != secondFactor.keys()) {
+    throw std::logic_error("Grouped GMSF expression factors resolved different graph keys.");
+  }
+  const auto hasAuxiliaryGraphData = [](const auto& expressionPtr) {
+    return !expressionPtr->getNewOnlineGraphStateValues().empty() || !expressionPtr->getNewOfflineGraphStateValues().empty() ||
+           !expressionPtr->getNewOnlinePosePriorFactors().empty() || !expressionPtr->getNewOnlineDynamicPriorFactors().empty() ||
+           !expressionPtr->getNewOnlineAndOfflinePoseBetweenFactors().empty();
+  };
+  if (hasAuxiliaryGraphData(firstExpressionPtr) || hasAuxiliaryGraphData(secondExpressionPtr)) {
+    throw std::logic_error("Grouped GMSF expression factors cannot create auxiliary graph data.");
+  }
+
+  if (addToOnlineSmootherFlag) {
+    rtFactorGraphBufferPtr_->add(firstFactor);
+    rtFactorGraphBufferPtr_->add(secondFactor);
+  }
+  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+    batchFactorGraphBufferPtr_->add(firstFactor);
+    batchFactorGraphBufferPtr_->add(secondFactor);
+  }
+
+  for (const gtsam::Key key : firstFactor.keys()) {
+    if (addToOnlineSmootherFlag) {
+      const auto timestampIterator = rtGraphKeysTimestampsMapBufferPtr_->find(key);
+      if (timestampIterator == rtGraphKeysTimestampsMapBufferPtr_->end() || measurementTimestamp > timestampIterator->second) {
+        writeKeyToKeyTimeStampMap_(key, measurementTimestamp, rtGraphKeysTimestampsMapBufferPtr_);
+      }
+    }
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+      const auto timestampIterator = batchGraphKeysTimestampsMapBufferPtr_->find(key);
+      if (timestampIterator == batchGraphKeysTimestampsMapBufferPtr_->end() || measurementTimestamp > timestampIterator->second) {
+        writeKeyToKeyTimeStampMap_(key, measurementTimestamp, batchGraphKeysTimestampsMapBufferPtr_);
+      }
+    }
+  }
+
+  if (graphConfigPtr_->verboseLevel_ >= 2) {
+    REGULAR_COUT << " Current propagated key " << propagatedStateKey_ << ": grouped expression factors of types "
+                 << typeid(FIRST_GMSF_EXPRESSION_TYPE).name() << " and " << typeid(SECOND_GMSF_EXPRESSION_TYPE).name()
+                 << " added atomically to keys ";
+    for (const gtsam::Key key : firstFactor.keys()) {
+      std::cout << gtsam::Symbol(key) << ", ";
+    }
+    std::cout << COLOR_END << std::endl;
+  }
+  ++unaryFactorsAdded_;
+  return true;
+}
+
 // Private -----------------------------------------------------------------------------------------
 template <class CHILDPTR>
 bool GraphManager::addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag) {

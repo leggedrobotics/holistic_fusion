@@ -18,6 +18,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/dataset.h>
 
 // Factors
+#include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 
@@ -413,6 +414,59 @@ std::size_t GraphManager::addReadyDeferredUnaryFactors_() {
 
 UnaryFactorStatistics GraphManager::getUnaryFactorStatistics() const {
   return UnaryFactorStatistics{unaryFactorsAdded_.load(), unaryFactorsDeferred_.load(), unaryFactorsRejected_.load()};
+}
+
+bool GraphManager::addPose3AttitudeFactor(
+    const UnaryMeasurementXD<Eigen::Vector3d, 2>& bodyDirectionMeasurement,
+    const Eigen::Vector3d& referenceDirectionInWorld) {
+  const Eigen::Vector3d& bodyDirection = bodyDirectionMeasurement.unaryMeasurement();
+  const Eigen::Vector2d& sigmas = bodyDirectionMeasurement.unaryMeasurementNoiseDensity();
+  if (!bodyDirection.allFinite() || bodyDirection.norm() < 1e-9 || !referenceDirectionInWorld.allFinite() ||
+      referenceDirectionInWorld.norm() < 1e-9 || !sigmas.allFinite() || (sigmas.array() <= 0.0).any()) {
+    return false;
+  }
+
+  const auto gaussian = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector(sigmas));
+  gtsam::SharedNoiseModel noiseModel = gaussian;
+  const double robustConstant = bodyDirectionMeasurement.robustNormConstant();
+  switch (bodyDirectionMeasurement.robustNormEnum()) {
+    case RobustNormEnum::None:
+      break;
+    case RobustNormEnum::Huber:
+      noiseModel = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(robustConstant), gaussian);
+      break;
+    case RobustNormEnum::Cauchy:
+      noiseModel = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Cauchy::Create(robustConstant), gaussian);
+      break;
+    case RobustNormEnum::Tukey:
+      noiseModel = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(robustConstant), gaussian);
+      break;
+    case RobustNormEnum::GemanMcClure:
+      noiseModel =
+          gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::GemanMcClure::Create(robustConstant), gaussian);
+      break;
+    case RobustNormEnum::DCS:
+      noiseModel = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::DCS::Create(robustConstant), gaussian);
+      break;
+  }
+
+  // Keep lookup and insertion atomic with respect to graph updates. Calling
+  // addFactorSafelyToRtAndBatchGraph_ from this scope would lock the same mutex twice.
+  const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  double closestGraphTime = 0.0;
+  gtsam::Key closestKey = 0;
+  if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(closestGraphTime, closestKey,
+                                                      bodyDirectionMeasurement.measurementName(),
+                                                      graphConfigPtr_->maxSearchDeviation_,
+                                                      bodyDirectionMeasurement.timeK())) {
+    return false;
+  }
+
+  const gtsam::Pose3AttitudeFactor factor(gtsam::symbol_shorthand::X(closestKey),
+                                          gtsam::Unit3(referenceDirectionInWorld), noiseModel,
+                                          gtsam::Unit3(bodyDirection));
+  return addFactorToRtAndBatchGraph_<const gtsam::Pose3AttitudeFactor*>(
+      &factor, bodyDirectionMeasurement.timeK(), bodyDirectionMeasurement.measurementName());
 }
 
 // Robust Aware Between factors ------------------------------------------------------------------------------------------------------

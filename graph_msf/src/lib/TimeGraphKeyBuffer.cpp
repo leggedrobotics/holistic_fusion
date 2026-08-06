@@ -20,6 +20,8 @@ void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
               << std::setprecision(14) << ts << std::endl;
   }
 
+  // Keep insertion and pruning in one critical section so lookup iterators
+  // cannot race an erase.
   const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
 
   // Keep the forward and reverse maps one-to-one when a timestamp or key is replaced.
@@ -44,8 +46,9 @@ void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
 
 bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
                                                    const double maxSearchDeviation, const double tK) {
-  double latestTimestamp = 0.0;
+  double latestTimestampInBuffer = 0.0;
   {
+    // Hold the mutex until the selected timestamp and key have been copied.
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
     if (timeToKeyBuffer_.empty()) {
       std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << "called from " << callingName << ": Buffer is empty!"
@@ -56,20 +59,23 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
     const auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
     TimeToKeyMap::const_iterator closestIterator;
     if (upperIterator == timeToKeyBuffer_.begin()) {
+      // Query is before the oldest key.
       closestIterator = upperIterator;
     } else if (upperIterator == timeToKeyBuffer_.end()) {
+      // Query is at or after the newest key.
       closestIterator = std::prev(timeToKeyBuffer_.end());
     } else {
       const auto lowerIterator = std::prev(upperIterator);
+      // Preserve the previous tie-break: choose the newer key.
       closestIterator = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator : upperIterator;
     }
 
     tInGraph = closestIterator->first;
     key = closestIterator->second;
-    latestTimestamp = tLatestInBuffer_;
+    latestTimestampInBuffer = tLatestInBuffer_;
   }
 
-  double timeDeviation = tInGraph - tK;
+  const double timeDeviation = tInGraph - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
@@ -78,8 +84,8 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
               << " found time step: " << tInGraph << " at key " << key << std::endl;
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation
               << " ms" << std::endl;
-    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << latestTimestamp
-              << ", hence absolut delay of measurement is " << 1000 * (latestTimestamp - tK) << "ms." << std::endl;
+    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << latestTimestampInBuffer
+              << ", hence absolut delay of measurement is " << 1000 * (latestTimestampInBuffer - tK) << "ms." << std::endl;
   }
 
   // Check for error and warn user

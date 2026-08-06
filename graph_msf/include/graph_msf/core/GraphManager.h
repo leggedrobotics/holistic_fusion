@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <functional>
 #include <map>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -96,6 +97,12 @@ class GraphManager {
   UnaryFactorKeyStatus getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
                                                 const std::string& measurementName, double measurementTime);
 
+  // Yaw-invariant attitude constraint. The three-dimensional measurement is a
+  // reference direction expressed in the IMU frame; its residual lives in the
+  // two-dimensional Unit3 tangent space.
+  bool addPose3AttitudeFactor(const UnaryMeasurementXD<Eigen::Vector3d, 2>& bodyDirectionMeasurement,
+                              const Eigen::Vector3d& referenceDirectionInWorld);
+
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
@@ -106,6 +113,13 @@ class GraphManager {
   template <class GMSF_EXPRESSION_TYPE>
   bool addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
                                     const bool addToOnlineSmootherFlag = true);
+
+  // Add two component projections of the same unary measurement atomically.
+  // Both expressions resolve one graph key and must not create auxiliary dynamic state, priors, or between factors.
+  template <class FIRST_GMSF_EXPRESSION_TYPE, class SECOND_GMSF_EXPRESSION_TYPE>
+  bool addUnaryGmsfExpressionFactorPair(const std::shared_ptr<FIRST_GMSF_EXPRESSION_TYPE> firstExpressionPtr,
+                                        const std::shared_ptr<SECOND_GMSF_EXPRESSION_TYPE> secondExpressionPtr,
+                                        const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
   gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
