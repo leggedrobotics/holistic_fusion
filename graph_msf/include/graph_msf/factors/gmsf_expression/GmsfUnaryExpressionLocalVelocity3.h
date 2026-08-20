@@ -47,6 +47,20 @@ class GmsfUnaryExpressionLocalVelocity3 final : public GmsfUnaryExpressionLocal<
     angularVelocity_ = imuMeasurement.angularVelocity;
   }
 
+  // Constructor with explicitly provided angular velocity (IMU frame), for callers that already hold
+  // the IMU sample consistent with the measurement (e.g. from a synchronized sensor tuple). Skips the
+  // IMU buffer lookup; the lever-arm term is always corrected by the estimated gyroscope bias.
+  GmsfUnaryExpressionLocalVelocity3(const std::shared_ptr<UnaryMeasurementXD<Eigen::Vector3d, 3>>& velocityUnaryMeasurementPtr,
+                                    const std::string& imuFrameName, const Eigen::Isometry3d& T_I_sensorFrame,
+                                    const Eigen::Vector3d& angularVelocity)
+      : GmsfUnaryExpressionLocal(velocityUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame),
+        velocityUnaryMeasurementPtr_(velocityUnaryMeasurementPtr),
+        angularVelocity_(angularVelocity),
+        foundImuMeasurementFlag_(true),
+        exp_sensorFrame_v_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
+        exp_R_fixedFrame_I_(gtsam::Rot3::Identity()),
+        exp_I_w_W_I_(gtsam::Point3(gtsam::Point3::Zero())) {}
+
   // Destructor
   ~GmsfUnaryExpressionLocalVelocity3() = default;
 

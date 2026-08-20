@@ -33,6 +33,11 @@ class GraphMsfHolistic : virtual public GraphMsf {
   void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_v_R_S) override;
   //// Local Measurements: Fully Local
   void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) override;
+  //// Local Measurements: Sensor frame not rigidly attached to the IMU (e.g. a kinematic contact point).
+  //// T_I_sensorFrame rotation sets the residual axes (measurement and its noise density share them),
+  //// its translation is the lever arm; I_w_W_I is the angular velocity sample of the measurement.
+  void addUnaryVelocity3LocalMovingFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S,
+                                                    const Eigen::Isometry3d& T_I_sensorFrame, const Eigen::Vector3d& I_w_W_I);
 
   /// Landmark Measurements: No systematic drift
   void addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_t_S_L,
