@@ -121,6 +121,7 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("trajectoryAlignment.gnssRate", 10.0); // [Hz], rate of gnss measurements
   this->declare_parameter("trajectoryAlignment.lidarRate", 10.0); // [Hz], rate of lidar odometry
   this->declare_parameter("trajectoryAlignment.minimumDistanceHeadingInit", 3.0); // [m], minimal length of trajectory to get yaw between GNSS and Lidar trajectory
+  this->declare_parameter("trajectoryAlignment.inlierThreshold", 0.15);  // [m], RANSAC inlier radius of the yaw-alignment fit; raise for a noisier absolute source
   this->declare_parameter("trajectoryAlignment.minimumSpatialSpread", 0.01); // [m], minimum spatial spread required for trajectory alignment
   this->declare_parameter("trajectoryAlignment.noMovementDistance", 0.1); // [m], if measurements are below this distance and in time range, robot is considered standing
   this->declare_parameter("trajectoryAlignment.noMovementTime", 1.0); // [s], if measurements is time range and below distance, robot is considered standing

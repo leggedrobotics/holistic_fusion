@@ -468,7 +468,7 @@ bool TrajectoryAlignment::alignTrajectories(double& yaw, Eigen::Isometry3d& retu
 
   Eigen::Isometry3d alignmentTransform;
   bool ok = trajectoryAlignmentRobust(newR3Trajectory, newSe3Trajectory, alignmentTransform,
-                                      /*inlierThreshold*/ 0.15,
+                                      /*inlierThreshold*/ inlierThreshold_,
                                       /*confidence*/ 0.999,
                                       /*maxIter*/ 1000,
                                       /*withScaling*/ false);

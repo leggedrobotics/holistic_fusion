@@ -97,6 +97,10 @@ class TrajectoryAlignment {
   void setR3Rate(const double r3Rate) { r3Rate_ = r3Rate; }
   void setSe3Rate(const double se3Rate) { se3Rate_ = se3Rate; }
   void setMinDistanceHeadingInit(const double minDistanceHeadingInit) { minDistanceHeadingInit_ = minDistanceHeadingInit; }
+  // RANSAC inlier radius [m] for the robust R3<->SE3 fit. The default is right for a GNSS fix with
+  // sub-metre noise; a source with metres of noise needs it raised or nearly every sample is an
+  // outlier and the fit is decided by three random points.
+  void setInlierThreshold(const double inlierThreshold) { inlierThreshold_ = inlierThreshold; }
   void setMinimumSpatialSpread(const double minimumSpatialSpread) { minimumSpatialSpread_ = minimumSpatialSpread; }
   void setNoMovementDistance(const double noMovementDistance) { noMovementDistance_ = noMovementDistance; }
   void setNoMovementTime(const double noMovementTime) { noMovementTime_ = noMovementTime; }
@@ -122,6 +126,7 @@ class TrajectoryAlignment {
   double r3Rate_{20.0};
   double se3Rate_{10.0};
   double minDistanceHeadingInit_{3.0};
+  double inlierThreshold_{0.15};
   double minimumSpatialSpread_{0.01};
   double noMovementDistance_{1.0};
   double noMovementTime_{3.0};
