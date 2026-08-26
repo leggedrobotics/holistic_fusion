@@ -149,6 +149,41 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
   }
 }
 
+// Velocity3 in Body Frame, sensor frame not rigidly attached to the IMU
+void GraphMsfHolistic::addUnaryVelocity3LocalMovingFrameMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S,
+                                                                    const Eigen::Isometry3d& T_I_sensorFrame,
+                                                                    const Eigen::Vector3d& I_w_W_I) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {  // Case 1: Graph not yet initialized
+    return;
+  } else {  // Case 2: Graph Initialized
+    // Check for covariance violation
+    bool covarianceViolatedFlag = isCovarianceViolated_<3>(S_v_F_S.unaryMeasurementNoiseDensity(), S_v_F_S.covarianceViolationThreshold());
+    if (checkAndPrintCovarianceViolation_(S_v_F_S.measurementName(), covarianceViolatedFlag)) {
+      return;
+    }
+
+    // Create GMSF expression, with the caller-supplied extrinsics and angular velocity
+    auto gmsfUnaryExpressionVelocity3SensorFramePtr = std::make_shared<GmsfUnaryExpressionLocalVelocity3>(
+        std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getImuFrame(), T_I_sensorFrame, I_w_W_I);
+
+    // Add factor to graph
+    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+
+    // Optimize ---------------------------------------------------------------
+    {
+      // Mutex for optimizeGraph Flag
+      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+      optimizeGraphFlag_ = true;
+    }
+  }
+}
+
 // Landmark Measurements: No systematic drift ------------------------------------------------------
 // Position3
 void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLandmark<Eigen::Vector3d, 3>& S_t_S_L,
