@@ -130,7 +130,6 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("sensor_params.lioBetweenRate", 0);
   this->declare_parameter("sensor_params.gnssRate", 0);
 
-  this->declare_parameter("sensor_params.lioBetweenOdometryRate", 0);
   this->declare_parameter("sensor_params.vioOdometryRate", 0);
   this->declare_parameter("sensor_params.vioOdometryBetweenRate", 0);
 
@@ -206,23 +205,37 @@ void B2WEstimator::cacheFrames_() {
   vioOdometryFrame_ = st->getVioOdometryFrame();
 
   if (useGnssFlag_) {
-    t_B_G_cached_ = staticTransformsPtr_->rv_T_frame1_frame2(baseLinkFrame_, gnssFrame_).translation();
+    const Eigen::Isometry3d T_B_I =
+        staticTransformsPtr_->rv_T_frame1_frame2(baseLinkFrame_, staticTransformsPtr_->getImuFrame());
+    const Eigen::Isometry3d T_I_G =
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), gnssFrame_);
+    t_B_G_cached_ = (T_B_I * T_I_G).translation();
   }
 
   framesCached_ = true;
 }
 
-bool B2WEstimator::getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out) const {
-  std::lock_guard<std::mutex> lk(lioPoseBufMutex_);
-  if (lioPoseBuf_.empty()) {
+void B2WEstimator::addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B) {
+  std::lock_guard<std::mutex> lk(alignmentPoseBufMutex_);
+  alignmentPoseBuf_.emplace_back(time, T_M_B);
+
+  const double t_min = time - kAlignmentBufKeepSec;
+  while (!alignmentPoseBuf_.empty() && alignmentPoseBuf_.front().first < t_min) {
+    alignmentPoseBuf_.pop_front();
+  }
+}
+
+bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out) const {
+  std::lock_guard<std::mutex> lk(alignmentPoseBufMutex_);
+  if (alignmentPoseBuf_.empty()) {
     if (best_dt_out) *best_dt_out = std::numeric_limits<double>::infinity();
     return false;
   }
 
-  auto best_it = lioPoseBuf_.begin();
+  auto best_it = alignmentPoseBuf_.begin();
   double best_dt = std::abs(best_it->first - t);
 
-  for (auto it = lioPoseBuf_.begin(); it != lioPoseBuf_.end(); ++it) {
+  for (auto it = alignmentPoseBuf_.begin(); it != alignmentPoseBuf_.end(); ++it) {
     const double dt = std::abs(it->first - t);
     if (dt < best_dt) { best_dt = dt; best_it = it; }
   }
@@ -309,6 +322,14 @@ void B2WEstimator::initializeSubscribers() {
     REGULAR_COUT << COLOR_END << " Initialized LiDAR Odometry subscriber with topic: /lidar_odometry_topic\n";
   }
 
+  if (useLioOdometryFlag_ || useLioBetweenOdometryFlag_) {
+    subLioDegeneracy_ = this->create_subscription<std_msgs::msg::Bool>(
+        "/lio_degeneracy_topic", qosReliable,
+        std::bind(&B2WEstimator::lidarDegeneracyCallback_, this, std::placeholders::_1),
+        so_lidar);
+    REGULAR_COUT << COLOR_END << " Initialized LiDAR degeneracy subscriber with topic: /lio_degeneracy_topic\n";
+  }
+
   if (useLioBetweenOdometryFlag_) {
     subLioBetweenOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/between_lidar_odometry_topic", qos1,
@@ -334,6 +355,11 @@ void B2WEstimator::initializeSubscribers() {
   }
 }
 
+void B2WEstimator::lidarDegeneracyCallback_(
+    const std_msgs::msg::Bool::ConstSharedPtr& degeneracyPtr) {
+  lioDegenerate_.store(degeneracyPtr->data, std::memory_order_relaxed);
+}
+
 void B2WEstimator::initializeMessages() {
   measLio_mapLidarPathPtr_ = std::make_shared<nav_msgs::msg::Path>();
   measVio_mapCameraPathPtr_ = std::make_shared<nav_msgs::msg::Path>();
@@ -349,6 +375,10 @@ void B2WEstimator::initializeServices() {
 
 void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr) {
   B2W_SCOPED_CB_TIMER("lidarBetweenOdometryCallback_");
+
+  if (lioDegenerate_.load(std::memory_order_relaxed)) {
+    return;
+  }
 
   if (!areRollAndPitchInited()) {
     return;
@@ -368,7 +398,7 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
     lidarBetweenTimeKm1_ = lidarBetweenTimeK;
   }
 
-  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+  if (useLioOdometryFlag_ && useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
     trajectoryAlignmentHandler_->addSe3Position(lio_T_M_Lk.translation(), lidarBetweenTimeK);
   }
 
@@ -556,14 +586,14 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
       // Use the helper (step 9.2)
       Eigen::Isometry3d T_M_B_t0 = Eigen::Isometry3d::Identity();
       double best_dt = 0.0;
-      if (!getClosestLioPose_(timeK, T_M_B_t0, &best_dt)) {
+      if (!getClosestAlignmentPose_(timeK, T_M_B_t0, &best_dt)) {
         if (!std::isfinite(best_dt)) {
           REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but LIO pose buffer is empty (cannot compute yaw(W<-B))."
+                       << "Trajectory alignment ready, but alignment pose buffer is empty (cannot compute yaw(W<-B))."
                        << COLOR_END << "\n";
         } else {
           REGULAR_COUT << YELLOW_START
-                       << "Trajectory alignment ready, but no sufficiently time-synced LIO pose for yaw(W<-B). "
+                       << "Trajectory alignment ready, but no sufficiently time-synced alignment pose for yaw(W<-B). "
                        << "best_dt=" << std::fixed << std::setprecision(3) << best_dt << " s"
                        << COLOR_END << "\n";
         }
@@ -668,6 +698,10 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& odomLidarPtr) {
   B2W_SCOPED_CB_TIMER("lidarOdometryCallback_");
 
+  if (lioDegenerate_.load(std::memory_order_relaxed)) {
+    return;
+  }
+
   static double lastLidarOdometryTimeK_ = 0.0;
   static std::uint64_t lidarRawCallbackCounter_ = 0;
   static std::uint64_t lidarAcceptedCallbackCounter_ = 0;
@@ -729,15 +763,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
 
-  {
-    std::lock_guard<std::mutex> lk(lioPoseBufMutex_);
-    lioPoseBuf_.emplace_back(lidarOdometryTimeK, lio_T_M_Lk);
-
-    const double t_min = lidarOdometryTimeK - kLioBufKeepSec;
-    while (!lioPoseBuf_.empty() && lioPoseBuf_.front().first < t_min) {
-      lioPoseBuf_.pop_front();
-    }
-  }
+  addAlignmentPose_(lidarOdometryTimeK, lio_T_M_Lk);
 
   // Frame Name
   const std::string& lioOdometryFrame = lioOdometryFrame_;
@@ -747,7 +773,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   // frame is the drifting LiDAR odometry/map frame carried in header.frame_id, not the sensor/body child frame.
   setHeadingUncertaintyFixedFrame("lio", lioFixedFrame);
 
-  if (useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+  if (useLioOdometryFlag_ && useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
 
     const std::string& baseFrame =
         odomLidarPtr->child_frame_id.empty() ? baseLinkFrame_ : odomLidarPtr->child_frame_id;
@@ -901,6 +927,24 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
                          "VIO absolute pose uses the sensor/body frame as fixed frame (%s). "
                          "Expected a map/odom-like reference frame in header.frame_id.",
                          vioFixedFrame.c_str());
+  }
+
+  // When LIO is disabled, use the ZED trajectory as the SE3 input to the
+  // existing GNSS trajectory alignment. Convert the camera pose to the base
+  // frame before buffering it, since the graph is initialized in baseFrame_.
+  if (useGnssFlag_ && !useLioOdometryFlag_ && !useLioBetweenOdometryFlag_ && trajectoryAlignmentHandler_ &&
+      gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+    const Eigen::Isometry3d T_V_I =
+        staticTransformsPtr_->rv_T_frame1_frame2(vioOdometryFrame_, staticTransformsPtr_->getImuFrame());
+    const Eigen::Isometry3d T_I_B =
+        staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), baseLinkFrame_);
+    const Eigen::Isometry3d vio_T_M_B = vio_T_M_Ck * T_V_I * T_I_B;
+
+    addAlignmentPose_(timeK, vio_T_M_B);
+
+    const Eigen::Vector3d p_G_in_M =
+        vio_T_M_B.translation() + vio_T_M_B.rotation() * t_B_G_cached_;
+    trajectoryAlignmentHandler_->addSe3Position(p_G_in_M, timeK);
   }
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(

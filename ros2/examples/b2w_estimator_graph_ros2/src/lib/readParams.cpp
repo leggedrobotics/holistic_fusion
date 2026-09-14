@@ -52,7 +52,7 @@ void B2WEstimator::readParams() {
   // Sensor Param as
   lioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioOdometryRate");
   gnssRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.gnssRate");
-  lioBetweenOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioBetweenOdometryRate");
+  lioBetweenOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.lioBetweenRate");
   vioOdometryRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryRate");
   vioOdometryBetweenRate_ = graph_msf::tryGetParam<int>(this, "sensor_params.vioOdometryBetweenRate");
 

@@ -23,12 +23,20 @@
     <depend>geometry_msgs</depend>
     <depend>tf2</depend>
     <depend>tf2_ros</depend>
+    <depend>tf2_eigen</depend>
+    <depend>std_srvs</depend>
+    <depend>visualization_msgs</depend>
     <depend>rclcpp</depend>
     <depend>graph_msf</depend>
+    <depend>graph_msf_ros2_msgs</depend>
     <depend>glog</depend>
 
     <!-- Run Dependencies -->
     <exec_depend>b2w_description</exec_depend>
+    <exec_depend>ament_index_python</exec_depend>
+    <exec_depend>launch</exec_depend>
+    <exec_depend>launch_ros</exec_depend>
+    <exec_depend>rviz2</exec_depend>
 
     <!-- Test dependencies -->
     <test_depend>ament_cmake_gtest</test_depend>

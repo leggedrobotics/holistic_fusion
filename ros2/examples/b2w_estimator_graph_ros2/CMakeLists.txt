@@ -88,9 +88,13 @@ ament_target_dependencies(${PROJECT_NAME}
     rclcpp
     std_msgs
     sensor_msgs
+    geometry_msgs
     nav_msgs
     tf2
     tf2_ros
+    tf2_eigen
+    std_srvs
+    visualization_msgs
     Glog
     gflags
     graph_msf_ros2
@@ -107,9 +111,11 @@ ament_target_dependencies(${PROJECT_NAME}_node
     rclcpp
     std_msgs
     sensor_msgs
+    geometry_msgs
     nav_msgs
     tf2
     tf2_ros
+    tf2_eigen
 )
 
 # Add clang tooling

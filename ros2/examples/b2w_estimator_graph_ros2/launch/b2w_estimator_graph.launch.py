@@ -10,12 +10,14 @@ import os
 def generate_launch_description():
     pkg_name = "b2w_estimator_graph_ros2"
     pkg_dir = get_package_share_directory(pkg_name)
+    rviz_dbus_address = os.environ.get("DBUS_SESSION_BUS_ADDRESS") or "unix:path=/dev/null"
 
     # Launch arguments
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_gnss_unary = LaunchConfiguration("use_gnss_unary")
     imu_topic_name = LaunchConfiguration("imu_topic_name")
     lidar_odometry_topic_name = LaunchConfiguration("lidar_odometry_topic_name")
+    lio_degeneracy_topic_name = LaunchConfiguration("lio_degeneracy_topic_name")
     between_lidar_odometry_topic_name = LaunchConfiguration("between_lidar_odometry_topic_name")
     gnss_topic_name = LaunchConfiguration("gnss_topic_name")
     vio_odometry_topic_name = LaunchConfiguration("vio_odometry_topic_name")
@@ -35,6 +37,7 @@ def generate_launch_description():
         DeclareLaunchArgument("use_gnss_unary", default_value="true", description="Enable GNSS unary factor"),
         DeclareLaunchArgument("imu_topic_name", default_value="/imu_sensor_broadcaster/imu", description="IMU topic name"),
         DeclareLaunchArgument("lidar_odometry_topic_name", default_value="/dlio/odom_node/map_pose", description="Lidar odometry topic name"),
+        DeclareLaunchArgument("lio_degeneracy_topic_name", default_value="/dlio/odom_node/degenerate", description="Lidar degeneracy topic name"),
         DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio2/odom_node/odom22", description="Between lidar odometry topic name"),
         DeclareLaunchArgument("vio_odometry_topic_name", default_value="/zed/zed_node/pose_with_covariance", description="VIO odometry topic name"),
         DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/zed/zed_node/odom", description="Between VIO odometry topic name"),
@@ -63,6 +66,7 @@ def generate_launch_description():
             remappings=[
                 ("/imu_topic", imu_topic_name),
                 ("/lidar_odometry_topic", lidar_odometry_topic_name),
+                ("/lio_degeneracy_topic", lio_degeneracy_topic_name),
                 ("/between_lidar_odometry_topic", between_lidar_odometry_topic_name),
                 ("/vio_odometry_topic", vio_odometry_topic_name),
                 ("/vio_odometry_between_topic", vio_odometry_between_topic_name),
@@ -83,6 +87,10 @@ def generate_launch_description():
                 "--ros-args", "--log-level", "message_filters:=error",
             ],
             parameters=[{"use_sim_time": use_sim_time}],
+            # Prevent libdbus from auto-launching a private session bus in
+            # containers that do not expose the host desktop session bus.
+            # That private connection aborts RViz during shutdown/cleanup.
+            additional_env={"DBUS_SESSION_BUS_ADDRESS": rviz_dbus_address},
             output="log",
         ),
     ])

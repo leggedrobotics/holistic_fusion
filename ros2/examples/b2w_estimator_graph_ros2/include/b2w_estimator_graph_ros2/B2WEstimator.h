@@ -98,6 +98,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
 
   // Callbacks
   void lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarOdomPtr);
+  void lidarDegeneracyCallback_(const std_msgs::msg::Bool::ConstSharedPtr& degeneracyPtr);
   void lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr);
   void gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::ConstSharedPtr& navSatFixPtr);
   void vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& vioOdomPtr);
@@ -168,6 +169,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGnssNavSatFix_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioBetweenOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subLioOdometry_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subLioDegeneracy_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subVioOdometry_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subVioOdometryBetween_;
 
@@ -190,12 +192,14 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   std::shared_ptr<nav_msgs::msg::Path> measGnssPathPtr_;
 
   // --------------------------------------------------------------------------
-  // LIO pose buffer for GNSS initialization
-  mutable std::mutex lioPoseBufMutex_;
-  std::deque<std::pair<double, Eigen::Isometry3d>> lioPoseBuf_;  // (time, ^M T_B)
-  static constexpr double kLioBufKeepSec = 5.0;                  // [s]
+  // Alignment pose buffer for GNSS initialization. Poses are always ^M T_B,
+  // regardless of whether LIO or VIO supplies the alignment trajectory.
+  mutable std::mutex alignmentPoseBufMutex_;
+  std::deque<std::pair<double, Eigen::Isometry3d>> alignmentPoseBuf_;  // (time, ^M T_B)
+  static constexpr double kAlignmentBufKeepSec = 5.0;                   // [s]
   static constexpr double kInitSyncMaxDt = 0.20;                 // [s]
-  bool getClosestLioPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
+  void addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B);
+  bool getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
   // --------------------------------------------------------------------------
 
   // GNSS Handler
@@ -211,6 +215,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   bool useVioOdometryFlag_ = false;
   bool useVioOdometryBetweenFlag_ = false;
   std::atomic_bool alignmentStatus_{false};
+  std::atomic_bool lioDegenerate_{false};
 
   // --------------------------------------------------------------------------
   // Cached frame names + constant lever arm (step 9.1)
