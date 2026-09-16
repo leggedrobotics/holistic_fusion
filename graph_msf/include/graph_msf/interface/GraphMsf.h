@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_H
 
 // C++
+#include <atomic>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -34,7 +35,7 @@ class GraphMsf {
   // Constructor
   GraphMsf();
   // Destructor
-  virtual ~GraphMsf() = default;
+  virtual ~GraphMsf();
 
   // Setup
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
@@ -156,6 +157,7 @@ class GraphMsf {
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
                                      /// new lidar measurement has arrived
+  std::atomic<bool> stopOptimizeGraphThread_{false};
 
   // Mutex
   std::mutex initYawAndPositionMutex_;
