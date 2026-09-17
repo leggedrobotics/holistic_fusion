@@ -23,6 +23,15 @@ GraphMsf::GraphMsf() {
   REGULAR_COUT << GREEN_START << " GraphMsf-Constructor called." << COLOR_END << std::endl;
 }
 
+/// Destructor -----------
+GraphMsf::~GraphMsf() {
+  // Properly stop the optimizeGraphThread_ before destruction to avoid std::terminate.
+  stopOptimizeGraphThread_ = true;
+  if (optimizeGraphThread_.joinable()) {
+    optimizeGraphThread_.join();
+  }
+}
+
 void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr) {
   REGULAR_COUT << GREEN_START << " GraphMsf-Setup called." << COLOR_END << std::endl;
 
@@ -380,7 +389,7 @@ void GraphMsf::optimizeGraph_() {
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   bool optimizedAtLeastOnce = false;
-  while (true) {
+  while (!stopOptimizeGraphThread_) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
     {
