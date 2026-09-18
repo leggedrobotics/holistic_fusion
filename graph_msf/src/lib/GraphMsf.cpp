@@ -493,13 +493,20 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   initedGraphFlag_ = true;
 }
 
+GraphMsf::~GraphMsf() {
+  optimizeGraphShutdownRequested_ = true;
+  if (optimizeGraphThread_.joinable()) {
+    optimizeGraphThread_.join();
+  }
+}
+
 void GraphMsf::optimizeGraph_() {
   // While loop
   REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
   bool optimizedAtLeastOnce = false;
-  while (true) {
+  while (!optimizeGraphShutdownRequested_) {
     bool optimizeGraphFlag = false;
     // Mutex for optimizeGraph Flag
     {

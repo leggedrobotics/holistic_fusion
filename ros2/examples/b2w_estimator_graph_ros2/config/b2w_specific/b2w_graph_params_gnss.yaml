@@ -21,6 +21,11 @@
       lioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       vioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
 
+    lio_realignment:
+      enabled: true
+      absenceTimeoutSec: 10.0
+      attemptEveryNGnssMsgs: 5
+
     visualization_params:
       publishHeadingUncertaintyMarkers: true
       publishHeadingUncertaintyText: false

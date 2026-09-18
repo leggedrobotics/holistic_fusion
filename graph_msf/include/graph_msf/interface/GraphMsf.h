@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_MSF_H
 
 // C++
+#include <atomic>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -38,7 +39,10 @@ class GraphMsf {
   // Constructor
   GraphMsf();
   // Destructor
-  virtual ~GraphMsf() = default;
+  // Stops and joins the optimizer thread. Destroying a joinable std::thread calls
+  // std::terminate, which is what "terminate called without an active exception"
+  // on shutdown was.
+  virtual ~GraphMsf();
 
   // Setup
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
@@ -173,6 +177,7 @@ class GraphMsf {
 
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
+  std::atomic<bool> optimizeGraphShutdownRequested_{false};  /// Set by the destructor to end Thread 5
                                      /// new lidar measurement has arrived
 
   // Mutex

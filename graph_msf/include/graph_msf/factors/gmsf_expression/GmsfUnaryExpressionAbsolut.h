@@ -62,10 +62,12 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // If initial guess is externally set
     bool initialGuessSetExternally = false;
+    gtsam::Pose3 T_W_fixedFrame_external = gtsam::Pose3::Identity();
     if (gtsamDynamicExpressionKeys.get<gtsam::Pose3>().getInitialGuessForFramePair(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
                                                                                    gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(),
                                                                                    T_W_fixedFrame_initial)) {
       initialGuessSetExternally = true;
+      T_W_fixedFrame_external = T_W_fixedFrame_initial;
       REGULAR_COUT << GREEN_START << " Initial guess for transform " << gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName() << " to "
                    << gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() << " was set externally." << COLOR_END << std::endl;
       // Remove from map
@@ -184,6 +186,15 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       restartedKeyPriorBelief = shiftCenteredPriorToCurrentKeyframe(restartedKeyPriorBelief, T_fixedFrameOld_fixedFrame);
       restartedKeyPriorNoiseModelPtr = buildRestartPriorNoiseModel(
           restartedKeyPriorCovariance, T_fixedFrameOld_fixedFrame, oldKeyPtr->computeVariableAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK()));
+      // An externally provided guess supersedes the old belief: it exists precisely because the
+      // caller knows the old belief no longer describes this frame. The variable is expressed
+      // in keyframe-centered coordinates, so bring the (un-centered) guess into them.
+      if (initialGuessSetExternally) {
+        restartedKeyPriorBelief = T_W_fixedFrame_external *
+                                  gtsam::Pose3(gtsam::Rot3::Identity(), graphKey.getReferenceFrameKeyframePosition());
+        REGULAR_COUT << GREEN_START << " Restart-from-prior for " << gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName()
+                     << " uses the externally provided alignment instead of the previous belief." << COLOR_END << std::endl;
+      }
       T_W_fixedFrame_initial = restartedKeyPriorBelief;
 
       keyframeAge = graphKey.computeKeyframeAge(gmsfUnaryAbsoluteMeasurementPtr_->timeK());
@@ -255,11 +266,20 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // D: Shift the measurement to the robot position and recompute initial guess if we create keyframes -----------------------------------
     // Has to be done here, as we did not know the keyframe position before
-    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && !initialGuessSetExternally) {
+    // The measurement is centered whenever centering is on -- including when the initial guess
+    // came from outside. Skipping the shift for an external guess (as before) left this factor
+    // in un-centered coordinates while every later factor on the same variable is centered, an
+    // inconsistency of R*k that only vanishes when the keyframe sits at the origin (k ~ 0).
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) {
       // Shift the measurement to the robot position
       this->setMeasurementPosition(this->getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
-      // Recompute initial guess unless we intentionally restarted from the old prior.
-      if (!restartedFromPrior) {
+      if (initialGuessSetExternally) {
+        // External guesses are T_W_fixedFrame, un-centered. Compose with the keyframe position:
+        // the exact inverse of the un-centering applied when the estimate is read back.
+        T_W_fixedFrame_initial = T_W_fixedFrame_external *
+                                 gtsam::Pose3(gtsam::Rot3::Identity(), graphKey.getReferenceFrameKeyframePosition());
+      } else if (!restartedFromPrior) {
+        // Recompute initial guess unless we intentionally restarted from the old prior.
         T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
       }
       // Update the initial guess

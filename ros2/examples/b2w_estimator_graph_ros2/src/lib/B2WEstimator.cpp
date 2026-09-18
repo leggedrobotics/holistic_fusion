@@ -111,6 +111,9 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("gnss_params.initYaw", 90.0);
   this->declare_parameter("gnss_params.useYawInitialGuessFromFile", false);
   this->declare_parameter("gnss_params.yawInitialGuessFromAlignment", true);
+  this->declare_parameter("lio_realignment.enabled", false);
+  this->declare_parameter("lio_realignment.absenceTimeoutSec", 10.0);
+  this->declare_parameter("lio_realignment.attemptEveryNGnssMsgs", 5);
   this->declare_parameter("gnss_params.useGnssReference", false);
   this->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
   this->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
@@ -244,6 +247,52 @@ bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_o
   if (best_dt > kInitSyncMaxDt) return false;  // too far apart in time
   T_M_B_out = best_it->second;
   return true;
+}
+
+std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> B2WEstimator::makeTrajectoryAligner_() const {
+  auto aligner = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+  aligner->setSe3Rate(trajAlignParams_.se3Rate);
+  aligner->setR3Rate(trajAlignParams_.r3Rate);
+  aligner->setMinDistanceHeadingInit(trajAlignParams_.minDistanceHeadingInit);
+  aligner->setMinimumSpatialSpread(trajAlignParams_.minimumSpatialSpread);
+  aligner->setNoMovementDistance(trajAlignParams_.noMovementDistance);
+  aligner->setNoMovementTime(trajAlignParams_.noMovementTime);
+  return aligner;
+}
+
+// Runs on the GNSS callback thread while LIO is being re-aligned: feeds the GNSS path and
+// periodically tries the alignment. A converged result is parked for the LIO thread to inject.
+void B2WEstimator::realignFromGnss_(const Eigen::Vector3d& W_t_W_Gnss, const double timeK) {
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> aligner;
+  int n = 0;
+  {
+    std::lock_guard<std::mutex> lk(realignMutex_);
+    if (realignInjectPending_) {
+      return;  // a result is already waiting for the LIO thread
+    }
+    aligner = trajectoryAlignmentHandler_;
+    n = ++realignGnssMsgCounter_;
+  }
+  if (!aligner) {
+    return;
+  }
+  aligner->addR3Position(W_t_W_Gnss, timeK);
+  if (n % lioRealignAttemptEveryNGnssMsgs_ != 0) {
+    return;
+  }
+  double yaw_W_M = 0.0;
+  Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
+  if (!aligner->alignTrajectories(yaw_W_M, T_W_M)) {
+    return;  // needs ~minimumDistanceHeadingInit of motion on both paths
+  }
+  {
+    std::lock_guard<std::mutex> lk(realignMutex_);
+    realignT_W_M_ = T_W_M;
+    realignInjectPending_ = true;
+  }
+  REGULAR_COUT << GREEN_START << " [LIO realign] Trajectory alignment converged: yaw(W<-M) = " << std::fixed
+               << std::setprecision(1) << (180.0 * yaw_W_M / M_PI) << " deg, t = " << T_W_M.translation().transpose()
+               << ". Handing to the LIO thread for injection." << COLOR_END << "\n";
 }
 
 void B2WEstimator::initializePublishers() {
@@ -637,6 +686,10 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
   } else {
 
+    if (lioRealignEnabled_ && lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Realigning) {
+      realignFromGnss_(W_t_W_Gnss, timeK);
+    }
+
     const std::string& gnssFrameName = gnssFrame_;
     const double timestampSec =
         navSatFixPtr->header.stamp.sec + navSatFixPtr->header.stamp.nanosec * 1e-9;
@@ -702,7 +755,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     return;
   }
 
-  static double lastLidarOdometryTimeK_ = 0.0;
+  const double prevAcceptedLioHeaderTime = lastAcceptedLioHeaderTime_.load(std::memory_order_relaxed);
   static std::uint64_t lidarRawCallbackCounter_ = 0;
   static std::uint64_t lidarAcceptedCallbackCounter_ = 0;
   static std::uint64_t lidarRateGateRejectedCounter_ = 0;
@@ -718,8 +771,8 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   ++lidarRawCallbackCounter_;
   const bool lioReportNow = lio_raw_wall_freq_checker.tick(lidarCallbackWallTimeK);
 
-  if (lastLidarOdometryTimeK_ > 0.0 &&
-      (lidarOdometryTimeK - lastLidarOdometryTimeK_) < (1.0 / lioOdometryRate_)) {
+  if (prevAcceptedLioHeaderTime > 0.0 &&
+      (lidarOdometryTimeK - prevAcceptedLioHeaderTime) < (1.0 / lioOdometryRate_)) {
     ++lidarRateGateRejectedCounter_;
     if (lioReportNow) {
       REGULAR_COUT << BLUE_START
@@ -738,7 +791,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     }
     return;
   }
-  lastLidarOdometryTimeK_ = lidarOdometryTimeK;
+  lastAcceptedLioHeaderTime_.store(lidarOdometryTimeK, std::memory_order_relaxed);
   ++lidarAcceptedCallbackCounter_;
   lio_accepted_wall_freq_checker.tick(lidarCallbackWallTimeK);
   lio_accepted_stamp_freq_checker.tick(lidarOdometryTimeK);
@@ -827,6 +880,49 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {
+    // LIO re-alignment after an outage (see B2WEstimator.h).
+    if (lioRealignEnabled_) {
+      const double lioGapSec = lidarOdometryTimeK - prevAcceptedLioHeaderTime;
+      if (lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Active && prevAcceptedLioHeaderTime > 0.0 &&
+          lioGapSec > lioRealignAbsenceTimeoutSec_) {
+        {
+          std::lock_guard<std::mutex> lk(realignMutex_);
+          trajectoryAlignmentHandler_ = makeTrajectoryAligner_();  // drop the old-frame trajectory
+          realignInjectPending_ = false;
+          realignGnssMsgCounter_ = 0;
+        }
+        lioAlignState_.store(LioAlignState::Realigning, std::memory_order_release);
+        measLio_mapLidarPathPtr_->poses.clear();
+        measLio_mapLidarPathPtr_->header.frame_id = lioFixedFrame + referenceFrameAlignedNameId;
+        measLio_mapLidarPathPtr_->header.stamp = odomLidarPtr->header.stamp;
+        if (pubMeasMapLioLidarPath_->get_subscription_count() > 0) {
+          pubMeasMapLioLidarPath_->publish(*measLio_mapLidarPathPtr_);
+        }
+        REGULAR_COUT << YELLOW_START << " [LIO realign] LIO was absent for " << std::fixed << std::setprecision(1) << lioGapSec
+                     << " s; its map frame has most likely been re-origined. Withholding LIO unaries until a fresh "
+                     << worldFrame_ << " -> " << lioFixedFrame << " alignment converges." << COLOR_END << "\n";
+      }
+      if (lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Realigning) {
+        bool inject = false;
+        Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
+        {
+          std::lock_guard<std::mutex> lk(realignMutex_);
+          if (realignInjectPending_) {
+            inject = true;
+            T_W_M = realignT_W_M_;
+            realignInjectPending_ = false;
+          }
+        }
+        if (!inject) {
+          return;  // still aligning: this scan stays out of the graph
+        }
+        // Same thread as the unary below, so GMSF's initial-guess map is never accessed concurrently.
+        this->initWorldFrameToFixedFrameTransform(T_W_M, lioFixedFrame);
+        lioAlignState_.store(LioAlignState::Active, std::memory_order_release);
+        REGULAR_COUT << GREEN_START << " [LIO realign] Injected T_" << worldFrame_ << "_" << lioFixedFrame << " (t = "
+                     << T_W_M.translation().transpose() << "). Resuming LIO unaries." << COLOR_END << "\n";
+      }
+    }
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }
 

@@ -106,18 +106,21 @@ if (useGnssFlag_) {
     if (gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
     // Make sure no dual true
     gnssHandlerPtr_->setUseYawInitialGuessFromFile(false);
-    trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+    trajAlignParams_.se3Rate = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.lidarRate");
+    trajAlignParams_.r3Rate = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.gnssRate");
+    trajAlignParams_.minDistanceHeadingInit = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumDistanceHeadingInit");
+    trajAlignParams_.minimumSpatialSpread = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumSpatialSpread");
+    trajAlignParams_.noMovementDistance = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementDistance");
+    trajAlignParams_.noMovementTime = graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementTime");
+    trajectoryAlignmentHandler_ = makeTrajectoryAligner_();
 
-    trajectoryAlignmentHandler_->setSe3Rate(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.lidarRate"));
-    trajectoryAlignmentHandler_->setR3Rate(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.gnssRate"));
-
-    trajectoryAlignmentHandler_->setMinDistanceHeadingInit(
-        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumDistanceHeadingInit"));
-    trajectoryAlignmentHandler_->setMinimumSpatialSpread(
-        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.minimumSpatialSpread"));
-    trajectoryAlignmentHandler_->setNoMovementDistance(
-        graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementDistance"));
-    trajectoryAlignmentHandler_->setNoMovementTime(graph_msf::tryGetParam<double>(this, "trajectoryAlignment.noMovementTime"));
+    // LIO re-alignment after an outage: needs the aligner (this block) and GNSS.
+    lioRealignEnabled_ = useLioOdometryFlag_ && graph_msf::tryGetParam<bool>(this, "lio_realignment.enabled");
+    lioRealignAbsenceTimeoutSec_ = graph_msf::tryGetParam<double>(this, "lio_realignment.absenceTimeoutSec");
+    const int attemptEveryN = graph_msf::tryGetParam<int>(this, "lio_realignment.attemptEveryNGnssMsgs");
+    lioRealignAttemptEveryNGnssMsgs_ = attemptEveryN < 1 ? 1 : attemptEveryN;
+    RCLCPP_INFO(this->get_logger(), "\033[92m- LIO re-alignment after outage: %s (absence > %.1f s)\033[0m",
+                lioRealignEnabled_ ? "enabled" : "disabled", lioRealignAbsenceTimeoutSec_);
     } else if (!gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
     gnssHandlerPtr_->setGlobalYawDegFromFile(graph_msf::tryGetParam<double>(this, "gnss_params.initYaw"));
     }

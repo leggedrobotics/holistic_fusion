@@ -207,6 +207,25 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
 
   // TrajectoryAlignment Handler
   std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+  struct TrajectoryAlignmentParams {
+    double se3Rate = 10.0, r3Rate = 10.0, minDistanceHeadingInit = 3.0, minimumSpatialSpread = 0.01;
+    double noMovementDistance = 1.0, noMovementTime = 3.0;
+  } trajAlignParams_;
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> makeTrajectoryAligner_() const;
+
+  // --------------------------------------------------------------------------
+  enum class LioAlignState { Active, Realigning };
+  std::atomic<LioAlignState> lioAlignState_{LioAlignState::Active};
+  std::atomic<double> lastAcceptedLioHeaderTime_{0.0};
+  std::mutex realignMutex_;  // guards the members below and the aligner swap
+  bool realignInjectPending_ = false;
+  Eigen::Isometry3d realignT_W_M_ = Eigen::Isometry3d::Identity();
+  int realignGnssMsgCounter_ = 0;
+  bool lioRealignEnabled_ = false;
+  double lioRealignAbsenceTimeoutSec_ = 10.0;
+  int lioRealignAttemptEveryNGnssMsgs_ = 5;
+  void realignFromGnss_(const Eigen::Vector3d& W_t_W_Gnss, double timeK);
+  // --------------------------------------------------------------------------
 
   // Flags
   bool useGnssFlag_ = false;
