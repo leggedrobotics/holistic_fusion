@@ -1,13 +1,12 @@
 # ANymal Estimator Graph
 
 This is the readme for the GMSF-based estimator for the Anymal robot.
-The estimator is based on the [GMSF](./../../README.md) library.
+The estimator is based on the [GMSF / Holistic Fusion](../../../README.md) library.
 
 ## Compilation
 
-Make sure you have all dependencies for GMSF installed. This mainly also
-includes having [gtsam_catkin](https://github.com/leggedrobotics/gtsam_catkin)
-in your catkin workspace.
+Make sure you have all dependencies for GMSF installed by following the
+[installation instructions](https://leggedrobotics.github.io/holistic_fusion/docs/1_installation.html).
 
 ## Compilation
 

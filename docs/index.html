@@ -1,75 +1,565 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            text-align: center;
-            background-color: #f9f9f9;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .authors {
-            font-size: 18px;
-            color: #555;
-            margin-top: 5px;
-        }
-        .abstract {
-            text-align: justify;
-            margin-top: 20px;
-            font-size: 16px;
-        }
-        .btn {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            background-color: #007bff;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs</title>
+  <meta name="description" content="Holistic Fusion (HF) is an open-source factor-graph framework for task- and setup-agnostic multimodal sensor fusion, published in IEEE Transactions on Robotics (T-RO), 2026.">
+  <meta property="og:title" content="Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs">
+  <meta property="og:description" content="Open-source factor-graph framework for flexible, multimodal sensor fusion with automatic reference-frame alignment. IEEE T-RO 2026.">
+  <meta property="og:image" content="https://leggedrobotics.github.io/holistic_fusion/docs_src/img/hf_illustration.png">
+  <meta property="og:url" content="https://leggedrobotics.github.io/holistic_fusion/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="docs_src/img/logo.png">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f5f7fa;
+      --text: #1c2431;
+      --muted: #5b6675;
+      --border: #e3e8ee;
+      --accent: #0b5cad;
+      --accent-dark: #084a8c;
+      --accent-soft: #e6f0fb;
+      --teal: #0f9e8e;
+      --card: #ffffff;
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.06);
+      --radius: 12px;
+      --max: 1120px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; height: auto; display: block; }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { line-height: 1.2; margin: 0; }
+    h2 { font-size: 1.85rem; letter-spacing: -0.01em; margin-bottom: 8px; }
+    h3 { font-size: 1.15rem; margin-bottom: 6px; }
+    p { margin: 0 0 1em; }
+    .lead { color: var(--muted); font-size: 1.05rem; max-width: 780px; margin-bottom: 28px; }
+
+    /* Navigation */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: saturate(180%) blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+    nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); }
+    nav .brand img { height: 26px; width: auto; }
+    nav ul { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; }
+    nav ul a { color: var(--muted); font-size: 0.93rem; font-weight: 500; }
+    nav ul a:hover { color: var(--accent); text-decoration: none; }
+    @media (max-width: 860px) { nav ul { display: none; } }
+    @media (max-width: 640px) { nav .brand span { display: none; } .hero h1 { font-size: 1.7rem; } .abstract { text-align: left; } }
+
+    /* Hero */
+    header.hero {
+      padding: 64px 0 40px;
+      background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+      text-align: center;
+    }
+    .hero .logo { width: 100%; max-width: 460px; margin: 0 auto 28px; }
+    .hero h1 { font-size: 2.35rem; font-weight: 800; letter-spacing: -0.02em; max-width: 960px; margin: 0 auto 18px; }
+    .hero .venue {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent-soft); color: var(--accent-dark);
+      font-weight: 600; font-size: 0.9rem; padding: 6px 14px; border-radius: 999px; margin-bottom: 22px;
+    }
+    .hero .authors { font-size: 1.08rem; max-width: 900px; margin: 0 auto 6px; }
+    .hero .authors a { color: var(--text); font-weight: 500; }
+    .hero .authors a:hover { color: var(--accent); }
+    .hero .authors sup { color: var(--muted); font-size: 0.7em; }
+    .hero .affil { color: var(--muted); font-size: 0.92rem; margin-bottom: 30px; }
+    .hero .affil sup { font-size: 0.7em; }
+    .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 44px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 999px; font-weight: 600; font-size: 0.95rem;
+      background: var(--text); color: #fff; border: 1px solid transparent;
+      transition: transform 0.12s ease, background 0.12s ease;
+    }
+    .btn:hover { background: #2a3444; text-decoration: none; transform: translateY(-1px); }
+    .btn.primary { background: var(--accent); }
+    .btn.primary:hover { background: var(--accent-dark); }
+    .btn.outline { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn.outline:hover { background: var(--bg-alt); }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; }
+    .hero .teaser { max-width: 1040px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; }
+    .hero .teaser figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 12px; }
+
+    /* Sections */
+    section { padding: 64px 0; }
+    section.alt { background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .eyebrow { color: var(--teal); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px; }
+
+    /* Video */
+    .video { position: relative; width: 100%; max-width: 960px; margin: 0 auto; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: #000; }
+    .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    /* Abstract */
+    .abstract { max-width: 900px; margin: 0 auto; font-size: 1.05rem; text-align: justify; }
+    .abstract p { hyphens: auto; }
+
+    /* Figures */
+    figure { margin: 0; }
+    figure.fig { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+    figure.fig img { margin: 0 auto; }
+    figure.fig figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 12px; line-height: 1.5; }
+    figure.plain figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 10px; text-align: center; }
+
+    /* Grid & cards */
+    .grid { display: grid; gap: 22px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 900px) { .grid.cols-3 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 22px; box-shadow: var(--shadow);
+    }
+    .card .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-dark);
+      font-weight: 700; font-size: 0.95rem; margin-bottom: 12px;
+    }
+    .card p { color: var(--muted); font-size: 0.97rem; margin: 0; }
+    .card ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.97rem; }
+    .card code { font-size: 0.85em; background: var(--bg-alt); padding: 1px 6px; border-radius: 5px; }
+
+    .two-col { display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px; align-items: center; }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: var(--bg-alt); font-weight: 600; font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+
+    /* Datasets */
+    .dataset-box { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+    .dataset-box .card { flex: 1 1 280px; }
+
+    /* Citation */
+    pre {
+      background: #0f172a; color: #e2e8f0; padding: 20px; border-radius: var(--radius);
+      overflow-x: auto; font-size: 0.86rem; line-height: 1.5; margin: 0 0 18px;
+    }
+    .cite-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .cite-head h3 { margin: 0; }
+    .cite-head .links { font-size: 0.93rem; }
+
+    /* Team */
+    .team { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 22px; text-align: center; }
+    .team img { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px; border: 3px solid #fff; box-shadow: var(--shadow); }
+    .team .name { font-weight: 600; font-size: 0.98rem; }
+    .team .name a { color: var(--text); }
+    .team .role { color: var(--muted); font-size: 0.85rem; }
+
+    /* Footer */
+    footer { padding: 36px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    .note { font-size: 0.9rem; color: var(--muted); }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="title">Holistic Fusion: Task and Setup-agnostic Robot Localization and State Estimation with Factor Graphs</div>
-        <div class="authors">Julian Nubert, Turcan Tuna, Jonas Frey, Cesar Cadena, Katherine J. Kuchenbecker, Shehryar Khattak, Marco Hutter</div>
-        <hr>
-        <div class="abstract">
-            <strong>Abstract:</strong> 
-		Modern robotic systems must be able to operate in challenging environments seamlessly and often require low-latency local motion estimation (e.g., for dynamic maneuvers) and accurate \textit{global} localization (e.g., for wayfinding).
-		While most existing sensor fusion solutions are designed with specific tasks or setups in mind, this work introduces a flexible solution for task- and setup-agnostic multi-modal sensor fusion called Holistic Fusion that distinguishes in its generality and simple adaptability to new tasks.
-		HF formulates sensor fusion as a holistic (combined) estimation problem of i) the local and global robot state and ii) the relationship of a (theoretically unlimited) number of dynamic context variables, e.g., for the automatic alignment of coordinate reference frames, which fits a large body of real-world applications without any conceptual modifications.
-		In particular, the proposed factor graph solution enables the direct fusion of a (theoretically) arbitrary number of absolute-, local-, and landmark measurements expressed w.r.t. different reference frames.
-		To account for the drift of different absolute measurements, the evolution of the reference frames is modeled as a random walk. 
-		Moreover, to handle jumps in the robot state belief, particular attention is given to both local smoothness and consistency while ensuring global accuracy.
-		The proposed solution enables low-latency and smooth state estimation on typical robot hardware and provides low-drift globally consistent estimates in robot states at IMU-rate. %post-mission offline optimization, 
-		The efficacy of the released proposed framework is demonstrated in six distinct real-world scenarios on three robotic platforms, each with different task requirements.
-        </div>
-        <a href="https://github.com/leggedrobotics/holistic_fusion" class="btn">Github</a>
-        <a href="https://youtube.com/leggedrobotics" class="btn">Video</a>
-        <a href="docs/index.html" class="btn">Read The Docs</a>
-        <a href="doxy/index.html" class="btn">Doxygen</a>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="docs_src/img/logo.png" alt="Holistic Fusion logo"><span>Holistic Fusion</span></a>
+    <ul>
+      <li><a href="#video">Video</a></li>
+      <li><a href="#abstract">Abstract</a></li>
+      <li><a href="#method">Method</a></li>
+      <li><a href="#framework">Framework</a></li>
+      <li><a href="#experiments">Experiments</a></li>
+      <li><a href="#datasets">Datasets</a></li>
+      <li><a href="#citation">Citation</a></li>
+      <li><a href="docs/index.html">Docs</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <img class="logo" src="docs_src/img/logo.png" alt="Holistic Fusion">
+    <h1>Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs</h1>
+    <div class="venue">IEEE Transactions on Robotics (T-RO), 2026</div>
+    <div class="authors">
+      <a href="https://www.linkedin.com/in/juliannubert/">Julian Nubert</a><sup>1,2,3</sup>,
+      <a href="https://www.linkedin.com/in/turcantuna/">Turcan Tuna</a><sup>1</sup>,
+      <a href="https://www.linkedin.com/in/jonasfrey96/">Jonas Frey</a><sup>1,3</sup>,
+      <a href="https://www.linkedin.com/in/cesar-cadena-204106b/">Cesar Cadena</a><sup>1</sup>,
+      <a href="https://www.linkedin.com/in/katherinekuchenbecker/">Katherine J. Kuchenbecker</a><sup>2</sup>,
+      <a href="https://www.linkedin.com/in/shehryar-khattak/">Shehryar Khattak</a><sup>3</sup>,
+      <a href="https://www.linkedin.com/in/marco-hutter/">Marco Hutter</a><sup>1</sup>
     </div>
+    <div class="affil">
+      <sup>1</sup>Robotic Systems Lab, ETH Zürich &nbsp;·&nbsp;
+      <sup>2</sup>Max Planck Institute for Intelligent Systems &nbsp;·&nbsp;
+      <sup>3</sup>NASA Jet Propulsion Laboratory, California Institute of Technology
+    </div>
+
+    <div class="btns">
+      <a class="btn primary" href="https://doi.org/10.1109/TRO.2026.3714645">
+        <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5L14 3.5zM8 12h8v1.5H8V12zm0 3h8v1.5H8V15zm0 3h5v1.5H8V18z"/></svg>
+        Paper (T-RO)
+      </a>
+      <a class="btn" href="https://arxiv.org/abs/2504.06479">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 4h16v2H4V8zm0 4h10v2H4v-2zm0 4h10v2H4v-2zm12-2 4 4-4 4v-8z"/></svg>
+        arXiv
+      </a>
+      <a class="btn" href="https://github.com/leggedrobotics/holistic_fusion">
+        <svg viewBox="0 0 24 24"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+        Code
+      </a>
+      <a class="btn" href="https://youtu.be/RQY2ZQXTDOU">
+        <svg viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23.5 12 31 31 0 0 0 23 7.2zM9.7 15.3V8.7l6 3.3-6 3.3z"/></svg>
+        Video
+      </a>
+      <a class="btn" href="https://drive.google.com/drive/folders/1BYMc8L4chKCkwa-ZUEw0qruHFgPN2rn2">
+        <svg viewBox="0 0 24 24"><path d="M4 4a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v3H4V4zm0 7h20v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9z"/></svg>
+        Datasets
+      </a>
+      <a class="btn outline" href="docs/index.html">Documentation</a>
+      <a class="btn outline" href="doxy/index.html">Doxygen</a>
+      <a class="btn outline" href="docs/7_examples.html">Examples</a>
+    </div>
+
+    <figure class="teaser plain">
+      <img src="docs_src/img/hf_illustration.png" alt="Holistic Fusion illustration: robots, measurements, and a factor graph">
+      <figcaption>Holistic Fusion (HF) fuses IMU, absolute, landmark, and local measurements from an arbitrary number of sensors and reference frames in one factor graph.</figcaption>
+    </figure>
+  </div>
+</header>
+
+<section id="video">
+  <div class="wrap">
+    <div class="eyebrow">Overview</div>
+    <h2>Video</h2>
+    <p class="lead">A short overview of the approach and the real-world deployments on the ANYmal quadruped, the RACER off-road vehicle, and the HEAP walking excavator.</p>
+    <div class="video">
+      <iframe src="https://www.youtube.com/embed/RQY2ZQXTDOU" title="Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="abstract">
+  <div class="wrap">
+    <div class="eyebrow">Paper</div>
+    <h2>Abstract</h2>
+    <div class="abstract">
+      <p>Seamless operation of mobile robots in challenging environments requires low-latency <em>local</em> motion estimation and accurate <em>global</em> localization. While most sensor-fusion approaches are designed for specific scenarios, this work introduces a flexible open-source solution for task- and setup-agnostic multimodal sensor fusion distinguished by its generality and usability. <em>Holistic Fusion</em> formulates sensor fusion as a combined estimation problem of <em>i)</em> the local and global robot state and <em>ii)</em> a (theoretically unlimited) number of dynamic variables, including automatic alignment of reference frames; this formulation fits countless real-world applications without conceptual modifications, offering a comprehensive solution beyond hard-coded/task-specific approaches. The proposed factor-graph formulation enables direct fusion of an arbitrary number of absolute, local, and landmark measurements expressed with respect to different frames by explicitly including them as states in the optimization and modeling their evolution as random walks. Moreover, local smoothness and consistency receive particular attention to prevent estimation jumps. Holistic Fusion enables low-latency and smooth online state estimation on typical robot hardware while simultaneously providing low-drift global localization at the IMU measurement rate. The efficacy of this released framework is demonstrated in five real-world scenarios on three robotic platforms with distinct task requirements, highlighting the advantages of fusing multiple absolute measurement types.</p>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <div class="eyebrow">Approach</div>
+    <h2>What is Holistic Fusion?</h2>
+    <p class="lead">HF acts as the central state-estimation module of a robot. Beyond the robot state, it estimates the relationship between all reference frames of the fused measurements and external modules, and it feeds high-rate beliefs back to them.</p>
+
+    <div class="two-col">
+      <figure class="fig">
+        <img src="docs_src/img/paper/scope_figure.png" alt="Role and information streams of Holistic Fusion">
+        <figcaption>Intended role of HF: a central fusion module that also estimates the (relative) transformations between the reference frames of measurements and external modules, e.g., a SLAM system, and propagates high- or low-rate beliefs back to them.</figcaption>
+      </figure>
+      <div>
+        <h3>Objectives</h3>
+        <ul style="color: var(--muted); padding-left: 20px; margin: 0;">
+          <li><strong>O1</strong> Real-time robot state at IMU rate: locally smooth in the odometry frame, globally accurate in the world frame.</li>
+          <li><strong>O2</strong> Flexible fusion of any number and type of delayed, out-of-order measurements without prior engineering.</li>
+          <li><strong>O3</strong> Automatic alignment of all reference frames, i.e., a synchronized localization manager.</li>
+          <li><strong>O4</strong> Online and offline extrinsic calibration between sensor frames.</li>
+          <li><strong>O5</strong> Easy use for new setups: adding a new measurement type should be simple.</li>
+        </ul>
+      </div>
+    </div>
+
+    <figure class="fig" style="margin-top: 28px;">
+      <img src="docs_src/img/paper/holistic_estimation.png" alt="Illustrative Holistic Fusion scenario on ANYmal">
+      <figcaption>An illustrative scenario: IMU, GNSS, LiDAR-registration poses, and local velocity are fused directly without preprocessing. Global and non-global absolute measurements drift against each other; HF explicitly estimates the shift between their reference frames, aligns them at local keyframes, and models the evolution as a random walk. The graph on top shows the resulting factor graph with states and factors in matching colors.</figcaption>
+    </figure>
+
+    <h2 style="margin-top: 56px;">Key Ideas</h2>
+    <p class="lead">Compared to existing sensor-fusion formulations, the state vector of HF is not fixed. Dynamic context variables are allocated as needed, and part of the logic that is usually hard-coded is offloaded to the optimization.</p>
+    <div class="grid cols-3">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>Holistic state variables</h3>
+        <p>Next to the IMU-rate robot navigation states, HF dynamically creates <em>reference-frame alignment</em> states, <em>landmark</em> states, and <em>global</em> (e.g., calibration) states and optimizes all of them jointly.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>Drift modeled as a random walk</h3>
+        <p>A single rigid (Umeyama) alignment cannot capture the drift between frames. HF models the evolution of each reference-frame transformation as a multivariate discrete-time random walk on SE(3), added as a zero-mean between factor.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>Local keyframe alignment</h3>
+        <p>Alignment variables are parametrized around local keyframes instead of the global origin. This removes the growing rotational lever arm and makes automatic alignment numerically stable over long missions.</p>
+      </div>
+      <div class="card">
+        <div class="num">4</div>
+        <h3>Smooth, non-jumping odometry</h3>
+        <p>New information (e.g., returning GNSS) may jump the world-frame belief. HF integrates the body-frame velocity from the smoother window to provide a smooth odometry-frame estimate for control and local mapping.</p>
+      </div>
+      <div class="card">
+        <div class="num">5</div>
+        <h3>Online: high-rate, out-of-order</h3>
+        <p>IMU-based propagation runs at full rate while a fixed-lag iSAM2 smoother optimizes asynchronously. Dense states allow delayed and out-of-order measurements to be inserted without rewiring the graph.</p>
+      </div>
+      <div class="card">
+        <div class="num">6</div>
+        <h3>Offline batch and pseudo ground truth</h3>
+        <p>The offline graph mirrors the online one and is initialized from the online belief, converging in few iterations. It yields IMU-rate optimized trajectories usable as post-mission pseudo ground truth.</p>
+      </div>
+    </div>
+
+    <figure class="fig" style="margin-top: 28px;">
+      <img src="docs_src/img/paper/graph_structure.png" alt="Factor graph structure of Holistic Fusion">
+      <figcaption>Structural overview of the HF factor graph. IMU measurements drive the creation of the navigation states; all other states are created dynamically based on the provided measurements: <strong>a)</strong> reference-frame alignment states, <strong>b)</strong> landmark states, <strong>c)</strong> global states, <strong>d)</strong> example measurement types depicted as factors. Every new measurement type follows the same four-step template (Steps A to D), so Jacobians are derived automatically via GTSAM expression factors.</figcaption>
+    </figure>
+
+    <div class="two-col" style="margin-top: 28px;">
+      <div>
+        <h3>Supported measurement types</h3>
+        <p style="color: var(--muted);">Four categories cover most practical robotic state-estimation problems, including non-gravity-aligned and drifting measurements expressed in arbitrary sensor frames with respect to arbitrary reference frames.</p>
+        <ul style="color: var(--muted); padding-left: 20px; margin: 0;">
+          <li><strong>IMU</strong> measurements (core sensor, defines the state-creation rate).</li>
+          <li><strong>Absolute</strong> measurements w.r.t. a reference frame, e.g., GNSS positions or SLAM poses in a map frame.</li>
+          <li><strong>Landmark</strong> measurements, e.g., foot contact points or feature locations.</li>
+          <li><strong>Local and relative</strong> measurements, e.g., wheel or RADAR velocities and odometry deltas.</li>
+        </ul>
+      </div>
+      <figure class="fig">
+        <img src="docs_src/img/paper/smooth_odometry.png" alt="Smooth odometry generation by integrating the body-frame state">
+        <figcaption>Motivation and illustration of the smooth odometry generation by integrating the body-frame state estimated in the current smoother window.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="framework">
+  <div class="wrap">
+    <div class="eyebrow">Open Source</div>
+    <h2>The Framework</h2>
+    <p class="lead">HF is released as a documented C++ framework with main dependencies on GTSAM and Eigen. The core is independent of any middleware; ROS 1 and ROS 2 wrappers and a set of robot examples are provided.</p>
+    <figure class="fig">
+      <img src="docs_src/img/paper/software_overview.png" alt="Software structure of Holistic Fusion">
+      <figcaption>High-level overview of the software structure and examples. HF Core is fully generic and templated, HF Interface provides concrete implementations, and HF ROS and ROS 2 are the corresponding middleware wrappers.</figcaption>
+    </figure>
+    <div class="grid cols-3" style="margin-top: 28px;">
+      <div class="card">
+        <h3>Core library</h3>
+        <p><code>graph_msf</code>: middleware-independent C++ library. New measurement types are added by implementing a small interface; Jacobians come from GTSAM expression factors.</p>
+        <ul>
+          <li><a href="https://github.com/leggedrobotics/holistic_fusion/tree/main/graph_msf">Source</a></li>
+          <li><a href="doxy/index.html">Doxygen API reference</a></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>ROS 1 &amp; ROS 2</h3>
+        <p><code>graph_msf_ros</code> and <code>graph_msf_ros2</code> provide callbacks, logging, visualization, TF handling, and message advertisement.</p>
+        <ul>
+          <li><a href="https://github.com/leggedrobotics/holistic_fusion/tree/main/ros">ROS 1 packages</a></li>
+          <li><a href="https://github.com/leggedrobotics/holistic_fusion/tree/main/ros2">ROS 2 packages</a></li>
+          <li><a href="docs/6_docker.html">Docker images</a></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Examples</h3>
+        <p>Ready-to-run estimators for several platforms, evaluated in the paper or used in teaching and ground-truth generation.</p>
+        <ul>
+          <li>ANYmal quadruped (IMU, GNSS, leg odometry, LiDAR poses)</li>
+          <li>HEAP walking excavator (IMU, dual GNSS, LiDAR poses)</li>
+          <li>SuperMegaBot (ROS 1 and ROS 2)</li>
+          <li>Leica total station and GNSS ground-truth generation</li>
+          <li><a href="docs/7_examples.html">All examples</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note" style="margin-top: 22px;">Get started with the <a href="docs/1_installation.html">installation guide</a>, the <a href="docs/2_system_overview.html">system overview</a>, and the <a href="docs/4_parameters.html">parameter reference</a>.</p>
+  </div>
+</section>
+
+<section id="experiments">
+  <div class="wrap">
+    <div class="eyebrow">Evaluation</div>
+    <h2>Experiments</h2>
+    <p class="lead">HF is the default localization and state-estimation solution on all evaluated platforms. Its suitability is demonstrated in five real-world scenarios on three robots with different sensor suites, motions, and environments.</p>
+    <figure class="fig">
+      <img src="docs_src/img/paper/robot_platforms.jpg" alt="Evaluated robotic platforms">
+      <figcaption>Evaluated platforms: three ANYmal datasets (autonomous hiking, parkour, and indoor locomotion with motion capture), the RACER off-road vehicle, and the HEAP walking excavator. The SuperMegaBot and the ground-truth generation setup are available as open-source examples.</figcaption>
+    </figure>
+
+    <div class="table-wrap" style="margin-top: 28px;">
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>Sensors (all: IMU, LiDAR)</th><th>Motions</th><th>Environments</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>ANYmal</strong><br><span class="note">quadrupedal robot</span></td>
+            <td>Leg odometry, single GNSS antenna</td>
+            <td>Dynamic, vertical (climbing), high-acceleration stomping, multi-contact, leg slip, long distances</td>
+            <td>Indoors and outdoors, mixed</td>
+          </tr>
+          <tr>
+            <td><strong>RACER</strong><br><span class="note">off-road vehicle</span></td>
+            <td>Three LiDARs, RADAR, GNSS, single wheel encoder</td>
+            <td>Highly dynamic, wheel slip, unpaved ground, few geometric features</td>
+            <td>Outdoors</td>
+          </tr>
+          <tr>
+            <td><strong>HEAP</strong><br><span class="note">walking excavator</span></td>
+            <td>Two GNSS antennas</td>
+            <td>Multi-hour operation, tracking and control in the world frame</td>
+            <td>Outdoors, covered by building structures</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid cols-2" style="margin-top: 28px; align-items: start;">
+      <figure class="fig">
+        <img src="docs_src/img/paper/title_figure.jpg" alt="Autonomous forest hike with ANYmal">
+        <figcaption>Fully autonomous hiking experiment with ANYmal in a forest. <strong>A:</strong> online and offline trajectories with highlighted LiDAR drift and GNSS loss. <strong>B:</strong> the aligned LiDAR trajectory at three keyframes, locally aligning perfectly at each. <strong>C:</strong> evolution of the map frame w.r.t. the world frame, estimated as a random walk.</figcaption>
+      </figure>
+      <div>
+        <figure class="fig">
+          <img src="docs_src/img/paper/elevation_map.jpg" alt="Elevation map in odometry frame vs. world frame">
+          <figcaption>Local elevation map expressed in the odometry frame vs. the world frame on the forest hike. The return of GNSS causes an update jump in the world frame that corrupts the map, while the odometry estimate stays smooth and remains suitable for local mapping and navigation.</figcaption>
+        </figure>
+        <div class="card" style="margin-top: 22px;">
+          <h3>Highlights</h3>
+          <ul>
+            <li>Fusing multiple absolute measurement types (e.g., GNSS and LiDAR poses) improves over any single one.</li>
+            <li>Reference-frame drift is estimated well online and offline; without random-walk modeling, alignment errors grow over time.</li>
+            <li>Local keyframe alignment is essential: alignment around the global origin degrades far from it.</li>
+            <li>HF Odom is markedly smoother than the world estimate and than purely local estimators, including during slip.</li>
+            <li>Offline optimization of hour-long missions with hundreds of thousands of variables takes about a minute.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="datasets">
+  <div class="wrap">
+    <div class="eyebrow">Data</div>
+    <h2>Datasets</h2>
+    <p class="lead">The recorded data used for the ANYmal and HEAP examples is publicly available. Combined with the provided replay launch files, the estimators can be run on the recordings out of the box.</p>
+    <div class="dataset-box">
+      <div class="card">
+        <h3>ANYmal</h3>
+        <p>Quadrupedal robot recordings with IMU, GNSS, leg odometry, and LiDAR, corresponding to the <code>anymal_estimator_graph</code> example.</p>
+      </div>
+      <div class="card">
+        <h3>HEAP</h3>
+        <p>Walking-excavator recordings with IMU, dual GNSS, and LiDAR, corresponding to the <code>excavator_holistic_graph</code> example.</p>
+      </div>
+    </div>
+    <div style="margin-top: 22px;">
+      <a class="btn primary" href="https://drive.google.com/drive/folders/1BYMc8L4chKCkwa-ZUEw0qruHFgPN2rn2">Download datasets (Google Drive)</a>
+    </div>
+  </div>
+</section>
+
+<section id="citation">
+  <div class="wrap">
+    <div class="eyebrow">Reference</div>
+    <h2>Citation</h2>
+    <p class="lead">If you find this work or the code useful, please consider citing the following publications.</p>
+
+    <div class="cite-head">
+      <h3>Holistic Fusion (T-RO 2026)</h3>
+      <div class="links">
+        <a href="https://doi.org/10.1109/TRO.2026.3714645">IEEE Xplore</a> ·
+        <a href="https://arxiv.org/abs/2504.06479">arXiv</a> ·
+        <a href="https://youtu.be/RQY2ZQXTDOU">Video</a>
+      </div>
+    </div>
+<pre>@article{nubert2026holistic,
+  title     = {Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs},
+  author    = {Nubert, Julian and Tuna, Turcan and Frey, Jonas and Cadena, Cesar and Kuchenbecker, Katherine J. and Khattak, Shehryar and Hutter, Marco},
+  journal   = {IEEE Transactions on Robotics},
+  year      = {2026},
+  publisher = {IEEE},
+  doi       = {10.1109/TRO.2026.3714645}
+}</pre>
+
+    <div class="cite-head">
+      <h3>Graph-Based Multi-Sensor Fusion (ICRA 2022)</h3>
+      <div class="links">
+        <a href="https://sites.google.com/leggedrobotics.com/gmfcl">Project page</a> ·
+        <a href="https://arxiv.org/abs/2203.01389">arXiv</a> ·
+        <a href="https://youtu.be/syTV7Ui36jg">Video</a>
+      </div>
+    </div>
+<pre>@inproceedings{nubert2022graph,
+  title        = {Graph-based Multi-sensor Fusion for Consistent Localization of Autonomous Construction Robots},
+  author       = {Nubert, Julian and Khattak, Shehryar and Hutter, Marco},
+  booktitle    = {IEEE International Conference on Robotics and Automation (ICRA)},
+  year         = {2022},
+  organization = {IEEE}
+}</pre>
+  </div>
+</section>
+
+<section class="alt" id="team">
+  <div class="wrap">
+    <div class="eyebrow">People</div>
+    <h2>Authors</h2>
+    <p class="lead">Robotic Systems Lab, ETH Zürich · Max Planck Institute for Intelligent Systems · NASA Jet Propulsion Laboratory</p>
+    <div class="team">
+      <div><img src="docs_src/img/paper/portraits/julian.jpg" alt="Julian Nubert"><div class="name"><a href="https://www.linkedin.com/in/juliannubert/">Julian Nubert</a></div><div class="role">ETH Zürich · MPI-IS · JPL</div></div>
+      <div><img src="docs_src/img/paper/portraits/turcan.jpg" alt="Turcan Tuna"><div class="name"><a href="https://www.linkedin.com/in/turcantuna/">Turcan Tuna</a></div><div class="role">ETH Zürich</div></div>
+      <div><img src="docs_src/img/paper/portraits/jonas.jpg" alt="Jonas Frey"><div class="name"><a href="https://www.linkedin.com/in/jonasfrey96/">Jonas Frey</a></div><div class="role">ETH Zürich · JPL</div></div>
+      <div><img src="docs_src/img/paper/portraits/cesar.jpg" alt="Cesar Cadena"><div class="name"><a href="https://www.linkedin.com/in/cesar-cadena-204106b/">Cesar Cadena</a></div><div class="role">ETH Zürich</div></div>
+      <div><img src="docs_src/img/paper/portraits/katherine.jpg" alt="Katherine J. Kuchenbecker"><div class="name"><a href="https://www.linkedin.com/in/katherinekuchenbecker/">Katherine J. Kuchenbecker</a></div><div class="role">MPI-IS</div></div>
+      <div><img src="docs_src/img/paper/portraits/shehryar.jpg" alt="Shehryar Khattak"><div class="name"><a href="https://www.linkedin.com/in/shehryar-khattak/">Shehryar Khattak</a></div><div class="role">JPL</div></div>
+      <div><img src="docs_src/img/paper/portraits/marco.jpg" alt="Marco Hutter"><div class="name"><a href="https://www.linkedin.com/in/marco-hutter/">Marco Hutter</a></div><div class="role">ETH Zürich</div></div>
+    </div>
+    <p class="note" style="margin-top: 26px;">Corresponding author: Julian Nubert, <a href="mailto:nubertj@ethz.ch">nubertj@ethz.ch</a></p>
+  </div>
+</section>
+
+<section id="acknowledgments">
+  <div class="wrap">
+    <div class="eyebrow">Thanks</div>
+    <h2>Acknowledgments</h2>
+    <p class="note" style="max-width: 900px;">The authors thank their colleagues at ETH Zürich and NASA JPL for help conducting the robot experiments and evaluations and for using GMSF and HF on their robots. Special thanks go to Takahiro Miki and the ANYmal Hike team at RSL; Nikita Rudin and David Hoeller for the ANYmal Parkour experiments; Patrick Spieler for running the deployments on the JPL RACER vehicle; the entire HEAP team at RSL and Gravis Robotics; Thomas Mantel and the teaching assistants of the <a href="https://robotics-summerschool.ethz.ch/">ETH Robotic Summer School</a> for their help on the SuperMegaBots; and Mayank Mittal for help generating the renderings.</p>
+    <p class="note" style="max-width: 900px;">This work is supported in part by the Sony Research Grant 2023, the EU Horizon 2020 programme grant agreements No. 852044, 101016970, and 101070405, EU Horizon 2021 programme grant agreement No. 101070596, the ETH Zurich Research Grant No. 21-1 ETH-27, the Swiss National Science Foundation (SNSF) through project No. 227617, the NCCR Digital Fabrication, and the Max Planck ETH Center for Learning Systems. This research was partially conducted at the Jet Propulsion Laboratory, California Institute of Technology, under a contract with the National Aeronautics and Space Administration (80NM0018D0004). This work was partially supported by the Defense Advanced Research Projects Agency (DARPA).</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 Robotic Systems Lab, ETH Zürich. Code released under the <a href="https://github.com/leggedrobotics/holistic_fusion/blob/main/LICENSE">BSD-3-Clause license</a>.</div>
+    <div>
+      <a href="https://github.com/leggedrobotics/holistic_fusion">GitHub</a> ·
+      <a href="docs/index.html">Docs</a> ·
+      <a href="doxy/index.html">Doxygen</a> ·
+      <a href="https://rsl.ethz.ch/">RSL</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>
-
