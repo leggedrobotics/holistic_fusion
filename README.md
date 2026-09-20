@@ -18,11 +18,13 @@
 
 <h4>
     <a href="https://leggedrobotics.github.io/holistic_fusion/">Homepage</a> |
-    <a href="https://arxiv.org/abs/2504.06479">Paper</a> |
+    <a href="https://doi.org/10.1109/TRO.2026.3714645">Paper (T-RO)</a> |
+    <a href="https://arxiv.org/abs/2504.06479">arXiv</a> |
+    <a href="https://youtu.be/RQY2ZQXTDOU">Video</a> |
+    <a href="https://drive.google.com/drive/folders/1BYMc8L4chKCkwa-ZUEw0qruHFgPN2rn2">Datasets</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/docs">Docs</a> |
     <a href="https://leggedrobotics.github.io/holistic_fusion/doxy/">Doxygen</a> |
-    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a> |
-    <a href="https://www.youtube.com/leggedrobotics">Video</a> |
+    <a href="https://leggedrobotics.github.io/holistic_fusion/docs/7_examples.html">Examples</a>
 </h4>
 
 Holistic Fusion (HF) is an open-source library for flexible task and setup-agnostic robot localization and state
@@ -85,6 +87,11 @@ regarding installation and usage.
 
 Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy) for documentation of the code.
 
+## Datasets
+
+The datasets used for the ANYmal and HEAP (excavator) examples are publicly available on
+[Google Drive](https://drive.google.com/drive/folders/1BYMc8L4chKCkwa-ZUEw0qruHFgPN2rn2).
+
 ## Paper
 
 If you find this code useful or use it in your work, please consider citing:
@@ -93,21 +100,22 @@ If you find this code useful or use it in your work, please consider citing:
 
 *Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs*
 
-arXiv, 2025
+IEEE Transactions on Robotics (T-RO), 2026
 
 [Project page](https://leggedrobotics.github.io/holistic_fusion/) ·
-[Paper](https://arxiv.org/abs/2504.06479) ·
-[Video](https://youtube.com/leggedrobotics)
+[Paper](https://doi.org/10.1109/TRO.2026.3714645) ·
+[arXiv](https://arxiv.org/abs/2504.06479) ·
+[Video](https://youtu.be/RQY2ZQXTDOU) ·
+[Datasets](https://drive.google.com/drive/folders/1BYMc8L4chKCkwa-ZUEw0qruHFgPN2rn2)
 
 ```bibtex
-@misc{nubert2025holisticfusiontasksetupagnostic,
-      title={Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs}, 
-      author={Julian Nubert and Turcan Tuna and Jonas Frey and Cesar Cadena and Katherine J. Kuchenbecker and Shehryar Khattak and Marco Hutter},
-      year={2025},
-      eprint={2504.06479},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2504.06479}, 
+@article{nubert2026holistic,
+  title     = {Holistic Fusion: Task- and Setup-Agnostic Robot Localization and State Estimation with Factor Graphs},
+  author    = {Nubert, Julian and Tuna, Turcan and Frey, Jonas and Cadena, Cesar and Kuchenbecker, Katherine J. and Khattak, Shehryar and Hutter, Marco},
+  journal   = {IEEE Transactions on Robotics},
+  year      = {2026},
+  publisher = {IEEE},
+  doi       = {10.1109/TRO.2026.3714645}
 }
 ```
 
