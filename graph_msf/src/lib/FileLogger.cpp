@@ -127,7 +127,7 @@ void FileLogger::createPose3TumFileStream(std::map<std::string, std::ofstream>& 
 // Pose3
 void FileLogger::writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
                                      const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                                     boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos) {
+                                     const std::optional<Eigen::Matrix<double, 6, 6>>& optionalPoseCovarianceInWorldRos) {
   fileStreams[transformIdentifier] << std::setprecision(14) << timeStamp << ", " << pose.x() << ", " << pose.y() << ", " << pose.z() << ", "
                                    << pose.rotation().toQuaternion().x() << ", " << pose.rotation().toQuaternion().y() << ", "
                                    << pose.rotation().toQuaternion().z() << ", " << pose.rotation().toQuaternion().w() << ", "

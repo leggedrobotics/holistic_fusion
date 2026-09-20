@@ -45,8 +45,7 @@ add_custom_target(copy_graph_msf ALL
 )
 
 # GTSAM --> Also expose
-find_package(GTSAM REQUIRED)
-find_package(GTSAM_UNSTABLE REQUIRED)
+find_package(GTSAM 4.3 REQUIRED)
 
 #############
 ## INSTALL ##
@@ -72,8 +71,6 @@ catkin_package(
         ${CATKIN_DEVEL_PREFIX}/lib/libgraph_msf.so
         ${CS_PROJECT_LIBRARIES}
         gtsam
-        gtsam_unstable
-        metis-gtsam
     CATKIN_DEPENDS
         ${${PROJECT_NAME}_CATKIN_RUN_DEPENDS}
         ${CATKIN_PACKAGE_DEPENDENCIES}

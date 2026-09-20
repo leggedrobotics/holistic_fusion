@@ -8,6 +8,12 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef FILE_LOGGER_H
 #define FILE_LOGGER_H
 
+// C++
+#include <fstream>
+#include <map>
+#include <optional>
+#include <string>
+
 // GTSAM Values
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/Values.h>
@@ -58,7 +64,7 @@ class FileLogger {
   // Pose3
   static void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Pose3& pose,
                                   const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                                  boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+                                  const std::optional<Eigen::Matrix<double, 6, 6>>& optionalPoseCovarianceInWorldRos = std::nullopt);
   // Latitude, Longitude, Altitude
   static void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const gtsam::Point3& point,
                                       const std::string& transformIdentifier, const double timeStamp);

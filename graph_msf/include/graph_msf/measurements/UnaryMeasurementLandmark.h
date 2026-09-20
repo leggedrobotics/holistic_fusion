@@ -8,9 +8,6 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_UNARY_MEASUREMENT_LANDMARK_H
 #define GRAPH_MSF_UNARY_MEASUREMENT_LANDMARK_H
 
-// Boost Optional
-#include <boost/optional.hpp>
-
 // Workspace
 #include "graph_msf/measurements/UnaryMeasurement.h"
 

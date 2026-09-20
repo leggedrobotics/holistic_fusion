@@ -22,11 +22,11 @@ message("CMAKE_BUILD_INCLUDE_DIR: ${CMAKE_BUILD_INCLUDE_DIR}")
 
 # Find dependencies ----------------------------------------------------------------------------------------------------
 find_package(Eigen3 REQUIRED)
-find_package(GTSAM REQUIRED)
-find_package(GTSAM_UNSTABLE REQUIRED)
+find_package(GTSAM 4.3 REQUIRED)
 
 message("Eigen Version:: ${EIGEN3_VERSION_STRING}")
 message("Eigen Path:: ${EIGEN3_INCLUDE_DIR}")
+message("GTSAM Version:: ${GTSAM_VERSION}")
 message("GTSAM Include Path:: ${GTSAM_INCLUDE_DIR}")
 
 # Color settings for terminal output
@@ -65,8 +65,6 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 # Link GTSAM and other dependencies to the graph_msf library
 target_link_libraries(${PROJECT_NAME}
         gtsam
-        gtsam_unstable
-        metis-gtsam
         Eigen3::Eigen
 )
 

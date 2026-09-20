@@ -10,7 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <gtsam/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
 #include <graph_msf/core/optimizer/OptimizerIsam2.hpp>

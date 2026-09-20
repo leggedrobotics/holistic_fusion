@@ -6,7 +6,6 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // C++
-#include <boost/optional.hpp>
 #include <iostream>
 
 // Package

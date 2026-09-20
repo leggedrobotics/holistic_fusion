@@ -403,7 +403,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   // Create noise model
   assert(poseBetweenNoiseDensity.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  gtsam::noiseModel::Robust::shared_ptr robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
     case RobustNormEnum::Huber:
@@ -1103,7 +1103,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     fileLogger_.createPose3TumFileStream(fileStreams, savePath, transformIdentifier + "_tum", timeString);
 
     // Compute Covariance of Pose
-    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
+    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = Eigen::Matrix<double, 6, 6>::Zero();
     if (saveCovarianceFlag) {
       gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
       // Convert to ROS Format

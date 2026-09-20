@@ -11,7 +11,7 @@ Please see the LICENSE file that has been included as part of this package.
 // GTSAM
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/nonlinear/ISAM2Result.h>
-#include <gtsam_unstable/nonlinear/FixedLagSmoother.h>
+#include <gtsam/nonlinear/FixedLagSmoother.h>
 #include <gtsam/geometry/Pose3.h>
 
 // Workspace

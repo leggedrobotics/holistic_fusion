@@ -8,8 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GRAPH_MSF_UNARY_MEASUREMENT_ABSOLUTE_H
 #define GRAPH_MSF_UNARY_MEASUREMENT_ABSOLUTE_H
 
-// Boost Optional
-#include <boost/optional.hpp>
+// C++
+#include <optional>
 
 // Workspace
 #include "graph_msf/measurements/UnaryMeasurement.h"
@@ -40,8 +40,8 @@ class UnaryMeasurementAbsolute : public virtual UnaryMeasurement {
   UnaryMeasurementAbsolute(const std::string& measurementName, const int measurementRate, const std::string& sensorFrameName,
                            const std::string& sensorFrameCorrectedName, const RobustNorm robustNorm, const double timeStamp,
                            const double covarianceViolationThreshold, const std::string& fixedFrameName, const std::string& worldFrameName,
-                           const boost::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = boost::none,
-                           const boost::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = boost::none)
+                           const std::optional<Eigen::Matrix<double, 6, 1>>& initialSe3AlignmentNoise = std::nullopt,
+                           const std::optional<Eigen::Matrix<double, 6, 1>>& se3AlignmentRandomWalk = std::nullopt)
       : UnaryMeasurement(measurementName, measurementRate, sensorFrameName, sensorFrameCorrectedName, robustNorm, timeStamp,
                          covarianceViolationThreshold),
         fixedFrameName_(fixedFrameName),
