@@ -4,9 +4,9 @@
 
   <description>Catkin wrapper for native CMake project graph_msf</description>
   
-  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <maintainer email="nubertj@gmail.com">Julian Nubert</maintainer>
   <license>BSD</license>
-  <author email="nubertj@ethz.ch">Julian Nubert</author>
+  <author email="nubertj@gmail.com">Julian Nubert</author>
 
   <!-- Required for any ROS 1 catkin-cmake package -->
   <buildtool_depend>catkin</buildtool_depend>

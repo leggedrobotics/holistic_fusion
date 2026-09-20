@@ -9,7 +9,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# Authors: Julian Nubert, nubertj@ethz.ch
+# Authors: Julian Nubert, nubertj@gmail.com
 #          Lorenzo Terenzi, lterenzi@ethz.ch
 #=============================================================================
 
