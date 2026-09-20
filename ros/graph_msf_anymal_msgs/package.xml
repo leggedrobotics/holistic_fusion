@@ -9,7 +9,7 @@
   <license>Proprietary</license>
   <author email="cgehring@anybotics.com">Remo Diethelm</author>
   <author email="rdiethelm@anybotics.com">Christian Gehring</author>
-  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <maintainer email="nubertj@gmail.com">Julian Nubert</maintainer>
 
   <buildtool_depend>catkin</buildtool_depend>
 

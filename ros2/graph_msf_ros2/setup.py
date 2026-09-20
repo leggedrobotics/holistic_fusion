@@ -16,7 +16,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Julian Nubert',
-    maintainer_email='nubertj@ethz.ch',
+    maintainer_email='nubertj@gmail.com',
     description='State estimation based on factor graphs, utilizing GTSAM functionality',
     license='BSD',
     tests_require=['pytest'],

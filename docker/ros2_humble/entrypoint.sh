@@ -10,7 +10,7 @@
 # See the License for more information.
 #=============================================================================
 # Authors: Vassilios Tsounis, tsounisv@ethz.ch
-#          Julian Nubert, nubertj@ethz.ch
+#          Julian Nubert, nubertj@gmail.com
 #=============================================================================
 figlet holistic_fusion
 #==

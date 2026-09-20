@@ -8,7 +8,7 @@
 [![Build ROS2 Humble](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros2_humble.yml/badge.svg)](https://github.com/leggedrobotics/holistic_fusion/actions/workflows/ci_ros2_humble.yml)
 
 **Authors:**
-[Julian Nubert](https://www.linkedin.com/in/juliannubert/) ([nubertj@ethz.ch](mailto:nubertj@ethz.ch?subject=[GitHub])),
+[Julian Nubert](https://www.linkedin.com/in/juliannubert/) ([nubertj@gmail.com](mailto:nubertj@gmail.com?subject=[GitHub])),
 [Turcan Tuna](https://www.linkedin.com/in/turcantuna/),
 [Jonas Frey](https://www.linkedin.com/in/jonasfrey96/),
 [Cesar Cadena](https://www.linkedin.com/in/cesar-cadena-204106b/),

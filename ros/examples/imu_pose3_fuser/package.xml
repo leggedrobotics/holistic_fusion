@@ -7,9 +7,9 @@
     State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry and GNSS estimates.
   </description>
 
-  <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+  <maintainer email="nubertj@gmail.com">Julian Nubert</maintainer>
   <license>BSD</license>
-  <author email="nubertj@ethz.ch">Julian Nubert</author>
+  <author email="nubertj@gmail.com">Julian Nubert</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 

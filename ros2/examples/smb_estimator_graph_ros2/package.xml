@@ -8,9 +8,9 @@
         and GNSS estimates.
     </description>
 
-    <maintainer email="nubertj@ethz.ch">Julian Nubert</maintainer>
+    <maintainer email="nubertj@gmail.com">Julian Nubert</maintainer>
     <license>BSD-3-Clause</license>
-    <author email="nubertj@ethz.ch">Julian Nubert</author>
+    <author email="nubertj@gmail.com">Julian Nubert</author>
 
     <!-- Build tool dependencies -->
     <buildtool_depend>ament_cmake</buildtool_depend>
