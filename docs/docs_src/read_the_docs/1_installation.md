@@ -22,7 +22,15 @@ Make sure you have the Eigen3-headers in your include path. This is usually auto
 
 ##### GTSAM
 
-We install GTSAM from source.
+We install GTSAM (version 4.3.0) from source. GTSAM 4.3 requires C++17, CMake >= 3.20, Eigen >= 3.4 and a compiler newer than gcc 9.
+Ubuntu 22.04 (ROS2 Humble) fulfils all of this out of the box. On Ubuntu 20.04 (ROS Noetic) you additionally need to
+
+* install a newer CMake, e.g. `pip3 install "cmake>=3.20,<4"`,
+* install the Eigen 3.4.0 headers into `/usr/local` (found before the system Eigen 3.3.7),
+* use gcc-10 (`apt install gcc-10 g++-10` and select it via `update-alternatives`), and
+* build GTSAM with `-DGTSAM_WITH_TBB=OFF` (20.04 ships TBB 2020, GTSAM 4.3 needs oneTBB).
+
+See [`docker/submodules/gtsam.sh`](https://github.com/leggedrobotics/holistic_fusion/blob/main/docker/submodules/gtsam.sh) for the exact commands used in our Docker images.
 You can also install it locally by adding the `-DCMAKE_INSTALL_PREFIX` option to the CMake command as done in the following.
 
 * Get the source code and compile it:

@@ -9,7 +9,10 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 
 * **GTSAM 4.3.0 is now the required version.** `graph_msf` uses `find_package(GTSAM 4.3 REQUIRED)`; GTSAM 4.2 is no
   longer supported. The Docker images (`docker/submodules/gtsam.sh`) and the [installation instructions](1_installation.md)
-  build GTSAM 4.3.0 (tests and examples disabled to speed up the build).
+  build GTSAM 4.3.0 (tests and examples disabled to speed up the build). GTSAM 4.3 needs CMake >= 3.20, Eigen >= 3.4, a
+  compiler newer than gcc 9 and (if enabled) oneTBB; the Noetic (Ubuntu 20.04) Docker image therefore installs a newer CMake
+  (pip), Eigen 3.4.0 (into `/usr/local`) and gcc-10 (now the default compiler of that image) and builds GTSAM without TBB.
+  Ubuntu 22.04 (Humble) already ships suitable versions.
 * **No more Boost in `graph_msf`.** All `boost::optional`, `boost::shared_ptr` and `boost::filesystem` usages were replaced by
   their C++17 standard-library counterparts, following GTSAM's own move away from Boost. Public signatures affected (only if you
   call them from your own code):
@@ -19,12 +22,17 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
       `std::optional<Eigen::Matrix<double, 6, 6>>`.
 * **`gtsam_unstable` is no longer needed.** The fixed-lag smoothers used by `graph_msf` moved into the stable GTSAM library in
   4.3, so `graph_msf`, `graph_msf_catkin` and the exported CMake config only depend on `gtsam` now.
+* **All ROS 1 packages compile as C++17.** GTSAM 4.3 headers require C++17; `pure_imu_integration` and
+  `excavator_holistic_graph` were still built as C++14 and now use C++17 like the other packages.
 * **Custom factors use the new GTSAM factor API.** `YawFactor`, `PitchFactor` and `RollFactor` derive from
   `gtsam::NoiseModelFactorN<gtsam::Pose3>` and implement `evaluateError(const Pose3&, gtsam::OptionalMatrixType)`.
-* **Behavioural notes (from GTSAM itself, no change in Holistic Fusion needed):** `BetweenFactor`/`PriorFactor` now use the
-  Lie-group (local) Jacobians by default, the SO(3)/SE(3) exponential and logarithm maps have been reworked, and iSAM2 /
-  `IncrementalFixedLagSmoother` received marginalization fixes. Expect slightly different (generally better) numerical results
-  compared to GTSAM 4.2.
+* **Behavioural notes (from GTSAM itself, no change in Holistic Fusion needed):**
+    * `BetweenFactor`/`PriorFactor` now use the Lie-group (local) Jacobians by default, the SO(3)/SE(3) exponential and
+      logarithm maps have been reworked, and iSAM2 / `IncrementalFixedLagSmoother` received marginalization fixes. Expect
+      slightly different (generally better) numerical results compared to GTSAM 4.2.
+    * IMU preintegration: whenever `omegaCoriolis` is non-zero (as in all example configs), GTSAM 4.3 uses the exact
+      rotating-frame dynamics. The `use2ndOrderCoriolis` parameter is still accepted but has no effect anymore.
+    * Noise models are validated more strictly (e.g. negative sigmas throw).
 
 ### September 2026: T-RO publication and new project page
 
