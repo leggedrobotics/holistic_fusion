@@ -5,7 +5,7 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 
 ## 2026
 
-### September 2026: Switch to GTSAM 4.3.0
+### September 2026: Switch to GTSAM 4.3.0 (PR #46)
 
 * **GTSAM 4.3.0 is now the required version.** `graph_msf` uses `find_package(GTSAM 4.3 REQUIRED)`; GTSAM 4.2 is no
   longer supported. The Docker images (`docker/submodules/gtsam.sh`) and the [installation instructions](1_installation.md)
