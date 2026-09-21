@@ -79,10 +79,12 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   //// Position
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>("noise_params/accNoiseDensity", privateNode);
   graphConfigPtr_->integrationNoiseDensity_ = tryGetParam<double>("noise_params/integrationNoiseDensity", privateNode);
-  graphConfigPtr_->use2ndOrderCoriolisFlag_ = tryGetParam<bool>("noise_params/use2ndOrderCoriolis", privateNode);
   //// Rotation
   graphConfigPtr_->gyroNoiseDensity_ = tryGetParam<double>("noise_params/gyrNoiseDensity", privateNode);
-  graphConfigPtr_->omegaCoriolis_ = tryGetParam<double>("noise_params/omegaCoriolis", privateNode);
+  //// Earth rotation
+  graphConfigPtr_->earthRotationCompensationFlag_ = tryGetParam<bool>("noise_params/earthRotationCompensation", privateNode);
+  graphConfigPtr_->latitudeDeg_ = tryGetParam<double>("noise_params/latitudeDeg", privateNode);
+  graphConfigPtr_->worldFrameNorthAlignedFlag_ = tryGetParam<bool>("noise_params/worldFrameNorthAligned", privateNode);
   //// Bias
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/accBiasRandomWalkNoiseDensity", privateNode);
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/gyrBiasRandomWalkNoiseDensity", privateNode);

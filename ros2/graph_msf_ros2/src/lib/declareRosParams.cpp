@@ -58,9 +58,10 @@ void GraphMsfRos2::declareRosParams() {
   // Noise Params
   this->declare_parameter("noise_params.accNoiseDensity", 0.0);
   this->declare_parameter("noise_params.integrationNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.use2ndOrderCoriolis", false);
   this->declare_parameter("noise_params.gyrNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.omegaCoriolis", 0.0);
+  this->declare_parameter("noise_params.earthRotationCompensation", false);
+  this->declare_parameter("noise_params.latitudeDeg", 0.0);
+  this->declare_parameter("noise_params.worldFrameNorthAligned", false);
   this->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.biasAccStdDevForIntegration", 0.0);

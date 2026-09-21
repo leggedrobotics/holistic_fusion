@@ -72,10 +72,14 @@ struct GraphConfig {
   // Position
   double accNoiseDensity_ = 1e-03;  // [m/s^2/√Hz)]
   double integrationNoiseDensity_ = 1.0e-04;
-  bool use2ndOrderCoriolisFlag_ = true;
   // Rotation
   double gyroNoiseDensity_ = 1e-04;  // [rad/s/√Hz]
-  double omegaCoriolis_ = 0.0;
+  // Earth rotation (Coriolis / centrifugal / Earth-rate compensation in the IMU preintegration)
+  bool earthRotationCompensationFlag_ = false;  // If true, GTSAM's exact rotating-frame IMU model is used
+  double latitudeDeg_ = 0.0;                    // Geodetic latitude [deg], positive on the northern hemisphere
+  bool worldFrameNorthAlignedFlag_ = false;     // If true, the y-axis of the world frame points north (ENU) and the
+                                                // horizontal Earth-rate component is used as well; otherwise only the
+                                                // vertical component (valid for any gravity-aligned world frame)
   // Bias
   double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
   double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]

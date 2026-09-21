@@ -26,12 +26,24 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
   `excavator_holistic_graph` were still built as C++14 and now use C++17 like the other packages.
 * **Custom factors use the new GTSAM factor API.** `YawFactor`, `PitchFactor` and `RollFactor` derive from
   `gtsam::NoiseModelFactorN<gtsam::Pose3>` and implement `evaluateError(const Pose3&, gtsam::OptionalMatrixType)`.
+* **Config change (breaking): Earth-rotation / Coriolis parameters.** The IMU noise parameters `use2ndOrderCoriolis` and
+  `omegaCoriolis` were removed and replaced by
+    * `earthRotationCompensation` (bool): use GTSAM's exact rotating-frame IMU model,
+    * `latitudeDeg` (double): geodetic latitude, from which the Earth-rate vector is computed (Ω = 7.2921159e-5 rad/s),
+    * `worldFrameNorthAligned` (bool): set to `true` only if the y-axis of the world frame points north (ENU); then the
+      horizontal Earth-rate component Ω·cos(lat) is used in addition to the vertical one Ω·sin(lat).
+
+  Reasons: with GTSAM 4.3, `use2ndOrderCoriolis` has no effect anymore (the exact model is used whenever a rotation rate
+  is set), and the previous example value `omegaCoriolis: 1.07e-04` was the meteorological Coriolis parameter 2·Ω·sin(lat),
+  i.e. twice the vertical Earth-rate component that GTSAM expects (5.4e-05 rad/s for Zurich). Since GTSAM 4.3 also
+  compensates the Earth rate in the attitude integration, the old value would have acted like a 0.003 deg/s yaw-rate bias.
+  Old config files fail to load until the two parameters are replaced.
 * **Behavioural notes (from GTSAM itself, no change in Holistic Fusion needed):**
     * `BetweenFactor`/`PriorFactor` now use the Lie-group (local) Jacobians by default, the SO(3)/SE(3) exponential and
       logarithm maps have been reworked, and iSAM2 / `IncrementalFixedLagSmoother` received marginalization fixes. Expect
       slightly different (generally better) numerical results compared to GTSAM 4.2.
-    * IMU preintegration: whenever `omegaCoriolis` is non-zero (as in all example configs), GTSAM 4.3 uses the exact
-      rotating-frame dynamics. The `use2ndOrderCoriolis` parameter is still accepted but has no effect anymore.
+    * IMU preintegration: whenever a navigation-frame rotation rate is set (see the config change above), GTSAM 4.3 uses
+      the exact rotating-frame dynamics (Coriolis and centrifugal accelerations and Earth-rate compensation of the attitude).
     * Noise models are validated more strictly (e.g. negative sigmas throw).
 
 ### September 2026: T-RO publication and new project page

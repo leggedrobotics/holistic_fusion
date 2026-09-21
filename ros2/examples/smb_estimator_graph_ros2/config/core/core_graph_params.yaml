@@ -46,10 +46,12 @@
       ### Position
       accNoiseDensity: 2.2555e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
       integrationNoiseDensity: 1.0e-04        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
-      use2ndOrderCoriolis: false              # Whether to use 2nd order coriolis effect
       ### Rotation
       gyrNoiseDensity: 2.356e-04              # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
-      omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
+      ### Earth rotation (Coriolis, centrifugal and Earth-rate terms in the IMU preintegration)
+      earthRotationCompensation: true       # If true, GTSAM's exact rotating-frame IMU model is used
+      latitudeDeg: 47.4                     # Geodetic latitude [deg], positive on the northern hemisphere (Zurich: 47.4)
+      worldFrameNorthAligned: false         # true only if the world frame y-axis points north (ENU); otherwise only the vertical Earth-rate component is used
       ### Bias
       accBiasRandomWalkNoiseDensity: 4.33e-03 # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz], default: sqrt(1.0e-03)
       gyrBiasRandomWalkNoiseDensity: 2.66e-04 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz], default: default: sqrt(9.33e-04)

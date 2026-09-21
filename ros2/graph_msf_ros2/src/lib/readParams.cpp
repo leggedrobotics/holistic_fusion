@@ -87,9 +87,10 @@ void GraphMsfRos2::readParams() {
   // Noise Parameters
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>(this, "noise_params.accNoiseDensity");
   graphConfigPtr_->integrationNoiseDensity_ = tryGetParam<double>(this, "noise_params.integrationNoiseDensity");
-  graphConfigPtr_->use2ndOrderCoriolisFlag_ = tryGetParam<bool>(this, "noise_params.use2ndOrderCoriolis");
   graphConfigPtr_->gyroNoiseDensity_ = tryGetParam<double>(this, "noise_params.gyrNoiseDensity");
-  graphConfigPtr_->omegaCoriolis_ = tryGetParam<double>(this, "noise_params.omegaCoriolis");
+  graphConfigPtr_->earthRotationCompensationFlag_ = tryGetParam<bool>(this, "noise_params.earthRotationCompensation");
+  graphConfigPtr_->latitudeDeg_ = tryGetParam<double>(this, "noise_params.latitudeDeg");
+  graphConfigPtr_->worldFrameNorthAlignedFlag_ = tryGetParam<bool>(this, "noise_params.worldFrameNorthAligned");
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ =
       tryGetParam<double>(this, "noise_params.accBiasRandomWalkNoiseDensity");
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ =
