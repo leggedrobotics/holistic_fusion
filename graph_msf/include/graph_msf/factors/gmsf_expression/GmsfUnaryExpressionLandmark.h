@@ -28,7 +28,7 @@ class GmsfUnaryExpressionLandmark : public GmsfUnaryExpression<GTSAM_MEASUREMENT
         landmarkName_(this->gmsfBaseUnaryMeasurementPtr_->measurementName()),
         landmarkCreationCounter_(landmarkCreationCounter),
         exp_T_W_I_(gtsam::Pose3::Identity()),
-        exp_sensorFrame_t_sensorFrame_landmark_(gtsam::Point3::Identity()),
+        exp_sensorFrame_t_sensorFrame_landmark_(gtsam::Point3::Zero()),
         gmsfUnaryLandmarkMeasurementPtr_(gmsfUnaryLandmarkMeasurementPtr) {}
 
   // Destructor
