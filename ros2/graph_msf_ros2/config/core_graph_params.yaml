@@ -45,7 +45,7 @@
     noise_params:
       ## IMU
       ### Position
-      accNoiseDensity: 1.00000000261003135e-03 # Accelerometer noise density [m/s^2/√Hz].
+      accNoiseDensity: 1.00000e-03 # Accelerometer noise density [m/s^2/√Hz].
       integrationNoiseDensity: 0.001 # Continuous-time integration uncertainty noise density.
       ### Rotation
       gyrNoiseDensity: 1.00000000014620512e-03 # Gyroscope noise density [rad/s/√Hz].
