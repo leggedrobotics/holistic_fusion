@@ -29,6 +29,7 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("sensor_params.isImuAccInG", false);  // If true, the IMU acceleration is in g, otherwise in m/s^2
 
   // Initialization Params
+  this->declare_parameter("initialization_params.static_at_startup", rclcpp::ParameterType::PARAMETER_BOOL);
   this->declare_parameter("initialization_params.estimateGravityFromImu", false);
   this->declare_parameter("initialization_params.gravityMagnitude", 9.80665);
 

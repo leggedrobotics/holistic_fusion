@@ -123,6 +123,8 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   config->imuRate_ = 10.0;
   config->imuBufferLength_ = 20;
   config->useImuSignalLowPassFilter_ = false;
+  config->staticAtStartup_ = true;
+  config->gyroBiasPrior_ = Eigen::Vector3d::Ones();
   config->estimateGravityFromImuFlag_ = estimate_gravity;
   config->gravityMagnitude_ = estimate_gravity ? 9.81 : 10.0;
   config->minOptimizationFrequency_ = 1e-9;
@@ -132,16 +134,18 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   std::shared_ptr<graph_msf::SafeIntegratedNavState> state;
   std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimized_state;
   Eigen::Matrix<double, 6, 1> measurements;
+  const Eigen::Vector3d gyro_bias(0.01, -0.02, 0.03);
   double timestamp = 1.0;
   const auto add_imu = [&]() {
     timestamp += 0.1;
-    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, 10.0), Eigen::Vector3d::Zero(), timestamp,
+    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, 10.0), gyro_bias, timestamp,
                                              state, optimized_state, measurements);
   };
   for (int index = 0; index < 20 && !estimator.areRollAndPitchInited(); ++index) {
     add_imu();
   }
   require(estimator.areRollAndPitchInited(), "Stationary IMU alignment failed");
+  require(config->gyroBiasPrior_.isApprox(gyro_bias), "Static initialization must use the measured gyro-bias mean");
   require(estimator.initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), "imu", "imu"), "Pose initialization failed");
   estimator.pretendFirstMeasurementReceived();
   add_imu();
@@ -151,6 +155,25 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
 
   require(state != nullptr, "No propagated state returned");
   require(state->getI_v_W_I().norm() < 1e-8, "Stationary propagation uses a stale gravity vector");
+}
+
+void rejectsInMotionInitialization() {
+  auto config = std::make_shared<graph_msf::GraphConfig>();
+  config->staticAtStartup_ = false;
+  config->gyroBiasPrior_ = Eigen::Vector3d::Ones();
+  TestEstimator estimator;
+  bool rejected = false;
+
+  try {
+    estimator.setup(config, std::make_shared<TestTransforms>());
+  } catch (const std::logic_error& error) {
+    const std::string message = error.what();
+    rejected = message.find("static_at_startup") != std::string::npos &&
+               message.find("not implemented") != std::string::npos;
+  }
+
+  require(rejected, "In-motion initialization must fail explicitly during setup");
+  require(config->gyroBiasPrior_.isZero(), "In-motion initialization must select a zero gyro-bias mean");
 }
 
 void disabledMarginalWindowHandlesSingleState() {
@@ -177,6 +200,7 @@ int main() {
   try {
     rejectsInvalidIsamRelinearizationInterval();
     rejectsInvalidStateAndOptimizationCounts();
+    rejectsInMotionInitialization();
     sensorNoiseChangesActualStateCovariance();
     stationaryPropagationUsesInitializedGravity(false);
     stationaryPropagationUsesInitializedGravity(true);

@@ -40,6 +40,7 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>(this, "sensor_params.isImuAccInG");
 
   // Initialization Params
+  graphConfigPtr_->staticAtStartup_ = tryGetParam<bool>(this, "initialization_params.static_at_startup");
   graphConfigPtr_->estimateGravityFromImuFlag_ =
       tryGetParam<bool>(this, "initialization_params.estimateGravityFromImu");
   graphConfigPtr_->gravityMagnitude_ = tryGetParam<double>(this, "initialization_params.gravityMagnitude");

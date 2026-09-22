@@ -44,6 +44,11 @@ void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const st
     staticTransformsPtr_ = staticTransformsPtr;
   }
 
+  if (!graphConfigPtr_->staticAtStartup_) {
+    graphConfigPtr_->gyroBiasPrior_.setZero();
+    throw std::logic_error("GraphMsf: initialization_params.static_at_startup=false: in-motion initialization is not implemented.");
+  }
+
   if (graphConfigPtr_->additionalOptimizationIterations_ < 0) {
     throw std::invalid_argument("GraphMsf: additionalOptimizationIterations must be nonnegative.");
   }

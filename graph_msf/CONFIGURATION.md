@@ -32,6 +32,13 @@ The supplied GTSAM build disables `GTSAM_ALLOW_DEPRECATED_SINCE_V43`. Calls to t
 
 ## Initialization
 
+`initialization_params.static_at_startup` maps to `GraphConfig::staticAtStartup_`.
+All supplied configurations set it to `true` and require a stationary startup window.
+If it is `false`, setup selects a zero gyro-bias mean and throws a `std::logic_error` stating that in-motion initialization is not implemented.
+No IMU samples are averaged and no estimator worker thread starts in that mode.
+A zero bias mean is not a calibrated bias estimate and does not set its uncertainty to zero.
+`initialGyroBiasStdDev` controls the prior uncertainty.
+
 GraphMsf uses a stationary IMU window to initialize attitude and gyro bias. This replaces `gyroBiasPrior` before graph initialization. That field remains an input for callers that initialize GraphManager directly.
 
 With `estimateGravityFromImu=true`, the window supplies the gravity magnitude and the configured accelerometer bias prior is retained. With `false`, the configured gravity magnitude is retained and the accelerometer bias prior is estimated from the gravity residual. The world gravity vector is derived from the final magnitude when the graph is initialized. It is not an independent gravity-direction setting.
@@ -47,7 +54,7 @@ Names below are the exact C++ fields without their trailing underscore.
 | `logRealTimeStateToMemoryFlag`, `logLatencyAndUpdateDurationToMemoryFlag` | Collection in memory. Call the matching export method to write files. |
 | `imuRate`, `createStateEveryNthImuMeasurement`, `imuBufferLength`, `imuTimeOffset`, `isImuAccInG` | IMU buffering, timing, graph-state creation, and unit conversion. |
 | `useImuSignalLowPassFilter`, `imuLowPassFilterCutoffFreqHz` | The cutoff applies only when filtering is enabled. |
-| `estimateGravityFromImuFlag`, `gravityMagnitude`, `W_gravityVector` | Initialization and propagation as described above. |
+| `staticAtStartup`, `estimateGravityFromImuFlag`, `gravityMagnitude`, `W_gravityVector` | Initialization and propagation as described above. |
 | `realTimeSmootherLag`, `realTimeSmootherUseIsamFlag`, `realTimeSmootherUseCholeskyFactorizationFlag` | The selected real-time fixed-lag smoother. |
 | `useAdditionalSlowBatchSmootherFlag`, `slowBatchSmootherUseIsamFlag`, `slowBatchSmootherUseCholeskyFactorizationFlag` | Batch settings apply only when the additional batch smoother is enabled. Both ISAM2 and LM are implemented. |
 | `minOptimizationFrequency`, `maxOptimizationFrequency`, `additionalOptimizationIterations` | Real-time optimization scheduling and extra updates. |
@@ -65,7 +72,7 @@ Names below are the exact C++ fields without their trailing underscore.
 | `relinearizeSkip`, `enableRelinearizationFlag`, `evaluateNonlinearErrorFlag`, `cacheLinearizedFactorsFlag`, `enablePartialRelinearizationCheckFlag` | ISAM2 only. `relinearizeSkip` is a positive update interval between relinearization checks. |
 | `maxSearchDeviation` | Timestamp-to-graph-key matching. ROS adapters derive it from the graph-state interval. |
 
-All 64 fields have consumers in the built core. `GraphMsfDualGraph` is not part of the core build and is not a supported alternative implementation.
+All 65 fields have consumers in the built core. `GraphMsfDualGraph` is not part of the core build and is not a supported alternative implementation.
 
 ## Optimizer API limits
 

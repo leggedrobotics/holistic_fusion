@@ -40,6 +40,7 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>("sensor_params/isImuAccInG", privateNode);
 
   // Initialization Params
+  graphConfigPtr_->staticAtStartup_ = tryGetParam<bool>("initialization_params/static_at_startup", privateNode);
   graphConfigPtr_->estimateGravityFromImuFlag_ = tryGetParam<bool>("initialization_params/estimateGravityFromImu", privateNode);
   graphConfigPtr_->gravityMagnitude_ = tryGetParam<double>("initialization_params/gravityMagnitude", privateNode);
 

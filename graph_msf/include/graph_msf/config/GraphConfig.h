@@ -38,7 +38,8 @@ struct GraphConfig {
   double imuTimeOffset_ = 0.0;
   bool isImuAccInG_ = false;
 
-  // Gravity
+  // Initialization
+  bool staticAtStartup_ = true;
   bool estimateGravityFromImuFlag_ = true;
   double gravityMagnitude_ = 9.81;
   Eigen::Vector3d W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude_;

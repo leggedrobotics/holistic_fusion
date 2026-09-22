@@ -10,6 +10,7 @@ sensor_params:
 
 # Initialization
 initialization_params:
+  static_at_startup: true
   estimateGravityFromImu: true # If true, the gravity is estimated in the beginning using the IMU
   gravityMagnitude: 9.81 # If estimateGravityFromImu is false, this value is used as gravity
 
