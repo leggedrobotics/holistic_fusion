@@ -20,7 +20,10 @@ Coming soon.
 Coming soon.
 
 ### Core Graph Parameters
-Coming soon. The IMU noise parameters follow the GTSAM conventions (continuous-time noise amplitude spectral densities).
+```{include} ../../../graph_msf/CONFIGURATION.md
+:start-after: GraphMSF configuration
+:heading-offset: 2
+```
 
 #### Earth rotation compensation
 
