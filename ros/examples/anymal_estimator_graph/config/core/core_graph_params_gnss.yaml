@@ -43,7 +43,7 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  accNoiseDensity: 1.00306857193314565e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
+  accNoiseDensity: 1.00307e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
   integrationNoiseDensity: 1.0e-03        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty
   ### Rotation
   gyrNoiseDensity: 1.00000609232982363e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
