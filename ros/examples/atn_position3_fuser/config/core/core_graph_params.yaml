@@ -44,7 +44,7 @@ noise_params:
   ## IMU
   ### Position
   #accNoiseDensity: 8.5e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
-  accNoiseDensity: 6.71826493151319519e-04 # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
+  accNoiseDensity: 6.71826e-04 # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
   integrationNoiseDensity: 1.0e-05         # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
   ### Rotation
   #gyrNoiseDensity: 1.308e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
