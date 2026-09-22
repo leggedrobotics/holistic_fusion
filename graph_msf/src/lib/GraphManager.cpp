@@ -37,6 +37,25 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace graph_msf {
 
+namespace {
+
+// Returns Earth rate in rad/s in a gravity-aligned, z-up frame. The full vector requires ENU alignment.
+gtsam::Vector3 earthRotationRateInWorld(double latitudeDeg, bool worldFrameNorthAligned) {
+  if (!std::isfinite(latitudeDeg) || std::fabs(latitudeDeg) > 90.0) {
+    throw std::runtime_error("GraphManager: noise_params.latitudeDeg must be finite and within [-90, 90], got " +
+                             std::to_string(latitudeDeg));
+  }
+  constexpr double earthRotationRate = 7.2921159e-05;  // [rad/s]
+  const double latitudeRad = latitudeDeg * M_PI / 180.0;
+  gtsam::Vector3 W_omega_IW(0.0, 0.0, earthRotationRate * std::sin(latitudeRad));  // vertical component, valid for any yaw
+  if (worldFrameNorthAligned) {
+    W_omega_IW.y() = earthRotationRate * std::cos(latitudeRad);  // horizontal component, only if y points north (ENU)
+  }
+  return W_omega_IW;
+}
+
+}  // namespace
+
 // Public --------------------------------------------------------------------
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
     : graphConfigPtr_(std::move(graphConfigPtr)), imuFrame_(std::move(imuFrame)), worldFrame_(std::move(worldFrame)) {
@@ -87,16 +106,8 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// world frame. Setting it makes GTSAM (>= 4.3) use the exact rotating-frame model (Coriolis, centrifugal and Earth-rate
   /// terms). If left unset, the inertial model is used.
   if (graphConfigPtr_->earthRotationCompensationFlag_) {
-    if (!std::isfinite(graphConfigPtr_->latitudeDeg_) || std::fabs(graphConfigPtr_->latitudeDeg_) > 90.0) {
-      throw std::runtime_error("GraphManager: noise_params.latitudeDeg must be finite and within [-90, 90], got " +
-                               std::to_string(graphConfigPtr_->latitudeDeg_));
-    }
-    constexpr double earthRotationRate = 7.2921159e-05;  // [rad/s]
-    const double latitudeRad = graphConfigPtr_->latitudeDeg_ * M_PI / 180.0;
-    gtsam::Vector3 W_omega_IW(0.0, 0.0, earthRotationRate * std::sin(latitudeRad));  // vertical component, valid for any yaw
-    if (graphConfigPtr_->worldFrameNorthAlignedFlag_) {
-      W_omega_IW.y() = earthRotationRate * std::cos(latitudeRad);  // horizontal component, only if y points north (ENU)
-    }
+    const gtsam::Vector3 W_omega_IW =
+        earthRotationRateInWorld(graphConfigPtr_->latitudeDeg_, graphConfigPtr_->worldFrameNorthAlignedFlag_);
     imuParamsPtr_->setOmegaCoriolis(W_omega_IW);
     REGULAR_COUT << " Earth rotation compensation enabled, latitude " << graphConfigPtr_->latitudeDeg_
                  << " deg, world frame north-aligned: " << (graphConfigPtr_->worldFrameNorthAlignedFlag_ ? "yes" : "no")
