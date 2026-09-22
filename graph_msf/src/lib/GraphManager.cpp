@@ -85,6 +85,10 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// world frame. Setting it makes GTSAM (>= 4.3) use the exact rotating-frame model (Coriolis, centrifugal and Earth-rate
   /// terms). If left unset, the inertial model is used.
   if (graphConfigPtr_->earthRotationCompensationFlag_) {
+    if (!std::isfinite(graphConfigPtr_->latitudeDeg_) || std::fabs(graphConfigPtr_->latitudeDeg_) > 90.0) {
+      throw std::runtime_error("GraphManager: noise_params.latitudeDeg must be finite and within [-90, 90], got " +
+                               std::to_string(graphConfigPtr_->latitudeDeg_));
+    }
     constexpr double earthRotationRate = 7.2921159e-05;  // [rad/s]
     const double latitudeRad = graphConfigPtr_->latitudeDeg_ * M_PI / 180.0;
     gtsam::Vector3 W_omega_IW(0.0, 0.0, earthRotationRate * std::sin(latitudeRad));  // vertical component, valid for any yaw
