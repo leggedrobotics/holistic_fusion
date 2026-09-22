@@ -43,10 +43,10 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  accNoiseDensity: 7.84e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
+  accNoiseDensity: 1.00306857193314565e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
   integrationNoiseDensity: 1.0e-03        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty
   ### Rotation
-  gyrNoiseDensity: 3.4906585e-05          # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
+  gyrNoiseDensity: 1.00000609232982363e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
   ### Earth rotation (Coriolis, centrifugal and Earth-rate terms in the IMU preintegration)
   earthRotationCompensation: true       # If true, GTSAM's exact rotating-frame IMU model is used
   latitudeDeg: 47.4                     # Geodetic latitude [deg], positive on the northern hemisphere (Zurich: 47.4)
@@ -54,8 +54,6 @@ noise_params:
   ### Bias
   accBiasRandomWalkNoiseDensity: 1.0e-02  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]
   gyrBiasRandomWalkNoiseDensity: 9.33e-03 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz]
-  biasAccStdDevForIntegration: 1.0e-02    # Additional accelerometer integration noise density
-  biasOmegaStdDevForIntegration: 1.0e-02  # Additional gyroscope integration noise density
   accBiasPrior: 0.0                       # Used when gravity is estimated. Otherwise initialization replaces it with the gravity residual.
   ## Initial State
   ### With GNSS

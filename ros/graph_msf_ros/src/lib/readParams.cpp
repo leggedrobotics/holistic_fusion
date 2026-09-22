@@ -89,10 +89,6 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   //// Bias
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/accBiasRandomWalkNoiseDensity", privateNode);
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/gyrBiasRandomWalkNoiseDensity", privateNode);
-  graphConfigPtr_->biasAccStdDevForIntegration_ =
-      tryGetParam<double>("noise_params/biasAccStdDevForIntegration", privateNode);
-  graphConfigPtr_->biasOmegaStdDevForIntegration_ =
-      tryGetParam<double>("noise_params/biasOmegaStdDevForIntegration", privateNode);
   const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
   // Initial State

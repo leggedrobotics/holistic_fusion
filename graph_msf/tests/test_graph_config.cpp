@@ -83,14 +83,12 @@ struct Covariances {
   gtsam::Matrix33 velocity;
 };
 
-Covariances integratedCovariances(double acc_noise, double gyro_noise, double acc_integration, double gyro_integration) {
+Covariances integratedCovariances(double acc_noise, double gyro_noise) {
   auto config = std::make_shared<graph_msf::GraphConfig>();
   config->useImuSignalLowPassFilter_ = false;
   config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
   config->accNoiseDensity_ = acc_noise;
   config->gyroNoiseDensity_ = gyro_noise;
-  config->biasAccStdDevForIntegration_ = acc_integration;
-  config->biasOmegaStdDevForIntegration_ = gyro_integration;
   graph_msf::GraphManager manager(config, "imu", "world");
   require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
   require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3()), "Prior graph initialization failed");
@@ -111,19 +109,13 @@ Covariances integratedCovariances(double acc_noise, double gyro_noise, double ac
   return {optimized.poseCovariance(), optimized.velocityCovariance()};
 }
 
-void integrationNoiseChangesActualStateCovariance() {
-  const auto baseline = integratedCovariances(0.01, 0.02, 0.0, 0.0);
-  const auto acc = integratedCovariances(0.01, 0.02, 0.1, 0.0);
-  const auto acc_equivalent = integratedCovariances(std::hypot(0.01, 0.1), 0.02, 0.0, 0.0);
-  const auto gyro = integratedCovariances(0.01, 0.02, 0.0, 0.1);
-  const auto gyro_equivalent = integratedCovariances(0.01, std::hypot(0.02, 0.1), 0.0, 0.0);
-  require(acc.velocity.trace() > baseline.velocity.trace() + 1e-4, "Acceleration integration noise has no covariance effect");
+void sensorNoiseChangesActualStateCovariance() {
+  const auto baseline = integratedCovariances(0.01, 0.02);
+  const auto acc = integratedCovariances(0.1, 0.02);
+  const auto gyro = integratedCovariances(0.01, 0.1);
+  require(acc.velocity.trace() > baseline.velocity.trace() + 1e-4, "Acceleration noise has no covariance effect");
   require(gyro.pose.topLeftCorner<3, 3>().trace() > baseline.pose.topLeftCorner<3, 3>().trace() + 1e-4,
-          "Gyroscope integration noise has no covariance effect");
-  require(acc.pose.isApprox(acc_equivalent.pose, 1e-8) && acc.velocity.isApprox(acc_equivalent.velocity, 1e-8),
-          "Acceleration integration covariance is not additive");
-  require(gyro.pose.isApprox(gyro_equivalent.pose, 1e-8) && gyro.velocity.isApprox(gyro_equivalent.velocity, 1e-8),
-          "Gyroscope integration covariance is not additive");
+          "Gyroscope noise has no covariance effect");
 }
 
 void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
@@ -185,7 +177,7 @@ int main() {
   try {
     rejectsInvalidIsamRelinearizationInterval();
     rejectsInvalidStateAndOptimizationCounts();
-    integrationNoiseChangesActualStateCovariance();
+    sensorNoiseChangesActualStateCovariance();
     stationaryPropagationUsesInitializedGravity(false);
     stationaryPropagationUsesInitializedGravity(true);
     disabledMarginalWindowHandlesSingleState();

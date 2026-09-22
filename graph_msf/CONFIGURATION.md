@@ -7,13 +7,24 @@
 The accelerometer and gyroscope covariance inputs are continuous-time noise densities squared:
 
 ```text
-accelerometerCovariance = I * (accNoiseDensity² + biasAccStdDevForIntegration²)
-gyroscopeCovariance = I * (gyroNoiseDensity² + biasOmegaStdDevForIntegration²)
+accelerometerCovariance = I * accNoiseDensity²
+gyroscopeCovariance = I * gyroNoiseDensity²
 ```
 
-The two `bias*StdDevForIntegration` fields are Holistic Fusion integration-noise settings. They have the same units as the corresponding sensor noise density. They are not initial bias-state priors. Zero disables their contribution.
+`biasAccStdDevForIntegration` and `biasOmegaStdDevForIntegration` are not supported parameters. GTSAM 4.3 does not apply their former setter, `setBiasAccOmegaInit`. Initial bias uncertainty belongs in the prior on the first bias state. See [GTSAM PR #2199, Remove initial cov from CombinedImuFactor](https://github.com/borglab/gtsam/pull/2199) for the upstream rationale.
 
-GTSAM 4.3 does not apply `setBiasAccOmegaInit`. Holistic Fusion applies the independent diagonal contributions through the supported accelerometer and gyroscope covariance setters. This preserves the contribution made by these fields in GTSAM 4.2 with the tangent preintegration backend and measurements expressed at the IMU origin. It does not claim identical factor residuals or identical estimates across GTSAM versions.
+To preserve the effective covariance of an existing configuration, migrate its YAML values once:
+
+```text
+accNoiseDensity_new = sqrt(accNoiseDensity_old² + biasAccStdDevForIntegration_old²)
+gyrNoiseDensity_new = sqrt(gyrNoiseDensity_old² + biasOmegaStdDevForIntegration_old²)
+```
+
+Then delete both legacy keys. ROS YAML uses `gyrNoiseDensity` for the C++ field `gyroNoiseDensity_`. Keep enough decimal digits to preserve the squared values. The runtime uses only these final noise densities.
+
+The supplied configurations include this migration. Their values describe effective measurement uncertainty and retain the estimator weighting. They are not independent measurements of sensor noise. Tune them against data when adopting a calibrated physical noise model.
+
+This conversion preserves the legacy independent diagonal covariance contribution with tangent preintegration and measurements expressed at the IMU origin. It does not migrate accelerometer–gyroscope cross-covariance terms or imply identical estimates across GTSAM versions.
 
 `accBiasRandomWalkNoiseDensity` and `gyroBiasRandomWalkNoiseDensity` describe bias evolution. `initialAccBiasStdDev` and `initialGyroBiasStdDev` set the uncertainty of the first bias state. These settings have separate effects.
 
@@ -44,7 +55,7 @@ Names below are the exact C++ fields without their trailing underscore.
 | `useWindowForMarginalsComputationFlag`, `windowSizeSecondsForMarginalsComputation` | LM batch marginal calculation. The window size applies only with windowing enabled. |
 | `optimizeReferenceFramePosesWrtWorldFlag`, `referenceFramePosesResetThreshold`, `centerMeasurementsAtKeyframePositionBeforeAlignmentFlag`, `createReferenceAlignmentKeyframeEveryNSeconds` | Reference-frame alignment of applicable absolute measurements. |
 | `optimizeExtrinsicSensorToSensorCorrectedOffsetFlag` | Extrinsic estimation for applicable measurements. |
-| `accNoiseDensity`, `integrationNoiseDensity`, `gyroNoiseDensity`, `accBiasRandomWalkNoiseDensity`, `gyroBiasRandomWalkNoiseDensity`, `biasAccStdDevForIntegration`, `biasOmegaStdDevForIntegration` | IMU integration covariance. |
+| `accNoiseDensity`, `integrationNoiseDensity`, `gyroNoiseDensity`, `accBiasRandomWalkNoiseDensity`, `gyroBiasRandomWalkNoiseDensity` | IMU integration covariance. |
 | `earthRotationCompensationFlag`, `latitudeDeg`, `worldFrameNorthAlignedFlag` | Latitude and north alignment apply only with Earth rotation compensation enabled. |
 | `accBiasPrior`, `gyroBiasPrior` | Initial bias means, subject to the initialization policy above. |
 | `initialPositionStdDev`, `initialOrientationStdDev`, `initialVelocityStdDev`, `initialAccBiasStdDev`, `initialGyroBiasStdDev` | Initial state priors and applicable optimizer recovery priors. |
@@ -54,7 +65,7 @@ Names below are the exact C++ fields without their trailing underscore.
 | `relinearizeSkip`, `enableRelinearizationFlag`, `evaluateNonlinearErrorFlag`, `cacheLinearizedFactorsFlag`, `enablePartialRelinearizationCheckFlag` | ISAM2 only. `relinearizeSkip` is a positive update interval between relinearization checks. |
 | `maxSearchDeviation` | Timestamp-to-graph-key matching. ROS adapters derive it from the graph-state interval. |
 
-All 66 fields have consumers in the built core. `GraphMsfDualGraph` is not part of the core build and is not a supported alternative implementation.
+All 64 fields have consumers in the built core. `GraphMsfDualGraph` is not part of the core build and is not a supported alternative implementation.
 
 ## Optimizer API limits
 
