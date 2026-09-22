@@ -75,12 +75,17 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
 
   // Set noise and bias parameters
   /// Position
-  imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accNoiseDensity_, 2));
+  // The integration-bias terms are independent continuous-time covariance contributions.
+  imuParamsPtr_->setAccelerometerCovariance(
+      gtsam::Matrix33::Identity() * (std::pow(graphConfigPtr_->accNoiseDensity_, 2) +
+                                    std::pow(graphConfigPtr_->biasAccStdDevForIntegration_, 2)));
   imuParamsPtr_->setIntegrationCovariance(gtsam::Matrix33::Identity(3, 3) *
                                           std::pow(graphConfigPtr_->integrationNoiseDensity_, 2));  // error committed in integrating
                                                                                                     // position from velocities
   /// Rotation
-  imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroNoiseDensity_, 2));
+  imuParamsPtr_->setGyroscopeCovariance(
+      gtsam::Matrix33::Identity() * (std::pow(graphConfigPtr_->gyroNoiseDensity_, 2) +
+                                    std::pow(graphConfigPtr_->biasOmegaStdDevForIntegration_, 2)));
   /// Earth rotation: angular velocity of the (gravity-aligned, z-up) world frame w.r.t. the inertial frame, expressed in the
   /// world frame. Setting it makes GTSAM (>= 4.3) use the exact rotating-frame model (Coriolis, centrifugal and Earth-rate
   /// terms). If left unset, the inertial model is used.
@@ -103,12 +108,6 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
-  gtsam::Matrix66 bias_covariance_for_integration = gtsam::Matrix66::Zero();
-  bias_covariance_for_integration.topLeftCorner<3, 3>() =
-      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasAccStdDevForIntegration_, 2);
-  bias_covariance_for_integration.bottomRightCorner<3, 3>() =
-      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasOmegaStdDevForIntegration_, 2);
-  imuParamsPtr_->setBiasAccOmegaInit(bias_covariance_for_integration);
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior_, graphConfigPtr_->gyroBiasPrior_);

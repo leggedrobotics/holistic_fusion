@@ -103,8 +103,6 @@ void GraphMsfRos2::readParams() {
   const double accBiasPrior = tryGetParam<double>(this, "noise_params.accBiasPrior");
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
 
-  const double gyroBiasPrior = tryGetParam<double>(this, "noise_params.gyrBiasPrior");
-  graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
 
   // Initial State
   graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>(this, "noise_params.initialPositionStdDev");

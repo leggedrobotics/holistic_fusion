@@ -8,6 +8,8 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef OPTIMIZER_ISAM2_HPP
 #define OPTIMIZER_ISAM2_HPP
 
+#include <stdexcept>
+
 // GTSAM
 #include <gtsam/nonlinear/ISAM2.h>
 
@@ -19,6 +21,9 @@ namespace graph_msf {
 class OptimizerIsam2 : public OptimizerBase {
  public:
   explicit OptimizerIsam2(const std::shared_ptr<GraphConfig> graphConfigPtr) : OptimizerBase(graphConfigPtr) {
+    if (graphConfigPtr_->relinearizeSkip_ < 1) {
+      throw std::invalid_argument("OptimizerIsam2: relinearizeSkip must be positive.");
+    }
     // Standard ISAM2 Parameters
     isam2Params_.findUnusedFactorSlots = graphConfigPtr_->findUnusedFactorSlotsFlag_;
     isam2Params_.enableDetailedResults = graphConfigPtr_->enableDetailedResultsFlag_;

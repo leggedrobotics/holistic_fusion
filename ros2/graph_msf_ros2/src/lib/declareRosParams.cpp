@@ -67,7 +67,6 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("noise_params.biasAccStdDevForIntegration", 0.0);
   this->declare_parameter("noise_params.biasOmegaStdDevForIntegration", 0.0);
   this->declare_parameter("noise_params.accBiasPrior", 0.0);
-  this->declare_parameter("noise_params.gyrBiasPrior", 0.0);
   this->declare_parameter("noise_params.initialPositionStdDev", 0.0);
   this->declare_parameter("noise_params.initialOrientationStdDev", 0.0);
   this->declare_parameter("noise_params.initialVelocityStdDev", 0.0);

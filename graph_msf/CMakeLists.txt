@@ -59,6 +59,13 @@ add_library(${PROJECT_NAME} SHARED
         src/lib/TrajectoryAlignmentHandler.cpp
         src/lib/NavState.cpp
 )
+if(BUILD_TESTING)
+    enable_testing()
+    add_executable(graph_config_test tests/test_graph_config.cpp)
+    target_link_libraries(graph_config_test PRIVATE graph_msf)
+    add_test(NAME graph_config_test COMMAND graph_config_test)
+endif()
+
 # Exported alias target
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 

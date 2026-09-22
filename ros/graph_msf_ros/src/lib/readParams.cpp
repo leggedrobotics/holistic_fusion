@@ -37,6 +37,7 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->maxSearchDeviation_ = 1.0 / (graphConfigPtr_->imuRate_ / graphConfigPtr_->createStateEveryNthImuMeasurement_);
   graphConfigPtr_->imuBufferLength_ = tryGetParam<int>("sensor_params/imuBufferLength", privateNode);
   graphConfigPtr_->imuTimeOffset_ = tryGetParam<double>("sensor_params/imuTimeOffset", privateNode);
+  graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>("sensor_params/isImuAccInG", privateNode);
 
   // Initialization Params
   graphConfigPtr_->estimateGravityFromImuFlag_ = tryGetParam<bool>("initialization_params/estimateGravityFromImu", privateNode);
@@ -94,8 +95,6 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
       tryGetParam<double>("noise_params/biasOmegaStdDevForIntegration", privateNode);
   const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
-  const double gyroBiasPrior = tryGetParam<double>("noise_params/gyrBiasPrior", privateNode);
-  graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
   // Initial State
   graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>("noise_params/initialPositionStdDev", privateNode);
   graphConfigPtr_->initialOrientationStdDev_ = tryGetParam<double>("noise_params/initialOrientationStdDev", privateNode);

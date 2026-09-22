@@ -83,6 +83,7 @@ struct GraphConfig {
   // Bias
   double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
   double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]
+  // Additional integration noise densities, added in quadrature to the sensor noise densities.
   double biasAccStdDevForIntegration_ = 0.0;
   double biasOmegaStdDevForIntegration_ = 0.0;
   Eigen::Vector3d accBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -106,7 +107,7 @@ struct GraphConfig {
   double displacementReLinTh_ = 1e-3;
   double landmarkReLinTh_ = 1e-3;
   // Flags
-  int relinearizeSkip_ = 0;
+  int relinearizeSkip_ = 1;
   bool enableRelinearizationFlag_ = true;
   bool evaluateNonlinearErrorFlag_ = true;
   bool cacheLinearizedFactorsFlag_ = true;

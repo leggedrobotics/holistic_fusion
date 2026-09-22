@@ -200,7 +200,7 @@ class OptimizerLMBatch : public OptimizerLM {
     gtsam::Marginals marginals;
     try {
       marginals = gtsam::Marginals(graph, values);
-    } catch (const gtsam::IndeterminantLinearSystemException& e) {
+    } catch (const gtsam::IndeterminateSystemException& e) {
       std::cout << "GraphMSF: OptimizerLMBatch: computing marginals failed with error: " << e.what() << std::endl;
       // Filter out ill-conditioned states
       std::cout << "GraphMSF: OptimizerLMBatch: filtering out ill-conditioned state: " << gtsam::Symbol(e.nearbyVariable()) << std::endl;
@@ -390,10 +390,6 @@ class OptimizerLMBatch : public OptimizerLM {
       throw std::runtime_error("GraphMSF: OptimizerLMBatch: marginalCovariance: No optimization has been performed yet.");
     }
 
-    if (!dividedIntoSubGraphsFlag_) {
-      divideGraphIntoSubGraphs();
-    }
-
     // Super slow check
     if constexpr (false) {
       // Check whether key exists in optimized result
@@ -410,6 +406,9 @@ class OptimizerLMBatch : public OptimizerLM {
 
     // Only use window around key for marginal covariance ------------------------------------------------
     if (graphConfigPtr_->useWindowForMarginalsComputationFlag_) {
+      if (!dividedIntoSubGraphsFlag_) {
+        divideGraphIntoSubGraphs();
+      }
       // Get sub-graph index
       const int& subGraphsIndex_ = keyToSubGraphIndexMap_[valueKey];  // Alias
       if (subGraphsIndex_ != currentOptimizedSubgraphIndex_) {

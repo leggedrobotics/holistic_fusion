@@ -7,6 +7,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <chrono>
+#include <stdexcept>
 
 // Implementation
 #include "graph_msf/interface/GraphMsf.h"
@@ -41,6 +42,13 @@ void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const st
   } else {
     graphConfigPtr_ = graphConfigPtr;
     staticTransformsPtr_ = staticTransformsPtr;
+  }
+
+  if (graphConfigPtr_->additionalOptimizationIterations_ < 0) {
+    throw std::invalid_argument("GraphMsf: additionalOptimizationIterations must be nonnegative.");
+  }
+  if (graphConfigPtr_->createStateEveryNthImuMeasurement_ < 1) {
+    throw std::invalid_argument("GraphMsf: createStateEveryNthImuMeasurement must be positive.");
   }
 
   // Imu Buffer
@@ -366,6 +374,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
                << COLOR_END << std::endl;
 
   // Gravity
+  graphConfigPtr_->W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -graphConfigPtr_->gravityMagnitude_);
   graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude_);
   /// Initialize graph node
   graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0, T_O_I0);
