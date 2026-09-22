@@ -48,7 +48,7 @@
       accNoiseDensity: 2.25772e-04 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
       integrationNoiseDensity: 1.0e-04        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
       ### Rotation
-      gyrNoiseDensity: 2.35812128610892293e-04 # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
+      gyrNoiseDensity: 2.35812e-04 # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
       ### Earth rotation (Coriolis, centrifugal and Earth-rate terms in the IMU preintegration)
       earthRotationCompensation: true       # If true, GTSAM's exact rotating-frame IMU model is used
       latitudeDeg: 47.4                     # Geodetic latitude [deg], positive on the northern hemisphere (Zurich: 47.4)
