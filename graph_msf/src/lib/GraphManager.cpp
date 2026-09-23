@@ -127,7 +127,8 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   return true;
 }
 
-bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
+bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0,
+                                             const gtsam::Vector3& imuAngularVelocity) {
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -213,8 +214,10 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  latestGraphStateKeyTime_ = timeStamp;
+  latestGraphStateKeyAngularVelocity_ = imuAngularVelocity;
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
-                                             gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
+                                             imuBiasPriorPtr_->correctGyroscope(imuAngularVelocity), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
   W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
   T_W_O_ = (T_W_I0.inverse() * T_O_I0).matrix();
@@ -237,8 +240,7 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   // 1.1 Get last two measurements from buffer to determine dt
   TimeToImuMap imuMeas;
   imuBufferPtr->getLastTwoMeasurements(imuMeas);
-  propagatedStateTime_ = imuTimeK;
-  currentAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
+  propagatedImuSampleTime_ = imuTimeK;
 
   // 1.2 Update IMU Pre-integrator
   updateImuIntegrators_(imuMeas);
@@ -305,6 +307,8 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     // Get new key
     const gtsam::Key oldKey = propagatedStateKey_;
     const gtsam::Key newKey = newPropagatedStateKey_();
+    latestGraphStateKeyTime_ = imuTimeK;
+    latestGraphStateKeyAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
 
     // Add to time key buffer
     timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
@@ -372,15 +376,15 @@ bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& ret
   if (!timeToKeyBufferPtr_->getClosestKeyAndTimestamp(returnedGraphTime, returnedKey, unaryMeasurement.measurementName(),
                                                       graphConfigPtr_->maxSearchDeviation_, unaryMeasurement.timeK())) {
     // Measurement coming from the future
-    if (propagatedStateTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
+    if (propagatedImuSampleTime_ - unaryMeasurement.timeK() < 0.0) {  // Factor is coming from the future, hence add it to the buffer
       // Not too far in the future --> add to buffer and add later
-      if (unaryMeasurement.timeK() - propagatedStateTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
+      if (unaryMeasurement.timeK() - propagatedImuSampleTime_ < 4 * graphConfigPtr_->maxSearchDeviation_) {
         // TODO: Add to buffer and return --> still add it until we are there
         return true;
       }
       // Too far in the future --> do not add it
       else {
-        std::cout << 1000 * (propagatedStateTime_ - unaryMeasurement.timeK()) << std::endl;
+        std::cout << 1000 * (propagatedImuSampleTime_ - unaryMeasurement.timeK()) << std::endl;
         std::cout << 1000 * (returnedGraphTime - unaryMeasurement.timeK()) << std::endl;
         REGULAR_COUT << RED_START << " Factor coming from the future, AND time deviation of " << typeid(unaryMeasurement).name()
                      << " at key " << returnedKey << " is " << 1000 * std::abs(returnedGraphTime - unaryMeasurement.timeK())
@@ -532,8 +536,8 @@ void GraphManager::updateGraph() {
   gtsam::Values newRtGraphValues, newBatchGraphValues;
   std::map<gtsam::Key, double> newRtGraphKeysTimestampsMap, newBatchGraphKeysTimestampsMap;
   gtsam::Key currentPropagatedKey;
-  gtsam::Vector3 currentAngularVelocity;
-  double currentPropagatedTime;
+  gtsam::Vector3 currentGraphStateKeyAngularVelocity;
+  double currentGraphStateKeyTime;
 
   // Mutex Block 1 -----------------
   {
@@ -541,8 +545,8 @@ void GraphManager::updateGraph() {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     // Get current key and time
     currentPropagatedKey = propagatedStateKey_;
-    currentPropagatedTime = propagatedStateTime_;
-    currentAngularVelocity = currentAngularVelocity_;
+    currentGraphStateKeyTime = latestGraphStateKeyTime_;
+    currentGraphStateKeyAngularVelocity = latestGraphStateKeyAngularVelocity_;
     // Get copy of factors and values and empty buffers
     newRtGraphFactors = *rtFactorGraphBufferPtr_;
     newRtGraphValues = *rtGraphValuesBufferPtr_;
@@ -559,13 +563,8 @@ void GraphManager::updateGraph() {
       batchGraphKeysTimestampsMapBufferPtr_->clear();
     }
 
-    // Empty Buffer Pre-integrator --> everything missed during the update will
-    // be in here
-    if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
-      imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
-    } else {
-      imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
-    }
+    // Catch-up starts at the graph key, including its unfinished IMU interval.
+    *imuBufferPreintegratorPtr_ = *imuStepPreintegratorPtr_;
   }  // end of locking
 
   // Log Update Duration
@@ -595,7 +594,7 @@ void GraphManager::updateGraph() {
     updateDurationEndTime_ = std::chrono::high_resolution_clock::now();
     // Duration in seconds
     std::chrono::duration<double> updateDuration = updateDurationEndTime_ - updateDurationStartTime_;
-    updateDurationContainer_[currentPropagatedTime] = updateDuration.count();
+    updateDurationContainer_[currentGraphStateKeyTime] = updateDuration.count();
   }
 
   // Return if optimization failed
@@ -777,7 +776,7 @@ void GraphManager::updateGraph() {
           // If active but added newly but never optimized
           else {
             // If too old but was never optimized --> remove or deactivate
-            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime);
+            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentGraphStateKeyTime);
             if (variableAge > graphConfigPtr_->realTimeSmootherLag_) {
               REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
                            << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second << " is too old ("
@@ -813,8 +812,8 @@ void GraphManager::updateGraph() {
     // 1. Optimized Graph State Status
     optimizedGraphState_.setIsOptimized();
     // Update Optimized Graph State
-    optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState,
-                                               resultBias.correctGyroscope(currentAngularVelocity), resultBias);
+    optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentGraphStateKeyTime, resultNavState,
+                                               resultBias.correctGyroscope(currentGraphStateKeyAngularVelocity), resultBias);
     optimizedGraphState_.updateReferenceFrameTransforms(resultReferenceFrameTransformations);
     optimizedGraphState_.updateReferenceFrameTransformsCovariance(resultReferenceFrameTransformationsCovariance);
     optimizedGraphState_.updateLandmarkTransforms(resultLandmarkTransformations);
@@ -844,12 +843,12 @@ void GraphManager::updateGraph() {
     // T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
 
     // Update the time of the last optimized state
-    lastOptimizedStateTime_ = currentPropagatedTime;
+    lastOptimizedStateTime_ = currentGraphStateKeyTime;
   }  // end of locking
 
   // Potentially log real-time state to container
   if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
-    realTimeReferenceFrameContainer_.emplace(currentPropagatedTime, resultReferenceFrameTransformations);
+    realTimeReferenceFrameContainer_.emplace(currentGraphStateKeyTime, resultReferenceFrameTransformations);
   }
 }
 

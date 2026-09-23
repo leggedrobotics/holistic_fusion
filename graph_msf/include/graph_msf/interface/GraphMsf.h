@@ -145,7 +145,7 @@ class GraphMsf {
   //// Set Imu Attitude
   bool alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch);
   //// Initialize the graph
-  void initGraph_(const double timeStamp_k);
+  void initGraph_(const double timeStamp_k, const Eigen::Vector3d& imuAngularVelocity);
   //// Updating the factor graph
   void optimizeGraph_();
 

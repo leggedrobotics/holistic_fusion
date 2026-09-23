@@ -186,7 +186,7 @@ void GraphManager::activateGlobalGraph(const gtsam::Vector3& imuPosition, const 
     {
       const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
       currentPropagatedKey = propagatedStateKey_;
-      currentPropagatedTime = propagatedStateTime_;
+      currentPropagatedTime = propagatedImuSampleTime_;
       int lastKeyInSmoother = (--globalSmootherPtr_->timestamps().end())->first;
 
       std::cout << YELLOW_START << "GMsf-GraphManager" << GREEN_START << " Last Key in Smoother is: " << lastKeyInSmoother

@@ -10,6 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // CPP
 #include <iomanip>
+#include <iterator>
 
 // Workspace
 #include "graph_msf/core/ImuMeasurement.hpp"
@@ -67,18 +68,16 @@ Eigen::Matrix<double, 6, 1> ImuBuffer::addToImuBuffer(double ts, const Eigen::Ve
     if (ts > tLatestInBuffer_) {
       tLatestInBuffer_ = ts;
     }
-  }
+    if (timeToImuBuffer_.size() > imuBufferLength_) {
+      timeToImuBuffer_.erase(timeToImuBuffer_.begin());
+    }
 
-  // If IMU buffer is too large, remove oldest element
-  if (timeToImuBuffer_.size() > imuBufferLength_) {
-    timeToImuBuffer_.erase(timeToImuBuffer_.begin());
-  }
-
-  if (timeToImuBuffer_.size() > imuBufferLength_) {
-    std::ostringstream errorStream;
-    errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains "
-                << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
-    throw std::runtime_error(errorStream.str());
+    if (timeToImuBuffer_.size() > imuBufferLength_) {
+      std::ostringstream errorStream;
+      errorStream << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " IMU Buffer has grown too large. It contains "
+                  << timeToImuBuffer_.size() << " measurements instead of " << imuBufferLength_ << ".";
+      throw std::runtime_error(errorStream.str());
+    }
   }
 
   return filteredImuMeas;
@@ -210,32 +209,26 @@ bool ImuBuffer::getIMUBufferIteratorsInInterval(const double tsStart, const doub
   return true;
 }
 
-// This function is better suitable for finding the closest IMU timestamp than the timeToKeyBuffer_ version, as there might be fewer keys
-// than IMU measurements
 bool ImuBuffer::getClosestImuMeasurement(double& returnedImuTimestamp, ImuMeasurement& returnedImuMeasurement,
                                          const double maxSearchDeviation, const double tK) {
-  std::_Rb_tree_iterator<std::pair<const double, ImuMeasurement>> upperIterator;
-  {
-    // Read from IMU buffer --> acquire mutex
-    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    upperIterator = timeToImuBuffer_.upper_bound(tK);
-  }
-
-  // Empty buffer
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
   if (timeToImuBuffer_.empty()) {
     std::cerr << YELLOW_START << "GMsf-ImuBuffer: Buffer is empty!" << COLOR_END << std::endl;
     return false;
   }
 
-  auto lowerIterator = upperIterator;
-  --lowerIterator;
-
-  // Keep key which is closer to tLidar
-  returnedImuTimestamp =
-      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  returnedImuMeasurement =
-      std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
-  double timeDeviation = returnedImuTimestamp - tK;
+  auto closestIterator = timeToImuBuffer_.lower_bound(tK);
+  if (closestIterator == timeToImuBuffer_.end()) {
+    --closestIterator;
+  } else if (closestIterator != timeToImuBuffer_.begin()) {
+    const auto lowerIterator = std::prev(closestIterator);
+    if (tK - lowerIterator->first < closestIterator->first - tK) {
+      closestIterator = lowerIterator;
+    }
+  }
+  returnedImuTimestamp = closestIterator->first;
+  returnedImuMeasurement = closestIterator->second;
+  const double timeDeviation = returnedImuTimestamp - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "GMsf-ImuBuffer" << COLOR_END << " Searched time step: " << std::setprecision(14) << tK << std::endl;
