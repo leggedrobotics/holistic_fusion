@@ -118,6 +118,115 @@ void sensorNoiseChangesActualStateCovariance() {
           "Gyroscope noise has no covariance effect");
 }
 
+void optimizerHandoffPreservesPartialImuInterval(int partial_steps, bool nonzero_bias) {
+  auto config = std::make_shared<graph_msf::GraphConfig>();
+  config->useImuSignalLowPassFilter_ = false;
+  config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
+  if (nonzero_bias) {
+    config->accBiasPrior_ = Eigen::Vector3d(0.1, -0.2, 0.3);
+    config->gyroBiasPrior_ = Eigen::Vector3d(0.01, -0.02, 0.03);
+  }
+  graph_msf::GraphManager manager(config, "imu", "world");
+  require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
+  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3()), "Prior graph initialization failed");
+  auto buffer = std::make_shared<graph_msf::ImuBuffer>(config);
+  const Eigen::Vector3d acceleration = Eigen::Vector3d(1.0, 0.0, config->gravityMagnitude_) + config->accBiasPrior_;
+  buffer->addToImuBuffer(0.99, acceleration, config->gyroBiasPrior_);
+  buffer->addToImuBuffer(1.0, acceleration, config->gyroBiasPrior_);
+  graph_msf::SafeIntegratedNavState state;
+  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimized_state;
+  int index = 0;
+  const auto add_imu = [&](bool create_state) {
+    const double timestamp = 1.0 + 0.01 * ++index;
+    buffer->addToImuBuffer(timestamp, acceleration, config->gyroBiasPrior_);
+    manager.addImuFactorAndGetState(state, optimized_state, buffer, timestamp, create_state);
+  };
+  for (int step = 1; step <= 10 + partial_steps; ++step) {
+    add_imu(step == 10);
+  }
+
+  manager.updateGraph();
+
+  require(std::abs(manager.getOptimizedGraphState().ts() - 1.1) < 1e-12,
+          "Optimized timestamp does not match its graph key");
+  const auto check_state = [&]() {
+    const double elapsed = 0.01 * index;
+    require(std::abs(state.getT_W_Ik().translation().x() - 0.5 * elapsed * elapsed) < 1e-7,
+            "Optimizer handoff lost position integration");
+    require(std::abs(state.getI_v_W_I().x() - elapsed) < 1e-7,
+            "Optimizer handoff lost velocity integration");
+  };
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    add_imu(false);
+    check_state();
+    manager.updateGraph();
+  }
+  add_imu(true);
+  const double next_key_time = 1.0 + 0.01 * index;
+  add_imu(false);
+  manager.updateGraph();
+  require(std::abs(manager.getOptimizedGraphState().ts() - next_key_time) < 1e-12,
+          "Optimizer timestamp did not advance with the graph key");
+  add_imu(false);
+  check_state();
+
+  const Eigen::Vector3d graph_angular_velocity = config->gyroBiasPrior_ + Eigen::Vector3d(0.0, 0.0, 0.1);
+  for (int step = 1; step <= 2; ++step) {
+    const double timestamp = 1.0 + 0.01 * ++index;
+    const Eigen::Vector3d angular_velocity = config->gyroBiasPrior_ + Eigen::Vector3d(0.0, 0.0, 0.1 * step);
+    buffer->addToImuBuffer(timestamp, acceleration, angular_velocity);
+    manager.addImuFactorAndGetState(state, optimized_state, buffer, timestamp, step == 1);
+  }
+  manager.updateGraph();
+  const auto& optimized = manager.getOptimizedGraphState();
+  require((optimized.angularVelocityCorrected() + optimized.imuBias().gyroscope()).isApprox(graph_angular_velocity, 1e-12),
+          "Optimized angular velocity does not match its graph key");
+}
+
+void closestImuLookupHandlesBufferBoundaries() {
+  auto config = std::make_shared<graph_msf::GraphConfig>();
+  config->useImuSignalLowPassFilter_ = false;
+  config->imuBufferLength_ = 3;
+  graph_msf::ImuBuffer buffer(config);
+  double timestamp = -1.0;
+  graph_msf::ImuMeasurement measurement;
+  require(!buffer.getClosestImuMeasurement(timestamp, measurement, 1.0, 1.0), "Empty IMU lookup must fail");
+
+  const auto add = [&](double time) {
+    buffer.addToImuBuffer(time, Eigen::Vector3d::Constant(time), Eigen::Vector3d::Constant(-time));
+  };
+  const auto expect = [&](double query, double deviation, double expected) {
+    require(buffer.getClosestImuMeasurement(timestamp, measurement, deviation, query), "Closest IMU lookup failed");
+    require(timestamp == expected && measurement.timestamp == expected, "Closest IMU timestamp is incorrect");
+    require(measurement.acceleration.isApprox(Eigen::Vector3d::Constant(expected)), "Closest IMU acceleration is incorrect");
+    require(measurement.angularVelocity.isApprox(Eigen::Vector3d::Constant(-expected)), "Closest IMU angular velocity is incorrect");
+  };
+
+  add(1.0);
+  expect(1.0, 0.0, 1.0);
+  expect(0.75, 0.25, 1.0);
+  expect(1.25, 0.25, 1.0);
+  require(!buffer.getClosestImuMeasurement(timestamp, measurement, 0.125, 0.75), "Early lookup outside tolerance must fail");
+  require(!buffer.getClosestImuMeasurement(timestamp, measurement, 0.125, 1.25), "Late lookup outside tolerance must fail");
+
+  add(2.0);
+  add(3.0);
+  expect(1.0, 0.0, 1.0);
+  expect(2.0, 0.0, 2.0);
+  expect(3.0, 0.0, 3.0);
+  expect(0.75, 0.25, 1.0);
+  expect(3.25, 0.25, 3.0);
+  expect(1.25, 0.25, 1.0);
+  expect(1.75, 0.25, 2.0);
+  expect(1.5, 0.5, 2.0);
+  require(!buffer.getClosestImuMeasurement(timestamp, measurement, 0.125, 1.25), "Interior lookup outside tolerance must fail");
+
+  add(4.0);
+  expect(2.0, 0.0, 2.0);
+  expect(4.0, 0.0, 4.0);
+  require(!buffer.getClosestImuMeasurement(timestamp, measurement, 0.0, 1.0), "Evicted IMU measurement must not be returned");
+}
+
 void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   auto config = std::make_shared<graph_msf::GraphConfig>();
   config->imuRate_ = 10.0;
@@ -202,6 +311,11 @@ int main() {
     rejectsInvalidStateAndOptimizationCounts();
     rejectsInMotionInitialization();
     sensorNoiseChangesActualStateCovariance();
+    for (const bool nonzero_bias : {false, true}) {
+      optimizerHandoffPreservesPartialImuInterval(0, nonzero_bias);
+      optimizerHandoffPreservesPartialImuInterval(7, nonzero_bias);
+    }
+    closestImuLookupHandlesBufferBoundaries();
     stationaryPropagationUsesInitializedGravity(false);
     stationaryPropagationUsesInitializedGravity(true);
     disabledMarginalWindowHandlesSingleState();

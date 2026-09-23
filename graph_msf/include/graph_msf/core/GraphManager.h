@@ -194,8 +194,9 @@ class GraphManager {
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
   gtsam::Key propagatedStateKey_ = 0;                        // Current state key, always start with 0
   double propagatedStateTime_ = 0.0;                         // Current state time
+  double propagatedStateKeyTime_ = 0.0;
   double lastOptimizedStateTime_ = 0.0;                      // Last optimized state time
-  gtsam::Vector3 currentAngularVelocity_ = gtsam::Vector3(0, 0, 0);
+  gtsam::Vector3 graphStateAngularVelocity_ = gtsam::Vector3(0, 0, 0);
 
   // Optimizer(s)
   std::shared_ptr<OptimizerBase> rtOptimizerPtr_;

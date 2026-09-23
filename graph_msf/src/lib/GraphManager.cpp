@@ -213,6 +213,8 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
 
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
+  propagatedStateKeyTime_ = timeStamp;
+  graphStateAngularVelocity_ = imuBiasPriorPtr_->gyroscope();
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
                                              gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
@@ -238,7 +240,6 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
   TimeToImuMap imuMeas;
   imuBufferPtr->getLastTwoMeasurements(imuMeas);
   propagatedStateTime_ = imuTimeK;
-  currentAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
 
   // 1.2 Update IMU Pre-integrator
   updateImuIntegrators_(imuMeas);
@@ -305,6 +306,8 @@ void GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& returnPreInte
     // Get new key
     const gtsam::Key oldKey = propagatedStateKey_;
     const gtsam::Key newKey = newPropagatedStateKey_();
+    propagatedStateKeyTime_ = imuTimeK;
+    graphStateAngularVelocity_ = imuMeas.rbegin()->second.angularVelocity;
 
     // Add to time key buffer
     timeToKeyBufferPtr_->addToBuffer(imuTimeK, newKey);
@@ -533,7 +536,7 @@ void GraphManager::updateGraph() {
   std::map<gtsam::Key, double> newRtGraphKeysTimestampsMap, newBatchGraphKeysTimestampsMap;
   gtsam::Key currentPropagatedKey;
   gtsam::Vector3 currentAngularVelocity;
-  double currentPropagatedTime;
+  double currentGraphStateTime;
 
   // Mutex Block 1 -----------------
   {
@@ -541,8 +544,8 @@ void GraphManager::updateGraph() {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     // Get current key and time
     currentPropagatedKey = propagatedStateKey_;
-    currentPropagatedTime = propagatedStateTime_;
-    currentAngularVelocity = currentAngularVelocity_;
+    currentGraphStateTime = propagatedStateKeyTime_;
+    currentAngularVelocity = graphStateAngularVelocity_;
     // Get copy of factors and values and empty buffers
     newRtGraphFactors = *rtFactorGraphBufferPtr_;
     newRtGraphValues = *rtGraphValuesBufferPtr_;
@@ -559,13 +562,8 @@ void GraphManager::updateGraph() {
       batchGraphKeysTimestampsMapBufferPtr_->clear();
     }
 
-    // Empty Buffer Pre-integrator --> everything missed during the update will
-    // be in here
-    if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
-      imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
-    } else {
-      imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
-    }
+    // Catch-up starts at the graph key, including its unfinished IMU interval.
+    *imuBufferPreintegratorPtr_ = *imuStepPreintegratorPtr_;
   }  // end of locking
 
   // Log Update Duration
@@ -595,7 +593,7 @@ void GraphManager::updateGraph() {
     updateDurationEndTime_ = std::chrono::high_resolution_clock::now();
     // Duration in seconds
     std::chrono::duration<double> updateDuration = updateDurationEndTime_ - updateDurationStartTime_;
-    updateDurationContainer_[currentPropagatedTime] = updateDuration.count();
+    updateDurationContainer_[currentGraphStateTime] = updateDuration.count();
   }
 
   // Return if optimization failed
@@ -777,7 +775,7 @@ void GraphManager::updateGraph() {
           // If active but added newly but never optimized
           else {
             // If too old but was never optimized --> remove or deactivate
-            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentPropagatedTime);
+            double variableAge = framePairKeyMapIterator.second.computeVariableAge(currentGraphStateTime);
             if (variableAge > graphConfigPtr_->realTimeSmootherLag_) {
               REGULAR_COUT << YELLOW_START << "GMsf-GraphManager" << RED_START << " Fixed Frame Transformation between "
                            << framePairKeyMapIterator.first.first << " and " << framePairKeyMapIterator.first.second << " is too old ("
@@ -813,7 +811,7 @@ void GraphManager::updateGraph() {
     // 1. Optimized Graph State Status
     optimizedGraphState_.setIsOptimized();
     // Update Optimized Graph State
-    optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentPropagatedTime, resultNavState,
+    optimizedGraphState_.updateNavStateAndBias(currentPropagatedKey, currentGraphStateTime, resultNavState,
                                                resultBias.correctGyroscope(currentAngularVelocity), resultBias);
     optimizedGraphState_.updateReferenceFrameTransforms(resultReferenceFrameTransformations);
     optimizedGraphState_.updateReferenceFrameTransformsCovariance(resultReferenceFrameTransformationsCovariance);
@@ -844,12 +842,12 @@ void GraphManager::updateGraph() {
     // T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
 
     // Update the time of the last optimized state
-    lastOptimizedStateTime_ = currentPropagatedTime;
+    lastOptimizedStateTime_ = currentGraphStateTime;
   }  // end of locking
 
   // Potentially log real-time state to container
   if (graphConfigPtr_->logRealTimeStateToMemoryFlag_) {
-    realTimeReferenceFrameContainer_.emplace(currentPropagatedTime, resultReferenceFrameTransformations);
+    realTimeReferenceFrameContainer_.emplace(currentGraphStateTime, resultReferenceFrameTransformations);
   }
 }
 
