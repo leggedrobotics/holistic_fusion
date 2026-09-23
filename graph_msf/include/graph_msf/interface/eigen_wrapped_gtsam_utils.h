@@ -5,6 +5,12 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// C++
+#include <fstream>
+#include <map>
+#include <optional>
+#include <string>
+
 // Eigen
 #include <Eigen/Eigen>
 
@@ -31,7 +37,7 @@ void createLatLonAltCsvFileStream(std::map<std::string, std::ofstream>& fileStre
 // Pose 3
 void writePose3ToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Isometry3d pose,
                          const std::string& transformIdentifier, const double timeStamp, const bool saveCovarianceFlag,
-                         boost::optional<const Eigen::Matrix<double, 6, 6>&> optionalPoseCovarianceInWorldRos = boost::none);
+                         const std::optional<Eigen::Matrix<double, 6, 6>>& optionalPoseCovarianceInWorldRos = std::nullopt);
 // Latitude, Longitude, Altitude
 void writeLatLonAltToCsvFile(std::map<std::string, std::ofstream>& fileStreams, const Eigen::Vector3d& latLonAlt,
                              const std::string& transformIdentifier, const double timeStamp);

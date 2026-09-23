@@ -40,6 +40,7 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>(this, "sensor_params.isImuAccInG");
 
   // Initialization Params
+  graphConfigPtr_->staticAtStartup_ = tryGetParam<bool>(this, "initialization_params.static_at_startup");
   graphConfigPtr_->estimateGravityFromImuFlag_ =
       tryGetParam<bool>(this, "initialization_params.estimateGravityFromImu");
   graphConfigPtr_->gravityMagnitude_ = tryGetParam<double>(this, "initialization_params.gravityMagnitude");
@@ -87,23 +88,18 @@ void GraphMsfRos2::readParams() {
   // Noise Parameters
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>(this, "noise_params.accNoiseDensity");
   graphConfigPtr_->integrationNoiseDensity_ = tryGetParam<double>(this, "noise_params.integrationNoiseDensity");
-  graphConfigPtr_->use2ndOrderCoriolisFlag_ = tryGetParam<bool>(this, "noise_params.use2ndOrderCoriolis");
   graphConfigPtr_->gyroNoiseDensity_ = tryGetParam<double>(this, "noise_params.gyrNoiseDensity");
-  graphConfigPtr_->omegaCoriolis_ = tryGetParam<double>(this, "noise_params.omegaCoriolis");
+  graphConfigPtr_->earthRotationCompensationFlag_ = tryGetParam<bool>(this, "noise_params.earthRotationCompensation");
+  graphConfigPtr_->latitudeDeg_ = tryGetParam<double>(this, "noise_params.latitudeDeg");
+  graphConfigPtr_->worldFrameNorthAlignedFlag_ = tryGetParam<bool>(this, "noise_params.worldFrameNorthAligned");
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ =
       tryGetParam<double>(this, "noise_params.accBiasRandomWalkNoiseDensity");
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ =
       tryGetParam<double>(this, "noise_params.gyrBiasRandomWalkNoiseDensity");
-  graphConfigPtr_->biasAccStdDevForIntegration_ =
-      tryGetParam<double>(this, "noise_params.biasAccStdDevForIntegration");
-  graphConfigPtr_->biasOmegaStdDevForIntegration_ =
-      tryGetParam<double>(this, "noise_params.biasOmegaStdDevForIntegration");
 
   const double accBiasPrior = tryGetParam<double>(this, "noise_params.accBiasPrior");
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
 
-  const double gyroBiasPrior = tryGetParam<double>(this, "noise_params.gyrBiasPrior");
-  graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
 
   // Initial State
   graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>(this, "noise_params.initialPositionStdDev");

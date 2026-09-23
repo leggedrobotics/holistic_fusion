@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <iomanip>
 #include <string>
@@ -35,6 +36,25 @@ Please see the LICENSE file that has been included as part of this package.
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-GraphManager" << COLOR_END
 
 namespace graph_msf {
+
+namespace {
+
+// Returns Earth rate in rad/s in a gravity-aligned, z-up frame. The full vector requires ENU alignment.
+gtsam::Vector3 earthRotationRateInWorld(double latitudeDeg, bool worldFrameNorthAligned) {
+  if (!std::isfinite(latitudeDeg) || std::fabs(latitudeDeg) > 90.0) {
+    throw std::runtime_error("GraphManager: noise_params.latitudeDeg must be finite and within [-90, 90], got " +
+                             std::to_string(latitudeDeg));
+  }
+  constexpr double earthRotationRate = 7.2921159e-05;  // [rad/s]
+  const double latitudeRad = latitudeDeg * M_PI / 180.0;
+  gtsam::Vector3 W_omega_IW(0.0, 0.0, earthRotationRate * std::sin(latitudeRad));  // vertical component, valid for any yaw
+  if (worldFrameNorthAligned) {
+    W_omega_IW.y() = earthRotationRate * std::cos(latitudeRad);  // horizontal component, only if y points north (ENU)
+  }
+  return W_omega_IW;
+}
+
+}  // namespace
 
 // Public --------------------------------------------------------------------
 GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame)
@@ -74,23 +94,28 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
 
   // Set noise and bias parameters
   /// Position
-  imuParamsPtr_->setAccelerometerCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accNoiseDensity_, 2));
+  imuParamsPtr_->setAccelerometerCovariance(
+      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->accNoiseDensity_, 2));
   imuParamsPtr_->setIntegrationCovariance(gtsam::Matrix33::Identity(3, 3) *
                                           std::pow(graphConfigPtr_->integrationNoiseDensity_, 2));  // error committed in integrating
                                                                                                     // position from velocities
-  imuParamsPtr_->setUse2ndOrderCoriolis(graphConfigPtr_->use2ndOrderCoriolisFlag_);
   /// Rotation
-  imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroNoiseDensity_, 2));
-  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis_);
+  imuParamsPtr_->setGyroscopeCovariance(
+      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->gyroNoiseDensity_, 2));
+  /// Earth rotation: angular velocity of the (gravity-aligned, z-up) world frame w.r.t. the inertial frame, expressed in the
+  /// world frame. Setting it makes GTSAM (>= 4.3) use the exact rotating-frame model (Coriolis, centrifugal and Earth-rate
+  /// terms). If left unset, the inertial model is used.
+  if (graphConfigPtr_->earthRotationCompensationFlag_) {
+    const gtsam::Vector3 W_omega_IW =
+        earthRotationRateInWorld(graphConfigPtr_->latitudeDeg_, graphConfigPtr_->worldFrameNorthAlignedFlag_);
+    imuParamsPtr_->setOmegaCoriolis(W_omega_IW);
+    REGULAR_COUT << " Earth rotation compensation enabled, latitude " << graphConfigPtr_->latitudeDeg_
+                 << " deg, world frame north-aligned: " << (graphConfigPtr_->worldFrameNorthAlignedFlag_ ? "yes" : "no")
+                 << ", W_omega_IW [rad/s]: " << W_omega_IW.transpose() << std::endl;
+  }
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
-  gtsam::Matrix66 bias_covariance_for_integration = gtsam::Matrix66::Zero();
-  bias_covariance_for_integration.topLeftCorner<3, 3>() =
-      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasAccStdDevForIntegration_, 2);
-  bias_covariance_for_integration.bottomRightCorner<3, 3>() =
-      gtsam::Matrix33::Identity() * std::pow(graphConfigPtr_->biasOmegaStdDevForIntegration_, 2);
-  imuParamsPtr_->setBiasAccOmegaInit(bias_covariance_for_integration);
 
   // Use previously defined prior for gyro
   imuBiasPriorPtr_ = std::make_shared<gtsam::imuBias::ConstantBias>(graphConfigPtr_->accBiasPrior_, graphConfigPtr_->gyroBiasPrior_);
@@ -403,7 +428,7 @@ gtsam::Key GraphManager::addPoseBetweenFactor(const gtsam::Pose3& deltaPose, con
   // Create noise model
   assert(poseBetweenNoiseDensity.size() == 6);
   auto noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(poseBetweenNoiseDensity)));  // rad,rad,rad,m,m,m
-  boost::shared_ptr<gtsam::noiseModel::Robust> robustErrorFunction;
+  gtsam::noiseModel::Robust::shared_ptr robustErrorFunction;
   // Pick Robust Error Function
   switch (robustNormEnum) {
     case RobustNormEnum::Huber:
@@ -484,7 +509,7 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
     navState = optionalNavState.value();
   } else {
     gtsam::Pose3 resultPose = graphPtr->calculateEstimatedPose3(graphKey);  // auto result = mainGraphPtr_->estimate();
-    gtsam::Point3 resultVelocity = gtsam::Point3::Identity();  // Assume Zero Velocity, but adjoint below is still fine to map to world
+    gtsam::Point3 resultVelocity = gtsam::Point3::Zero();  // Assume Zero Velocity, but adjoint below is still fine to map to world
     navState = gtsam::NavState(resultPose, resultVelocity);
   }
   // Compute adjoint matrix
@@ -1103,7 +1128,7 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     fileLogger_.createPose3TumFileStream(fileStreams, savePath, transformIdentifier + "_tum", timeString);
 
     // Compute Covariance of Pose
-    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos;
+    Eigen::Matrix<double, 6, 6> poseCovarianceInWorldRos = Eigen::Matrix<double, 6, 6>::Zero();
     if (saveCovarianceFlag) {
       gtsam::Matrix66 poseCovarianceInWorldGtsam = calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, graphKey, __func__);
       // Convert to ROS Format

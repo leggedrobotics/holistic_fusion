@@ -38,7 +38,8 @@ struct GraphConfig {
   double imuTimeOffset_ = 0.0;
   bool isImuAccInG_ = false;
 
-  // Gravity
+  // Initialization
+  bool staticAtStartup_ = true;
   bool estimateGravityFromImuFlag_ = true;
   double gravityMagnitude_ = 9.81;
   Eigen::Vector3d W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude_;
@@ -72,15 +73,17 @@ struct GraphConfig {
   // Position
   double accNoiseDensity_ = 1e-03;  // [m/s^2/√Hz)]
   double integrationNoiseDensity_ = 1.0e-04;
-  bool use2ndOrderCoriolisFlag_ = true;
   // Rotation
   double gyroNoiseDensity_ = 1e-04;  // [rad/s/√Hz]
-  double omegaCoriolis_ = 0.0;
+  // Earth rotation (Coriolis / centrifugal / Earth-rate compensation in the IMU preintegration)
+  bool earthRotationCompensationFlag_ = false;  // If true, GTSAM's exact rotating-frame IMU model is used
+  double latitudeDeg_ = 47.4;                   // Geodetic latitude [deg], positive on the northern hemisphere (Zurich)
+  bool worldFrameNorthAlignedFlag_ = false;     // If true, the y-axis of the world frame points north (ENU) and the
+                                                // horizontal Earth-rate component is used as well; otherwise only the
+                                                // vertical component (valid for any gravity-aligned world frame)
   // Bias
   double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
   double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]
-  double biasAccStdDevForIntegration_ = 0.0;
-  double biasOmegaStdDevForIntegration_ = 0.0;
   Eigen::Vector3d accBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
   Eigen::Vector3d gyroBiasPrior_ = Eigen::Vector3d(0.0, 0.0, 0.0);
   // Initial State
@@ -102,7 +105,7 @@ struct GraphConfig {
   double displacementReLinTh_ = 1e-3;
   double landmarkReLinTh_ = 1e-3;
   // Flags
-  int relinearizeSkip_ = 0;
+  int relinearizeSkip_ = 1;
   bool enableRelinearizationFlag_ = true;
   bool evaluateNonlinearErrorFlag_ = true;
   bool cacheLinearizedFactorsFlag_ = true;

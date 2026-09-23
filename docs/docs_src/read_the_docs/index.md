@@ -14,4 +14,5 @@ Welcome to the documentation of the Holistic Fusion package.
 6_docker
 7_examples
 8_documentation
+9_changelog
 ```

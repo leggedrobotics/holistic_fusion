@@ -83,6 +83,8 @@ This repository contains the following modules:
 Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions
 regarding installation and usage.
 
+See the [GraphMSF configuration contract](graph_msf/CONFIGURATION.md) for parameter applicability and GTSAM 4.3 migration details.
+
 ## Code Documentation
 
 Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy) for documentation of the code.

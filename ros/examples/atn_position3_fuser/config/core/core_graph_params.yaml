@@ -5,10 +5,12 @@ sensor_params:
   useImuSignalLowPassFilter: false        # If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        # Cutoff frequency of the low pass filter
   imuBufferLength: 400
+  isImuAccInG: false # Acceleration is in m/s^2.
   imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
 # Initialization
 initialization_params:
+  static_at_startup: true
   estimateGravityFromImu: false           # If true, the gravity is estimated in the beginning using the IMU
   gravityMagnitude: 9.80600               # If estimateGravityFromImu is false, this value is used as gravity
 
@@ -18,7 +20,7 @@ graph_params:
   realTimeSmootherUseIsam: true
   realTimeSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
-  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother, NO EFFECT YET
+  slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
   slowBatchSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
@@ -43,20 +45,19 @@ noise_params:
   ## IMU
   ### Position
   #accNoiseDensity: 8.5e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)], default=sqrt(7.84e-06)
-  accNoiseDensity: 5.9287e-04  # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
+  accNoiseDensity: 6.71826e-04 # TM: BMIO088 Spec Sheet: 175ug/sqrt(Hz) = 1.716e-03 m/s^2/sqrt(Hz) --> (10x more) --> 1.716e-02
   integrationNoiseDensity: 1.0e-05         # Continuous-time Noise Amplitude Spectral Density of integration uncertainty, default: sqrt(1.0e-07)
-  use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
   ### Rotation
   #gyrNoiseDensity: 1.308e-04             # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz], default=sqrt(3.4906585e-07)
-  gyrNoiseDensity: 1.1139e-05 # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03
-  omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
+  gyrNoiseDensity: 3.16196e-04 # TM_ BMI088 Spec Sheet: 0.014°/s/sqrt(Hz) = 2.443e-04 rad/s/sqrt(Hz) --> (10x more) --> 2.443e-03
+  ### Earth rotation (Coriolis, centrifugal and Earth-rate terms in the IMU preintegration)
+  earthRotationCompensation: true       # If true, GTSAM's exact rotating-frame IMU model is used
+  latitudeDeg: 47.4                     # Geodetic latitude [deg], positive on the northern hemisphere (Zurich: 47.4)
+  worldFrameNorthAligned: false         # true only if the world frame y-axis points north (ENU); otherwise only the vertical Earth-rate component is used
   ### Bias
   accBiasRandomWalkNoiseDensity: 1.9344e-05 # Default: sqrt(1.0e-03)
   gyrBiasRandomWalkNoiseDensity: 1.1954e-07 # Default: sqrt(9.33e-04)
-  biasAccStdDevForIntegration: 3.16e-04   # Accelerometer bias StdDev used for IMU preintegration
-  biasOmegaStdDevForIntegration: 3.16e-04 # Gyroscope bias StdDev used for IMU preintegration
-  accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
-  gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
+  accBiasPrior: 0.0                       # Used when gravity is estimated. Otherwise initialization replaces it with the gravity residual.
   ## Initial State
   initialPositionStdDev: 1.0          # Initial position prior StdDev [m]
   initialOrientationStdDev: 3.14      # Initial orientation prior StdDev [rad]
@@ -75,7 +76,7 @@ relinearization_params:
   calibrationReLinTh: 1.0e-02              # Letter "c" in GTSAM variables, Calibration linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
   displacementReLinTh: 1.0e-02             # Letter "d" in GTSAM variables, Displacement linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
   landmarkReLinTh: 1.0e-02                 # Letter "l" in GTSAM variables, Landmark linearization threshold
-  relinearizeSkip: 1                       # Re-linearization is skipped every n-th step, default: 10
+  relinearizeSkip: 1                       # Number of updates between relinearization checks.
   enableRelinearization: true              # Whether to use relinearization, default: true
   evaluateNonlinearError: true             # Whether to evaluate the nonlinear errorr before and after the update, default: false
   cacheLinearizedFactors: true             # Whether to cache the linearized factors, default: true

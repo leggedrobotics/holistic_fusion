@@ -28,7 +28,7 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
       : GmsfUnaryExpressionAbsolut(positionUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame,
                                    createReferenceAlignmentKeyframeEveryNSeconds),
         positionUnaryMeasurementPtr_(positionUnaryMeasurementPtr),
-        exp_fixedFrame_t_fixedFrame_sensorFrame_(gtsam::Point3::Identity()),
+        exp_fixedFrame_t_fixedFrame_sensorFrame_(gtsam::Point3::Zero()),
         exp_R_fixedFrame_I_(gtsam::Rot3::Identity()) {}
 
   // Destructor

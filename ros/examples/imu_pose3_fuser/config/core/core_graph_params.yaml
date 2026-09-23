@@ -5,10 +5,12 @@ sensor_params:
   useImuSignalLowPassFilter: false        #If true, a low pass filter is applied to the IMU measurements
   imuLowPassFilterCutoffFreq: 30.0        #Cutoff frequency of the low pass filter
   imuBufferLength: 800
+  isImuAccInG: false # Acceleration is in m/s^2.
   imuTimeOffset: 0.0                      # Offset between IMU and LiDAR Measurements: can be determined with rqt_multiplot
 
 # Initialization
 initialization_params:
+  static_at_startup: true
   estimateGravityFromImu: false            # If true, the gravity is estimated in the beginning using the IMU
   gravityMagnitude: 9.80600                # If estimateGravityFromImu is false, this value is used as gravity
 
@@ -18,6 +20,7 @@ graph_params:
   realTimeSmootherLag: 20.0                # Lag of real-time fixed lag smoother[seconds]
   useAdditionalSlowBatchSmoother: true    # If true, a slower smoother is used in addition to the real-time smoother
   slowBatchSmootherUseIsam: false         # if false, then levenberg-marquardt is used for the slow batch smoother
+  slowBatchSmootherUseCholeskyFactorization: false
   # Optimizer Config
   gaussNewtonWildfireThreshold: 0.001     # Threshold for the wildfire in the Gauss-Newton optimization
   minOptimizationFrequency: 1.0           # Minimum optimization frequency [Hz]
@@ -25,12 +28,15 @@ graph_params:
   additionalOptimizationIterations: 0     # Additional iterations of graph optimizer after update with new factors
   findUnusedFactorSlots: true
   enableDetailedResults: false
-  usingCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
+  realTimeSmootherUseCholeskyFactorization: true        # CHOLESKY faster, QR numerically more stable
   usingBiasForPreIntegration: true        # If true, the bias is used during pre-integration
+  useWindowForMarginalsComputation: true
+  windowSizeSecondsForMarginalsComputation: 300.0
   # Alignment Parameters
-  optimizeFixedFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
-  fixedFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
-  centerMeasurementsAtRobotPositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  optimizeReferenceFramePosesWrtWorld: false   # If true, the poses of the fixed frames are optimized w.r.t. world
+  referenceFramePosesResetThreshold: 1.0      # If the distance between the propagated state approximation and the fixed frame pose is larger than this threshold, the fixed frame pose is reset
+  centerMeasurementsAtKeyframePositionBeforeAlignment: true # If true, the measurements are centered before alignment
+  createReferenceAlignmentKeyframeEveryNSeconds: 10.0
   # Extrinsic Calibration
   optimizeExtrinsicSensorToSensorCorrectedOffset: false     # If true, the extrinsic calibration is optimized
 
@@ -38,19 +44,18 @@ graph_params:
 noise_params:
   ## IMU
   ### Position
-  accNoiseDensity: 7.84e-04               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
+  accNoiseDensity: 1.00307e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
   integrationNoiseDensity: 1.0e-03        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty
-  use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
   ### Rotation
-  gyrNoiseDensity: 3.4906585e-05          # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
-  omegaCoriolis: 1.07e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
+  gyrNoiseDensity: 1.00001e-02 # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
+  ### Earth rotation (Coriolis, centrifugal and Earth-rate terms in the IMU preintegration)
+  earthRotationCompensation: true       # If true, GTSAM's exact rotating-frame IMU model is used
+  latitudeDeg: 47.4                     # Geodetic latitude [deg], positive on the northern hemisphere (Zurich: 47.4)
+  worldFrameNorthAligned: false         # true only if the world frame y-axis points north (ENU); otherwise only the vertical Earth-rate component is used
   ### Bias
   accBiasRandomWalkNoiseDensity: 1.0e-03  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]
   gyrBiasRandomWalkNoiseDensity: 9.33e-04 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz]
-  biasAccStdDevForIntegration: 1.0e-02    # Accelerometer bias StdDev used for IMU preintegration
-  biasOmegaStdDevForIntegration: 1.0e-02  # Gyroscope bias StdDev used for IMU preintegration
-  accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
-  gyrBiasPrior: 0.0                       # Prior/starting value of gyroscope bias
+  accBiasPrior: 0.0                       # Used when gravity is estimated. Otherwise initialization replaces it with the gravity residual.
   ## Initial State
   initialPositionStdDev: 10.0       # Initial position prior StdDev [m]
   initialOrientationStdDev: 3.14    # Initial orientation prior StdDev [rad]
@@ -65,9 +70,11 @@ relinearization_params:
   velocityReLinTh: 1.0e-03                # Linear Velocity linearization threshold
   accBiasReLinTh: 1.0e-03                 # Accelerometer bias linearization threshold
   gyrBiasReLinTh: 1.0e-03                 # Gyroscope bias linearization threshold
-  fixedFrameReLinTh: 1.0e-03              # Fixed frame linearization threshold, ONLY USED IF optimizeFixedFramePosesWrtWorld is true
+  referenceFrameReLinTh: 1.0e-03              # Fixed frame linearization threshold, ONLY USED IF optimizeReferenceFramePosesWrtWorld is true
+  calibrationReLinTh: 1.0e-03
+  landmarkReLinTh: 1.0e-03
   displacementReLinTh: 1.0e-03            # Displacement linearization threshold, ONLY USED IF optimizeExtrinsicCalibration is true
-  relinearizeSkip: 1                      # Re-linearization is skipped every n-th step, default: 10
+  relinearizeSkip: 1                      # Number of updates between relinearization checks.
   enableRelinearization: true             # Whether to use relinearization, default: true
   evaluateNonlinearError: true            # Whether to evaluate the nonlinear errorr before and after the update, default: false
   cacheLinearizedFactors: true            # Whether to cache the linearized factors, default: true

@@ -37,8 +37,10 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   graphConfigPtr_->maxSearchDeviation_ = 1.0 / (graphConfigPtr_->imuRate_ / graphConfigPtr_->createStateEveryNthImuMeasurement_);
   graphConfigPtr_->imuBufferLength_ = tryGetParam<int>("sensor_params/imuBufferLength", privateNode);
   graphConfigPtr_->imuTimeOffset_ = tryGetParam<double>("sensor_params/imuTimeOffset", privateNode);
+  graphConfigPtr_->isImuAccInG_ = tryGetParam<bool>("sensor_params/isImuAccInG", privateNode);
 
   // Initialization Params
+  graphConfigPtr_->staticAtStartup_ = tryGetParam<bool>("initialization_params/static_at_startup", privateNode);
   graphConfigPtr_->estimateGravityFromImuFlag_ = tryGetParam<bool>("initialization_params/estimateGravityFromImu", privateNode);
   graphConfigPtr_->gravityMagnitude_ = tryGetParam<double>("initialization_params/gravityMagnitude", privateNode);
 
@@ -79,21 +81,17 @@ void GraphMsfRos::readParams(const ros::NodeHandle& privateNode) {
   //// Position
   graphConfigPtr_->accNoiseDensity_ = tryGetParam<double>("noise_params/accNoiseDensity", privateNode);
   graphConfigPtr_->integrationNoiseDensity_ = tryGetParam<double>("noise_params/integrationNoiseDensity", privateNode);
-  graphConfigPtr_->use2ndOrderCoriolisFlag_ = tryGetParam<bool>("noise_params/use2ndOrderCoriolis", privateNode);
   //// Rotation
   graphConfigPtr_->gyroNoiseDensity_ = tryGetParam<double>("noise_params/gyrNoiseDensity", privateNode);
-  graphConfigPtr_->omegaCoriolis_ = tryGetParam<double>("noise_params/omegaCoriolis", privateNode);
+  //// Earth rotation
+  graphConfigPtr_->earthRotationCompensationFlag_ = tryGetParam<bool>("noise_params/earthRotationCompensation", privateNode);
+  graphConfigPtr_->latitudeDeg_ = tryGetParam<double>("noise_params/latitudeDeg", privateNode);
+  graphConfigPtr_->worldFrameNorthAlignedFlag_ = tryGetParam<bool>("noise_params/worldFrameNorthAligned", privateNode);
   //// Bias
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/accBiasRandomWalkNoiseDensity", privateNode);
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ = tryGetParam<double>("noise_params/gyrBiasRandomWalkNoiseDensity", privateNode);
-  graphConfigPtr_->biasAccStdDevForIntegration_ =
-      tryGetParam<double>("noise_params/biasAccStdDevForIntegration", privateNode);
-  graphConfigPtr_->biasOmegaStdDevForIntegration_ =
-      tryGetParam<double>("noise_params/biasOmegaStdDevForIntegration", privateNode);
   const double accBiasPrior = tryGetParam<double>("noise_params/accBiasPrior", privateNode);
   graphConfigPtr_->accBiasPrior_ = Eigen::Vector3d(accBiasPrior, accBiasPrior, accBiasPrior);
-  const double gyroBiasPrior = tryGetParam<double>("noise_params/gyrBiasPrior", privateNode);
-  graphConfigPtr_->gyroBiasPrior_ = Eigen::Vector3d(gyroBiasPrior, gyroBiasPrior, gyroBiasPrior);
   // Initial State
   graphConfigPtr_->initialPositionStdDev_ = tryGetParam<double>("noise_params/initialPositionStdDev", privateNode);
   graphConfigPtr_->initialOrientationStdDev_ = tryGetParam<double>("noise_params/initialOrientationStdDev", privateNode);

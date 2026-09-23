@@ -10,7 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <gtsam/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
 #include <graph_msf/core/optimizer/OptimizerIsam2.hpp>
@@ -226,7 +226,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       throw std::runtime_error(runtimeError.what());
     }
     // Case 5: Typical indeterminant linear system
-    catch (const gtsam::IndeterminantLinearSystemException& indeterminantLinearSystemException) {
+    catch (const gtsam::IndeterminateSystemException& indeterminantLinearSystemException) {
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminantLinearSystem exception while optimizing graph: '"
                 << indeterminantLinearSystemException.what() << "'" << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END

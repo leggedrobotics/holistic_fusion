@@ -9,7 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define OPTIMIZER_LM_FIXED_LAG_HPP
 
 // GTSAM
-#include <gtsam_unstable/nonlinear/BatchFixedLagSmoother.h>
+#include <gtsam/nonlinear/BatchFixedLagSmoother.h>
 
 // Workspace
 #include <graph_msf/core/optimizer/OptimizerLM.hpp>

@@ -29,6 +29,7 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("sensor_params.isImuAccInG", false);  // If true, the IMU acceleration is in g, otherwise in m/s^2
 
   // Initialization Params
+  this->declare_parameter("initialization_params.static_at_startup", rclcpp::ParameterType::PARAMETER_BOOL);
   this->declare_parameter("initialization_params.estimateGravityFromImu", false);
   this->declare_parameter("initialization_params.gravityMagnitude", 9.80665);
 
@@ -58,15 +59,13 @@ void GraphMsfRos2::declareRosParams() {
   // Noise Params
   this->declare_parameter("noise_params.accNoiseDensity", 0.0);
   this->declare_parameter("noise_params.integrationNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.use2ndOrderCoriolis", false);
   this->declare_parameter("noise_params.gyrNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.omegaCoriolis", 0.0);
+  this->declare_parameter("noise_params.earthRotationCompensation", false);
+  this->declare_parameter("noise_params.latitudeDeg", 0.0);
+  this->declare_parameter("noise_params.worldFrameNorthAligned", false);
   this->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
-  this->declare_parameter("noise_params.biasAccStdDevForIntegration", 0.0);
-  this->declare_parameter("noise_params.biasOmegaStdDevForIntegration", 0.0);
   this->declare_parameter("noise_params.accBiasPrior", 0.0);
-  this->declare_parameter("noise_params.gyrBiasPrior", 0.0);
   this->declare_parameter("noise_params.initialPositionStdDev", 0.0);
   this->declare_parameter("noise_params.initialOrientationStdDev", 0.0);
   this->declare_parameter("noise_params.initialVelocityStdDev", 0.0);
