@@ -19,3 +19,12 @@ jobs:
             -t holistic_fusion_ros2:ci \
             -f docker/ros2_humble/base.Dockerfile \
             .
+
+      - name: Run graph_msf regression tests
+        run: |
+          docker run --rm \
+            --volume "$PWD:/workspace:ro" \
+            --workdir /workspace \
+            --entrypoint /bin/bash \
+            holistic_fusion_ros2:ci \
+            docker/test_graph_msf.sh
