@@ -62,7 +62,9 @@ class GraphManager {
 
   // Initialization Interface ---------------------------------------------------
   bool initImuIntegrators(double gravityValue);
-  bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0);
+  // imuAngularVelocity is the bias-uncorrected IMU-frame sample at timeStamp [rad/s].
+  bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0,
+                                const gtsam::Vector3& imuAngularVelocity);
 
   // IMU at the core -----------------------------------------------------------
   void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,

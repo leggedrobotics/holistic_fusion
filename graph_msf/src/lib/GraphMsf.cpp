@@ -297,7 +297,7 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
   } else if (!initedGraphFlag_) {  // Case 4: IMU aligned, yaw and position initialized, valid measurement received, but graph not yet
                                    // initialized
     preIntegratedNavStatePtr_->updateLatestMeasurementTimestamp(imuTimeK);
-    initGraph_(imuTimeK);
+    initGraph_(imuTimeK, returnAddedImuMeasurements.tail<3>());
     returnPreIntegratedNavStatePtr = std::make_shared<SafeIntegratedNavState>(*preIntegratedNavStatePtr_);
     REGULAR_COUT << GREEN_START << " ...graph is initialized." << COLOR_END << std::endl;
     return true;
@@ -370,7 +370,7 @@ bool GraphMsf::alignImu_(double& imuAttitudeRoll, double& imuAttitudePitch) {
 }
 
 // Graph initialization for roll & pitch from starting attitude, assume zero yaw
-void GraphMsf::initGraph_(const double timeStamp_k) {
+void GraphMsf::initGraph_(const double timeStamp_k, const Eigen::Vector3d& imuAngularVelocity) {
   // Calculate initial attitude;
   const gtsam::Pose3& T_W_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_W_Ik().matrix());
   const gtsam::Pose3& T_O_I0 = gtsam::Pose3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix());
@@ -382,7 +382,7 @@ void GraphMsf::initGraph_(const double timeStamp_k) {
   graphConfigPtr_->W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -graphConfigPtr_->gravityMagnitude_);
   graphMgrPtr_->initImuIntegrators(graphConfigPtr_->gravityMagnitude_);
   /// Initialize graph node
-  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0, T_O_I0);
+  graphMgrPtr_->initPoseVelocityBiasGraph(timeStamp_k, T_W_I0, T_O_I0, imuAngularVelocity);
 
   // Read initial pose from graph for optimized pose
   gtsam::Pose3 T_W_I0_opt = graphMgrPtr_->getOptimizedGraphState().navState().pose();

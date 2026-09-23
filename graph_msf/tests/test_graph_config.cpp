@@ -91,7 +91,8 @@ Covariances integratedCovariances(double acc_noise, double gyro_noise) {
   config->gyroNoiseDensity_ = gyro_noise;
   graph_msf::GraphManager manager(config, "imu", "world");
   require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
-  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3()), "Prior graph initialization failed");
+  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3(), config->gyroBiasPrior_),
+          "Prior graph initialization failed");
   auto buffer = std::make_shared<graph_msf::ImuBuffer>(config);
   const Eigen::Vector3d acceleration(0.0, 0.0, config->gravityMagnitude_);
   buffer->addToImuBuffer(0.99, acceleration, Eigen::Vector3d::Zero());
@@ -118,6 +119,24 @@ void sensorNoiseChangesActualStateCovariance() {
           "Gyroscope noise has no covariance effect");
 }
 
+void initialGraphStateUsesMeasuredAngularVelocity() {
+  auto config = std::make_shared<graph_msf::GraphConfig>();
+  config->gyroBiasPrior_ = Eigen::Vector3d(0.01, -0.02, 0.03);
+  const Eigen::Vector3d measured_angular_velocity(0.04, 0.05, -0.06);
+  const Eigen::Vector3d expected = measured_angular_velocity - config->gyroBiasPrior_;
+  graph_msf::GraphManager manager(config, "imu", "world");
+  require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
+  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3(), measured_angular_velocity),
+          "Prior graph initialization failed");
+
+  require(manager.getOptimizedGraphState().angularVelocityCorrected().isApprox(expected, 1e-12),
+          "Initial angular velocity does not use the measured sample");
+  manager.updateGraph();
+  const auto& optimized = manager.getOptimizedGraphState();
+  require((optimized.angularVelocityCorrected() + optimized.imuBias().gyroscope()).isApprox(measured_angular_velocity, 1e-12),
+          "Initial graph-key angular velocity was replaced by the bias prior");
+}
+
 void optimizerHandoffPreservesPartialImuInterval(int partial_steps, bool nonzero_bias) {
   auto config = std::make_shared<graph_msf::GraphConfig>();
   config->useImuSignalLowPassFilter_ = false;
@@ -128,7 +147,8 @@ void optimizerHandoffPreservesPartialImuInterval(int partial_steps, bool nonzero
   }
   graph_msf::GraphManager manager(config, "imu", "world");
   require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
-  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3()), "Prior graph initialization failed");
+  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3(), config->gyroBiasPrior_),
+          "Prior graph initialization failed");
   auto buffer = std::make_shared<graph_msf::ImuBuffer>(config);
   const Eigen::Vector3d acceleration = Eigen::Vector3d(1.0, 0.0, config->gravityMagnitude_) + config->accBiasPrior_;
   buffer->addToImuBuffer(0.99, acceleration, config->gyroBiasPrior_);
@@ -311,6 +331,7 @@ int main() {
     rejectsInvalidStateAndOptimizationCounts();
     rejectsInMotionInitialization();
     sensorNoiseChangesActualStateCovariance();
+    initialGraphStateUsesMeasuredAngularVelocity();
     for (const bool nonzero_bias : {false, true}) {
       optimizerHandoffPreservesPartialImuInterval(0, nonzero_bias);
       optimizerHandoffPreservesPartialImuInterval(7, nonzero_bias);

@@ -127,7 +127,8 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   return true;
 }
 
-bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0) {
+bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0,
+                                             const gtsam::Vector3& imuAngularVelocity) {
   // Create Prior factor ----------------------------------------------------
   /// Prior factor noise
   auto priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -214,9 +215,9 @@ bool GraphManager::initPoseVelocityBiasGraph(const double timeStamp, const gtsam
   // Update Current State ---------------------------------------------------
   const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
   latestGraphStateKeyTime_ = timeStamp;
-  latestGraphStateKeyAngularVelocity_ = imuBiasPriorPtr_->gyroscope();
+  latestGraphStateKeyAngularVelocity_ = imuAngularVelocity;
   optimizedGraphState_.updateNavStateAndBias(propagatedStateKey_, timeStamp, gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0)),
-                                             gtsam::Vector3(0, 0, 0), *imuBiasPriorPtr_);
+                                             imuBiasPriorPtr_->correctGyroscope(imuAngularVelocity), *imuBiasPriorPtr_);
   O_imuPropagatedState_ = gtsam::NavState(T_O_I0, gtsam::Vector3(0, 0, 0));
   W_imuPropagatedState_ = gtsam::NavState(T_W_I0, gtsam::Vector3(0, 0, 0));
   T_W_O_ = (T_W_I0.inverse() * T_O_I0).matrix();
