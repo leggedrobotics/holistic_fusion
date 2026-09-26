@@ -50,7 +50,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Run through steps needed for absolute measurements
     // If it should be centered --> create keyframe for measurement
     Eigen::Vector3d measurementOriginPosition = Eigen::Vector3d::Zero();
-    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag) {
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && this->measuresPosition()) {
       measurementOriginPosition = this->getMeasurementPosition();
     }
 
@@ -164,7 +164,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
     // Transform from the old to the new keyframe, used for both the initial guess and the constraint between them
     gtsam::Pose3 T_fixedFrameOld_fixedFrame;
-    if (keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
+    // Only a measurement with a position can place the new keyframe
+    if (this->measuresPosition() && keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
       // Remove the old keyframe from memory
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
                                                                      gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName(), graphKey);
@@ -182,7 +183,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
     // D: Shift the measurement to the robot position and recompute initial guess if we create keyframes -----------------------------------
     // Has to be done here, as we did not know the keyframe position before
-    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && !initialGuessSetExternally) {
+    if (centerMeasurementsAtKeyframePositionBeforeAlignmentFlag && this->measuresPosition() && !initialGuessSetExternally) {
       // Shift the measurement to the robot position
       this->setMeasurementPosition(this->getMeasurementPosition() - graphKey.getReferenceFrameKeyframePosition());
       // Recompute initial guess
@@ -265,6 +266,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
 
   // Sub Functions that have to be implemented in derived classes ----------------
   virtual gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) = 0;
+  // A measurement without a position reuses the current keyframe of its fixed frame and is not centered
+  virtual bool measuresPosition() const { return true; }
 
   virtual const Eigen::Vector3d getMeasurementPosition() = 0;
 
