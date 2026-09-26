@@ -15,6 +15,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Rot3.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
@@ -22,7 +23,8 @@ Please see the LICENSE file that has been included as part of this package.
 namespace graph_msf {
 
 /**
- * Factor to estimate rotation given gnss robot heading
+ * Factor constraining the world yaw of a measurement frame S that is rigidly attached to the IMU frame I.
+ * The yaw is evaluated on S, so the constraint holds for any IMU mounting orientation.
  */
 class YawFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3> {
  public:
@@ -31,12 +33,14 @@ class YawFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3> {
   using Base::evaluateError;
 
   /**
-   * Constructor of factor that constrains the yaw angle of a Pose3 variable
-   * @param j key of the unknown pose in the factor graph
-   * @param yaw measured yaw angle [rad]
+   * Constructor of factor that constrains the yaw angle of frame S, given the pose T_W_I of the IMU frame
+   * @param j key of the unknown IMU pose T_W_I in the factor graph
+   * @param yaw_W_S measured yaw angle of frame S in the world frame [rad]
    * @param model of the additive Gaussian noise that is assumed
+   * @param R_I_S rotation of frame S expressed in the IMU frame, identity if S is the IMU frame
    */
-  YawFactor(gtsam::Key j, double yaw, const gtsam::SharedNoiseModel& model) : Base(model, j), yaw_(yaw) {}
+  YawFactor(gtsam::Key j, double yaw_W_S, const gtsam::SharedNoiseModel& model, const gtsam::Rot3& R_I_S = gtsam::Rot3())
+      : Base(model, j), yaw_W_S_(yaw_W_S), R_I_S_(R_I_S) {}
 
   // Destructor
   ~YawFactor() override = default;
@@ -45,21 +49,24 @@ class YawFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3> {
    * Evaluate error function
    * @brief vector of errors
    */
-  gtsam::Vector evaluateError(const gtsam::Pose3& robotPose, gtsam::OptionalMatrixType H_Ptr = OptionalNone) const override {
-    // If close to singularity, do not add measurement
-    if (std::abs(robotPose.rotation().pitch()) >= M_PI / 2.0 - 0.1 || std::abs(robotPose.rotation().roll()) >= M_PI / 2.0 - 0.1) {
+  gtsam::Vector evaluateError(const gtsam::Pose3& T_W_I, gtsam::OptionalMatrixType H_Ptr = OptionalNone) const override {
+    gtsam::Matrix33 H_compose;
+    const gtsam::Rot3 R_W_S = H_Ptr ? T_W_I.rotation().compose(R_I_S_, H_compose) : T_W_I.rotation().compose(R_I_S_);
+
+    // Yaw is singular only at gimbal lock of frame S, so do not add the measurement there
+    if (std::abs(R_W_S.pitch()) >= M_PI / 2.0 - 0.1) {
       if (H_Ptr) {
         (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
       }
       return gtsam::Vector1::Zero();
     }
 
-    // Measurement function (with Jacobian w.r.t. the rotation only if requested)
-    gtsam::Matrix13 H_rot;
-    const double estimatedYaw = H_Ptr ? robotPose.rotation().yaw(H_rot) : robotPose.rotation().yaw();
+    // Measurement function (with Jacobian w.r.t. the rotation of S only if requested)
+    gtsam::Matrix13 H_yaw;
+    const double estimatedYaw = H_Ptr ? R_W_S.yaw(H_yaw) : R_W_S.yaw();
 
     // Calculate error
-    double yawError = estimatedYaw - yaw_;
+    double yawError = estimatedYaw - yaw_W_S_;
 
     // Smaller half circle
     while (yawError < -M_PI) yawError += 2 * M_PI;
@@ -68,14 +75,15 @@ class YawFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3> {
     // Jacobian: Pose3 tangent space is [rotation (3), translation (3)] --> [rad] [m]
     if (H_Ptr) {
       (*H_Ptr) = gtsam::Matrix::Zero(1, 6);
-      H_Ptr->block<1, 3>(0, 0) = H_rot;
+      H_Ptr->block<1, 3>(0, 0) = H_yaw * H_compose;
     }
 
     return gtsam::Vector1(yawError);
   }
 
  private:
-  double yaw_;  // yaw measurement
+  double yaw_W_S_;     // yaw measurement of frame S
+  gtsam::Rot3 R_I_S_;  // rotation of frame S in the IMU frame
 };
 
 }  // namespace graph_msf
