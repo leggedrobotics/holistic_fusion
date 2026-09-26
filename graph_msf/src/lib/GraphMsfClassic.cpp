@@ -37,16 +37,15 @@ void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbs
   bool covarianceViolatedFlag =
       isCovarianceViolated_<1>(yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.covarianceViolationThreshold());
 
-  // Transform yaw to imu frame
-  gtsam::Rot3 yawR_W_frame = gtsam::Rot3::Yaw(yaw_W_frame.unaryMeasurement());
-  gtsam::Rot3 yawR_W_I =
-      yawR_W_frame *
-      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation());
+  // The factor evaluates the yaw on the measurement frame, so it needs the rotation of that frame in the IMU frame
+  const gtsam::Rot3 R_I_frame =
+      gtsam::Rot3(staticTransformsPtr_->rv_T_frame1_frame2(yaw_W_frame.sensorFrameName(), staticTransformsPtr_->getImuFrame()).rotation())
+          .inverse();
 
   // Add factor
   if (!covarianceViolatedFlag) {
     graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
-        yawR_W_I.yaw(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK());
+        yaw_W_frame.unaryMeasurement(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK(), R_I_frame);
     {
       // Mutex for optimizeGraph Flag
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
