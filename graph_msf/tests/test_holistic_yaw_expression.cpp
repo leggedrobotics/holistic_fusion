@@ -95,9 +95,10 @@ int main() {
     yawIsEvaluatedInTheFixedFrame();
     jacobiansMatchNumericalDerivatives();
     errorWrapsAroundPi();
-    holisticMatchesClassicInWorldFrame(gtsam::Rot3::Rx(M_PI), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, -0.1, 2.4), gtsam::Point3(1, 2, 3)), 0.4);
-    holisticMatchesClassicInWorldFrame(gtsam::Rot3::RzRyRx(2.9, -0.3, 0.4), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, 0.1, -2.5), gtsam::Point3()),
-                                       -1.2);
+    holisticMatchesClassicInWorldFrame(gtsam::Rot3::Rx(M_PI), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, -0.1, 2.4), gtsam::Point3(1, 2, 3)),
+                                       0.4);
+    holisticMatchesClassicInWorldFrame(gtsam::Rot3::RzRyRx(2.9, -0.3, 0.4),
+                                       gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, 0.1, -2.5), gtsam::Point3()), -1.2);
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

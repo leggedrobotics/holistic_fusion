@@ -131,7 +131,8 @@ void GraphMsfHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAb
   // Create GMSF expression
   auto gmsfUnaryExpressionYawPtr = std::make_shared<GmsfUnaryExpressionAbsoluteYaw>(
       std::make_shared<UnaryMeasurementXDAbsolute<double, 1>>(fixedFrame_yaw_fixedFrame_sensorFrame), staticTransformsPtr_->getImuFrame(),
-      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), fixedFrame_yaw_fixedFrame_sensorFrame.sensorFrameName()),
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
+                                               fixedFrame_yaw_fixedFrame_sensorFrame.sensorFrameName()),
       graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
   // Add factor to graph
