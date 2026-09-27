@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot2.h>
@@ -12,6 +13,7 @@
 #include <gtsam/slam/expressions.h>
 
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsoluteYaw.h"
+#include "graph_msf/factors/non_expression/unaryYawFactor.h"
 
 namespace {
 
@@ -67,6 +69,25 @@ void errorWrapsAroundPi() {
   require(std::abs(std::abs(error) - 0.02) < 1e-9, "Yaw error does not wrap around pi: " + std::to_string(error));
 }
 
+// With the fixed frame equal to the world frame, the holistic yaw must reproduce the classic yaw factor
+void holisticMatchesClassicInWorldFrame(const gtsam::Rot3& R_I_S, const gtsam::Pose3& T_W_I, const double yaw_W_S) {
+  const auto noise = gtsam::noiseModel::Isotropic::Sigma(1, 0.1);
+  const graph_msf::YawFactor classicFactor(X(0), yaw_W_S, noise, R_I_S);
+  const gtsam::Rot3_ R_W_S = gtsam::rotation(gtsam::Pose3_(X(0))) * gtsam::Rot3_(R_I_S);
+  const gtsam::ExpressionFactor<gtsam::Rot2> holisticFactor(noise, gtsam::Rot2::fromAngle(yaw_W_S),
+                                                            gtsam::Expression<gtsam::Rot2>(&graph_msf::yawAsRot2, R_W_S));
+  gtsam::Values values;
+  values.insert(X(0), T_W_I);
+
+  gtsam::Matrix H_classic;
+  const gtsam::Vector classicError = classicFactor.evaluateError(T_W_I, H_classic);
+  std::vector<gtsam::Matrix> H_holistic(1);
+  const gtsam::Vector holisticError = holisticFactor.unwhitenedError(values, H_holistic);
+
+  require(classicError.isApprox(holisticError, 1e-9), "Classic and holistic yaw errors differ");
+  require(H_classic.isApprox(H_holistic.front(), 1e-9), "Classic and holistic yaw Jacobians differ");
+}
+
 }  // namespace
 
 int main() {
@@ -74,6 +95,9 @@ int main() {
     yawIsEvaluatedInTheFixedFrame();
     jacobiansMatchNumericalDerivatives();
     errorWrapsAroundPi();
+    holisticMatchesClassicInWorldFrame(gtsam::Rot3::Rx(M_PI), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, -0.1, 2.4), gtsam::Point3(1, 2, 3)), 0.4);
+    holisticMatchesClassicInWorldFrame(gtsam::Rot3::RzRyRx(2.9, -0.3, 0.4), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, 0.1, -2.5), gtsam::Point3()),
+                                       -1.2);
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;
