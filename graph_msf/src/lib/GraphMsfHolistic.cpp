@@ -59,7 +59,7 @@ void GraphMsfHolistic::addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXD
         graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr, addToOnlineSmootherFlag);
+    graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionAbsolutePose3>(gmsfUnaryExpressionPose3Ptr, addToOnlineSmootherFlag);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -98,7 +98,7 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
         graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
+    graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionAbsolutePosition3>(gmsfUnaryExpressionPosition3Ptr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -138,7 +138,7 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eige
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_v_F_S.sensorFrameName()), coreImuBufferPtr_);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+    graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -173,7 +173,7 @@ void GraphMsfHolistic::addUnaryVelocity3LocalMovingFrameMeasurement(UnaryMeasure
         std::make_shared<UnaryMeasurementXD<Eigen::Vector3d, 3>>(S_v_F_S), staticTransformsPtr_->getImuFrame(), T_I_sensorFrame, I_w_W_I);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
+    graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionLocalVelocity3>(gmsfUnaryExpressionVelocity3SensorFramePtr);
 
     // Optimize ---------------------------------------------------------------
     {
@@ -212,7 +212,7 @@ void GraphMsfHolistic::addUnaryPosition3LandmarkMeasurement(UnaryMeasurementXDLa
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), S_t_S_L.sensorFrameName()), landmarkCreationCounter);
 
     // Add factor to graph
-    graphMgrPtr_->addUnaryGmsfExpressionFactor<GmsfUnaryExpressionLandmarkPosition3>(gmsfUnaryExpressionPosition3LandmarkPtr);
+    graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionLandmarkPosition3>(gmsfUnaryExpressionPosition3LandmarkPtr);
 
     // Optimize ---------------------------------------------------------------
     {

@@ -13,7 +13,7 @@ namespace graph_msf {
 // 1) Unary meta method --> classic GTSAM Factors ----------------------------------------
 typedef gtsam::Key (*F)(std::uint64_t);
 template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND, class... FACTOR_ARGS>
-void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
+void GraphManager::addUnaryClassicFactor(const MEASUREMENT_TYPE& unaryMeasurement,
                                             const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity, const double measurementTime,
                                             const FACTOR_ARGS&... factorArgs) {
   // Find the closest key in existing graph
@@ -62,7 +62,7 @@ void GraphManager::addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasure
  * @tparam GMSF_EXPRESSION_TYPE Type of the GMSF expression (e.g. GmsfUnaryExpressionAbsolutePose3).
  */
 template <class GMSF_EXPRESSION_TYPE>  // e.g. GmsfUnaryExpressionAbsolutePose3
-void GraphManager::addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+void GraphManager::addUnaryHolisticFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
                                                 const bool addToOnlineSmootherFlag) {
   // Measurement
   const auto& unaryMeasurement = *gmsfUnaryExpressionPtr->getGmsfBaseUnaryMeasurementPtr();

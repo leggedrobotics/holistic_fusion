@@ -44,7 +44,7 @@ void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbs
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
+    graphMgrPtr_->addUnaryClassicFactor<double, 1, YawFactor, gtsam::symbol_shorthand::X>(
         yaw_W_frame.unaryMeasurement(), yaw_W_frame.unaryMeasurementNoiseDensity(), yaw_W_frame.timeK(), R_I_frame);
     {
       // Mutex for optimizeGraph Flag
@@ -76,7 +76,7 @@ void GraphMsfClassic::addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAb
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
+    graphMgrPtr_->addUnaryClassicFactor<double, 1, RollFactor, gtsam::symbol_shorthand::X>(
         rollR_W_I.roll(), roll_W_frame.unaryMeasurementNoiseDensity(), roll_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
@@ -108,7 +108,7 @@ void GraphMsfClassic::addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDA
 
   // Add factor
   if (!covarianceViolatedFlag) {
-    graphMgrPtr_->addUnaryFactorInImuFrame<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
+    graphMgrPtr_->addUnaryClassicFactor<double, 1, PitchFactor, gtsam::symbol_shorthand::X>(
         pitchR_W_I.pitch(), pitch_W_frame.unaryMeasurementNoiseDensity(), pitch_W_frame.timeK());
     {
       // Mutex for optimizeGraph Flag
