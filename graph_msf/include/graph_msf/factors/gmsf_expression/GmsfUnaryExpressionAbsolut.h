@@ -92,6 +92,10 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     // Old GTSAM key --> needed for adding constraints between previous and new keyframe
     const gtsam::Key oldGtsamKey = graphKey.key();
     const Eigen::Vector3d oldKeyframePosition = graphKey.getReferenceFrameKeyframePosition();
+    // Latest belief of the old keyframe, which a new displacement keyframe starts from
+    const gtsam::Pose3 T_W_fixedFrameOld_belief = graphKey.getNumberStepsOptimized() > 0
+                                                      ? graphKey.getTransformationAfterOptimization()
+                                                      : graphKey.getApproximateTransformationBeforeOptimization();
     bool oldVariableWasActive = graphKey.isVariableActive();
     // If needed, have a copy of the old key to add back a prior to the online graph
     std::unique_ptr<DynamicFactorGraphStateKey<gtsam::Pose3>> oldKeyPtr = nullptr;
@@ -158,6 +162,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     // Case 2: Keyframe is too old --> create a new keyframe to model the displacement
+    // Transform from the old to the new keyframe, used for both the initial guess and the constraint between them
+    gtsam::Pose3 T_fixedFrameOld_fixedFrame;
     if (keyframeAge > createReferenceAlignmentKeyframeEveryNSeconds_) {
       // Remove the old keyframe from memory
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>().removeTransform(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
@@ -170,6 +176,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       assert(newGraphKeyAddedFlag && graphKey.isVariableActive());
       // Set flag that we introduced a new keyframe
       introducedNewKeyframeDisplacement = true;
+      T_fixedFrameOld_fixedFrame =
+          gtsam::Pose3(gtsam::Rot3::Identity(), gtsam::Point3(graphKey.getReferenceFrameKeyframePosition() - oldKeyframePosition));
     }
 
     // D: Shift the measurement to the robot position and recompute initial guess if we create keyframes -----------------------------------
@@ -180,6 +188,15 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Recompute initial guess
       T_W_fixedFrame_initial = this->computeT_W_fixedFrame_initial(W_currentPropagatedState);
       // Update the initial guess
+      gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
+          .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
+          .setApproximateTransformationBeforeOptimization(T_W_fixedFrame_initial);
+    }
+
+    // A displacement keyframe starts from the old keyframe, as the constraint between them states. The guess from a single measurement
+    // can be far off, e.g. a position measurement carries no orientation.
+    if (introducedNewKeyframeDisplacement && !initialGuessSetExternally) {
+      T_W_fixedFrame_initial = T_W_fixedFrameOld_belief * T_fixedFrameOld_fixedFrame;
       gtsamDynamicExpressionKeys.get<gtsam::Pose3>()
           .lv_T_frame1_frame2(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(), gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())
           .setApproximateTransformationBeforeOptimization(T_W_fixedFrame_initial);
@@ -212,9 +229,6 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
       // Case 2: New keyframe has been added, but one existed before already --> add relative constraint from old to new keyframe
       else {
         // Add relative constraint from old keyframe to new keyframe
-        gtsam::Point3 relativeKeyframeTranslation(graphKey.getReferenceFrameKeyframePosition() - oldKeyframePosition);
-        // Transform between old and new keyframe
-        gtsam::Pose3 T_fixedFrameOld_fixedFrame(gtsam::Rot3::Identity(), relativeKeyframeTranslation);
         // Define noise model --> either random walk or deterministic displacement
 
         // a): Random Walk between the two
