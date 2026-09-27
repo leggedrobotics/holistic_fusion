@@ -66,11 +66,8 @@ class GmsfUnaryExpressionAbsoluteYaw final : public GmsfUnaryExpressionAbsolut<g
   // ii) Holistically Optimize over Fixed Frames -----------------------------------------------------------
   bool measuresPosition() const final { return false; }
 
-  gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) final {
-    // Assumes a gravity-aligned fixed frame, which is the only case in which a yaw measurement is meaningful
-    const gtsam::Rot3 R_W_sensorFrame_est = W_currentPropagatedState.pose().rotation() * gtsam::Rot3(T_I_sensorFrameInit_.rotation());
-    return gtsam::Pose3(gtsam::Rot3::Yaw(R_W_sensorFrame_est.yaw() - yawUnaryMeasurementPtr_->unaryMeasurement()), gtsam::Point3::Zero());
-  }
+  // A yaw measurement never creates a keyframe, so the graph never uses this guess
+  gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& /*W_currentPropagatedState*/) final { return gtsam::Pose3::Identity(); }
 
   const Eigen::Vector3d getMeasurementPosition() final { return Eigen::Vector3d::Zero(); }
 

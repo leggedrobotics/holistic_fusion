@@ -128,6 +128,17 @@ void GraphMsfHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAb
     return;
   }
 
+  // The yaw needs the alignment keyframe of its fixed frame, which only a measurement with a position creates
+  const std::string& worldFrame = fixedFrame_yaw_fixedFrame_sensorFrame.worldFrameName();
+  const std::string& fixedFrame = fixedFrame_yaw_fixedFrame_sensorFrame.fixedFrameName();
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
+      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
+    REGULAR_COUT << YELLOW_START << " Skipping yaw measurement " << fixedFrame_yaw_fixedFrame_sensorFrame.measurementName() << ": frame "
+                 << fixedFrame << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END
+                 << std::endl;
+    return;
+  }
+
   // Create GMSF expression
   auto gmsfUnaryExpressionYawPtr = std::make_shared<GmsfUnaryExpressionAbsoluteYaw>(
       std::make_shared<UnaryMeasurementXDAbsolute<double, 1>>(fixedFrame_yaw_fixedFrame_sensorFrame), staticTransformsPtr_->getImuFrame(),

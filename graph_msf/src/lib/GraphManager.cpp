@@ -370,6 +370,12 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
 
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
+bool GraphManager::hasReferenceFrameKeyframe(const std::string& worldFrame, const std::string& fixedFrame) {
+  auto& referenceFrameKeys = gtsamDynamicExpressionKeys_.get<gtsam::Pose3>();
+  std::lock_guard<std::mutex> modifyGraphKeysLock(referenceFrameKeys.mutex());
+  return referenceFrameKeys.isFramePairInDictionary(worldFrame, fixedFrame);
+}
+
 bool GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement) {
   // Find the closest key in existing graph
   // Case 1: Can't add immediately

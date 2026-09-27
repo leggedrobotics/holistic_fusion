@@ -30,6 +30,10 @@ class GraphMsfHolistic : virtual public GraphMsf {
   void addUnaryPose3AbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& R_T_R_S,
                                         const bool addToOnlineSmootherFlag = true) override;
   void addUnaryPosition3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_t_R_S) override;
+  // In a fixed frame other than the world frame, the yaw goes through the alignment keyframe of that frame. Only a position or pose
+  // measurement of the same frame creates that keyframe, so add it first. The yaw measurement is skipped with a warning while the frame
+  // has no keyframe.
+  // TODO: Add a joint yaw and position measurement, which creates the keyframe itself.
   void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& R_yaw_R_S) override;
   void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_v_R_S) override;
   //// Local Measurements: Fully Local

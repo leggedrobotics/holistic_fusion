@@ -8,6 +8,10 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GMSF_UNARY_EXPRESSION_ABSOLUT_H
 #define GMSF_UNARY_EXPRESSION_ABSOLUT_H
 
+// C++
+#include <stdexcept>
+#include <string>
+
 // GTSAM
 #include <gtsam/base/types.h>
 #include <gtsam/navigation/NavState.h>
@@ -71,6 +75,12 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
     }
 
     // A. Search for the new graph key of T_fixedFrame_W -----------------------------------------------------
+    if (!this->measuresPosition() &&
+        !gtsamDynamicExpressionKeys.get<gtsam::Pose3>().isFramePairInDictionary(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
+                                                                                gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())) {
+      throw std::logic_error("GmsfUnaryExpressionAbsolut: a measurement without a position cannot create the keyframe of " +
+                             gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() + ".");
+    }
     bool newGraphKeyAddedFlag = false;
     const DynamicVariableType dynamicVariableType =
         DynamicVariableType::RefFrame(measurementOriginPosition, gmsfUnaryAbsoluteMeasurementPtr_->timeK());
