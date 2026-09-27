@@ -64,6 +64,9 @@ if(BUILD_TESTING)
     add_executable(graph_config_test tests/test_graph_config.cpp)
     target_link_libraries(graph_config_test PRIVATE graph_msf)
     add_test(NAME graph_config_test COMMAND graph_config_test)
+    add_executable(yaw_factor_test tests/test_yaw_factor.cpp)
+    target_link_libraries(yaw_factor_test PRIVATE graph_msf)
+    add_test(NAME yaw_factor_test COMMAND yaw_factor_test)
 endif()
 
 # Exported alias target

@@ -78,13 +78,14 @@ class GraphManager {
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
-  template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
-  void addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
-                                double measurementTime);
+  template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND, class... FACTOR_ARGS>
+  // Extra factor constructor arguments follow the noise model.
+  void addUnaryClassicFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
+                                double measurementTime, const FACTOR_ARGS&... factorArgs);
 
   // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
   template <class GMSF_EXPRESSION_TYPE>
-  void addUnaryGmsfExpressionFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+  void addUnaryHolisticFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
                                     const bool addToOnlineSmootherFlag = true);
 
   // Robust Norm Aware Between Factor
