@@ -79,7 +79,8 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
         !gtsamDynamicExpressionKeys.get<gtsam::Pose3>().isFramePairInDictionary(gmsfUnaryAbsoluteMeasurementPtr_->worldFrameName(),
                                                                                 gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName())) {
       throw std::logic_error("GmsfUnaryExpressionAbsolut: a measurement without a position cannot create the keyframe of " +
-                             gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() + ".");
+                             gmsfUnaryAbsoluteMeasurementPtr_->fixedFrameName() +
+                             ". Add a measurement with a position of the same frame (e.g. a position measurement) before this one.");
     }
     bool newGraphKeyAddedFlag = false;
     const DynamicVariableType dynamicVariableType =
