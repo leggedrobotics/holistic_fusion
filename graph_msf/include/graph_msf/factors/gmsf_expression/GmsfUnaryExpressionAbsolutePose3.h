@@ -56,6 +56,8 @@ class GmsfUnaryExpressionAbsolutePose3 final : public GmsfUnaryExpressionAbsolut
     return gtsam::Pose3(T_W_I_est * T_I_sensorFrameInit_ * T_fixedFrame_sensorFrame_meas.inverse().matrix());
   }
 
+  bool measuresPosition() const final { return true; }
+
   const Eigen::Vector3d getMeasurementPosition() final {
     // Get Measurement
     return gmsfPoseUnaryMeasurementPtr_->unaryMeasurement().translation();

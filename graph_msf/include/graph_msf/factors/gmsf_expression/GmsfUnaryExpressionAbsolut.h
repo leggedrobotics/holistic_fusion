@@ -267,7 +267,7 @@ class GmsfUnaryExpressionAbsolut : public GmsfUnaryExpression<GTSAM_MEASUREMENT_
   // Sub Functions that have to be implemented in derived classes ----------------
   virtual gtsam::Pose3 computeT_W_fixedFrame_initial(const gtsam::NavState& W_currentPropagatedState) = 0;
   // A measurement without a position reuses the current keyframe of its fixed frame and is not centered
-  virtual bool measuresPosition() const { return true; }
+  virtual bool measuresPosition() const = 0;
 
   virtual const Eigen::Vector3d getMeasurementPosition() = 0;
 
