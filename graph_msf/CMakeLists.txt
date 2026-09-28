@@ -67,6 +67,9 @@ if(BUILD_TESTING)
     add_executable(yaw_factor_test tests/test_yaw_factor.cpp)
     target_link_libraries(yaw_factor_test PRIVATE graph_msf)
     add_test(NAME yaw_factor_test COMMAND yaw_factor_test)
+    add_executable(holistic_yaw_expression_test tests/test_holistic_yaw_expression.cpp)
+    target_link_libraries(holistic_yaw_expression_test PRIVATE graph_msf)
+    add_test(NAME holistic_yaw_expression_test COMMAND holistic_yaw_expression_test)
 endif()
 
 # Exported alias target

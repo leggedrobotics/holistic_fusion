@@ -16,6 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 /// Absolute
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsoluteYaw.h"
 /// Local
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocalVelocity3.h"
 
@@ -106,6 +107,53 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
       const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
       optimizeGraphFlag_ = true;
     }
+  }
+}
+
+void GraphMsfHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& fixedFrame_yaw_fixedFrame_sensorFrame) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {
+    return;
+  }
+
+  // Check for covariance violation
+  bool covarianceViolatedFlag = isCovarianceViolated_<1>(fixedFrame_yaw_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
+                                                         fixedFrame_yaw_fixedFrame_sensorFrame.covarianceViolationThreshold());
+  if (checkAndPrintCovarianceViolation_(fixedFrame_yaw_fixedFrame_sensorFrame.measurementName(), covarianceViolatedFlag)) {
+    return;
+  }
+
+  // The yaw needs the alignment keyframe of its fixed frame, which only a measurement with a position creates
+  const std::string& worldFrame = fixedFrame_yaw_fixedFrame_sensorFrame.worldFrameName();
+  const std::string& fixedFrame = fixedFrame_yaw_fixedFrame_sensorFrame.fixedFrameName();
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
+      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
+    REGULAR_COUT << YELLOW_START << " Skipping yaw measurement " << fixedFrame_yaw_fixedFrame_sensorFrame.measurementName() << ": frame "
+                 << fixedFrame << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END
+                 << std::endl;
+    return;
+  }
+
+  // Create GMSF expression
+  auto gmsfUnaryExpressionYawPtr = std::make_shared<GmsfUnaryExpressionAbsoluteYaw>(
+      std::make_shared<UnaryMeasurementXDAbsolute<double, 1>>(fixedFrame_yaw_fixedFrame_sensorFrame), staticTransformsPtr_->getImuFrame(),
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
+                                               fixedFrame_yaw_fixedFrame_sensorFrame.sensorFrameName()),
+      graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
+
+  // Add factor to graph
+  graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionAbsoluteYaw>(gmsfUnaryExpressionYawPtr);
+
+  // Optimize ---------------------------------------------------------------
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
   }
 }
 

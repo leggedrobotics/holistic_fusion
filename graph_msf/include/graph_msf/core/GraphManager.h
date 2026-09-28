@@ -75,6 +75,8 @@ class GraphManager {
 
   // Unary commodity methods --> Key Lookup
   bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
+  // True if the graph holds an alignment keyframe for the transform from worldFrame to fixedFrame.
+  bool hasReferenceFrameKeyframe(const std::string& worldFrame, const std::string& fixedFrame);
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);

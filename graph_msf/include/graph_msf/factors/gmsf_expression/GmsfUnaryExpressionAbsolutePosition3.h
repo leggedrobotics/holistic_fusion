@@ -65,6 +65,8 @@ class GmsfUnaryExpressionAbsolutePosition3 final : public GmsfUnaryExpressionAbs
     return T_W_sensorFrame_est * T_fixedFrame_sensorFrame_meas_noOrientation.inverse();  // TODO: Does not yet include orientation
   }
 
+  bool measuresPosition() const final { return true; }
+
   const Eigen::Vector3d getMeasurementPosition() final {
     // Get Measurement
     return positionUnaryMeasurementPtr_->unaryMeasurement();

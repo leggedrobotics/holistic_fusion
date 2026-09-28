@@ -28,7 +28,9 @@ class GraphMsfClassic : virtual public GraphMsf {
   //// Absolute Measurements
   void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) override;
   void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) override;
-  void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_F_S) override;
+  // Constrains the yaw of the sensor frame in the world frame, independent of the measurement's fixed frame. The
+  // holistic addUnaryYawAbsoluteMeasurement() goes through the fixed-frame alignment.
+  void addUnaryYawAbsoluteClassicMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S);
 
   /// Binary Measurements
   void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;

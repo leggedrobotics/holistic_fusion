@@ -11,6 +11,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Output
 #define REGULAR_COUT std::cout << YELLOW_START << "GMSF-TransformExpressionKeys" << COLOR_END
 
+// C++
+#include <mutex>
+
 // Workspace
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/DynamicFactorGraphStateKey.h"
