@@ -7715,12 +7715,12 @@ localization_manager:
         pose_in_odom_buffer_size: 0.5
         remap_ext_frame_id: false
         tracked_frame_id_in_ext: example_tracking_id
-      graph_msf_connector:
+      holistic_fusion_connector:
         broadcast_zero_init_tf: true
-        ext_frame_id_in: odom_graph_msf
-        ext_frame_id_out: odom_graph_msf
+        ext_frame_id_in: odom_holistic_fusion
+        ext_frame_id_out: odom_holistic_fusion
         input_msg_type: 1
-        input_topic: /graph_msf/odometry_map_imu
+        input_topic: /holistic_fusion/odometry_map_imu
         pose_in_odom_buffer_size: 0.5
         remap_ext_frame_id: true
         tracked_frame_id_in_ext: imu_link

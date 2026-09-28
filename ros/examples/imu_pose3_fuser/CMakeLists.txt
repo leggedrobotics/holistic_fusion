@@ -27,7 +27,7 @@ endif()
 
 # Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf_ros
+  holistic_fusion_ros
   nav_msgs
   sensor_msgs
   roscpp

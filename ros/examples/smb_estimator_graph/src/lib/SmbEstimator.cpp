@@ -12,14 +12,14 @@ Please see the LICENSE file that has been included as part of this package.
 #include "smb_estimator_graph/SmbStaticTransforms.h"
 
 // Workspace
-#include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion/measurements/BinaryMeasurementXD.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion_ros/util/conversions.h"
 #include "smb_estimator_graph/constants.h"
 
 namespace smb_se {
 
-SmbEstimator::SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+SmbEstimator::SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   REGULAR_COUT << GREEN_START << " SmbEstimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -37,7 +37,7 @@ void SmbEstimator::setup() {
   SmbEstimator::readParams(privateNode);
 
   // Super class
-  GraphMsfRos::setup(staticTransformsPtr_);
+  HolisticFusionRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   SmbEstimator::initializePublishers(privateNode);
@@ -60,8 +60,8 @@ void SmbEstimator::setup() {
 
 void SmbEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
-  pubMeasMapVioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measVIO_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasMapVioPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measVIO_path_map_imu", ROS_QUEUE_SIZE);
 }
 
 void SmbEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
@@ -107,25 +107,25 @@ void SmbEstimator::initializeServices(ros::NodeHandle& privateNode) {
 
 void SmbEstimator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr) {
   // Check whether any of the measurements is available, otherwise do pure imu integration
-  if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited() && !useLioOdometryFlag_ &&
+  if (holistic_fusion::HolisticFusion::areRollAndPitchInited() && !holistic_fusion::HolisticFusion::areYawAndPositionInited() && !useLioOdometryFlag_ &&
       !useWheelOdometryBetweenFlag_ && !useWheelLinearVelocitiesFlag_ && !useVioOdometryFlag_) {
     // Initialization
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
                  << COLOR_END << std::endl;
     // Create dummy measurement for initialization
-    graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+    holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
         "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(),
-        staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), imuPtr->header.stamp.toSec(), 1.0,
+        staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), imuPtr->header.stamp.toSec(), 1.0,
         Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
     // Initialize
-    graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+    holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
     REGULAR_COUT << RED_START << " ...initialized yaw and position to identity." << COLOR_END << std::endl;
     // Pretend that we received first measurement --> In order to allow for optimization
-    graph_msf::GraphMsf::pretendFirstMeasurementReceived();
+    holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
   }
 
   // Super class
-  graph_msf::GraphMsfRos::imuCallback(imuPtr);
+  holistic_fusion::HolisticFusionRos::imuCallback(imuPtr);
 }
 
 void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& odomLidarPtr) {
@@ -136,7 +136,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   ++lidarOdometryCallbackCounter__;
 
   Eigen::Isometry3d lio_T_M_Lk;
-  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
+  holistic_fusion::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
 
   // Transform to IMU frame
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
@@ -145,9 +145,9 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
   const std::string& lioOdometryFrame = dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
 
   // Measurement
-  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+  holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::None(), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
+      holistic_fusion::RobustNorm::None(), lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   // Add measurement or initialize
@@ -184,7 +184,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
 
   // Eigen Type
   Eigen::Isometry3d T_O_Bw_k;
-  graph_msf::odomMsgToEigen(*wheelOdometryKPtr, T_O_Bw_k.matrix());
+  holistic_fusion::odomMsgToEigen(*wheelOdometryKPtr, T_O_Bw_k.matrix());
   double wheelOdometryTimeK = wheelOdometryKPtr->header.stamp.toSec();
 
   // At start
@@ -204,10 +204,10 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
     if (!useLioOdometryFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel odometry callback is setting global yaw and position, as lio is all set to false." << COLOR_END
                    << std::endl;
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(wheelOdometryBetweenRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+          holistic_fusion::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
+      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
       REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
                    << std::endl;
     }
@@ -219,9 +219,9 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
       // Compute Delta
       Eigen::Isometry3d T_Bkm1_Bk = T_O_Bw_km1_.inverse() * T_O_Bw_k;
       // Create measurement
-      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+      holistic_fusion::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
           "Wheel_odometry_6D", measurementRate, wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::Tukey(1.0), wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
+          holistic_fusion::RobustNorm::Tukey(1.0), wheelOdometryTimeKm1_, wheelOdometryTimeK, T_Bkm1_Bk, wheelPoseBetweenNoise_);
       // Add to graph
       this->addBinaryPose3Measurement(delta6DMeasurement);
 
@@ -262,27 +262,27 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::Float64MultiAr
     if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel linear velocities callback is setting global yaw and position, as lio is all set to false."
                    << COLOR_END << std::endl;
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-          wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(), timeK, 1.0,
+          wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), timeK, 1.0,
           Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      graph_msf::GraphMsf::initYawAndPosition(unary6DMeasurement);
+      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
       REGULAR_COUT
           << " Initialized yaw and position to identity in the wheel linear velocities callback, as lio and vio are all set to false."
           << std::endl;
     }
   } else {
     // Left Wheel
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(
+    holistic_fusion::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(
         "Wheel_linear_velocity_left", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-        wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::Tukey(1.0), timeK, 1.0,
+        wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::Tukey(1.0), timeK, 1.0,
         Eigen::Vector3d(leftWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
     this->addUnaryVelocity3LocalMeasurement(leftWheelLinearVelocityMeasurement);
 
     // Right Wheel
-    graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> rightWheelLinearVelocityMeasurement(
+    holistic_fusion::UnaryMeasurementXD<Eigen::Vector3d, 3> rightWheelLinearVelocityMeasurement(
         "Wheel_linear_velocity_right", int(wheelLinearVelocitiesRate_), wheelLinearVelocityRightFrame,
-        wheelLinearVelocityRightFrame + sensorFrameCorrectedNameId, graph_msf::RobustNorm::Tukey(1.0), timeK, 1.0,
+        wheelLinearVelocityRightFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::Tukey(1.0), timeK, 1.0,
         Eigen::Vector3d(rightWheelSpeedMs, 0.0, 0.0), wheelLinearVelocitiesNoise_);
     this->addUnaryVelocity3LocalMeasurement(rightWheelLinearVelocityMeasurement);
   }
@@ -293,7 +293,7 @@ void SmbEstimator::vioOdometryCallback_(const nav_msgs::Odometry::ConstPtr& vioO
 
   // Extract
   Eigen::Isometry3d vio_T_M_Ck;
-  graph_msf::odomMsgToEigen(*vioOdomPtr, vio_T_M_Ck.matrix());
+  holistic_fusion::odomMsgToEigen(*vioOdomPtr, vio_T_M_Ck.matrix());
 
   // Visualization ----------------------------
   // Add to path message

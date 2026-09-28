@@ -19,8 +19,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion_ros/HolisticFusionRos.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -28,7 +28,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace imu_integrator {
 
-class ImuIntegrator : public graph_msf::GraphMsfRos {
+class ImuIntegrator : public holistic_fusion::HolisticFusionRos {
  public:
   ImuIntegrator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
 

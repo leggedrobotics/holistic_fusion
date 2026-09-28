@@ -9,11 +9,11 @@ Please see the LICENSE file that has been included as part of this package.
 #define AnymalStaticTransforms_H
 
 // Workspace
-#include "graph_msf_ros/extrinsics/StaticTransformsTf.h"
+#include "holistic_fusion_ros/extrinsics/StaticTransformsTf.h"
 
 namespace anymal_se {
 
-class AnymalStaticTransforms : public graph_msf::StaticTransformsTf {
+class AnymalStaticTransforms : public holistic_fusion::StaticTransformsTf {
  public:
   AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr);
 

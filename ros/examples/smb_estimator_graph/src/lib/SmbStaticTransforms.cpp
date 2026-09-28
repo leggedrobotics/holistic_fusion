@@ -13,18 +13,18 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion_ros/util/conversions.h"
 #include "smb_estimator_graph/constants.h"
 
 namespace smb_se {
 
-SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::StaticTransformsTf() {
+SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::StaticTransformsTf() {
   REGULAR_COUT << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
 bool SmbStaticTransforms::findTransformations() {
   // Super Method
-  graph_msf::StaticTransformsTf::findTransformations();
+  holistic_fusion::StaticTransformsTf::findTransformations();
 
   // Print to console --------------------------
   REGULAR_COUT << COLOR_END << " Looking up transforms in TF-tree." << std::endl;
@@ -43,7 +43,7 @@ bool SmbStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, lidarOdometryFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, lidarOdometryFrame_, ros::Time(0), transform);
   // I_Lidar
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_));
   std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
             << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarOdometryFrame_).translation() << std::endl;
   // Lidar_I
@@ -54,7 +54,7 @@ bool SmbStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, vioOdometryFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, vioOdometryFrame_, ros::Time(0), transform);
   // I_VIO
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, vioOdometryFrame_));
   std::cout << YELLOW_START << "Smb-StaticTransforms" << COLOR_END
             << " Translation I_VIO: " << rv_T_frame1_frame2(imuFrame_, vioOdometryFrame_).translation() << std::endl;
   // VIO_I
@@ -71,7 +71,7 @@ bool SmbStaticTransforms::findTransformations() {
   listener_.lookupTransform(imuFrame_, wheelLinearVelocityLeftFrame_, ros::Time(0), transform);
   // I_WheelLeft
   Eigen::Isometry3d T_I_WheelLeft;
-  graph_msf::tfToIsometry3(tf::Transform(transform), T_I_WheelLeft);
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), T_I_WheelLeft);
   // Overwrite the orientation with the one of the baseLinkFrame_
   T_I_WheelLeft.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
   lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityLeftFrame_) = T_I_WheelLeft;
@@ -86,7 +86,7 @@ bool SmbStaticTransforms::findTransformations() {
   listener_.lookupTransform(imuFrame_, wheelLinearVelocityRightFrame_, ros::Time(0), transform);
   // I_WheelRight
   Eigen::Isometry3d T_I_WheelRight;
-  graph_msf::tfToIsometry3(tf::Transform(transform), T_I_WheelRight);
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), T_I_WheelRight);
   // Overwrite the orientation with the one of the baseLinkFrame_
   T_I_WheelRight.matrix().block<3, 3>(0, 0) = rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).matrix().block<3, 3>(0, 0);
   lv_T_frame1_frame2(imuFrame_, wheelLinearVelocityRightFrame_) = T_I_WheelRight;

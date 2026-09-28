@@ -56,10 +56,10 @@
         <remap from="/gnss_topic_2" to="$(arg gnss_right_topic_name)"/>
     </node>
 
-    <!-- TF Between compslam_lio/camera_init_CORRECTED and compslam_lio/camera_init_CORRECTED_graph_msf_aligned -->
+    <!-- TF Between compslam_lio/camera_init_CORRECTED and compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned -->
     <node pkg="tf" type="static_transform_publisher"
           name="compslam_map_to_compslam_map_aligned"
-          args="0 0 0 0 0 0 /compslam_lio/camera_init_CORRECTED_graph_msf_aligned /compslam_lio/camera_init_CORRECTED 100"/>
+          args="0 0 0 0 0 0 /compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned /compslam_lio/camera_init_CORRECTED 100"/>
 
     <!-- RVIZ for Visualization -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find excavator_holistic_graph)/rviz/gnss_lidar.rviz"/>

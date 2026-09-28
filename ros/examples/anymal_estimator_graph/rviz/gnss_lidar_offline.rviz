@@ -40,7 +40,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_world
       Radius: 0.10000000149011612
-      Reference Frame: world_graph_msf
+      Reference Frame: world_holistic_fusion
       Show Trail: false
       Value: true
     - Alpha: 1
@@ -49,7 +49,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_odom
       Radius: 0.10000000149011612
-      Reference Frame: odom_graph_msf
+      Reference Frame: odom_holistic_fusion
       Show Trail: false
       Value: false
     - Alpha: 1
@@ -67,7 +67,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_map
       Radius: 0.10000000149011612
-      Reference Frame: compslam_lio/camera_init_CORRECTED_graph_msf_aligned
+      Reference Frame: compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned
       Show Trail: false
       Value: false
     - Alpha: 0.5
@@ -177,7 +177,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_odom_imu
+      Topic: /holistic_fusion/est_path_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -201,7 +201,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_world_imu
+      Topic: /holistic_fusion/est_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -225,7 +225,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/opt_path_world_imu
+      Topic: /holistic_fusion/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -249,7 +249,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measLiDAR_path_map_lidar
+      Topic: /holistic_fusion/measLiDAR_path_map_lidar
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -273,7 +273,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measGnss_path_world_gnss
+      Topic: /holistic_fusion/measGnss_path_world_gnss
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -756,7 +756,7 @@ Visualization Manager:
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
         Value: Arrow
-      Topic: /graph_msf/est_odometry_odom_imu
+      Topic: /holistic_fusion/est_odometry_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -815,7 +815,7 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /graph_msf/transform_world_graph_msf_to_compslam_lio/camera_init_CORRECTED_graph_msf_aligned
+      Topic: /holistic_fusion/transform_world_holistic_fusion_to_compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -846,7 +846,7 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /graph_msf/transform_world_graph_msf_to_east_north_up_graph_msf_aligned
+      Topic: /holistic_fusion/transform_world_holistic_fusion_to_east_north_up_holistic_fusion_aligned
       Unreliable: false
       Value: true
   Enabled: true

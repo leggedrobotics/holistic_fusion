@@ -1,0 +1,259 @@
+/*
+Copyright 2024 by Julian Nubert, Robotic Systems Lab, ETH Zurich.
+All rights reserved.
+This file is released under the "BSD-3-Clause License".
+Please see the LICENSE file that has been included as part of this package.
+ */
+
+#ifndef GRAPH_MANAGER_HPP
+#define GRAPH_MANAGER_HPP
+
+// C++
+#include <chrono>
+#include <mutex>
+#include <vector>
+
+// GTSAM
+#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/slam/expressions.h>
+
+// Package
+#include "holistic_fusion/config/GraphConfig.h"
+#include "holistic_fusion/core/DynamicDictionaryContainer.h"
+#include "holistic_fusion/core/FileLogger.h"
+#include "holistic_fusion/core/GraphState.hpp"
+#include "holistic_fusion/core/TimeGraphKeyBuffer.h"
+#include "holistic_fusion/core/optimizer/OptimizerBase.h"
+#include "holistic_fusion/imu/ImuBuffer.hpp"
+#include "holistic_fusion/interface/NavState.h"
+#include "holistic_fusion/measurements/Measurement.h"
+#include "holistic_fusion/measurements/UnaryMeasurement.h"
+#include "holistic_fusion/measurements/UnaryMeasurementAbsolute.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+
+// General Unary Factor Interface
+#include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpression.h"
+#include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionAbsolut.h"
+#include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionLandmark.h"
+
+// General Binary Factor Interface
+// TODO: add binary factor interface
+
+namespace holistic_fusion {
+
+/**
+ * @brief GraphManager class
+ * @details The GraphManager class is the central class of the HolisticFusion library. It manages the graph, the optimization, and the
+ *         real-time and batch optimization. It also provides the interface to add measurements to the graph and to retrieve the
+ *         optimized states.
+ */
+class GraphManager {
+ public:
+  GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
+  ~GraphManager() {
+    std::cout << YELLOW_START << "HolisticFusion: GraphManager" << GREEN_START << " Destructor called." << COLOR_END << std::endl;
+    if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+      std::cout << YELLOW_START << "HolisticFusion: GraphManager" << COLOR_END
+                << " Additional slow batch smoother was built up. Next time the optimization of it can be called before shutting down (if "
+                   "not done already)."
+                << std::endl;
+    }
+  };
+
+  // Initialization Interface ---------------------------------------------------
+  bool initImuIntegrators(double gravityValue);
+  // imuAngularVelocity is the bias-uncorrected IMU-frame sample at timeStamp [rad/s].
+  bool initPoseVelocityBiasGraph(double timeStamp, const gtsam::Pose3& T_W_I0, const gtsam::Pose3& T_O_I0,
+                                const gtsam::Vector3& imuAngularVelocity);
+
+  // IMU at the core -----------------------------------------------------------
+  void addImuFactorAndGetState(SafeIntegratedNavState& returnPreIntegratedNavState,
+                               std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
+                               const std::shared_ptr<ImuBuffer>& imuBufferPtr, double imuTimeK, bool createNewStateFlag);
+
+  // All other measurements -----------------------------------------------------
+
+  // Unary commodity methods --> Key Lookup
+  bool getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime, const UnaryMeasurement& unaryMeasurement);
+  // True if the graph holds an alignment keyframe for the transform from worldFrame to fixedFrame.
+  bool hasReferenceFrameKeyframe(const std::string& worldFrame, const std::string& fixedFrame);
+
+  // Unary Meta Method --> classic GTSAM Factors
+  typedef gtsam::Key (*F)(std::uint64_t);
+  template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND, class... FACTOR_ARGS>
+  // Extra factor constructor arguments follow the noise model.
+  void addUnaryClassicFactor(const MEASUREMENT_TYPE& unaryMeasurement, const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,
+                                double measurementTime, const FACTOR_ARGS&... factorArgs);
+
+  // GMSF Holistic Graph Factors with Extrinsic Calibration ------------------------
+  template <class GMSF_EXPRESSION_TYPE>
+  void addUnaryHolisticFactor(const std::shared_ptr<GMSF_EXPRESSION_TYPE> gmsfUnaryExpressionPtr,
+                                    const bool addToOnlineSmootherFlag = true);
+
+  // Robust Norm Aware Between Factor
+  gtsam::Key addPoseBetweenFactor(const gtsam::Pose3& deltaPose, const Eigen::Matrix<double, 6, 1>& poseBetweenNoiseDensity,
+                                  double lidarTimeKm1, double lidarTimeK, double rate, const RobustNormEnum& robustNormEnum,
+                                  const double robustNormConstant);
+
+  // Set T_W_F
+  bool setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
+
+  // Update of graph  ----------------------------------------------------------
+  // Real-time Graph Update
+  void updateGraph();
+
+  // Slow Graph Update (if desired)
+  bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
+
+  // Logging of real-time navigation states
+  bool logRealTimeNavStates(const std::string& savePath, const std::string& timeString);
+
+  // Logging of real-time reference frame states
+  bool logRealTimeReferenceFrameStates(const std::string& savePath, const std::string& timeString);
+
+  // Logging of Latency and Update Duration
+  bool logLatencyAndUpdateDuration(const std::string& savePath, const std::string& timeString);
+
+  // Save Variables to File
+  void saveOptimizedValuesToFile(const gtsam::Values& optimizedValues, const std::map<gtsam::Key, double>& keyTimestampMap,
+                                 const std::string& savePath, const bool saveCovarianceFlag);
+
+  // Save Optimized Graph to G2O Format
+  static void saveOptimizedGraphToG2o(const OptimizerBase& optimizedGraph, const gtsam::Values& optimizedValues,
+                                      const std::string& saveFileName);
+
+  // Comfort functions ---------------------------------------------------------
+  gtsam::NavState calculateStateAtGeneralKey(bool& computeSuccessfulFlag, const gtsam::Key& generalKey);
+
+  // Accessors
+  /// Getters
+  Eigen::Vector3d& getInitAccBiasReference() { return graphConfigPtr_->accBiasPrior_; }
+  Eigen::Vector3d& getInitGyrBiasReference() { return graphConfigPtr_->gyroBiasPrior_; }
+
+  //  auto iterations() const { return additonalIterations_; }
+  const GraphState& getOptimizedGraphState() { return optimizedGraphState_; }
+  const gtsam::Key getPropagatedStateKey() { return propagatedStateKey_; }
+
+ protected:
+  // Calculate state at key for graph
+  static gtsam::NavState calculateNavStateAtGeneralKey(bool& computeSuccessfulFlag, std::shared_ptr<holistic_fusion::OptimizerBase> graphPtr,
+                                                       const gtsam::Key& generalKey, const char* callingFunctionName);
+
+  // Get Covariance of Pose at Key in World Frame, with optional NavState
+  static Eigen::Matrix<double, 6, 6> calculatePoseCovarianceAtKeyInWorldFrame(
+      std::shared_ptr<holistic_fusion::OptimizerBase> graphPtr, const gtsam::Key& graphKey, const char* callingFunctionName,
+      std::optional<const gtsam::NavState> optionalNavState = std::nullopt);
+
+ private:
+  // Methods
+  template <class CHILDPTR>
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag = true);
+  template <class CHILDPTR>
+  bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp,
+                                   const std::string& measurementName, const bool addToOnlineSmootherFlag = true);
+  template <class CHILDPTR>
+  bool addFactorSafelyToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, double measurementTimestamp);
+  /// Update IMU integrators
+  void updateImuIntegrators_(const TimeToImuMap& imuMeas);
+
+  // Add Factors, Values, and Keys to Graph
+  // Rt Smoother
+  bool addFactorsToRtSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newRtGraphFactors, const gtsam::Values& newRtGraphValues,
+                                         const std::map<gtsam::Key, double>& newRtGraphKeysTimestampsMap,
+                                         const std::shared_ptr<GraphConfig>& graphConfigPtr, const int additionalIterations);
+  // Batch Smoother
+  bool addFactorsToBatchSmootherAndOptimize(const gtsam::NonlinearFactorGraph& newBatchGraphFactors,
+                                            const gtsam::Values& newBatchGraphValues,
+                                            const std::map<gtsam::Key, double>& newBatchGraphKeysTimestampsMap,
+                                            const std::shared_ptr<GraphConfig>& graphConfigPtr);
+  /// Find graph keys for timestamps
+  bool findGraphKeys_(gtsam::Key& closestKeyKm1, gtsam::Key& closestKeyK, double& keyTimeStampDistance, double maxTimestampDistance,
+                      double timeKm1, double timeK, const std::string& name);
+  /// Generate new key
+  const uint64_t newPropagatedStateKey_() { return ++propagatedStateKey_; }
+  /// Associate timestamp to each 'value key', e.g. for graph key 0, value keys (x0,v0,b0) need to be associated
+  inline void writeKeyToKeyTimeStampMap_(const gtsam::Key& key, double measurementTime,
+                                         std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
+
+  void writeValueKeysToKeyTimeStampMap_(const gtsam::Values& values, double measurementTime,
+                                        std::shared_ptr<std::map<gtsam::Key, double>> keyTimestampMapPtr);
+
+  // Buffers
+  std::shared_ptr<TimeGraphKeyBuffer> timeToKeyBufferPtr_;
+
+  // Optimization Transformations
+  std::string imuFrame_;
+  std::string worldFrame_;
+  DynamicDictionaryContainer gtsamDynamicExpressionKeys_;
+
+  // File Logger
+  FileLogger fileLogger_;
+
+  // Objects
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> imuParamsPtr_;
+  std::shared_ptr<gtsam::imuBias::ConstantBias> imuBiasPriorPtr_;
+  holistic_fusion::GraphState optimizedGraphState_;
+  /// Propagated state (at IMU frequency)
+  gtsam::NavState W_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
+  gtsam::NavState O_imuPropagatedState_ = gtsam::NavState(gtsam::Pose3(), gtsam::Vector3(0, 0, 0));
+  Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();  // Current state pose, depending on whether propagated state jumps or not
+  gtsam::Key propagatedStateKey_ = 0;                        // Current state key, always start with 0
+  double propagatedImuSampleTime_ = 0.0;
+  double latestGraphStateKeyTime_ = 0.0;
+  double lastOptimizedStateTime_ = 0.0;                      // Last optimized state time
+  gtsam::Vector3 latestGraphStateKeyAngularVelocity_ = gtsam::Vector3(0, 0, 0);
+
+  // Optimizer(s)
+  std::shared_ptr<OptimizerBase> rtOptimizerPtr_;
+  std::shared_ptr<OptimizerBase> batchOptimizerPtr_;
+  /// Data buffer
+  std::shared_ptr<gtsam::NonlinearFactorGraph> rtFactorGraphBufferPtr_;
+  std::shared_ptr<gtsam::NonlinearFactorGraph> batchFactorGraphBufferPtr_;
+  // Values map
+  std::shared_ptr<gtsam::Values> rtGraphValuesBufferPtr_;
+  std::shared_ptr<gtsam::Values> batchGraphValuesBufferPtr_;
+  // Keys timestamp map
+  std::shared_ptr<std::map<gtsam::Key, double>> rtGraphKeysTimestampsMapBufferPtr_;
+  std::shared_ptr<std::map<gtsam::Key, double>> batchGraphKeysTimestampsMapBufferPtr_;
+
+  // Preintegration
+  /// Step Preintegrator
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuStepPreintegratorPtr_;
+  /// Buffer Preintegrator
+  std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuBufferPreintegratorPtr_;
+
+  /// IMU Buffer
+  gtsam::Vector6 lastImuVector_;
+
+  /// Config
+  std::shared_ptr<holistic_fusion::GraphConfig> graphConfigPtr_ = nullptr;
+
+  // Real-time Pose Container
+  std::map<double, gtsam::Pose3> realTimeWorldPoseContainer_ = {};
+  std::map<double, gtsam::Pose3> realTimeOdomPoseContainer_ = {};
+  // Real-time Reference Frame Transformation Container
+  std::map<double, TransformsDictionary<Eigen::Isometry3d>> realTimeReferenceFrameContainer_ = {};
+  std::set<std::pair<std::string, std::string>> realTimeReferenceFrameNamePairs_ = {};
+  // Latency Start and End Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> latencyStartTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> latencyEndTime_;
+  // Latency Container
+  std::map<double, double> latencyContainer_ = {};
+  // Update Duration Start and End Time
+  std::chrono::time_point<std::chrono::high_resolution_clock> updateDurationStartTime_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> updateDurationEndTime_;
+  // Update Duration Container
+  std::map<double, double> updateDurationContainer_ = {};
+
+  // Member variables
+  /// Mutex
+  std::mutex operateOnGraphDataMutex_;
+  std::mutex optimizationRunningMutex_;
+};
+
+}  // namespace holistic_fusion
+
+// Template Implementations
+#include "holistic_fusion/core/GraphManager.inl"
+
+#endif  // GRAPH_MANAGER_HPP

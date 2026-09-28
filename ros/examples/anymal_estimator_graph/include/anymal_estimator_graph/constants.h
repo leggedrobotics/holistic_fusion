@@ -5,7 +5,7 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
-#include "graph_msf/interface/Terminal.h"
+#include "holistic_fusion/interface/Terminal.h"
 
 #ifndef ANYmalEstimatorGraph_CONSTANTS_H
 #define ANYmalEstimatorGraph_CONSTANTS_H

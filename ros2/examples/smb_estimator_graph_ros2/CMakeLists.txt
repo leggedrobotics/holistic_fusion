@@ -18,17 +18,17 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Glog REQUIRED)
-find_package(graph_msf_ros2_msgs REQUIRED
+find_package(holistic_fusion_ros2_msgs REQUIRED
   COMPONENTS rosidl_generator_c rosidl_typesupport_cpp
 )
 
 
-# Check if the target from graph_msf is already defined
-if(NOT TARGET graph_msf::graph_msf)
-  find_package(graph_msf REQUIRED)
+# Check if the target from holistic_fusion is already defined
+if(NOT TARGET holistic_fusion::holistic_fusion)
+  find_package(holistic_fusion REQUIRED)
 endif()
-if(NOT TARGET graph_msf_ros2::graph_msf_ros2)
-  find_package(graph_msf_ros2 REQUIRED)
+if(NOT TARGET holistic_fusion_ros2::holistic_fusion_ros2)
+  find_package(holistic_fusion_ros2 REQUIRED)
 endif()
 
 # Non propagated ros dependencies
@@ -64,16 +64,16 @@ add_library(${PROJECT_NAME}
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
-    graph_msf_ros2::graph_msf_ros2
+    holistic_fusion_ros2::holistic_fusion_ros2
     ${GLOG_LIBRARIES}
     ${gflags_LIBRARIES}
 )
 
 # Print the include directories for debugging
-get_target_property(INC_DIR graph_msf::graph_msf INTERFACE_INCLUDE_DIRECTORIES)
-message("Include dir for graph_msf::graph_msf: ${INC_DIR}")
-get_target_property(INC_DIR graph_msf_ros2::graph_msf_ros2 INTERFACE_INCLUDE_DIRECTORIES)
-message("Include dir for graph_msf_ros2::graph_msf_ros2: ${INC_DIR}")
+get_target_property(INC_DIR holistic_fusion::holistic_fusion INTERFACE_INCLUDE_DIRECTORIES)
+message("Include dir for holistic_fusion::holistic_fusion: ${INC_DIR}")
+get_target_property(INC_DIR holistic_fusion_ros2::holistic_fusion_ros2 INTERFACE_INCLUDE_DIRECTORIES)
+message("Include dir for holistic_fusion_ros2::holistic_fusion_ros2: ${INC_DIR}")
 
 # Ament dependencies
 ament_target_dependencies(${PROJECT_NAME}
@@ -85,7 +85,7 @@ ament_target_dependencies(${PROJECT_NAME}
     tf2_ros
     Glog
     gflags
-    graph_msf_ros2_msgs
+    holistic_fusion_ros2_msgs
 )
 
 # Executable

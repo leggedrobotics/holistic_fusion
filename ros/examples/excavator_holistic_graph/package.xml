@@ -12,8 +12,8 @@
   <author email="nubertj@gmail.com">Julian Nubert</author>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>graph_msf_catkin</build_depend>
-  <build_depend>graph_msf_ros</build_depend>
+  <build_depend>holistic_fusion_catkin</build_depend>
+  <build_depend>holistic_fusion_ros</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>roscpp</build_depend>
@@ -23,8 +23,8 @@
   <build_depend>std_srvs</build_depend>
   <build_depend>message_filters</build_depend>
 
-  <run_depend>graph_msf_catkin</run_depend>
-  <run_depend>graph_msf_ros</run_depend>
+  <run_depend>holistic_fusion_catkin</run_depend>
+  <run_depend>holistic_fusion_ros</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>roscpp</run_depend>

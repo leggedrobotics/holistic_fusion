@@ -44,7 +44,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_world
       Radius: 0.10000000149011612
-      Reference Frame: world_graph_msf
+      Reference Frame: world_holistic_fusion
       Show Trail: false
       Value: true
     - Alpha: 1
@@ -53,7 +53,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_odom
       Radius: 0.10000000149011612
-      Reference Frame: odom_graph_msf
+      Reference Frame: odom_holistic_fusion
       Show Trail: false
       Value: false
     - Alpha: 1
@@ -71,7 +71,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_map_compslam
       Radius: 0.10000000149011612
-      Reference Frame: compslam_lio/camera_init_CORRECTED_graph_msf_aligned
+      Reference Frame: compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned
       Show Trail: false
       Value: false
     - Alpha: 1
@@ -80,7 +80,7 @@ Visualization Manager:
       Length: 1
       Name: Axes_map_o3d
       Radius: 0.10000000149011612
-      Reference Frame: map_o3d_graph_msf_aligned
+      Reference Frame: map_o3d_holistic_fusion_aligned
       Show Trail: false
       Value: true
     - Alpha: 0.5
@@ -264,7 +264,7 @@ Visualization Manager:
           Value: true
         odom:
           Value: true
-        odom_graph_msf_:
+        odom_holistic_fusion_:
           Value: true
         odom_o3d:
           Value: true
@@ -280,7 +280,7 @@ Visualization Manager:
           Value: true
         wide_angle_camera_rear_camera_parent:
           Value: true
-        world_graph_msf_:
+        world_holistic_fusion_:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -392,8 +392,8 @@ Visualization Manager:
                     {}
                 odom_o3d:
                   {}
-            odom_graph_msf_:
-              world_graph_msf_:
+            odom_holistic_fusion_:
+              world_holistic_fusion_:
                 {}
             top_shell:
               {}
@@ -449,7 +449,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_odom_imu
+      Topic: /holistic_fusion/est_path_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -473,7 +473,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_world_imu
+      Topic: /holistic_fusion/est_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -497,7 +497,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/opt_path_world_imu
+      Topic: /holistic_fusion/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -521,7 +521,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measLiDAR_path_map_lidar
+      Topic: /holistic_fusion/measLiDAR_path_map_lidar
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -545,7 +545,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measGnss_path_world_gnss
+      Topic: /holistic_fusion/measGnss_path_world_gnss
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -1086,7 +1086,7 @@ Visualization Manager:
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
         Value: Arrow
-      Topic: /graph_msf/est_odometry_odom_imu
+      Topic: /holistic_fusion/est_odometry_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -1117,7 +1117,7 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /graph_msf/transform_world_graph_msf_to_compslam_lio/camera_init_CORRECTED_graph_msf_aligned
+      Topic: /holistic_fusion/transform_world_holistic_fusion_to_compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -1148,12 +1148,12 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Axes
-      Topic: /graph_msf/transform_world_graph_msf_to_map_o3d_graph_msf_aligned
+      Topic: /holistic_fusion/transform_world_holistic_fusion_to_map_o3d_holistic_fusion_aligned
       Unreliable: false
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /graph_msf/velocity_marker
+      Marker Topic: /holistic_fusion/velocity_marker
       Name: Marker
       Namespaces:
         "": true
@@ -1161,7 +1161,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /graph_msf/foot_contact_markers
+      Marker Topic: /holistic_fusion/foot_contact_markers
       Name: CurrentContactMarkerArray
       Namespaces:
         foot_contact: true
@@ -1169,7 +1169,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /graph_msf/landmarks
+      Marker Topic: /holistic_fusion/landmarks
       Name: OptimizedContactMarkerArray
       Namespaces:
         landmarks: true
@@ -1181,13 +1181,13 @@ Visualization Manager:
       Value: true
       color: 25; 255; 240
       duration: 10000
-      frame: map_o3d_graph_msf_aligned
+      frame: map_o3d_holistic_fusion_aligned
       line_width: 0.009999999776482582
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom_graph_msf_
+    Fixed Frame: odom_holistic_fusion_
     Frame Rate: 30
   Name: root
   Tools:

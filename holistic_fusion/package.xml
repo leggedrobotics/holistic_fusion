@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>holistic_fusion</name>
+    <version>0.0.0</version>
+
+    <description>
+        State estimation based on factor graphs, utilizing GTSAM functionality. Fusion of IMU, LiDAR Mapping Odometry
+        and GNSS estimates.
+    </description>
+
+    <maintainer email="nubertj@gmail.com">Julian Nubert</maintainer>
+    <license>BSD</license>
+    <author email="nubertj@gmail.com">Julian Nubert</author>
+
+    <build_depend>cmake_clang_tools</build_depend>
+    <build_depend>Eigen3</build_depend>
+    <build_depend>GTSAM</build_depend>
+
+    <exec_depend>Eigen3</exec_depend>
+    <exec_depend>GTSAM</exec_depend>
+
+</package>

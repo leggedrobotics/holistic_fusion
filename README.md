@@ -50,13 +50,13 @@ future.
 
 This repository contains the following modules:
 
-1. [Graph MSF](./graph_msf): The core library for the sensor fusion. This library depends mainly on Eigen and GTSAM and
+1. [Holistic Fusion](./holistic_fusion): The core library for the sensor fusion. This library depends mainly on Eigen and GTSAM and
    can be used with any communication layer (including ROS1 and ROS2).
-2. [Graph MSF ROS](./ros/graph_msf_ros): This package provides an example class for GraphMsf in ROS. It is dependent on
-   GraphMsf and ROS.
-3. [Graph MSF ROS2](./ros2/graph_msf_ros2): The ROS2 integration layer for GraphMsf, including ROS2 publishers,
+2. [Holistic Fusion ROS](./ros/holistic_fusion_ros): This package provides an example class for HolisticFusion in ROS. It is dependent on
+   HolisticFusion and ROS.
+3. [Holistic Fusion ROS2](./ros2/holistic_fusion_ros2): The ROS2 integration layer for HolisticFusion, including ROS2 publishers,
    subscribers, services, parameter handling, and TF-based static transforms.
-4. [ROS1 Examples](./ros/examples): Examples on how to use GraphMsf and GraphMsfRos.
+4. [ROS1 Examples](./ros/examples): Examples on how to use HolisticFusion and HolisticFusionRos.
     - [ANYmal Estimator - Quadrupedal Robot](./ros/examples/anymal_estimator_graph): This is the implementation of the
       ANYmal quadrupedal robot estimator as presented in [1], including IMU, GNSS, leg odometry, and absolute LiDAR
       measurements.
@@ -71,9 +71,9 @@ This repository contains the following modules:
       for dead-reckoning performance testing.
     - [IMU Pose3 Fuser](./ros/examples/imu_pose3_fuser): A simple example of fusing an IMU and an SE(3) pose
       measurement.
-    - [Graph MSF ROS Examples](./ros/examples/graph_msf_ros_examples): A meta-package bundling all the aforementioned
+    - [Holistic Fusion ROS Examples](./ros/examples/holistic_fusion_ros_examples): A meta-package bundling all the aforementioned
       ROS examples in one package for convenience.
-5. [ROS2 Examples](./ros2/examples): Examples built on GraphMsfRos2.
+5. [ROS2 Examples](./ros2/examples): Examples built on HolisticFusionRos2.
     - [Super Mega Bot Estimator](./ros2/examples/smb_estimator_graph_ros2): A ROS2 estimator demonstrating IMU fusion
       with configurable absolute LiDAR odometry, VIO, wheel-odometry between factors, and wheel linear-velocity
       factors. The package includes launch files for live operation, simulation, and rosbag replay.
@@ -83,7 +83,7 @@ This repository contains the following modules:
 Please refer to our [Read the Docs](https://leggedrobotics.github.io/holistic_fusion/docs) for detailed instructions
 regarding installation and usage.
 
-See the [GraphMSF configuration contract](graph_msf/CONFIGURATION.md) for parameter applicability and GTSAM 4.3 migration details.
+See the [HolisticFusion configuration contract](holistic_fusion/CONFIGURATION.md) for parameter applicability and GTSAM 4.3 migration details.
 
 ## Code Documentation
 

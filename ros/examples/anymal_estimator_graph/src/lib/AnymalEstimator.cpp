@@ -13,19 +13,19 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "anymal_estimator_graph/constants.h"
-#include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
-#include "graph_msf/interface/input_output.h"
-#include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXDAbsolute.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion/interface/eigen_wrapped_gtsam_utils.h"
+#include "holistic_fusion/interface/input_output.h"
+#include "holistic_fusion/measurements/BinaryMeasurementXD.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXDAbsolute.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 namespace anymal_se {
 
 // Constexpr from header
 constexpr std::array<const char*, 4> AnymalEstimator::legNames_;
 
-AnymalEstimator::AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+AnymalEstimator::AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   REGULAR_COUT << GREEN_START << " AnymalEstimatorGraph-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -43,7 +43,7 @@ void AnymalEstimator::setup() {
   AnymalEstimator::readParams(privateNode);
 
   // Super class
-  GraphMsfRos::setup(staticTransformsPtr_);
+  HolisticFusionRos::setup(staticTransformsPtr_);
 
   // Wait for static transforms ----------------------------
   staticTransformsPtr_->findTransformations();
@@ -63,11 +63,11 @@ void AnymalEstimator::setup() {
 
 void AnymalEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
-  pubMeasWorldGnssPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
+  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measLiDAR_path_map_lidar", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measGnss_path_world_gnss", ROS_QUEUE_SIZE);
 
   // Markers
-  pubFootContactMarkers_ = privateNode.advertise<visualization_msgs::MarkerArray>("/graph_msf/foot_contact_markers", ROS_QUEUE_SIZE);
+  pubFootContactMarkers_ = privateNode.advertise<visualization_msgs::MarkerArray>("/holistic_fusion/foot_contact_markers", ROS_QUEUE_SIZE);
 }
 
 void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
@@ -111,7 +111,7 @@ void AnymalEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
   }
   // Kinematics
   if (useLeggedKinematicsFlag_) {
-    subLeggedKinematics_ = privateNode.subscribe<graph_msf_anymal_msgs::AnymalState>(
+    subLeggedKinematics_ = privateNode.subscribe<holistic_fusion_anymal_msgs::AnymalState>(
         "/anymal_state_topic", ROS_QUEUE_SIZE, &AnymalEstimator::leggedKinematicsCallback_, this, ros::TransportHints().tcpNoDelay());
     REGULAR_COUT << COLOR_END << " Initialized Legged Kinematics subscriber with topic: " << subLeggedKinematics_.getTopic() << std::endl;
   }
@@ -129,10 +129,10 @@ void AnymalEstimator::initializeServices_(ros::NodeHandle& privateNode) {
 }
 
 // Offline Optimization Service
-bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
-                                                         graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
+bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                         holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Response& res) {
   // Call super class
-  bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
+  bool success = holistic_fusion::HolisticFusionRos::srvOfflineSmootherOptimizeCallback(req, res);
 
   // if GNSS is used at all, also log the reference frame
   if (gnssCallbackCounter_ > 0) {
@@ -149,7 +149,7 @@ bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Off
 
     // Write T_totalStation_totalStationOld_ to file ----------------------------
     // Get time string by finding latest directory in optimizationResultLoggingPath
-    std::string timeString = graph_msf::getLatestSubdirectory(optimizationResultLoggingPath);
+    std::string timeString = holistic_fusion::getLatestSubdirectory(optimizationResultLoggingPath);
     if (timeString.empty()) {
       REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
       return false;
@@ -158,16 +158,16 @@ bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Off
     }
     // Create file stream
     std::string transformIdentifier = "gnss_reference_lat_lon_alt";
-    graph_msf::createLatLonAltCsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString);
+    holistic_fusion::createLatLonAltCsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString);
     // Add to file
-    graph_msf::writeLatLonAltToCsvFile(fileStreams, Eigen::Vector3d(referenceLatitude, referenceLongitude, referenceAltitude),
+    holistic_fusion::writeLatLonAltToCsvFile(fileStreams, Eigen::Vector3d(referenceLatitude, referenceLongitude, referenceAltitude),
                                        transformIdentifier, ros::Time::now().toSec());
     REGULAR_COUT << " Wrote GNSS reference (latitude, longitude, altitude) coordinates to file." << std::endl;
 
     // If optional GNSS ENU coordinates are logged, write them to pose file
     if constexpr (logOptionalGnssEnuCoordinatesFlag_) {
       transformIdentifier = "gnss_enu_trajectory";
-      graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+      holistic_fusion::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
       // Iterate over all optional GNSS ENU coordinates
       int index = 0;
       for (const auto& optionalGnssEnuCoordinates : optionalGnssEnuCoordinatesTrajectory_) {
@@ -175,7 +175,7 @@ bool AnymalEstimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::Off
         Eigen::Isometry3d optionalGnssEnuCoordinatesIsometry = Eigen::Isometry3d::Identity();
         optionalGnssEnuCoordinatesIsometry.translation() = optionalGnssEnuCoordinates;
         // Add to file
-        graph_msf::writePose3ToCsvFile(fileStreams, optionalGnssEnuCoordinatesIsometry, transformIdentifier,
+        holistic_fusion::writePose3ToCsvFile(fileStreams, optionalGnssEnuCoordinatesIsometry, transformIdentifier,
                                        optionalGnssEnuCoordinatesTimeStamps_[index], false);
         index++;
       }
@@ -266,8 +266,8 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
   } else {  // Case 2: Already initialized --> Unary factor
     const std::string& gnssFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame();  // Alias
     // Measurement
-    graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
-        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+    holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
+        "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
         gnssMsgPtr->header.stamp.toSec(), gnssPositionOutlierThreshold_, W_t_W_Gnss, estStdDevXYZ, fixedFrame,
         staticTransformsPtr_->getWorldFrame());
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_Gnss);
@@ -297,7 +297,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Prepare Data
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
-  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
+  holistic_fusion::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
   double lidarUnaryTimeK = odomLidarPtr->header.stamp.toSec();
 
   if (useGnssUnaryFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
@@ -306,9 +306,9 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
 
   // Measurement
   const std::string& lioOdomFrameName = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();  // alias
-  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+  holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
+      holistic_fusion::RobustNorm::None(), lidarUnaryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, odomLidarPtr->header.frame_id,
       staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
@@ -342,7 +342,7 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
 
   // Convert
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
-  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
+  holistic_fusion::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
   // Get the time
   double lidarBetweenTimeK = odomLidarPtr->header.stamp.toSec();
 
@@ -366,9 +366,9 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
   } else if (!areYawAndPositionInited()) {  // Initializing
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_) {
       // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+          holistic_fusion::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
       this->initYawAndPosition(unary6DMeasurement);
@@ -377,9 +377,9 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
     // Compute Delta
     const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
     // Create measurement
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+    holistic_fusion::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
         "Lidar_between_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
+        holistic_fusion::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioPoseUnaryNoise_);
     // Add to graph
     this->addBinaryPose3Measurement(delta6DMeasurement);
   }
@@ -407,7 +407,7 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
 
   // Eigen Type
   Eigen::Isometry3d T_O_Bl_k = Eigen::Isometry3d::Identity();
-  graph_msf::geometryPoseToEigen(*leggedOdometryPoseKPtr, T_O_Bl_k.matrix());
+  holistic_fusion::geometryPoseToEigen(*leggedOdometryPoseKPtr, T_O_Bl_k.matrix());
   double legOdometryTimeK = leggedOdometryPoseKPtr->header.stamp.toSec();
 
   // At start
@@ -425,9 +425,9 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_) {
       // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
+          holistic_fusion::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry between callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
@@ -441,9 +441,9 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
       // Compute Delta
       const Eigen::Isometry3d T_Bkm1_Bk = T_O_Bl_km1_.inverse() * T_O_Bl_k;
       // Create measurement
-      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+      holistic_fusion::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
           "Leg_odometry_6D", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
+          holistic_fusion::RobustNorm::None(), legOdometryTimeKm1_, legOdometryTimeK, T_Bkm1_Bk, legPoseBetweenNoise_);
       // Add to graph
       this->addBinaryPose3Measurement(delta6DMeasurement);
 
@@ -466,11 +466,11 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_) {
       // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryVelocityRate_),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
+          holistic_fusion::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
           legPoseBetweenNoise_);
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
@@ -492,9 +492,9 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame();
 
       // Create the unary measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Vector3d, 3> legVelocityUnaryMeasurement(
           "LegVelocityUnary", measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, legVelocity, legVelocityUnaryNoise_);
+          holistic_fusion::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, legVelocity, legVelocityUnaryNoise_);
 
       // Add to graph
       this->addUnaryVelocity3LocalMeasurement(legVelocityUnaryMeasurement);
@@ -502,7 +502,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
   }
 }
 
-void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr) {
+void AnymalEstimator::leggedKinematicsCallback_(const holistic_fusion_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr) {
   if (!areRollAndPitchInited()) {
     return;
   }
@@ -513,11 +513,11 @@ void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::Any
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_ && !useLeggedVelocityUnaryFlag_) {
       // Measurement
-      graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedKinematicsRate_),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
           dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
-          graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
+          holistic_fusion::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
           Eigen::Matrix<double, 6, 1>::Identity());
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged kinematics callback is setting global yaw, as it was not set so far." << COLOR_END
@@ -538,7 +538,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::Any
 
       // Pose of the base in odom frame
       Eigen::Isometry3d T_O_B = Eigen::Isometry3d::Identity();
-      graph_msf::geometryPoseToEigen(anymalStatePtr->pose.pose, T_O_B.matrix());
+      holistic_fusion::geometryPoseToEigen(anymalStatePtr->pose.pose, T_O_B.matrix());
 
       // Create the unary measurement for each foot (loop unrolling with constexpr arrays) ----------------------------
       visualization_msgs::MarkerArray footContactMarkers = visualization_msgs::MarkerArray();
@@ -576,9 +576,9 @@ void AnymalEstimator::leggedKinematicsCallback_(const graph_msf_anymal_msgs::Any
 
             // Create the unary measurement with contact counter
             std::string legIdentifier = legName;
-            graph_msf::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
+            holistic_fusion::UnaryMeasurementXDLandmark<Eigen::Vector3d, 3> footContactPositionMeasurement(
                 legIdentifier, measurementRate, leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-                graph_msf::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,  // graph_msf::RobustNorm::Huber(1)
+                holistic_fusion::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, B_t_B_foot,  // holistic_fusion::RobustNorm::Huber(1)
                 legKinematicsFootPositionUnaryNoise_, staticTransformsPtr_->getWorldFrame());
 
             // Add to graph

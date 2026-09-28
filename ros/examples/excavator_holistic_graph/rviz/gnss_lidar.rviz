@@ -370,7 +370,7 @@ Visualization Manager:
           Value: true
         compslam_lio/camera_init_CORRECTED:
           Value: true
-        compslam_lio/camera_init_CORRECTED_graph_msf_aligned:
+        compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned:
           Value: true
         compslam_lio/camera_init_GRAVITY_ALIGNED:
           Value: true
@@ -384,7 +384,7 @@ Visualization Manager:
           Value: true
         livox_frame:
           Value: true
-        odom_graph_msf:
+        odom_holistic_fusion:
           Value: true
         os_imu:
           Value: true
@@ -394,7 +394,7 @@ Visualization Manager:
           Value: true
         roof_top_box:
           Value: true
-        world_graph_msf:
+        world_holistic_fusion:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -469,9 +469,9 @@ Visualization Manager:
                 RH_WHEEL:
                   RH_WHEEL_CONTACT:
                     {}
-          odom_graph_msf:
-            world_graph_msf:
-              compslam_lio/camera_init_CORRECTED_graph_msf_aligned:
+          odom_holistic_fusion:
+            world_holistic_fusion:
+              compslam_lio/camera_init_CORRECTED_holistic_fusion_aligned:
                 compslam_lio/camera_init_CORRECTED:
                   compslam_lio/aft_mapped_to_init_CORRECTED:
                     {}
@@ -562,7 +562,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measGnssL_path_world_gnssL
+      Topic: /holistic_fusion/measGnssL_path_world_gnssL
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -586,7 +586,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measGnssR_path_world_gnssR
+      Topic: /holistic_fusion/measGnssR_path_world_gnssR
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -610,7 +610,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measLiDAR_path_map_imu
+      Topic: /holistic_fusion/measLiDAR_path_map_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -634,7 +634,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_world_imu
+      Topic: /holistic_fusion/est_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -658,7 +658,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_odom_imu
+      Topic: /holistic_fusion/est_path_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -682,7 +682,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/opt_path_world_imu
+      Topic: /holistic_fusion/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -773,14 +773,14 @@ Visualization Manager:
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
         Value: Arrow
-      Topic: /graph_msf/est_odometry_odom_imu
+      Topic: /holistic_fusion/est_odometry_odom_imu
       Unreliable: false
       Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: odom_graph_msf
+    Fixed Frame: odom_holistic_fusion
     Frame Rate: 30
   Name: root
   Tools:

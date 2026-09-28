@@ -11,10 +11,10 @@ The instructions for building and running the Docker image can be found in the [
 
 **Note: This is only needed if you are not using Docker.**
 
-The two main dependencies of the `graph_msf` library are Eigen3 and GTSAM.
+The two main dependencies of the `holistic_fusion` library are Eigen3 and GTSAM.
 For running the ROS and ROS2 examples, you also need to have ROS Noetic and/or ROS2 Humble installed.
 
-#### Graph MSF Core
+#### Holistic Fusion Core
 
 ##### Eigen3
 
@@ -68,7 +68,7 @@ This is usually only needed if you you choose a non-standard (local) install dir
 ## Core Library
 
 The core library can be compile without ROS or ROS2. It is a pure C++ library that can be used in any C++ project with CMake support.
-When using the library with ROS or ROS2, we provide packages called `graph_msf_catkin` and `graph_msf_ament` that are wrapper projects exposing the functionalities to the workspace, which can be used to compile the library with the respective build system.
+When using the library with ROS or ROS2, we provide packages called `holistic_fusion_catkin` and `holistic_fusion_ament` that are wrapper projects exposing the functionalities to the workspace, which can be used to compile the library with the respective build system.
 
 To build the core library (standalone) you can simply do this using cmake:
 
@@ -76,7 +76,7 @@ To build the core library (standalone) you can simply do this using cmake:
 
 ```bash
 git clone https://github.com/leggedrobotics/holistic_fusion.git
-cd holistic_fusion/graph_msf
+cd holistic_fusion/holistic_fusion
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
@@ -84,7 +84,7 @@ make -j$(nproc)
 
 ## Catkin Workspace
 
-To use the `graph_msf` library in a ROS workspace, we provide a package called `graph_msf_catkin`.
+To use the `holistic_fusion` library in a ROS workspace, we provide a package called `holistic_fusion_catkin`.
 To install all dependencies and compile the library, you can follow these steps:
 
 1. Setting up the workspace:
@@ -108,14 +108,14 @@ cd ..
 3. Compiling the workspace:
 
 ```bash
-catkin build graph_msf_ros_examples
+catkin build holistic_fusion_ros_examples
 ```
 
-This should build 14 packages, including all ROS1 examples, the core library, the `graph_msf_catkin` package, the `graph_msf_ros` package (commodity package for the ROS examples), and the `graph_msf_ros_examples` package.
+This should build 14 packages, including all ROS1 examples, the core library, the `holistic_fusion_catkin` package, the `holistic_fusion_ros` package (commodity package for the ROS examples), and the `holistic_fusion_ros_examples` package.
 
 ## Colcon Workspace
 
-To use the `graph_msf` library in a ROS2 workspace, we provide a package called `graph_msf_ros2`.
+To use the `holistic_fusion` library in a ROS2 workspace, we provide a package called `holistic_fusion_ros2`.
 To install all dependencies and compile the library, you can follow these steps:
 
 1. Setting up the workspace:
@@ -141,4 +141,4 @@ source /opt/ros/humble/setup.bash
 colcon build --symlink-install --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCMAKE_BUILD_TYPE=Release --packages-up-to smb_estimator_graph_ros2
 ```
 
-This should build the core library, the `graph_msf_ros2` package, the `graph_msf_ros2_msgs` package, and the `smb_estimator_graph_ros2` example package.
+This should build the core library, the `holistic_fusion_ros2` package, the `holistic_fusion_ros2_msgs` package, and the `smb_estimator_graph_ros2` example package.

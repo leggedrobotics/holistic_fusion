@@ -23,9 +23,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "excavator_holistic_graph/ExcavatorStaticTransforms.h"
-#include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "holistic_fusion/gnss/GnssHandler.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion_ros/HolisticFusionRos.h"
 
 // Defined Macros
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20
@@ -34,7 +34,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace excavator_se {
 
-class ExcavatorEstimator : public graph_msf::GraphMsfRos {
+class ExcavatorEstimator : public holistic_fusion::HolisticFusionRos {
  public:
   ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
   // Destructor
@@ -54,8 +54,8 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
 
   // Publish State
   virtual void publishState(
-      const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
-      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
+      const std::shared_ptr<holistic_fusion::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+      const std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
 
  private:
   // Callbacks
@@ -91,7 +91,7 @@ class ExcavatorEstimator : public graph_msf::GraphMsfRos {
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
   // GNSS Handler
-  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
+  std::shared_ptr<holistic_fusion::GnssHandler> gnssHandlerPtr_;
 
   // Rates
   double lioOdometryRate_ = 5.0;

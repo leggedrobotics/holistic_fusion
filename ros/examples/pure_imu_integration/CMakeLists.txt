@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(pure_imu_integration)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  graph_msf_ros
+  holistic_fusion_ros
   geometry_msgs
   nav_msgs
   sensor_msgs

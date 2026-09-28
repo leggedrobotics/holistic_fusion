@@ -9,21 +9,21 @@ Please see the LICENSE file that has been included as part of this package.
 #include "imu_pose3_fuser/ImuPose3Fuser.h"
 
 // Workspace
-#include "graph_msf/config/StaticTransforms.h"
-#include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion/config/StaticTransforms.h"
+#include "holistic_fusion/measurements/BinaryMeasurementXD.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion_ros/util/conversions.h"
 #include "imu_pose3_fuser/constants.h"
 
 namespace imu_pose3_fuser {
 
-ImuPose3Fuser::ImuPose3Fuser(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+ImuPose3Fuser::ImuPose3Fuser(std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   REGULAR_COUT << GREEN_START << " ImuPose3Fuser-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
   // Static transforms
   throw std::runtime_error("Static transforms not implemented yet.");
-  // staticTransformsPtr_ = std::make_shared<graph_msf::StaticTransforms>();
+  // staticTransformsPtr_ = std::make_shared<holistic_fusion::StaticTransforms>();
 
   // Set up
   ImuPose3Fuser::setup();
@@ -36,7 +36,7 @@ void ImuPose3Fuser::setup() {
   ImuPose3Fuser::readParams(privateNode);
 
   // Super class
-  GraphMsfRos::setup(staticTransformsPtr_);
+  HolisticFusionRos::setup(staticTransformsPtr_);
 
   // Find transformations
   staticTransformsPtr_->findTransformations();
@@ -59,7 +59,7 @@ void ImuPose3Fuser::setup() {
 
 void ImuPose3Fuser::initializePublishers(ros::NodeHandle& privateNode) {
   // Paths
-  pubMeasPose3Path_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPose3_path_world_imu", ROS_QUEUE_SIZE);
+  pubMeasPose3Path_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measPose3_path_world_imu", ROS_QUEUE_SIZE);
 }
 
 void ImuPose3Fuser::initializeSubscribers(ros::NodeHandle& privateNode) {
@@ -86,14 +86,14 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
   ++odometryCallbackCounter__;
 
   Eigen::Isometry3d T_W_Ik;
-  graph_msf::odomMsgToEigen(*odomPtr, T_W_Ik.matrix());
+  holistic_fusion::odomMsgToEigen(*odomPtr, T_W_Ik.matrix());
 
   // Transform to IMU frame
   double odometryTimeK = odomPtr->header.stamp.toSec();
 
   // Measurement
-  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, graph_msf::RobustNorm::None(), odometryTimeK, 1.0,
+  holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "Pose3Unary6D", int(pose3OdometryRate_), unaryPose3Frame_, unaryPose3Frame_, holistic_fusion::RobustNorm::None(), odometryTimeK, 1.0,
       T_W_Ik, pose3UnaryNoise_, staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getWorldFrame());
 
   // Only add measurement once every second in beginning

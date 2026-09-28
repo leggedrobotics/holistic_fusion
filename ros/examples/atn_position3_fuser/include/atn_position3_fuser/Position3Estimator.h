@@ -25,10 +25,10 @@ Please see the LICENSE file that has been included as part of this package.
 #include <geometry_msgs/PointStamped.h>
 
 // Workspace
-#include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "holistic_fusion/gnss/GnssHandler.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion/trajectory_alignment/TrajectoryAlignmentHandler.h"
+#include "holistic_fusion_ros/HolisticFusionRos.h"
 
 // Defined Macros
 #define POS_COVARIANCE_VIOLATION_THRESHOLD 0.2
@@ -37,7 +37,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace position3_se {
 
-class Position3Estimator : public graph_msf::GraphMsfRos {
+class Position3Estimator : public holistic_fusion::HolisticFusionRos {
  public:
   Position3Estimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
   // Destructor
@@ -58,8 +58,8 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   void readParams(const ros::NodeHandle& privateNode) override;
 
   // Callbacks
-  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
-                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
+  bool srvOfflineSmootherOptimizeCallback(holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
 
  private:
   // Callbacks
@@ -103,7 +103,7 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   std::chrono::time_point<std::chrono::high_resolution_clock> currentTime_;
 
   // GNSS Handler
-  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
+  std::shared_ptr<holistic_fusion::GnssHandler> gnssHandlerPtr_;
 
   // Alignment Parameters
   Eigen::Matrix<double, 6, 1> initialSe3AlignmentNoise_ = 10 * Eigen::Matrix<double, 6, 1>::Ones();
@@ -111,7 +111,7 @@ class Position3Estimator : public graph_msf::GraphMsfRos {
   Eigen::Matrix<double, 6, 1> prismSe3AlignmentRandomWalk_ = 1.0 * Eigen::Matrix<double, 6, 1>::Ones();
 
   // Manual Alignment Handler
-  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+  std::shared_ptr<holistic_fusion::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
 
   // Rates
   double prismPositionRate_ = 20.0;
