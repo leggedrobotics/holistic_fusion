@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GMSF_UNARY_EXPRESSION_ABSOLUT_H
 
 // C++
+#include <mutex>
 #include <stdexcept>
 #include <string>
 

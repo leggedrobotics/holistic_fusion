@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 #ifndef GMSF_UNARY_EXPRESSION_LANDMARK_H
 #define GMSF_UNARY_EXPRESSION_LANDMARK_H
 
+// C++
+#include <mutex>
+
 // GTSAM
 #include <gtsam/base/types.h>
 
