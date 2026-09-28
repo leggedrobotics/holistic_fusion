@@ -1,0 +1,12 @@
+/**:
+  ros__parameters:
+    extrinsics:
+      worldFrame: world
+      odomFrame: odom
+      imuFrame: imu_box_link
+      baseLinkFrame: base_link
+      initializeZeroYawAndPositionOfFrame: imu_box_link
+
+    name_ids:
+      referenceFrameAligned: _holistic_fusion_aligned
+      sensorFrameCorrected: _holistic_fusion_corrected

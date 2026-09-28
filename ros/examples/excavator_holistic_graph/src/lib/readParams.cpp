@@ -9,7 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "excavator_holistic_graph/ExcavatorEstimator.h"
 
 // Workspace
-#include "graph_msf_ros/ros/read_ros_params.h"
+#include "holistic_fusion_ros/ros/read_ros_params.h"
 
 namespace excavator_se {
 
@@ -22,58 +22,58 @@ void ExcavatorEstimator::readParams(const ros::NodeHandle& privateNode) {
 
   // Set frames ----------------------------
   /// LiDAR frame
-  std::string frame = graph_msf::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
+  std::string frame = holistic_fusion::tryGetParam<std::string>("extrinsics/lidarFrame", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLioOdometryFrame(frame);
   /// Cabin frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/cabinFrame", privateNode);
+  frame = holistic_fusion::tryGetParam<std::string>("extrinsics/cabinFrame", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setCabinFrame(frame);
   /// Left Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame1", privateNode);
+  frame = holistic_fusion::tryGetParam<std::string>("extrinsics/gnssFrame1", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setLeftGnssFrame(frame);
   /// Right Gnss frame
-  frame = graph_msf::tryGetParam<std::string>("extrinsics/gnssFrame2", privateNode);
+  frame = holistic_fusion::tryGetParam<std::string>("extrinsics/gnssFrame2", privateNode);
   dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->setRightGnssFrame(frame);
 
   // Sensor Parameters ----------------------------
-  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
-  gnssRate_ = graph_msf::tryGetParam<double>("sensor_params/gnssRate", privateNode);
+  lioOdometryRate_ = holistic_fusion::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
+  gnssRate_ = holistic_fusion::tryGetParam<double>("sensor_params/gnssRate", privateNode);
 
   // Alignment Parameters ----------------------------
   /// Initial Se3 Alignment
   auto initialSe3AlignmentStdDev =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
+      holistic_fusion::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
   initialSe3AlignmentStdDev_ << initialSe3AlignmentStdDev[0], initialSe3AlignmentStdDev[1],
       initialSe3AlignmentStdDev[2], initialSe3AlignmentStdDev[3], initialSe3AlignmentStdDev[4],
       initialSe3AlignmentStdDev[5];
   ///
-  auto lioSe3AlignmentRandomWalk = graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
+  auto lioSe3AlignmentRandomWalk = holistic_fusion::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
 
   /// Noise Parameters ----
   /// LiDAR Odometry
   const auto lioPoseUnaryNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
+      holistic_fusion::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << lioPoseUnaryNoise[0], lioPoseUnaryNoise[1], lioPoseUnaryNoise[2], lioPoseUnaryNoise[3], lioPoseUnaryNoise[4],
       lioPoseUnaryNoise[5];
   /// Gnss
-  gnssPositionUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssPositionUnaryNoiseDensity", privateNode);
-  gnssHeadingUnaryNoise_ = graph_msf::tryGetParam<double>("noise_params/gnssHeadingUnaryNoiseDensity", privateNode);
+  gnssPositionUnaryNoise_ = holistic_fusion::tryGetParam<double>("noise_params/gnssPositionUnaryNoiseDensity", privateNode);
+  gnssHeadingUnaryNoise_ = holistic_fusion::tryGetParam<double>("noise_params/gnssHeadingUnaryNoiseDensity", privateNode);
 
   // Launch Parameters
   /// LiDAR Odometry
-  useLioOdometryFlag_ = graph_msf::tryGetParam<bool>("launch/useLioOdometry", privateNode);
-  useLeftGnssFlag_ = graph_msf::tryGetParam<bool>("launch/useLeftGnss", privateNode);
-  useRightGnssFlag_ = graph_msf::tryGetParam<bool>("launch/useRightGnss", privateNode);
+  useLioOdometryFlag_ = holistic_fusion::tryGetParam<bool>("launch/useLioOdometry", privateNode);
+  useLeftGnssFlag_ = holistic_fusion::tryGetParam<bool>("launch/useLeftGnss", privateNode);
+  useRightGnssFlag_ = holistic_fusion::tryGetParam<bool>("launch/useRightGnss", privateNode);
 
   // GNSS Parameters
   if (useLeftGnssFlag_ || useRightGnssFlag_) {
     // Gnss parameters
-    gnssHandlerPtr_->setUseGnssReferenceFlag(graph_msf::tryGetParam<bool>("gnss/useGnssReference", privateNode));
-    gnssHandlerPtr_->setGnssReferenceLatitude(graph_msf::tryGetParam<double>("gnss/referenceLatitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceLongitude(graph_msf::tryGetParam<double>("gnss/referenceLongitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceAltitude(graph_msf::tryGetParam<double>("gnss/referenceAltitude", privateNode));
-    gnssHandlerPtr_->setGnssReferenceHeading(graph_msf::tryGetParam<double>("gnss/referenceHeading", privateNode));
+    gnssHandlerPtr_->setUseGnssReferenceFlag(holistic_fusion::tryGetParam<bool>("gnss/useGnssReference", privateNode));
+    gnssHandlerPtr_->setGnssReferenceLatitude(holistic_fusion::tryGetParam<double>("gnss/referenceLatitude", privateNode));
+    gnssHandlerPtr_->setGnssReferenceLongitude(holistic_fusion::tryGetParam<double>("gnss/referenceLongitude", privateNode));
+    gnssHandlerPtr_->setGnssReferenceAltitude(holistic_fusion::tryGetParam<double>("gnss/referenceAltitude", privateNode));
+    gnssHandlerPtr_->setGnssReferenceHeading(holistic_fusion::tryGetParam<double>("gnss/referenceHeading", privateNode));
   }
 }
 

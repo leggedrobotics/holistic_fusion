@@ -81,6 +81,6 @@
     </node>
 
     <!-- TF for Aligning Compslam Map 
-    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_o3d map_graph_msf_ 10" />-->
+    <node pkg="tf" type="static_transform_publisher" name="compslam_map_to_gmsf_map" args="0 0 0 0 0 0 map_o3d map_holistic_fusion_ 10" />-->
 
 </launch>

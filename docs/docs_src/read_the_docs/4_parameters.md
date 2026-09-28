@@ -1,6 +1,6 @@
 # Parameters
 
-The parameters of the `graph_msf` library are split in two parts: the parameters of the core library and the parameters of the ROS/ROS2 wrapper packages / downstream applications.
+The parameters of the `holistic_fusion` library are split in two parts: the parameters of the core library and the parameters of the ROS/ROS2 wrapper packages / downstream applications.
 
 All parameters are provided as YAML files. An example for a ROS1 application is provided in each of the example packages in the [ROS1 examples](https://github.com/leggedrobotics/holistic_fusion/tree/main/ros).
 
@@ -20,8 +20,8 @@ Coming soon.
 Coming soon.
 
 ### Core Graph Parameters
-```{include} ../../../graph_msf/CONFIGURATION.md
-:start-after: GraphMSF configuration
+```{include} ../../../holistic_fusion/CONFIGURATION.md
+:start-after: HolisticFusion configuration
 :heading-offset: 2
 ```
 

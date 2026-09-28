@@ -12,12 +12,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <ros/ros.h>
 
 // Workspace
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 namespace position3_se {
 
 Position3StaticTransforms::Position3StaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr, bool usePrism, bool useGnss)
-    : graph_msf::StaticTransformsTf() {
+    : holistic_fusion::StaticTransformsTf() {
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 
   // Set Bools
@@ -47,7 +47,7 @@ bool Position3StaticTransforms::findTransformations() {
     listener_.lookupTransform(imuFrame_, prismPositionMeasFrame_, ros::Time(0), transform);
 
     // I_Prism
-    graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, prismPositionMeasFrame_));
+    holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, prismPositionMeasFrame_));
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Prism: " << std::endl
               << rv_T_frame1_frame2(imuFrame_, prismPositionMeasFrame_).translation() << std::endl;
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Prism: " << std::endl
@@ -62,7 +62,7 @@ bool Position3StaticTransforms::findTransformations() {
     listener_.lookupTransform(imuFrame_, gnssPositionMeasFrame_, ros::Time(0), transform);
 
     // I_Gnss1
-    graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_));
+    holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_));
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Gnss: " << std::endl
               << rv_T_frame1_frame2(imuFrame_, gnssPositionMeasFrame_).translation() << std::endl;
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Gnss: " << std::endl
@@ -77,7 +77,7 @@ bool Position3StaticTransforms::findTransformations() {
     listener_.lookupTransform(imuFrame_, gnssOfflinePoseMeasFrame_, ros::Time(0), transform);
 
     // I_Gnss2
-    graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_));
+    holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_));
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Translation I_Gnss2: " << std::endl
               << rv_T_frame1_frame2(imuFrame_, gnssOfflinePoseMeasFrame_).translation() << std::endl;
     std::cout << YELLOW_START << "PositionEstimator" << COLOR_END << " Rotation I_Gnss2: " << std::endl
@@ -90,7 +90,7 @@ bool Position3StaticTransforms::findTransformations() {
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 
   // Call parent class
-  graph_msf::StaticTransformsTf::findTransformations();
+  holistic_fusion::StaticTransformsTf::findTransformations();
   return true;
 }
 

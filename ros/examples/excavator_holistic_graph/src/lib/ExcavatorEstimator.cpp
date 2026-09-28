@@ -13,13 +13,13 @@ Please see the LICENSE file that has been included as part of this package.
 #include "excavator_holistic_graph/constants.h"
 
 // Workspace
-#include "graph_msf/measurements/BinaryMeasurementXD.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion/measurements/BinaryMeasurementXD.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 namespace excavator_se {
 
-ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   REGULAR_COUT << " ExcavatorEstimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -27,7 +27,7 @@ ExcavatorEstimator::ExcavatorEstimator(std::shared_ptr<ros::NodeHandle> privateN
   staticTransformsPtr_ = std::make_shared<ExcavatorStaticTransforms>(privateNodePtr);
 
   // GNSS Handler
-  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  gnssHandlerPtr_ = std::make_shared<holistic_fusion::GnssHandler>();
 
   // Setup
   ExcavatorEstimator::setup();
@@ -40,7 +40,7 @@ void ExcavatorEstimator::setup() {
   ExcavatorEstimator::readParams(privateNode);
 
   // Super class
-  graph_msf::GraphMsfRos::setup(staticTransformsPtr_);
+  holistic_fusion::HolisticFusionRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   ExcavatorEstimator::initializePublishers(privateNode);
@@ -60,9 +60,9 @@ void ExcavatorEstimator::initializePublishers(ros::NodeHandle& privateNode) {
   REGULAR_COUT << GREEN_START << " Initializing Publishers..." << COLOR_END << std::endl;
 
   // Paths
-  pubMeasWorldGnssLPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measGnssL_path_world_gnssL", ROS_QUEUE_SIZE);
-  pubMeasWorldGnssRPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measGnssR_path_world_gnssR", ROS_QUEUE_SIZE);
-  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssLPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measGnssL_path_world_gnssL", ROS_QUEUE_SIZE);
+  pubMeasWorldGnssRPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measGnssR_path_world_gnssR", ROS_QUEUE_SIZE);
+  pubMeasMapLioPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measLiDAR_path_map_imu", ROS_QUEUE_SIZE);
 }
 
 void ExcavatorEstimator::initializeSubscribers(ros::NodeHandle& privateNode) {
@@ -104,7 +104,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   ++lidarOdometryCallbackCounter__;
 
   Eigen::Isometry3d lio_T_M_Lk;
-  graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
+  holistic_fusion::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
 
   // Transform to IMU frame
   double lidarOdometryTimeK = odomLidarPtr->header.stamp.toSec();
@@ -114,8 +114,8 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
   const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLioOdometryFrame();
   const std::string& fixedFrameName = odomLidarPtr->header.frame_id;
   // Measurement
-  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+  holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "LioUnary6D", int(lioOdometryRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
       lidarOdometryTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_, fixedFrameName, staticTransformsPtr_->getWorldFrame(),
       initialSe3AlignmentStdDev_, lioSe3AlignmentRandomWalk_);
 
@@ -195,8 +195,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       const std::string& sensorFrameName = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame();
       // Create yaw measurement and add it
       Eigen::Matrix<double, 1, 1> gnssHeadingUnaryNoise(std::max(5.0 * leftGnssCovarianceXYZ.maxCoeff(), gnssHeadingUnaryNoise_));
-      graph_msf::UnaryMeasurementXDAbsolute<double, 1> meas_yaw_W_C(
-          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+      holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> meas_yaw_W_C(
+          "GnssYaw", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
           leftGnssMsgPtr->header.stamp.toSec(), 1.0, yaw_W_C, gnssHeadingUnaryNoise, fixedFrameName, staticTransformsPtr_->getWorldFrame());
       this->addUnaryYawAbsoluteMeasurement(meas_yaw_W_C);
     }
@@ -208,8 +208,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       leftGnssCovarianceXYZ = Eigen::Vector3d(std::max(leftGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                               std::max(leftGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-      graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
-          "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+      holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssL(
+          "GnssLeftPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
           leftGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssL, leftGnssCovarianceXYZ, fixedFrameName,
           staticTransformsPtr_->getWorldFrame());
       this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssL);
@@ -222,8 +222,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
       rightGnssCovarianceXYZ = Eigen::Vector3d(std::max(rightGnssCovarianceXYZ(0), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(1), gnssPositionUnaryNoise_),
                                                std::max(rightGnssCovarianceXYZ(2), gnssPositionUnaryNoise_));
-      graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
-          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+      holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_GnssR(
+          "GnssRightPosition", int(gnssRate_), sensorFrameName, sensorFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
           rightGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssR, rightGnssCovarianceXYZ, fixedFrameName,
           staticTransformsPtr_->getWorldFrame());
       this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_GnssR);
@@ -245,8 +245,8 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 }
 
 void ExcavatorEstimator::publishState(
-    const std::shared_ptr<graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
-    const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+    const std::shared_ptr<holistic_fusion::SafeIntegratedNavState>& preIntegratedNavStatePtr,
+    const std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
   // Lookup I->B, also influenced by rotation of cabin
   static tf::StampedTransform transform_I_B;
   tfListener_.waitForTransform(staticTransformsPtr_->getImuFrame(),
@@ -256,14 +256,14 @@ void ExcavatorEstimator::publishState(
                               dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(), ros::Time(0),
                               transform_I_B);
   // Update Imu->Base transformation
-  graph_msf::tfToIsometry3(transform_I_B, staticTransformsPtr_->lv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
+  holistic_fusion::tfToIsometry3(transform_I_B, staticTransformsPtr_->lv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(),
                                                                                    staticTransformsPtr_->getBaseLinkFrame()));
   // Updaate Base->Imu transformation
   staticTransformsPtr_->lv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getBaseLinkFrame()).inverse();
 
   // Publish state
-  graph_msf::GraphMsfRos::publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  holistic_fusion::HolisticFusionRos::publishState(preIntegratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
 }
 
 }  // namespace excavator_se

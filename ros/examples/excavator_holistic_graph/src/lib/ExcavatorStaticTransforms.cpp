@@ -12,12 +12,12 @@ Please see the LICENSE file that has been included as part of this package.
 #include <ros/ros.h>
 
 // Workspace
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 namespace excavator_se {
 
 ExcavatorStaticTransforms::ExcavatorStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr)
-    : graph_msf::StaticTransformsTf() {
+    : holistic_fusion::StaticTransformsTf() {
   std::cout << YELLOW_START << "StaticTransformsTf" << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
@@ -41,7 +41,7 @@ bool ExcavatorStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, cabinFrame_, ros::Time(0), ros::Duration(100.0));
   listener_.lookupTransform(imuFrame_, cabinFrame_, ros::Time(0), transform);
   // I_Cabin
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, cabinFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, cabinFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
             << " Translation I_Cabin: " << rv_T_frame1_frame2(imuFrame_, cabinFrame_).translation() << std::endl;
   // Cabin_I
@@ -51,7 +51,7 @@ bool ExcavatorStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, baseLinkFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, baseLinkFrame_, ros::Time(0), transform);
   // I_Cabin
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, baseLinkFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
             << " Translation I_Base: " << rv_T_frame1_frame2(imuFrame_, baseLinkFrame_).translation() << std::endl;
   // Cabin_I
@@ -62,7 +62,7 @@ bool ExcavatorStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, lidarFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, lidarFrame_, ros::Time(0), transform);
   // I_Lidar
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lidarFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
             << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lidarFrame_).translation() << std::endl;
   // Lidar_I
@@ -72,7 +72,7 @@ bool ExcavatorStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, leftGnssFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, leftGnssFrame_, ros::Time(0), transform);
   // I_GnssL
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, leftGnssFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, leftGnssFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
             << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, leftGnssFrame_).translation() << std::endl;
   // GnssL_I
@@ -82,7 +82,7 @@ bool ExcavatorStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, rightGnssFrame_, ros::Time(0), ros::Duration(1.0));
   listener_.lookupTransform(imuFrame_, rightGnssFrame_, ros::Time(0), transform);
   // I_GnssR
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, rightGnssFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, rightGnssFrame_));
   std::cout << YELLOW_START << "CompslamEstimator" << COLOR_END
             << " Translation I_GnssR: " << rv_T_frame1_frame2(imuFrame_, rightGnssFrame_).translation() << std::endl;
   // GnssL_I

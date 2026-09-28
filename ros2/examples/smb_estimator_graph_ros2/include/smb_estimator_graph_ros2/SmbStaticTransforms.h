@@ -8,13 +8,13 @@ Please see the LICENSE file that has been included as part of this package.
 #pragma once
 
 // Workspace
-#include <graph_msf_ros2/extrinsics/StaticTransformsTf.h>
+#include <holistic_fusion_ros2/extrinsics/StaticTransformsTf.h>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 
 namespace smb_se {
 
-class SmbStaticTransforms : public graph_msf::StaticTransformsTf {
+class SmbStaticTransforms : public holistic_fusion::StaticTransformsTf {
  public:
   SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr);
 

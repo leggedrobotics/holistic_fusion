@@ -19,7 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <tf/transform_listener.h>
 
 // Workspace
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "holistic_fusion_ros/HolisticFusionRos.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -27,7 +27,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-class SmbEstimator : public graph_msf::GraphMsfRos {
+class SmbEstimator : public holistic_fusion::HolisticFusionRos {
  public:
   SmbEstimator(std::shared_ptr<ros::NodeHandle> privateNodePtr);
   // Destructor

@@ -9,11 +9,11 @@ Please see the LICENSE file that has been included as part of this package.
 #define POSITION3_STATIC_TRANSFORMS_H
 
 // Workspace
-#include "graph_msf_ros/extrinsics/StaticTransformsTf.h"
+#include "holistic_fusion_ros/extrinsics/StaticTransformsTf.h"
 
 namespace position3_se {
 
-class Position3StaticTransforms : public graph_msf::StaticTransformsTf {
+class Position3StaticTransforms : public holistic_fusion::StaticTransformsTf {
  public:
   Position3StaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr, bool usePrism, bool useGnss);
 

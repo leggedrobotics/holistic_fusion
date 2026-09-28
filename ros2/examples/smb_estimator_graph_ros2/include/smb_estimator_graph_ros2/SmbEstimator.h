@@ -21,7 +21,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <std_msgs/msg/float64_multi_array.hpp>
 
 // Workspace
-#include "graph_msf_ros2/GraphMsfRos2.h"
+#include "holistic_fusion_ros2/HolisticFusionRos2.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 100
@@ -29,7 +29,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace smb_se {
 
-class SmbEstimator : public graph_msf::GraphMsfRos2 {
+class SmbEstimator : public holistic_fusion::HolisticFusionRos2 {
  public:
   explicit SmbEstimator(const std::string& nodeName, const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 

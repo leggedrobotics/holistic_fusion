@@ -23,14 +23,14 @@ endif ()
 
 # Catkin dependencies -------------------------------------------------------------------------------------------------
 set(CATKIN_PACKAGE_DEPENDENCIES
-        graph_msf_ros
-        graph_msf_ros_msgs
+        holistic_fusion_ros
+        holistic_fusion_ros_msgs
         nav_msgs
         sensor_msgs
         roscpp
         std_msgs
         tf
-        graph_msf_anymal_msgs
+        holistic_fusion_anymal_msgs
 )
 
 # CMAKE dependencies --------------------------------------------------------------------------------

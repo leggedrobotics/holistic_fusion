@@ -26,20 +26,20 @@ Please see the LICENSE file that has been included as part of this package.
 #include <visualization_msgs/MarkerArray.h>
 
 // Custom Messages
-#include "graph_msf_anymal_msgs/AnymalState.h"
+#include "holistic_fusion_anymal_msgs/AnymalState.h"
 
 // Workspace
-#include "graph_msf/gnss/GnssHandler.h"
-#include "graph_msf/measurements/UnaryMeasurementXD.h"
-#include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
-#include "graph_msf_ros/GraphMsfRos.h"
+#include "holistic_fusion/gnss/GnssHandler.h"
+#include "holistic_fusion/measurements/UnaryMeasurementXD.h"
+#include "holistic_fusion/trajectory_alignment/TrajectoryAlignmentHandler.h"
+#include "holistic_fusion_ros/HolisticFusionRos.h"
 
 // Defined Macros
 #define NUM_GNSS_CALLBACKS_UNTIL_START 20
 
 namespace anymal_se {
 
-class AnymalEstimator : public graph_msf::GraphMsfRos {
+class AnymalEstimator : public holistic_fusion::HolisticFusionRos {
  public:
   AnymalEstimator(const std::shared_ptr<ros::NodeHandle>& privateNodePtr);
   // Destructor
@@ -59,8 +59,8 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   void readParams(const ros::NodeHandle& privateNode) override;
 
   // Callbacks
-  bool srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
-                                          graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
+  bool srvOfflineSmootherOptimizeCallback(holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                          holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Response& res) override;
 
  private:
   // Callbacks
@@ -72,13 +72,13 @@ class AnymalEstimator : public graph_msf::GraphMsfRos {
   // Legged
   void leggedBetweenCallback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& leggedOdometryPoseKPtr);
   void leggedVelocityUnaryCallback_(const nav_msgs::Odometry::ConstPtr& leggedOdometryKPtr);
-  void leggedKinematicsCallback_(const graph_msf_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
+  void leggedKinematicsCallback_(const holistic_fusion_anymal_msgs::AnymalState::ConstPtr& anymalStatePtr);
 
   // GNSS Handler
-  std::shared_ptr<graph_msf::GnssHandler> gnssHandlerPtr_;
+  std::shared_ptr<holistic_fusion::GnssHandler> gnssHandlerPtr_;
 
   // TrajectoryAlignment Handler
-  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
+  std::shared_ptr<holistic_fusion::TrajectoryAlignmentHandler> trajectoryAlignmentHandler_;
 
   // Time
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime_;

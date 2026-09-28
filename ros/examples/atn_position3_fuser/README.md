@@ -4,7 +4,7 @@
 # Installation
 Install [ROS noetic](https://wiki.ros.org/noetic/Installation/Ubuntu).
 
-Install gtsam & graph_msf by following [these installation instructions](https://leggedrobotics.github.io/holistic_fusion/docs/1_installation.html).
+Install gtsam & holistic_fusion by following [these installation instructions](https://leggedrobotics.github.io/holistic_fusion/docs/1_installation.html).
 This package is part of the [holistic_fusion](https://github.com/leggedrobotics/holistic_fusion) repository (`ros/examples/atn_position3_fuser`).
 ```
 mkdir catkin_ws
@@ -35,5 +35,5 @@ rosrun atn_leica_timesync atn_leica_timesync_node
 | Package         | Description                     | Link                                                           |
 | --------------- | ------------------------------- | -------------------------------------------------------------- |
 | atn_leica_timesync| Timesynchronization of total station & system clock | [atn_leica_timesync](https://github.com/aithon-robotics/atn_leica_timesync)         |
-| graph_msf        | Factor graph framework this package is based on     | [holistic_fusion](https://github.com/leggedrobotics/holistic_fusion) |
+| holistic_fusion        | Factor graph framework this package is based on     | [holistic_fusion](https://github.com/leggedrobotics/holistic_fusion) |
 

@@ -69,9 +69,9 @@ Visualization Manager:
           Value: true
         odom:
           Value: true
-        odom_graph_msf:
+        odom_holistic_fusion:
           Value: true
-        odom_graph_msf_aligned:
+        odom_holistic_fusion_aligned:
           Value: true
         rgb_camera_link:
           Value: true
@@ -85,7 +85,7 @@ Visualization Manager:
           Value: true
         tracking_camera_pose_frame:
           Value: true
-        world_graph_msf:
+        world_holistic_fusion:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -104,9 +104,9 @@ Visualization Manager:
                 {}
             lidar_mount_link:
               {}
-            odom_graph_msf:
-              world_graph_msf:
-                odom_graph_msf_aligned:
+            odom_holistic_fusion:
+              world_holistic_fusion:
+                odom_holistic_fusion_aligned:
                   {}
             rgb_camera_link:
               rgb_camera_optical_link:
@@ -157,7 +157,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/est_odometry_odom_imu
+        Value: /holistic_fusion/est_odometry_odom_imu
       Value: false
     - Alpha: 1
       Buffer Length: 1
@@ -185,7 +185,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/est_path_odom_imu
+        Value: /holistic_fusion/est_path_odom_imu
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -213,7 +213,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/est_path_world_imu
+        Value: /holistic_fusion/est_path_world_imu
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -241,7 +241,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/measLiDAR_path_map_imu
+        Value: /holistic_fusion/measLiDAR_path_map_imu
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -269,7 +269,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/opt_path_world_imu
+        Value: /holistic_fusion/opt_path_world_imu
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
@@ -380,7 +380,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph_msf/velocity_marker
+        Value: /holistic_fusion/velocity_marker
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -418,7 +418,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom_graph_msf
+    Fixed Frame: odom_holistic_fusion
     Frame Rate: 30
   Name: root
   Tools:

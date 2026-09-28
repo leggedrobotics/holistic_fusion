@@ -6,21 +6,21 @@ Moreover, we provide catkin and ament/colcon wrapper packages to conveniently us
 
 ## ROS1 Workspace
 
-For using `graph_msf` in a ROS1 workspace, we provide a package called `graph_msf_catkin`.
-This package is exposing all `graph_msf` functionalities to the workspace, which can be used to compile the library with the catkin build system.
-To use `graph_msf` in a ROS1 workspace, you can directly include the `graph_msf_catkin` in you `package.xml` and `CMakeLists.txt` files as follows:
+For using `holistic_fusion` in a ROS1 workspace, we provide a package called `holistic_fusion_catkin`.
+This package is exposing all `holistic_fusion` functionalities to the workspace, which can be used to compile the library with the catkin build system.
+To use `holistic_fusion` in a ROS1 workspace, you can directly include the `holistic_fusion_catkin` in you `package.xml` and `CMakeLists.txt` files as follows:
 
 Package.xml:
 ```xml
-<build_depend>graph_msf_catkin</build_depend>
-<exec_depend>graph_msf_catkin</exec_depend>
+<build_depend>holistic_fusion_catkin</build_depend>
+<exec_depend>holistic_fusion_catkin</exec_depend>
 ```
 
 CMakeLists.txt:
 ```cmake
 # Set the dependencies for your package
 set(CATKIN_PACKAGE_DEPENDENCIES
-        graph_msf_catkin
+        holistic_fusion_catkin
         # Add other dependencies here
 )
 
@@ -45,20 +45,20 @@ include_directories(
         # Add other include directories here
 )
 
-# Link against graph_msf and its dependencies
+# Link against holistic_fusion and its dependencies
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 ```
 
 ## ROS2 Workspace
-For using `graph_msf` in a ROS2 workspace, we provide a package called `graph_msf_ros2`.
-This package is exposing all `graph_msf` functionalities to the workspace, which can be used to compile the library with the ament/colcon build system.
-To use `graph_msf` in a ROS2 workspace, you can directly include `graph_msf_ros2` in your `package.xml` and `CMakeLists.txt` files as follows:
+For using `holistic_fusion` in a ROS2 workspace, we provide a package called `holistic_fusion_ros2`.
+This package is exposing all `holistic_fusion` functionalities to the workspace, which can be used to compile the library with the ament/colcon build system.
+To use `holistic_fusion` in a ROS2 workspace, you can directly include `holistic_fusion_ros2` in your `package.xml` and `CMakeLists.txt` files as follows:
 
 Package.xml:
 ```xml
-<depend>graph_msf</depend>
-<depend>graph_msf_ros2</depend>
+<depend>holistic_fusion</depend>
+<depend>holistic_fusion_ros2</depend>
 ```
 
 CMakeLists.txt:
@@ -66,14 +66,14 @@ CMakeLists.txt:
 # Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(graph_msf_ros2 REQUIRED)
+find_package(holistic_fusion_ros2 REQUIRED)
 
-# Check if the target from graph_msf is already defined
-if(NOT TARGET graph_msf::graph_msf)
-  find_package(graph_msf REQUIRED)
+# Check if the target from holistic_fusion is already defined
+if(NOT TARGET holistic_fusion::holistic_fusion)
+  find_package(holistic_fusion REQUIRED)
 endif()
-if(NOT TARGET graph_msf_ros2::graph_msf_ros2)
-  find_package(graph_msf_ros2 REQUIRED)
+if(NOT TARGET holistic_fusion_ros2::holistic_fusion_ros2)
+  find_package(holistic_fusion_ros2 REQUIRED)
 endif()
 
 # Includes
@@ -87,14 +87,14 @@ add_library(${PROJECT_NAME}
   # Add your source files here
 )
 
-# Link against graph_msf and its dependencies
+# Link against holistic_fusion and its dependencies
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
-  graph_msf_ros2
+  holistic_fusion_ros2
   # Add other dependencies here
 )
 target_link_libraries(${PROJECT_NAME}
-  graph_msf::graph_msf
+  holistic_fusion::holistic_fusion
 )
 
 # Install

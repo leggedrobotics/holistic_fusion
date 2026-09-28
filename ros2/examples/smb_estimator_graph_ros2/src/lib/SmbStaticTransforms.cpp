@@ -14,19 +14,19 @@ Please see the LICENSE file that has been included as part of this package.
 #include <rclcpp/rclcpp.hpp>
 
 // Workspace
-#include "graph_msf_ros2/util/conversions.h"
+#include "holistic_fusion_ros2/util/conversions.h"
 #include "smb_estimator_graph_ros2/constants.h"
 
 namespace smb_se {
 
-SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr) : graph_msf::StaticTransformsTf(nodePtr) {
+SmbStaticTransforms::SmbStaticTransforms(const std::shared_ptr<rclcpp::Node>& nodePtr) : holistic_fusion::StaticTransformsTf(nodePtr) {
   REGULAR_COUT << GREEN_START << " Initializing smb static transforms..." << COLOR_END << std::endl;
 }
 
 bool SmbStaticTransforms::findTransformations() {
   // Super Method
   // Need to find the transformations in the TF-tree
-  if (!graph_msf::StaticTransformsTf::findTransformations()) {
+  if (!holistic_fusion::StaticTransformsTf::findTransformations()) {
     REGULAR_COUT << RED_START << " Failed to find transformations in TF-tree." << COLOR_END << std::endl;
     return false;
   }

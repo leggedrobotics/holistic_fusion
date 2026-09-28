@@ -83,7 +83,7 @@ Visualization Manager:
         Shaft Length: 0.10000000149011612
         Shaft Radius: 0.05000000074505806
         Value: Axes
-      Topic: /graph_msf/est_odometry_odom_imu
+      Topic: /holistic_fusion/est_odometry_odom_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -107,7 +107,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/opt_path_world_imu
+      Topic: /holistic_fusion/opt_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -131,7 +131,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_world_imu
+      Topic: /holistic_fusion/est_path_world_imu
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -155,7 +155,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/est_path_odom_imu
+      Topic: /holistic_fusion/est_path_odom_imu
       Unreliable: false
       Value: true
     - Class: rviz/TF
@@ -346,7 +346,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measPosition_path_world_prism
+      Topic: /holistic_fusion/measPosition_path_world_prism
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -370,7 +370,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measPosition_path_world_gnss
+      Topic: /holistic_fusion/measPosition_path_world_gnss
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -394,7 +394,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /graph_msf/measPosition_path_world_gnss_offline_pose
+      Topic: /holistic_fusion/measPosition_path_world_gnss_offline_pose
       Unreliable: false
       Value: true
     - Alpha: 1

@@ -14,14 +14,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "anymal_estimator_graph/constants.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 // Macro Constant
 #define TF_WAIT_TIME 30.0
 
 namespace anymal_se {
 
-AnymalStaticTransforms::AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::StaticTransformsTf() {
+AnymalStaticTransforms::AnymalStaticTransforms(const std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::StaticTransformsTf() {
   REGULAR_COUT << GREEN_START << " Initializing static transforms..." << COLOR_END << std::endl;
 }
 
@@ -45,7 +45,7 @@ bool AnymalStaticTransforms::findTransformations() {
   listener_.waitForTransform(imuFrame_, lioOdometryFrame_, ros::Time(0), ros::Duration(TF_WAIT_TIME));
   listener_.lookupTransform(imuFrame_, lioOdometryFrame_, ros::Time(0), transform);
   // I_Lidar
-  graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lioOdometryFrame_));
+  holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, lioOdometryFrame_));
   REGULAR_COUT << " Translation I_Lidar: " << rv_T_frame1_frame2(imuFrame_, lioOdometryFrame_).translation() << std::endl;
   // Lidar_I
   lv_T_frame1_frame2(lioOdometryFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, lioOdometryFrame_).inverse();
@@ -56,7 +56,7 @@ bool AnymalStaticTransforms::findTransformations() {
     listener_.waitForTransform(imuFrame_, gnssFrame_, ros::Time(0), ros::Duration(TF_WAIT_TIME));
     listener_.lookupTransform(imuFrame_, gnssFrame_, ros::Time(0), transform);
     // I_Gnss
-    graph_msf::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
+    holistic_fusion::tfToIsometry3(tf::Transform(transform), lv_T_frame1_frame2(imuFrame_, gnssFrame_));
     REGULAR_COUT << " Translation I_GnssL: " << rv_T_frame1_frame2(imuFrame_, gnssFrame_).translation() << std::endl;
     // GnssL_I
     lv_T_frame1_frame2(gnssFrame_, imuFrame_) = rv_T_frame1_frame2(imuFrame_, gnssFrame_).inverse();
@@ -67,7 +67,7 @@ bool AnymalStaticTransforms::findTransformations() {
   REGULAR_COUT << GREEN_START << " Transforms looked up successfully." << COLOR_END << std::endl;
 
   // Call parent class
-  graph_msf::StaticTransformsTf::findTransformations();
+  holistic_fusion::StaticTransformsTf::findTransformations();
   return true;
 }
 

@@ -13,7 +13,7 @@
     <arg name="pointcloud_topic_name"
          default="/point_cloud_filter/lidar/point_cloud_filtered"/> <!-- /lidar/point_cloud -->
     <!--    <arg name="assumed_external_odometry_tracked_frame" default="imu_link"/>-->
-    <!--    <arg name="o3d_prior_odometry_topic" default="/graph_msf/est_odometry_world_imu"/>-->
+    <!--    <arg name="o3d_prior_odometry_topic" default="/holistic_fusion/est_odometry_world_imu"/>-->
     <arg name="assumed_external_odometry_tracked_frame" default="base"/>
     <arg name="o3d_prior_odometry_topic" default="/state_estimator/odometry"/>
 

@@ -83,7 +83,7 @@ RUN mkdir -p /holistic_fusion_prebuilt/holistic_fusion/src \
  && /bin/bash -c "source /opt/ros/noetic/setup.bash \
     && catkin init \
     && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
-    && catkin build graph_msf_ros_examples" \
+    && catkin build holistic_fusion_ros_examples" \
  && chmod -R ugo+rwx /holistic_fusion_prebuilt
 
 # ----------------------------------------------------------------------------

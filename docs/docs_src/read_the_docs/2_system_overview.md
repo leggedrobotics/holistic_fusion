@@ -7,9 +7,9 @@ communication layer (ROS1 / ROS2). This allows the core library to be used indep
 
 The system consists of three main layers:
 
-1. **Core Library (`graph_msf`)**: Pure C++ library depending on Eigen and GTSAM. Contains the factor graph, state
+1. **Core Library (`holistic_fusion`)**: Pure C++ library depending on Eigen and GTSAM. Contains the factor graph, state
    management, and all measurement handling logic.
-2. **Communication Wrappers (`graph_msf_ros` / `graph_msf_ros2`)**: ROS1 and ROS2 wrapper classes that handle
+2. **Communication Wrappers (`holistic_fusion_ros` / `holistic_fusion_ros2`)**: ROS1 and ROS2 wrapper classes that handle
    subscribers, publishers, TF broadcasting, and parameter loading.
 3. **Application Examples**: Robot-specific implementations (e.g., ANYmal, SMB, Excavator) that inherit from the
    respective communication wrapper.
@@ -18,7 +18,7 @@ The system consists of three main layers:
 
 ### Interface Layer
 
-The primary entry point is the `GraphMsf` base class, which provides the public API for:
+The primary entry point is the `HolisticFusion` base class, which provides the public API for:
 
 - **IMU integration**: `addCoreImuMeasurementAndGetState()` — adds an IMU measurement, triggers preintegration, and
   returns the current state estimate at IMU rate.
@@ -29,8 +29,8 @@ The primary entry point is the `GraphMsf` base class, which provides the public 
 
 Two concrete flavors are provided:
 
-- **`GraphMsfClassic`**: Traditional factor graph approach.
-- **`GraphMsfHolistic`**: The holistic approach using GTSAM expression factors, enabling setup-agnostic fusion with
+- **`HolisticFusionClassic`**: Traditional factor graph approach.
+- **`HolisticFusionHolistic`**: The holistic approach using GTSAM expression factors, enabling setup-agnostic fusion with
   automatic reference frame alignment.
 
 ### Measurement Types
@@ -72,15 +72,15 @@ its own subclass (e.g., `SmbStaticTransforms`) that reads the relevant transform
 
 ## Communication Wrappers
 
-### ROS1 (`graph_msf_ros`)
+### ROS1 (`holistic_fusion_ros`)
 
-- Inherits from `GraphMsfHolistic` (or `GraphMsfClassic`).
+- Inherits from `HolisticFusionHolistic` (or `HolisticFusionClassic`).
 - Provides standard ROS1 subscribers (IMU) and publishers (Odometry, Path, TF).
 - Parameters are loaded from YAML files via the ROS parameter server.
 
-### ROS2 (`graph_msf_ros2`)
+### ROS2 (`holistic_fusion_ros2`)
 
-- Inherits from `GraphMsfHolistic` (or `GraphMsfClassic`) and `rclcpp::Node`.
+- Inherits from `HolisticFusionHolistic` (or `HolisticFusionClassic`) and `rclcpp::Node`.
 - Uses dedicated worker threads (`nonTimeCriticalThread`, `imuOdomThread`) for state publishing to minimize latency.
 - Parameters are loaded from layered YAML configuration files.
 - Uses `tf2_ros` for transform broadcasting.

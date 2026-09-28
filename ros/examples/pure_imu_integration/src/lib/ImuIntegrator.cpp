@@ -10,7 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 namespace imu_integrator {
 
-ImuIntegrator::ImuIntegrator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+ImuIntegrator::ImuIntegrator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START << " Setting up." << COLOR_END << std::endl;
 
   std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START << " Set up successfully." << COLOR_END << std::endl;
@@ -23,13 +23,13 @@ void ImuIntegrator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
   imuMsgPtrCopy->angular_velocity.y = imuMsgPtr->angular_velocity.y * M_PI / 180.0;
   imuMsgPtrCopy->angular_velocity.z = imuMsgPtr->angular_velocity.z * M_PI / 180.0;
 
-  graph_msf::GraphMsfRos::imuCallback(imuMsgPtrCopy);
+  holistic_fusion::HolisticFusionRos::imuCallback(imuMsgPtrCopy);
 
-  if (graph_msf::GraphMsf::areRollAndPitchInited() && !graph_msf::GraphMsf::areYawAndPositionInited()) {
+  if (holistic_fusion::HolisticFusion::areRollAndPitchInited() && !holistic_fusion::HolisticFusion::areYawAndPositionInited()) {
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START
-              << " Imu attitude is now initialized: " << graph_msf::GraphMsf::areRollAndPitchInited() << COLOR_END << std::endl;
-    graph_msf::GraphMsf::pretendFirstMeasurementReceived();
-    graph_msf::GraphMsf::initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), staticTransformsPtr_->getImuFrame(),
+              << " Imu attitude is now initialized: " << holistic_fusion::HolisticFusion::areRollAndPitchInited() << COLOR_END << std::endl;
+    holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
+    holistic_fusion::HolisticFusion::initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), staticTransformsPtr_->getImuFrame(),
                                                    staticTransformsPtr_->getImuFrame());
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START << " Set initial yaw and position to zero." << COLOR_END << std::endl;
   }

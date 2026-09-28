@@ -20,11 +20,11 @@ jobs:
             -f docker/ros1_noetic/base.Dockerfile \
             .
 
-      - name: Run graph_msf regression tests
+      - name: Run holistic_fusion regression tests
         run: |
           docker run --rm \
             --volume "$PWD:/workspace:ro" \
             --workdir /workspace \
             --entrypoint /bin/bash \
             holistic_fusion_ros1:ci \
-            docker/test_graph_msf.sh
+            docker/test_holistic_fusion.sh

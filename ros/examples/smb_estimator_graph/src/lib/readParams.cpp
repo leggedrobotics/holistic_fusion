@@ -12,8 +12,8 @@ Please see the LICENSE file that has been included as part of this package.
 #include "smb_estimator_graph/SmbStaticTransforms.h"
 #include "smb_estimator_graph/constants.h"
 
-// GraphMSF ROS
-#include "graph_msf_ros/ros/read_ros_params.h"
+// HolisticFusion ROS
+#include "holistic_fusion_ros/ros/read_ros_params.h"
 
 namespace smb_se {
 
@@ -24,69 +24,69 @@ void SmbEstimator::readParams(const ros::NodeHandle& privateNode) {
   }
 
   // Flags
-  useLioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useLioOdometry", privateNode);
-  useWheelOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelOdometryBetween", privateNode);
-  useWheelLinearVelocitiesFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useWheelLinearVelocities", privateNode);
-  useVioOdometryFlag_ = graph_msf::tryGetParam<bool>("sensor_params/useVioOdometry", privateNode);
+  useLioOdometryFlag_ = holistic_fusion::tryGetParam<bool>("sensor_params/useLioOdometry", privateNode);
+  useWheelOdometryBetweenFlag_ = holistic_fusion::tryGetParam<bool>("sensor_params/useWheelOdometryBetween", privateNode);
+  useWheelLinearVelocitiesFlag_ = holistic_fusion::tryGetParam<bool>("sensor_params/useWheelLinearVelocities", privateNode);
+  useVioOdometryFlag_ = holistic_fusion::tryGetParam<bool>("sensor_params/useVioOdometry", privateNode);
 
   // Sensor Params
-  lioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
-  wheelOdometryBetweenRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelOdometryBetweenRate", privateNode);
-  wheelLinearVelocitiesRate_ = graph_msf::tryGetParam<double>("sensor_params/wheelLinearVelocitiesRate", privateNode);
-  vioOdometryRate_ = graph_msf::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
+  lioOdometryRate_ = holistic_fusion::tryGetParam<double>("sensor_params/lioOdometryRate", privateNode);
+  wheelOdometryBetweenRate_ = holistic_fusion::tryGetParam<double>("sensor_params/wheelOdometryBetweenRate", privateNode);
+  wheelLinearVelocitiesRate_ = holistic_fusion::tryGetParam<double>("sensor_params/wheelLinearVelocitiesRate", privateNode);
+  vioOdometryRate_ = holistic_fusion::tryGetParam<double>("sensor_params/vioOdometryRate", privateNode);
 
   // Alignment Parameters
   const auto initialSe3AlignmentStdDev =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
+      holistic_fusion::tryGetParam<std::vector<double>>("alignment_params/initialSe3AlignmentStdDev", privateNode);
   initialSe3AlignmentNoise_ << initialSe3AlignmentStdDev[0], initialSe3AlignmentStdDev[1], initialSe3AlignmentStdDev[2],
       initialSe3AlignmentStdDev[3], initialSe3AlignmentStdDev[4], initialSe3AlignmentStdDev[5];
   const auto lioSe3AlignmentRandomWalk =
-      graph_msf::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
+      holistic_fusion::tryGetParam<std::vector<double>>("alignment_params/lioSe3AlignmentRandomWalk", privateNode);
   lioSe3AlignmentRandomWalk_ << lioSe3AlignmentRandomWalk[0], lioSe3AlignmentRandomWalk[1], lioSe3AlignmentRandomWalk[2],
       lioSe3AlignmentRandomWalk[3], lioSe3AlignmentRandomWalk[4], lioSe3AlignmentRandomWalk[5];
 
   // Noise Parameters
   /// LiDAR Odometry
   const auto poseUnaryNoise =
-            graph_msf::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
+            holistic_fusion::tryGetParam<std::vector<double>>("noise_params/lioPoseUnaryStdDev", privateNode);  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << poseUnaryNoise[0], poseUnaryNoise[1], poseUnaryNoise[2], poseUnaryNoise[3], poseUnaryNoise[4], poseUnaryNoise[5];
   /// Wheel Odometry
   /// Between
   const auto wheelPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+      holistic_fusion::tryGetParam<std::vector<double>>("noise_params/wheelPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   wheelPoseBetweenNoise_ << wheelPoseBetweenNoise[0], wheelPoseBetweenNoise[1], wheelPoseBetweenNoise[2], wheelPoseBetweenNoise[3],
       wheelPoseBetweenNoise[4], wheelPoseBetweenNoise[5];
   /// Linear Velocities
   const auto wheelLinearVelocitiesNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/wheelLinearVelocitiesNoiseDensity", privateNode);  // left,right
+      holistic_fusion::tryGetParam<std::vector<double>>("noise_params/wheelLinearVelocitiesNoiseDensity", privateNode);  // left,right
   wheelLinearVelocitiesNoise_ << wheelLinearVelocitiesNoise[0], wheelLinearVelocitiesNoise[1], wheelLinearVelocitiesNoise[2];
   /// VIO Odometry
   const auto vioPoseBetweenNoise =
-      graph_msf::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
+      holistic_fusion::tryGetParam<std::vector<double>>("noise_params/vioPoseBetweenNoiseDensity", privateNode);  // roll,pitch,yaw,x,y,z
   vioPoseBetweenNoise_ << vioPoseBetweenNoise[0], vioPoseBetweenNoise[1], vioPoseBetweenNoise[2], vioPoseBetweenNoise[3],
       vioPoseBetweenNoise[4], vioPoseBetweenNoise[5];
 
   // Set frames
   /// LiDAR odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
+      ->setLioOdometryFrame(holistic_fusion::tryGetParam<std::string>("extrinsics/lidarOdometryFrame", privateNode));
   /// Wheel Odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelOdometryBetweenFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelOdometryBetweenFrame", privateNode));
+      ->setWheelOdometryBetweenFrame(holistic_fusion::tryGetParam<std::string>("extrinsics/wheelOdometryBetweenFrame", privateNode));
   /// Whel Linear Velocities frames
   /// Left
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelLinearVelocityLeftFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelLinearVelocityLeftFrame", privateNode));
+      ->setWheelLinearVelocityLeftFrame(holistic_fusion::tryGetParam<std::string>("extrinsics/wheelLinearVelocityLeftFrame", privateNode));
   /// Right
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setWheelLinearVelocityRightFrame(graph_msf::tryGetParam<std::string>("extrinsics/wheelLinearVelocityRightFrame", privateNode));
+      ->setWheelLinearVelocityRightFrame(holistic_fusion::tryGetParam<std::string>("extrinsics/wheelLinearVelocityRightFrame", privateNode));
 
   /// VIO Odometry frame
   dynamic_cast<SmbStaticTransforms*>(staticTransformsPtr_.get())
-      ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>("extrinsics/vioOdometryFrame", privateNode));
+      ->setVioOdometryFrame(holistic_fusion::tryGetParam<std::string>("extrinsics/vioOdometryFrame", privateNode));
 
   // Wheel Radius
-  wheelRadiusMeter_ = graph_msf::tryGetParam<double>("sensor_params/wheelRadius", privateNode);
+  wheelRadiusMeter_ = holistic_fusion::tryGetParam<double>("sensor_params/wheelRadius", privateNode);
 }
 
 }  // namespace smb_se

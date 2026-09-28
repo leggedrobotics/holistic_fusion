@@ -16,13 +16,13 @@ Please see the LICENSE file that has been included as part of this package.
 #include "atn_position3_fuser/constants.h"
 
 // Workspace
-#include "graph_msf/interface/eigen_wrapped_gtsam_utils.h"
-#include "graph_msf/interface/input_output.h"
-#include "graph_msf_ros/util/conversions.h"
+#include "holistic_fusion/interface/eigen_wrapped_gtsam_utils.h"
+#include "holistic_fusion/interface/input_output.h"
+#include "holistic_fusion_ros/util/conversions.h"
 
 namespace position3_se {
 
-Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : graph_msf::GraphMsfRos(privateNodePtr) {
+Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateNodePtr) : holistic_fusion::HolisticFusionRos(privateNodePtr) {
   REGULAR_COUT << GREEN_START << " Position3Estimator-Constructor called." << COLOR_END << std::endl;
 
   // Configurations ----------------------------
@@ -31,10 +31,10 @@ Position3Estimator::Position3Estimator(std::shared_ptr<ros::NodeHandle> privateN
       privateNodePtr, constexprUsePrismPositionUnaryFlag_, constexprUseGnssPositionUnaryFlag_ || constexprUseGnssOfflinePoseUnaryFlag_);
 
   // GNSS Handler
-  gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
+  gnssHandlerPtr_ = std::make_shared<holistic_fusion::GnssHandler>();
 
   // Alignment Handler
-  trajectoryAlignmentHandler_ = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
+  trajectoryAlignmentHandler_ = std::make_shared<holistic_fusion::TrajectoryAlignmentHandler>();
 
   // Setup
   Position3Estimator::setup();
@@ -48,7 +48,7 @@ void Position3Estimator::setup() {
   Position3Estimator::readParams(privateNode);
 
   // Super class
-  GraphMsfRos::setup(staticTransformsPtr_);
+  HolisticFusionRos::setup(staticTransformsPtr_);
 
   // Publishers ----------------------------
   Position3Estimator::initializePublishers(privateNode);
@@ -76,14 +76,14 @@ void Position3Estimator::initializePublishers(ros::NodeHandle& privateNode) {
 
   // Paths
   if constexpr (constexprUsePrismPositionUnaryFlag_) {
-    pubMeasWorldPrismPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_prism", ROS_QUEUE_SIZE);
+    pubMeasWorldPrismPositionPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measPosition_path_world_prism", ROS_QUEUE_SIZE);
   }
   if constexpr (constexprUseGnssPositionUnaryFlag_) {
-    pubMeasWorldGnssPositionPath_ = privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_gnss", ROS_QUEUE_SIZE);
+    pubMeasWorldGnssPositionPath_ = privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measPosition_path_world_gnss", ROS_QUEUE_SIZE);
   }
   if constexpr (constexprUseGnssOfflinePoseUnaryFlag_) {
     pubMeasWorldGnssOfflinePosePath_ =
-        privateNode.advertise<nav_msgs::Path>("/graph_msf/measPosition_path_world_gnss_offline_pose", ROS_QUEUE_SIZE);
+        privateNode.advertise<nav_msgs::Path>("/holistic_fusion/measPosition_path_world_gnss_offline_pose", ROS_QUEUE_SIZE);
   }
 }
 
@@ -140,18 +140,18 @@ void Position3Estimator::initializeServices(ros::NodeHandle& privateNode) {
 }
 
 // Overwritten service for offline optimization
-bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::OfflineOptimizationTrigger::Request& req,
-                                                            graph_msf_ros_msgs::OfflineOptimizationTrigger::Response& res) {
+bool Position3Estimator::srvOfflineSmootherOptimizeCallback(holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Request& req,
+                                                            holistic_fusion_ros_msgs::OfflineOptimizationTrigger::Response& res) {
   std::cout << "Position3Estimator: srvOfflineSmootherOptimizeCallback (derived class) called." << std::endl;
   // Call parent class and create most of the files already
-  bool success = graph_msf::GraphMsfRos::srvOfflineSmootherOptimizeCallback(req, res);
+  bool success = holistic_fusion::HolisticFusionRos::srvOfflineSmootherOptimizeCallback(req, res);
 
   // File streams
   std::map<std::string, std::ofstream> fileStreams;
 
   // Write T_totalStation_totalStationOld_ to file ----------------------------
   // Get time string by finding latest directory in optimizationResultLoggingPath
-  std::string timeString = graph_msf::getLatestSubdirectory(optimizationResultLoggingPath);
+  std::string timeString = holistic_fusion::getLatestSubdirectory(optimizationResultLoggingPath);
   if (timeString.empty()) {
     REGULAR_COUT << " Could not find latest directory in " << optimizationResultLoggingPath << std::endl;
     return false;
@@ -160,25 +160,25 @@ bool Position3Estimator::srvOfflineSmootherOptimizeCallback(graph_msf_ros_msgs::
   }
   // Create file stream
   std::string transformIdentifier = "R_6D_transform_" + totalStationReferenceFrame_ + "_to_" + totalStationReferenceFrame_ + "Old";
-  graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+  holistic_fusion::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
   // Add to file
-  graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, transformIdentifier, ros::Time::now().toSec(), false);
+  holistic_fusion::writePose3ToCsvFile(fileStreams, T_totalStation_totalStationOld_, transformIdentifier, ros::Time::now().toSec(), false);
   REGULAR_COUT << " Wrote T_totalStation_totalStationOld to file." << std::endl;
 
   // Depending on whether GNSS or Prism was used for initialization, write the corresponding T_W_R identity to file ------------------------
   if (initializeUsingGnssFlag_) {
     // Write T_totalStation_totalStationOld_ to file
     std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + gnssReferenceFrame_;
-    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+    holistic_fusion::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
     // Add to file
-    graph_msf::writePose3ToCsvFile(fileStreams, Eigen::Isometry3d::Identity(), transformIdentifier, ros::Time::now().toSec(), false);
+    holistic_fusion::writePose3ToCsvFile(fileStreams, Eigen::Isometry3d::Identity(), transformIdentifier, ros::Time::now().toSec(), false);
     REGULAR_COUT << " Wrote T_W_gnssReferenceFrame to file." << std::endl;
   } else {
     // Write T_totalStation_enu_ to file
     std::string transformIdentifier = "R_6D_transform_" + staticTransformsPtr_->getWorldFrame() + "_to_" + totalStationReferenceFrame_;
-    graph_msf::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
+    holistic_fusion::createPose3CsvFileStream(fileStreams, optimizationResultLoggingPath, transformIdentifier, timeString, false);
     // Add to file
-    graph_msf::writePose3ToCsvFile(fileStreams, T_totalStation_enu_, transformIdentifier, ros::Time::now().toSec(), false);
+    holistic_fusion::writePose3ToCsvFile(fileStreams, T_totalStation_enu_, transformIdentifier, ros::Time::now().toSec(), false);
     REGULAR_COUT << " Wrote T_W_totalStationReferenceFrame to file." << std::endl;
   }
 
@@ -244,7 +244,7 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
       // Only keep yaw of the orientation part of the transformation
       REGULAR_COUT << GREEN_START << " Total Station to Old Total Station Transformation: " << COLOR_END
                    << T_totalStation_totalStationOld_.matrix() << std::endl;
-      graph_msf::inPlaceRemoveRollPitch(T_totalStation_totalStationOld_);
+      holistic_fusion::inPlaceRemoveRollPitch(T_totalStation_totalStationOld_);
       REGULAR_COUT << GREEN_START << " Total Station to Old Total Station Transformation after removing roll and pitch: " << COLOR_END
                    << T_totalStation_totalStationOld_.matrix() << std::endl;
       // Prepare for using this transformation in the graph
@@ -283,9 +283,9 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     }
 
     // Already initialized --> add position measurement to graph ----------------------------
-    graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
+    holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
         "LeicaPosition", int(prismPositionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
+        holistic_fusion::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, positionMeas,
         positionCovarianceXYZ, fixedFrame, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, prismSe3AlignmentRandomWalk_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   }
@@ -355,9 +355,9 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
   else if (areRollAndPitchInited() && useGnssPositionUnaryFlag_) {
     const std::string& positionMeasFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame();
     // Already initialized --> add position measurement to graph
-    graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
+    holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_P(
         "GnssPosition", int(gnssPositionRate_), positionMeasFrame, positionMeasFrame + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
+        holistic_fusion::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(), POS_COVARIANCE_VIOLATION_THRESHOLD, W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, staticTransformsPtr_->getWorldFrame(), initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
     this->addUnaryPosition3AbsoluteMeasurement(meas_W_t_W_P);
   }
@@ -400,7 +400,7 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
 
   // Prepare Data
   Eigen::Isometry3d T_ENU_Gk = Eigen::Isometry3d::Identity();
-  graph_msf::odomMsgToEigen(*gnssOfflinePosePtr, T_ENU_Gk.matrix());
+  holistic_fusion::odomMsgToEigen(*gnssOfflinePosePtr, T_ENU_Gk.matrix());
   double gnssUnaryTimeK = gnssOfflinePosePtr->header.stamp.toSec();
 
   // If initialized by gnss --> make sure we can do the alignment with prism
@@ -418,8 +418,8 @@ void Position3Estimator::gnssOfflinePoseCallback_(const nav_msgs::Odometry::Cons
   // Measurement
   const std::string& gnssFrameName =
       dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssOfflinePoseMeasFrame();  // alias
-  graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
-      "Lidar_unary_6D", int(gnssOfflinePoseRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, graph_msf::RobustNorm::None(),
+  holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
+      "Lidar_unary_6D", int(gnssOfflinePoseRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
       gnssUnaryTimeK, 1.0, T_ENU_Gk, gnssOfflinePoseMeasUnaryNoise_, fixedFrame, staticTransformsPtr_->getWorldFrame(),
       initialSe3AlignmentNoise_, gnssSe3AlignmentRandomWalk_);
 
