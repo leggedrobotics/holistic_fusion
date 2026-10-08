@@ -8,8 +8,8 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 ### October 2026: Heading factor (PR #55)
 
 * **New `addUnaryHeadingAbsoluteMeasurement()`** (holistic interface). It takes the measured orientation of the sensor frame and
-  constrains only the rotation about the z-axis of the fixed frame, read from the rotation vector of the offset between the
-  estimated and the measured orientation. Unlike the yaw factor, it stays defined when the x-axis of the sensor frame is vertical
+  constrains only the rotation about the z-axis of the world, read from the rotation vector of the offset between the
+  estimated and the measured orientation in the world. Unlike the yaw factor, it stays defined when the x-axis of the sensor frame is vertical
   (e.g. a robot lying on its back), and to first order it leaves roll and pitch to gravity.
 
 ### September 2026: Switch to GTSAM 4.3.0 (PR #46)

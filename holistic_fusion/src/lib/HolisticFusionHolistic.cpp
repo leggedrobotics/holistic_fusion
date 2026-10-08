@@ -152,7 +152,7 @@ void HolisticFusionHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasureme
 }
 
 void HolisticFusionHolistic::addUnaryHeadingAbsoluteMeasurement(
-    const UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>& fixedFrame_R_fixedFrame_sensorFrame) {
+    const UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>& R_M_S) {
   // Valid measurement received
   if (!validFirstMeasurementReceivedFlag_) {
     validFirstMeasurementReceivedFlag_ = true;
@@ -164,21 +164,21 @@ void HolisticFusionHolistic::addUnaryHeadingAbsoluteMeasurement(
   }
 
   // Check for covariance violation
-  bool covarianceViolatedFlag = isCovarianceViolated_<1>(fixedFrame_R_fixedFrame_sensorFrame.unaryMeasurementNoiseDensity(),
-                                                         fixedFrame_R_fixedFrame_sensorFrame.covarianceViolationThreshold());
-  if (checkAndPrintCovarianceViolation_(fixedFrame_R_fixedFrame_sensorFrame.measurementName(), covarianceViolatedFlag)) {
+  bool covarianceViolatedFlag = isCovarianceViolated_<1>(R_M_S.unaryMeasurementNoiseDensity(),
+                                                         R_M_S.covarianceViolationThreshold());
+  if (checkAndPrintCovarianceViolation_(R_M_S.measurementName(), covarianceViolatedFlag)) {
     return;
   }
 
-  if (!hasAlignmentKeyframeForMeasurementWithoutPosition_(fixedFrame_R_fixedFrame_sensorFrame)) {
+  if (!hasAlignmentKeyframeForMeasurementWithoutPosition_(R_M_S)) {
     return;
   }
 
   // Create GMSF expression
   auto gmsfUnaryExpressionHeadingPtr = std::make_shared<GmsfUnaryExpressionAbsoluteHeading>(
-      std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>>(fixedFrame_R_fixedFrame_sensorFrame),
+      std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>>(R_M_S),
       staticTransformsPtr_->getImuFrame(),
-      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), fixedFrame_R_fixedFrame_sensorFrame.sensorFrameName()),
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), R_M_S.sensorFrameName()),
       graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
 
   // Add factor to graph
