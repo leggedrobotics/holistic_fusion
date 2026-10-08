@@ -35,6 +35,10 @@ class HolisticFusionHolistic : virtual public HolisticFusion {
   // has no keyframe.
   // TODO: Add a joint yaw and position measurement, which creates the keyframe itself.
   void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& R_yaw_R_S) override;
+  // Constrains the rotation about the z-axis of the fixed frame between the estimated and the measured orientation R_R_S of the sensor
+  // frame. Unlike the yaw, it is defined for every attitude and leaves roll and pitch to the other measurements. Same fixed-frame
+  // keyframe requirement as the yaw.
+  void addUnaryHeadingAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>& R_R_R_S);
   void addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& R_v_R_S) override;
   //// Local Measurements: Fully Local
   void addUnaryVelocity3LocalMeasurement(UnaryMeasurementXD<Eigen::Vector3d, 3>& S_v_F_S) override;
@@ -51,6 +55,10 @@ class HolisticFusionHolistic : virtual public HolisticFusion {
 
   /// Binary Measurements: Purely relative
   // TODO: add binary measurements
+
+ private:
+  // Whether a measurement without a position can enter the graph, i.e. its fixed frame has an alignment keyframe. Warns if not.
+  bool hasAlignmentKeyframeForMeasurementWithoutPosition_(const UnaryMeasurementAbsolute& measurement) const;
 };
 
 }  // namespace holistic_fusion
