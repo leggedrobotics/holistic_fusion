@@ -34,6 +34,19 @@ HolisticFusionHolistic::HolisticFusionHolistic() {
   REGULAR_COUT << GREEN_START << " HolisticFusionHolistic-Constructor called." << COLOR_END << std::endl;
 }
 
+// The alignment keyframe of a fixed frame is only created by a measurement with a position
+bool HolisticFusionHolistic::hasAlignmentKeyframeForMeasurementWithoutPosition_(const UnaryMeasurementAbsolute& measurement) const {
+  const std::string& worldFrame = measurement.worldFrameName();
+  const std::string& fixedFrame = measurement.fixedFrameName();
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
+      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
+    REGULAR_COUT << YELLOW_START << " Skipping measurement " << measurement.measurementName() << ": frame " << fixedFrame
+                 << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END << std::endl;
+    return false;
+  }
+  return true;
+}
+
 // Unary Measurements: In reference frame --> systematic drift ---------------------------------------------------------
 
 // Pose3
@@ -190,19 +203,6 @@ void HolisticFusionHolistic::addUnaryHeadingAbsoluteMeasurement(
     const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
     optimizeGraphFlag_ = true;
   }
-}
-
-// The alignment keyframe of a fixed frame is only created by a measurement with a position
-bool HolisticFusionHolistic::hasAlignmentKeyframeForMeasurementWithoutPosition_(const UnaryMeasurementAbsolute& measurement) const {
-  const std::string& worldFrame = measurement.worldFrameName();
-  const std::string& fixedFrame = measurement.fixedFrameName();
-  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
-      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
-    REGULAR_COUT << YELLOW_START << " Skipping measurement " << measurement.measurementName() << ": frame " << fixedFrame
-                 << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END << std::endl;
-    return false;
-  }
-  return true;
 }
 
 // Velocity3 in Fixed Frame

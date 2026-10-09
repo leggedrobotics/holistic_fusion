@@ -26,7 +26,7 @@ namespace holistic_fusion {
 
 // Rotation angle of R_W_Wmeas about the z-axis of W, as a planar rotation, so that the factor error wraps around at +-pi.
 // It reads the rotation vector, so it is defined for every attitude.
-inline gtsam::Rot2 headingAsRot2(const gtsam::Rot3& R_W_Wmeas, gtsam::OptionalJacobian<1, 3> H) {
+inline gtsam::Rot2 worldRotationErrorAsHeadingError(const gtsam::Rot3& R_W_Wmeas, gtsam::OptionalJacobian<1, 3> H) {
   gtsam::Matrix3 H_log;
   const gtsam::Vector3 rotationVector = gtsam::Rot3::Logmap(R_W_Wmeas, H ? &H_log : nullptr);
   if (H) {
@@ -39,7 +39,8 @@ inline gtsam::Rot2 headingAsRot2(const gtsam::Rot3& R_W_Wmeas, gtsam::OptionalJa
 // The measurement is brought to W through R_W_M, so a tilted fixed frame M does not tilt the constrained axis.
 inline gtsam::Expression<gtsam::Rot2> headingInWorld(const gtsam::Rot3_& exp_R_W_S, const gtsam::Rot3_& exp_R_W_M,
                                                      const gtsam::Rot3& R_M_Smeas) {
-  return gtsam::Expression<gtsam::Rot2>(&headingAsRot2, exp_R_W_S * gtsam::Rot3_(R_M_Smeas.inverse()) * inverseRot3(exp_R_W_M));
+  const gtsam::Rot3_ exp_R_W_Wmeas = exp_R_W_S * gtsam::Rot3_(R_M_Smeas.inverse()) * inverseRot3(exp_R_W_M);
+  return gtsam::Expression<gtsam::Rot2>(&worldRotationErrorAsHeadingError, exp_R_W_Wmeas);
 }
 
 /**

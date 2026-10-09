@@ -37,7 +37,7 @@ gtsam::Expression<gtsam::Rot2> headingOfSensor(const gtsam::Rot3& R_I_S, const g
 }
 
 double heading(const gtsam::Rot3& R_W_S, const gtsam::Rot3& R_W_Smeas) {
-  return holistic_fusion::headingAsRot2(R_W_S * R_W_Smeas.inverse(), {}).theta();
+  return holistic_fusion::worldRotationErrorAsHeadingError(R_W_S * R_W_Smeas.inverse(), {}).theta();
 }
 
 void headingIsYawDifferenceForEqualTilt() {
