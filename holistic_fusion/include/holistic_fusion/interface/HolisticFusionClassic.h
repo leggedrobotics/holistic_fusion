@@ -28,9 +28,8 @@ class HolisticFusionClassic : virtual public HolisticFusion {
   //// Absolute Measurements
   void addUnaryRollAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& roll_F_S) override;
   void addUnaryPitchAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& pitch_F_S) override;
-  // Constrains the yaw of the sensor frame in the world frame, independent of the measurement's fixed frame. The
-  // holistic addUnaryYawAbsoluteMeasurement() goes through the fixed-frame alignment.
-  void addUnaryYawAbsoluteClassicMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S);
+  // Constrains the yaw of the sensor frame in the world frame, independent of the measurement's fixed frame
+  void addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S) override;
 
   /// Binary Measurements
   void addBinaryPose3Measurement(const BinaryMeasurementXD<Eigen::Isometry3d, 6>& F_T_F_S) override;

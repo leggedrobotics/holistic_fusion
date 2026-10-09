@@ -27,7 +27,7 @@ HolisticFusionClassic::HolisticFusionClassic() {
 }
 
 // Unary ----------------------------
-void HolisticFusionClassic::addUnaryYawAbsoluteClassicMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_frame) {
+void HolisticFusionClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_frame) {
   // Only take actions if graph has been initialized
   if (!initedGraphFlag_) {
     return;
