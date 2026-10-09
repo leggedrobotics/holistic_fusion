@@ -33,7 +33,11 @@ inline gtsam::Rot2 yawAsRot2(const gtsam::Rot3& R, gtsam::OptionalJacobian<1, 3>
 // Yaw of S in the world, relative to the yaw of the fixed frame M in the world. It equals the yaw of S in M if M is level.
 // For a tilted M, it stays about the z-axis of the world, so it does not pull on the roll and pitch of the state.
 inline gtsam::Expression<gtsam::Rot2> yawRelativeToFixedFrameInWorld(const gtsam::Rot3_& exp_R_W_S, const gtsam::Rot3_& exp_R_W_M) {
-  return gtsam::between(gtsam::Expression<gtsam::Rot2>(&yawAsRot2, exp_R_W_M), gtsam::Expression<gtsam::Rot2>(&yawAsRot2, exp_R_W_S));
+  const gtsam::Expression<gtsam::Rot2> exp_yaw_W_S(&yawAsRot2, exp_R_W_S);
+  const gtsam::Expression<gtsam::Rot2> exp_yaw_W_M(&yawAsRot2, exp_R_W_M);
+  // yaw_M_S = yaw_W_M^-1 * yaw_W_S
+  const gtsam::Expression<gtsam::Rot2> exp_yaw_M_S = gtsam::between(exp_yaw_W_M, exp_yaw_W_S);
+  return exp_yaw_M_S;
 }
 
 /**
