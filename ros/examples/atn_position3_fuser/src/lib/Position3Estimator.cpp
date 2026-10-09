@@ -260,11 +260,11 @@ void Position3Estimator::prismPositionCallback_(const geometry_msgs::PointStampe
     const std::string& prismFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getPrismPositionMeasFrame();
     const std::string& worldFrame = staticTransformsPtr_->getWorldFrame();
     const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yaw_W_S1(
-        "InitYaw", int(prismPositionRate_), baseFrame, baseFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(),
-        1.0, 0.0, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
+        "InitYaw", int(prismPositionRate_), baseFrame, baseFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        leicaPositionPtr->header.stamp.toSec(), 1.0, 0.0, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
     const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> W_t_W_S2(
-        "InitPosition", int(prismPositionRate_), prismFrame, prismFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leicaPositionPtr->header.stamp.toSec(),
-        1.0, positionMeas, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
+        "InitPosition", int(prismPositionRate_), prismFrame, prismFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        leicaPositionPtr->header.stamp.toSec(), 1.0, positionMeas, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
     if (this->initYawAndPosition(yaw_W_S1, W_t_W_S2)) {
       std::cout << "-------------------" << std::endl;
       REGULAR_COUT << RED_START << " Prism callback is setting global yaw." << COLOR_END << std::endl;
@@ -355,11 +355,11 @@ void Position3Estimator::gnssPositionCallback_(const sensor_msgs::NavSatFix::Con
     const std::string& gnssFrame = dynamic_cast<Position3StaticTransforms*>(staticTransformsPtr_.get())->getGnssPositionMeasFrame();
     const std::string& worldFrame = staticTransformsPtr_->getWorldFrame();
     const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yaw_W_S1(
-        "InitYaw", int(gnssPositionRate_), baseFrame, baseFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(),
-        1.0, 0.0, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
+        "InitYaw", int(gnssPositionRate_), baseFrame, baseFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        gnssPositionPtr->header.stamp.toSec(), 1.0, 0.0, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
     const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> W_t_W_S2(
-        "InitPosition", int(gnssPositionRate_), gnssFrame, gnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), gnssPositionPtr->header.stamp.toSec(),
-        1.0, W_t_W_Gnss, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
+        "InitPosition", int(gnssPositionRate_), gnssFrame, gnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        gnssPositionPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
     if (this->initYawAndPosition(yaw_W_S1, W_t_W_S2)) {
       REGULAR_COUT << " GNSS set yaw and position successfully, as there is no prism." << std::endl;
     } else {

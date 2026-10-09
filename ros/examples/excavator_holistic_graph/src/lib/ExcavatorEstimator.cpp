@@ -187,11 +187,11 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
     const std::string& leftGnssFrame = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame();
     const std::string& worldFrame = staticTransformsPtr_->getWorldFrame();
     const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yaw_W_S1(
-        "InitYaw", int(gnssRate_), cabinFrame, cabinFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leftGnssMsgPtr->header.stamp.toSec(),
-        1.0, yaw_W_C, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
+        "InitYaw", int(gnssRate_), cabinFrame, cabinFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        leftGnssMsgPtr->header.stamp.toSec(), 1.0, yaw_W_C, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
     const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> W_t_W_S2(
-        "InitPosition", int(gnssRate_), leftGnssFrame, leftGnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leftGnssMsgPtr->header.stamp.toSec(),
-        1.0, W_t_W_GnssL, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
+        "InitPosition", int(gnssRate_), leftGnssFrame, leftGnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        leftGnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_GnssL, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
     if (this->initYawAndPosition(yaw_W_S1, W_t_W_S2)) {
       REGULAR_COUT << " Set yaw and position successfully." << std::endl;
     }
