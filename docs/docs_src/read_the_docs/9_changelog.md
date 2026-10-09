@@ -5,6 +5,13 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 
 ## 2026
 
+### October 2026: Remove the holistic yaw factor (PR #56)
+
+* **`addUnaryYawAbsoluteMeasurement()` is again the classic yaw factor.** It constrains the yaw of the sensor frame in the world
+  frame and ignores the fixed frame of the measurement. The holistic variant through the fixed-frame alignment and
+  `addUnaryYawAbsoluteClassicMeasurement()` are removed. A yaw in a tilted fixed frame has no clear meaning. For an orientation
+  measurement in a fixed frame, use `addUnaryHeadingAbsoluteMeasurement()`.
+
 ### October 2026: Heading factor (PR #55)
 
 * **New `addUnaryHeadingAbsoluteMeasurement()`** (holistic interface). It takes the measured orientation of the sensor frame and
