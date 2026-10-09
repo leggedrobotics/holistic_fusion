@@ -255,9 +255,16 @@ void AnymalEstimator::gnssUnaryCallback_(const sensor_msgs::NavSatFix::ConstPtr&
     }
 
     // Actual Initialization
-    if (this->initYawAndPositionInWorld(initYaw_W_Base, W_t_W_Gnss,
-                                        dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame(),
-                                        dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame())) {
+    const std::string& baseFrame = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getBaseLinkFrame();
+    const std::string& gnssFrame = dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getGnssFrame();
+    const std::string& worldFrame = staticTransformsPtr_->getWorldFrame();
+    const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yaw_W_S1(
+        "InitYaw", int(gnssRate_), baseFrame, baseFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        gnssMsgPtr->header.stamp.toSec(), 1.0, initYaw_W_Base, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
+    const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> W_t_W_S2(
+        "InitPosition", int(gnssRate_), gnssFrame, gnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
+        gnssMsgPtr->header.stamp.toSec(), 1.0, W_t_W_Gnss, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
+    if (this->initYawAndPosition(yaw_W_S1, W_t_W_S2)) {
       REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << std::endl;
 
     } else {
@@ -316,7 +323,7 @@ void AnymalEstimator::lidarUnaryCallback_(const nav_msgs::Odometry::ConstPtr& od
   } else if (!areYawAndPositionInited()) {  // Initializing if no GNSS
     if (!useGnssUnaryFlag_) {
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+      this->initHeadingAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> unary factor
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
@@ -366,12 +373,14 @@ void AnymalEstimator::lidarBetweenCallback_(const nav_msgs::Odometry::ConstPtr& 
   } else if (!areYawAndPositionInited()) {  // Initializing
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_) {
       // Measurement
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      // Without unary measurements, the world starts at the LiDAR odometry frame
+      holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Lidar_unary_6D", int(lioOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_);
+          holistic_fusion::RobustNorm::None(), lidarBetweenTimeK, 1.0, lio_T_M_Lk, lioPoseUnaryNoise_,
+          staticTransformsPtr_->getWorldFrame(), staticTransformsPtr_->getWorldFrame());
       // Add to graph
       REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+      this->initHeadingAndPosition(unary6DMeasurement);
     }
   } else {  // Already initialized --> Between factor
     // Compute Delta
@@ -425,13 +434,15 @@ void AnymalEstimator::leggedBetweenCallback_(const geometry_msgs::PoseWithCovari
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_) {
       // Measurement
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
+      // Without unary measurements, the world starts at the legged odometry frame
+      holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
           "Leg_odometry_6D", int(leggedOdometryBetweenRate_), leggedOdometryFrameName, leggedOdometryFrameName + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k, legPoseBetweenNoise_);
+          holistic_fusion::RobustNorm::None(), legOdometryTimeK, 1.0, T_O_Bl_k, legPoseBetweenNoise_, staticTransformsPtr_->getWorldFrame(),
+          staticTransformsPtr_->getWorldFrame());
       // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry between callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+      this->initHeadingAndPosition(unary6DMeasurement);
     }
   } else {
     // Only add every 40th measurement
@@ -465,17 +476,9 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
 
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_) {
-      // Measurement
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Leg_odometry_6D", int(leggedOdometryVelocityRate_),
-          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
-          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), leggedOdometryKPtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
-          legPoseBetweenNoise_);
-      // Add to graph
       REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+      this->initHeadingAndPositionAsIdentity();
     }
   } else {
     // Only add every nth measurement
@@ -512,17 +515,9 @@ void AnymalEstimator::leggedKinematicsCallback_(const holistic_fusion_anymal_msg
 
   if (!areYawAndPositionInited()) {
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_ && !useLeggedVelocityUnaryFlag_) {
-      // Measurement
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Leg_odometry_6D", int(leggedKinematicsRate_),
-          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame(),
-          dynamic_cast<AnymalStaticTransforms*>(staticTransformsPtr_.get())->getLeggedOdometryFrame() + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), anymalStatePtr->header.stamp.toSec(), 1.0, Eigen::Isometry3d::Identity(),
-          Eigen::Matrix<double, 6, 1>::Identity());
-      // Add to graph
       REGULAR_COUT << GREEN_START << " Legged kinematics callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
-      this->initYawAndPosition(unary6DMeasurement);
+      this->initHeadingAndPositionAsIdentity();
     }
   }
   // Normal Operation

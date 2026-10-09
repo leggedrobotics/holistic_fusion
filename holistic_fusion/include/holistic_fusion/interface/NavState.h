@@ -41,7 +41,7 @@ class NavState {
  protected:
   // Updates --> Keep all measurements consistent
   void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, double timeK);
-  void updateYawInWorld(double yaw_W_Ik);
+  void updateOrientationInWorld(const Eigen::Matrix3d& R_W_Ik);
   void updatePositionInWorld(const Eigen::Vector3d& W_t_W_Ik);
 
   // General Update
@@ -87,7 +87,7 @@ class SafeIntegratedNavState : public NavState {
               const Eigen::Vector3d& I_w_W_I, double timeK, bool odomNotJump);
   void updateInWorld(const Eigen::Isometry3d& T_W_Ik, const Eigen::Vector3d& I_v_W_I, const Eigen::Vector3d& I_w_W_I, const double timeK,
                      bool odomNotJump);
-  void updateYawInWorld(double yaw_W_Ik, bool odomNotJump);
+  void updateOrientationInWorld(const Eigen::Matrix3d& R_W_Ik, bool odomNotJump);
   void updatePositionInWorld(const Eigen::Vector3d& W_t_W_Ik, bool odomNotJump);
 
   // General Update

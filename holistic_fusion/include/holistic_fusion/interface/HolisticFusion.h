@@ -15,6 +15,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include <thread>
 #include <unordered_set>
 
+// GTSAM
+#include <gtsam/geometry/Pose3.h>
+
 // Package
 #include "holistic_fusion/config/GraphConfig.h"
 #include "holistic_fusion/config/StaticTransforms.h"
@@ -41,9 +44,20 @@ class HolisticFusion {
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
 
   // Initialization Interface
-  bool initYawAndPositionInWorld(const double yaw_W_frame1, const Eigen::Vector3d& W_t_W_frame2, const std::string& frame1,
-                                 const std::string& frame2);
-  bool initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement);
+  // The graph does not start before one of the three init functions succeeds. Each returns false until the IMU is aligned
+  // (areRollAndPitchInited()) and after the first success. Roll and pitch always come from the IMU alignment.
+  // A measurement in a fixed frame M other than the world goes through the guess of T_W_M from
+  // initWorldFrameToFixedFrameTransform(), or identity if none is set, so that the world starts at M.
+  // Sets the heading and the position of the state so that sensor frame S matches the measured pose. Like the heading factor, the
+  // heading is the rotation about the z-axis of the world, so it is defined for every attitude.
+  bool initHeadingAndPosition(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_M_S);
+  // Sets the yaw and the position of the state so that the yaw of sensor frame S1 and the position of sensor frame S2 match. Like the
+  // yaw factor, the yaw is in the world frame, and a yaw in another fixed frame throws std::invalid_argument. It is undefined when
+  // the x-axis of S1 is vertical.
+  bool initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S1,
+                          const UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& M_t_M_S2);
+  // Without an absolute reference: sets the heading and the position of the initialization frame in the world to identity.
+  bool initHeadingAndPositionAsIdentity();
   bool initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
 
   // Trigger offline smoother optimization
@@ -148,6 +162,14 @@ class HolisticFusion {
   void initGraph_(const double timeStamp_k, const Eigen::Vector3d& imuAngularVelocity);
   //// Updating the factor graph
   void optimizeGraph_();
+
+  /// Initialization
+  //// Whether the yaw and the position can be initialized now. Prints the reason if not.
+  bool canInitYawAndPosition_() const;
+  //// T_W_M at initialization, see the init functions
+  gtsam::Pose3 initialT_W_fixedFrame_(const UnaryMeasurementAbsolute& measurement);
+  //// Sets the IMU orientation, then the IMU position so that sensor frame S is at W_t_W_S
+  void setInitialOrientationAndPosition_(const gtsam::Rot3& R_W_I, const Eigen::Vector3d& W_t_W_S, const std::string& sensorFrame);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame

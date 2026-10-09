@@ -112,13 +112,7 @@ void SmbEstimator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr) {
     // Initialization
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
                  << COLOR_END << std::endl;
-    // Create dummy measurement for initialization
-    holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(),
-        staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), imuPtr->header.stamp.toSec(), 1.0,
-        Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-    // Initialize
-    holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+    holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     REGULAR_COUT << RED_START << " ...initialized yaw and position to identity." << COLOR_END << std::endl;
     // Pretend that we received first measurement --> In order to allow for optimization
     holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
@@ -157,7 +151,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstPtr& od
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   } else {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-    this->initYawAndPosition(unary6DMeasurement);
+    this->initHeadingAndPosition(unary6DMeasurement);
   }
 
   // Visualization ----------------------------
@@ -204,10 +198,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
     if (!useLioOdometryFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel odometry callback is setting global yaw and position, as lio is all set to false." << COLOR_END
                    << std::endl;
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelOdometryBetweenRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
       REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
                    << std::endl;
     }
@@ -262,11 +253,7 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::Float64MultiAr
     if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel linear velocities callback is setting global yaw and position, as lio is all set to false."
                    << COLOR_END << std::endl;
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-          wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), timeK, 1.0,
-          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
       REGULAR_COUT
           << " Initialized yaw and position to identity in the wheel linear velocities callback, as lio and vio are all set to false."
           << std::endl;
