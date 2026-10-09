@@ -14,6 +14,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Unary Expression Factors
 /// Absolute
+#include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionAbsoluteHeading.h"
 #include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
 #include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
 #include "holistic_fusion/factors/gmsf_expression/GmsfUnaryExpressionAbsoluteYaw.h"
@@ -31,6 +32,19 @@ namespace holistic_fusion {
 // Constructor
 HolisticFusionHolistic::HolisticFusionHolistic() {
   REGULAR_COUT << GREEN_START << " HolisticFusionHolistic-Constructor called." << COLOR_END << std::endl;
+}
+
+// The alignment keyframe of a fixed frame is only created by a measurement with a position
+bool HolisticFusionHolistic::hasAlignmentKeyframeForMeasurementWithoutPosition_(const UnaryMeasurementAbsolute& measurement) const {
+  const std::string& worldFrame = measurement.worldFrameName();
+  const std::string& fixedFrame = measurement.fixedFrameName();
+  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
+      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
+    REGULAR_COUT << YELLOW_START << " Skipping measurement " << measurement.measurementName() << ": frame " << fixedFrame
+                 << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END << std::endl;
+    return false;
+  }
+  return true;
 }
 
 // Unary Measurements: In reference frame --> systematic drift ---------------------------------------------------------
@@ -128,14 +142,7 @@ void HolisticFusionHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasureme
     return;
   }
 
-  // The yaw needs the alignment keyframe of its fixed frame, which only a measurement with a position creates
-  const std::string& worldFrame = fixedFrame_yaw_fixedFrame_sensorFrame.worldFrameName();
-  const std::string& fixedFrame = fixedFrame_yaw_fixedFrame_sensorFrame.fixedFrameName();
-  if (graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_ && fixedFrame != worldFrame &&
-      !graphMgrPtr_->hasReferenceFrameKeyframe(worldFrame, fixedFrame)) {
-    REGULAR_COUT << YELLOW_START << " Skipping yaw measurement " << fixedFrame_yaw_fixedFrame_sensorFrame.measurementName() << ": frame "
-                 << fixedFrame << " has no alignment keyframe yet. A position or pose measurement of this frame creates it." << COLOR_END
-                 << std::endl;
+  if (!hasAlignmentKeyframeForMeasurementWithoutPosition_(fixedFrame_yaw_fixedFrame_sensorFrame)) {
     return;
   }
 
@@ -148,6 +155,47 @@ void HolisticFusionHolistic::addUnaryYawAbsoluteMeasurement(const UnaryMeasureme
 
   // Add factor to graph
   graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionAbsoluteYaw>(gmsfUnaryExpressionYawPtr);
+
+  // Optimize ---------------------------------------------------------------
+  {
+    // Mutex for optimizeGraph Flag
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
+}
+
+void HolisticFusionHolistic::addUnaryHeadingAbsoluteMeasurement(
+    const UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>& R_M_S) {
+  // Valid measurement received
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  // Only take actions if graph has been initialized
+  if (!initedGraphFlag_) {
+    return;
+  }
+
+  // Check for covariance violation
+  bool covarianceViolatedFlag = isCovarianceViolated_<1>(R_M_S.unaryMeasurementNoiseDensity(),
+                                                         R_M_S.covarianceViolationThreshold());
+  if (checkAndPrintCovarianceViolation_(R_M_S.measurementName(), covarianceViolatedFlag)) {
+    return;
+  }
+
+  if (!hasAlignmentKeyframeForMeasurementWithoutPosition_(R_M_S)) {
+    return;
+  }
+
+  // Create GMSF expression
+  auto gmsfUnaryExpressionHeadingPtr = std::make_shared<GmsfUnaryExpressionAbsoluteHeading>(
+      std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Matrix3d, 1>>(R_M_S),
+      staticTransformsPtr_->getImuFrame(),
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), R_M_S.sensorFrameName()),
+      graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_);
+
+  // Add factor to graph
+  graphMgrPtr_->addUnaryHolisticFactor<GmsfUnaryExpressionAbsoluteHeading>(gmsfUnaryExpressionHeadingPtr);
 
   // Optimize ---------------------------------------------------------------
   {

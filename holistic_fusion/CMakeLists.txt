@@ -70,6 +70,9 @@ if(BUILD_TESTING)
     add_executable(holistic_yaw_expression_test tests/test_holistic_yaw_expression.cpp)
     target_link_libraries(holistic_yaw_expression_test PRIVATE holistic_fusion)
     add_test(NAME holistic_yaw_expression_test COMMAND holistic_yaw_expression_test)
+    add_executable(heading_expression_test tests/test_heading_expression.cpp)
+    target_link_libraries(heading_expression_test PRIVATE holistic_fusion)
+    add_test(NAME heading_expression_test COMMAND heading_expression_test)
 endif()
 
 # Exported alias target
