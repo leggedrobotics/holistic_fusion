@@ -56,8 +56,8 @@ class HolisticFusion {
   // the x-axis of S1 is vertical.
   bool initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S1,
                           const UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& M_t_M_S2);
-  // Without an absolute reference: the world is the gravity-aligned start pose of the initialization frame.
-  bool initHeadingAndPositionAtStart();
+  // Without an absolute reference: sets the heading and the position of the initialization frame in the world to identity.
+  bool initHeadingAndPositionAsIdentity();
   bool initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
 
   // Trigger offline smoother optimization

@@ -130,7 +130,7 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
                  << COLOR_END << std::endl;
 
-    holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+    holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
   }
   // Remove if norm is larger than 100
@@ -231,7 +231,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::Con
 
   if (!areYawAndPositionInited()) {
     if (!useLioOdometryFlag_) {
-      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     }
   } else if (wheelOdometryCallbackCounter_ % 5 == 0 && wheelOdometryCallbackCounter_ > 0) {
     Eigen::Isometry3d T_Bkm1_Bk = T_O_Bw_km1_.inverse() * T_O_Bw_k;
@@ -263,7 +263,7 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64Mu
 
   if (!areYawAndPositionInited()) {
     if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
-      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     }
   } else {
     holistic_fusion::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(

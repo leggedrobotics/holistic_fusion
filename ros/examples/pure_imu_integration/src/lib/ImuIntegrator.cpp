@@ -29,7 +29,7 @@ void ImuIntegrator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuMsgPtr) {
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START
               << " Imu attitude is now initialized: " << holistic_fusion::HolisticFusion::areRollAndPitchInited() << COLOR_END << std::endl;
     holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
-    holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+    holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     std::cout << YELLOW_START << "ImuIntegrator" << GREEN_START << " Set initial yaw and position to zero." << COLOR_END << std::endl;
   }
 }

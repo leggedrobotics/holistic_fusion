@@ -177,12 +177,13 @@ void yawInitRejectsYawInFixedFrame() {
   require(rejected, "A yaw in a fixed frame must be rejected");
 }
 
-void initAtStartKeepsTheGravityAlignedStartPose() {
+void identityInitKeepsOnlyTheGravityTilt() {
   const gtsam::Rot3 R_W_I = gtsam::Rot3::Ypr(1.1, -0.2, 0.15);
-  const gtsam::Pose3 T_W_I = initializeImuPose(R_W_I, [](TestEstimator& estimator) { return estimator.initHeadingAndPositionAtStart(); });
+  const gtsam::Pose3 T_W_I =
+      initializeImuPose(R_W_I, [](TestEstimator& estimator) { return estimator.initHeadingAndPositionAsIdentity(); });
 
   require(T_W_I.equals(gtsam::Pose3(gtsam::Rot3::Ypr(0.0, -0.2, 0.15), gtsam::Point3::Zero()), 1e-6),
-          "Start pose is not gravity-aligned at zero");
+          "Heading and position are not identity");
 }
 
 }  // namespace
@@ -193,7 +194,7 @@ int main() {
     headingInitGoesThroughFixedFrameGuess();
     yawInitMatchesMeasuredYawOfSensor();
     yawInitRejectsYawInFixedFrame();
-    initAtStartKeepsTheGravityAlignedStartPose();
+    identityInitKeepsOnlyTheGravityTilt();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

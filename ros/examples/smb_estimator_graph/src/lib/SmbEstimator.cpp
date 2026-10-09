@@ -112,7 +112,7 @@ void SmbEstimator::imuCallback(const sensor_msgs::Imu::ConstPtr& imuPtr) {
     // Initialization
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
                  << COLOR_END << std::endl;
-    holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+    holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
     REGULAR_COUT << RED_START << " ...initialized yaw and position to identity." << COLOR_END << std::endl;
     // Pretend that we received first measurement --> In order to allow for optimization
     holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
@@ -198,7 +198,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::Odometry::ConstPtr
     if (!useLioOdometryFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel odometry callback is setting global yaw and position, as lio is all set to false." << COLOR_END
                    << std::endl;
-      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
       REGULAR_COUT << " Initialized yaw and position to identity in the wheel odometry callback, as lio and vio are all set to false."
                    << std::endl;
     }
@@ -253,7 +253,7 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::Float64MultiAr
     if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
       REGULAR_COUT << GREEN_START << " Wheel linear velocities callback is setting global yaw and position, as lio is all set to false."
                    << COLOR_END << std::endl;
-      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAsIdentity();
       REGULAR_COUT
           << " Initialized yaw and position to identity in the wheel linear velocities callback, as lio and vio are all set to false."
           << std::endl;

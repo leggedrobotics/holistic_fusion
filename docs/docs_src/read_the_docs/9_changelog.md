@@ -7,7 +7,7 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 
 ### October 2026: Initialization from measurements with frames (PR #57)
 
-* **New `initHeadingAndPosition()`, `initYawAndPosition()` and `initHeadingAndPositionAtStart()`.** They replace
+* **New `initHeadingAndPosition()`, `initYawAndPosition()` and `initHeadingAndPositionAsIdentity()`.** They replace
   `initYawAndPositionInWorld()` and the frameless `initYawAndPosition()`. Measurements in a fixed frame go through the guess of
   `T_W_M`. The yaw of `initYawAndPosition()` must be in the world frame, like the yaw factor. The heading init is defined for
   every attitude, and the yaw init accounts for the tilt of the IMU and of the mount.

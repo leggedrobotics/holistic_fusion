@@ -23,7 +23,7 @@ The primary entry point is the `HolisticFusion` base class, which provides the p
 - **IMU integration**: `addCoreImuMeasurementAndGetState()` — adds an IMU measurement, triggers preintegration, and
   returns the current state estimate at IMU rate.
 - **Graph initialization**: `initHeadingAndPosition()` (from a measured pose, defined for every attitude),
-  `initYawAndPosition()` (from a measured yaw in the world and a position) or `initHeadingAndPositionAtStart()` (without an absolute
+  `initYawAndPosition()` (from a measured yaw in the world and a position) or `initHeadingAndPositionAsIdentity()` (without an absolute
   reference). Measurements in a fixed frame go through the guess of `initWorldFrameToFixedFrameTransform()`.
 - **Offline optimization**: `optimizeSlowBatchSmoother()` — trigger post-mission batch optimization.
 - **State logging**: `logRealTimeNavStates()` — log estimated trajectories for evaluation.

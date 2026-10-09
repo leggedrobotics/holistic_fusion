@@ -478,7 +478,7 @@ void AnymalEstimator::leggedVelocityUnaryCallback_(const nav_msgs::Odometry ::Co
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_) {
       REGULAR_COUT << GREEN_START << " Legged odometry velocity callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
-      this->initHeadingAndPositionAtStart();
+      this->initHeadingAndPositionAsIdentity();
     }
   } else {
     // Only add every nth measurement
@@ -517,7 +517,7 @@ void AnymalEstimator::leggedKinematicsCallback_(const holistic_fusion_anymal_msg
     if (!useGnssUnaryFlag_ && !useLioUnaryFlag_ && !useLioBetweenFlag_ && !useLeggedBetweenFlag_ && !useLeggedVelocityUnaryFlag_) {
       REGULAR_COUT << GREEN_START << " Legged kinematics callback is setting global yaw, as it was not set so far." << COLOR_END
                    << std::endl;
-      this->initHeadingAndPositionAtStart();
+      this->initHeadingAndPositionAsIdentity();
     }
   }
   // Normal Operation

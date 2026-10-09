@@ -145,14 +145,14 @@ bool HolisticFusion::initYawAndPosition(const UnaryMeasurementXDAbsolute<double,
   return true;
 }
 
-bool HolisticFusion::initHeadingAndPositionAtStart() {
+bool HolisticFusion::initHeadingAndPositionAsIdentity() {
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
   if (!canInitYawAndPosition_()) {
     return false;
   }
   foundInitialYawAndPositionFlag_ = true;
-  REGULAR_COUT << GREEN_START << " Initialized the world at the gravity-aligned start pose of "
-               << staticTransformsPtr_->getInitializationFrame() << "." << COLOR_END << std::endl;
+  REGULAR_COUT << GREEN_START << " Initialized the heading and the position of " << staticTransformsPtr_->getInitializationFrame()
+               << " to identity." << COLOR_END << std::endl;
   return true;
 }
 
