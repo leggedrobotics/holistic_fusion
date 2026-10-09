@@ -52,8 +52,9 @@ class HolisticFusion {
   // heading is the rotation about the z-axis of the world, so it is defined for every attitude.
   bool initHeadingAndPosition(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_M_S);
   // Sets the yaw and the position of the state so that the yaw of sensor frame S1 and the position of sensor frame S2 match. Like the
-  // yaw factor, the yaw is relative to the yaw of R_W_M. It is undefined when the x-axis of S1 is vertical.
-  bool initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_M_S1,
+  // yaw factor, the yaw is in the world frame, and a yaw in another fixed frame throws std::invalid_argument. It is undefined when
+  // the x-axis of S1 is vertical.
+  bool initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S1,
                           const UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& M_t_M_S2);
   // Without an absolute reference: the world is the gravity-aligned start pose of the initialization frame.
   bool initHeadingAndPositionAtStart();

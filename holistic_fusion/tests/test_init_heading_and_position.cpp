@@ -126,28 +126,55 @@ void headingInitGoesThroughFixedFrameGuess() {
   require((T_W_I * kT_I_S).equals(T_W_M * T_M_Smeas, 1e-6), "Pose of S does not match the measurement through T_W_M");
 }
 
-// The yaw of S1 relative to the yaw of M and the position of S2 must match, while roll and pitch stay with gravity
+holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yawMeasurement(const double yaw, const std::string& fixedFrame) {
+  return {"yaw",
+          10,
+          "sensor",
+          "sensor_corrected",
+          holistic_fusion::RobustNorm::None(),
+          1.0,
+          1.0,
+          yaw,
+          Eigen::Matrix<double, 1, 1>::Ones(),
+          fixedFrame,
+          "world",
+          Eigen::Matrix<double, 6, 1>::Ones()};
+}
+
+// The yaw of S1 in the world and the position of S2 through T_W_M must match, while roll and pitch stay with gravity
 void yawInitMatchesMeasuredYawOfSensor() {
   const gtsam::Pose3 T_W_M(gtsam::Rot3::Ypr(0.3, 0.05, -0.04), gtsam::Point3(3.0, 1.0, -0.5));
   const gtsam::Rot3 R_W_I = gtsam::Rot3::Ypr(-0.9, 0.25, -0.3);
-  const double yaw_M_S1 = 1.2;
+  const double yaw_W_S1meas = 1.2;
   const Eigen::Vector3d M_t_M_S2(0.5, -1.5, 0.3);
-  const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yawMeasurement(
-      "yaw", 10, "sensor", "sensor_corrected", holistic_fusion::RobustNorm::None(), 1.0, 1.0, yaw_M_S1, Eigen::Matrix<double, 1, 1>::Ones(),
-      "map", "world", Eigen::Matrix<double, 6, 1>::Ones());
   const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> positionMeasurement(
       "position", 10, "imu", "imu_corrected", holistic_fusion::RobustNorm::None(), 1.0, 1.0, M_t_M_S2, Eigen::Vector3d::Ones(), "map",
       "world", Eigen::Matrix<double, 6, 1>::Ones());
   const gtsam::Pose3 T_W_Iinit = initializeImuPose(R_W_I, [&](TestEstimator& estimator) {
     estimator.initWorldFrameToFixedFrameTransform(Eigen::Isometry3d(T_W_M.matrix()), "map");
-    return estimator.initYawAndPosition(yawMeasurement, positionMeasurement);
+    return estimator.initYawAndPosition(yawMeasurement(yaw_W_S1meas, "world"), positionMeasurement);
   });
 
   const double yaw_W_S1 = (T_W_Iinit.rotation() * kT_I_S.rotation()).yaw();
-  require(std::abs(yaw_W_S1 - (yaw_M_S1 + T_W_M.rotation().yaw())) < 1e-6, "Yaw of S1 does not match: " + std::to_string(yaw_W_S1));
+  require(std::abs(yaw_W_S1 - yaw_W_S1meas) < 1e-6, "Yaw of S1 does not match: " + std::to_string(yaw_W_S1));
   require(std::abs(T_W_Iinit.rotation().pitch() - R_W_I.pitch()) < 1e-6 && std::abs(T_W_Iinit.rotation().roll() - R_W_I.roll()) < 1e-6,
           "Roll and pitch do not stay with gravity");
   require(T_W_Iinit.translation().isApprox(T_W_M.transformFrom(gtsam::Point3(M_t_M_S2)), 1e-6), "Position of S2 does not match");
+}
+
+void yawInitRejectsYawInFixedFrame() {
+  const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> positionMeasurement(
+      "position", 10, "imu", "imu_corrected", holistic_fusion::RobustNorm::None(), 1.0, 1.0, Eigen::Vector3d::Zero(),
+      Eigen::Vector3d::Ones(), "world", "world");
+  bool rejected = false;
+  try {
+    initializeImuPose(gtsam::Rot3(), [&](TestEstimator& estimator) {
+      return estimator.initYawAndPosition(yawMeasurement(0.0, "map"), positionMeasurement);
+    });
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "A yaw in a fixed frame must be rejected");
 }
 
 void initAtStartKeepsTheGravityAlignedStartPose() {
@@ -165,6 +192,7 @@ int main() {
     headingInitMatchesMeasuredPoseOfSensor();
     headingInitGoesThroughFixedFrameGuess();
     yawInitMatchesMeasuredYawOfSensor();
+    yawInitRejectsYawInFixedFrame();
     initAtStartKeepsTheGravityAlignedStartPose();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

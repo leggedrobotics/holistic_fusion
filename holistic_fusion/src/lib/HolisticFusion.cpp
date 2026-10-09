@@ -122,19 +122,23 @@ bool HolisticFusion::initHeadingAndPosition(const UnaryMeasurementXDAbsolute<Eig
   return true;
 }
 
-bool HolisticFusion::initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_M_S1,
+bool HolisticFusion::initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_S1,
                                         const UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& M_t_M_S2) {
+  if (yaw_W_S1.fixedFrameName() != yaw_W_S1.worldFrameName()) {
+    throw std::invalid_argument("HolisticFusion::initYawAndPosition: the yaw of " + yaw_W_S1.measurementName() + " is in frame " +
+                                yaw_W_S1.fixedFrameName() + ", but it must be in the world frame " + yaw_W_S1.worldFrameName() +
+                                ". Use initHeadingAndPosition() for an orientation in a fixed frame.");
+  }
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
   if (!canInitYawAndPosition_()) {
     return false;
   }
 
-  const double yaw_W_S1meas = yaw_M_S1.unaryMeasurement() + initialT_W_fixedFrame_(yaw_M_S1).rotation().yaw();
   const gtsam::Rot3 R_W_Iest(preIntegratedNavStatePtr_->getT_W_Ik().rotation());
   const gtsam::Rot3 R_I_S1(
-      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), yaw_M_S1.sensorFrameName()).rotation());
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), yaw_W_S1.sensorFrameName()).rotation());
   // A rotation about the z-axis of the world adds its angle to the Euler yaw
-  const gtsam::Rot3 R_W_I = gtsam::Rot3::Rz(yaw_W_S1meas - (R_W_Iest * R_I_S1).yaw()) * R_W_Iest;
+  const gtsam::Rot3 R_W_I = gtsam::Rot3::Rz(yaw_W_S1.unaryMeasurement() - (R_W_Iest * R_I_S1).yaw()) * R_W_Iest;
 
   const Eigen::Vector3d W_t_W_S2 = initialT_W_fixedFrame_(M_t_M_S2).transformFrom(gtsam::Point3(M_t_M_S2.unaryMeasurement()));
   setInitialOrientationAndPosition_(R_W_I, W_t_W_S2, M_t_M_S2.sensorFrameName());
