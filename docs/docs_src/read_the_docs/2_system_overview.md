@@ -49,6 +49,7 @@ Each category supports different dimensionalities:
 - **Position3 (3D)**: R3 position — `addUnaryPosition3AbsoluteMeasurement()`, `addUnaryPosition3LandmarkMeasurement()`
 - **Velocity3 (3D)**: R3 velocity — `addUnaryVelocity3AbsoluteMeasurement()`, `addUnaryVelocity3LocalMeasurement()`
 - **Orientation (1D)**: Individual roll, pitch, or yaw — `addUnaryRollAbsoluteMeasurement()`, etc.
+- **Heading (1D)**: Rotation about the z-axis of the world to a measured orientation, defined for every attitude — `addUnaryHeadingAbsoluteMeasurement()`
 - **Bearing3 (3D)**: Bearing to landmarks — `addUnaryBearing3LandmarkMeasurement()`
 
 Additional convenience factors are available:
