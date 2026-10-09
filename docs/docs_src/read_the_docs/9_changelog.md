@@ -5,6 +5,12 @@ Smaller fixes are not listed here; see the [commit history](https://github.com/l
 
 ## 2026
 
+### October 2026: Holistic yaw about the z-axis of the world (PR #56)
+
+* **`addUnaryYawAbsoluteMeasurement()` takes the yaw of the sensor frame in the world, relative to the yaw of the fixed frame.**
+  With a tilted fixed frame, the yaw was about the z-axis of the fixed frame and pulled on roll and pitch. The tilt of the fixed
+  frame is now ignored, so the measurement assumes a level fixed frame.
+
 ### September 2026: Switch to GTSAM 4.3.0 (PR #46)
 
 * **GTSAM 4.3.0 is now the required version.** `holistic_fusion` uses `find_package(GTSAM 4.3 REQUIRED)`; GTSAM 4.2 is no
