@@ -16,6 +16,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/geometry/Rot2.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/expressions.h>
 
 // Workspace
@@ -29,9 +30,16 @@ inline gtsam::Rot2 yawAsRot2(const gtsam::Rot3& R, gtsam::OptionalJacobian<1, 3>
   return gtsam::Rot2::fromAngle(R.yaw(H));
 }
 
+// Yaw of S in the world, relative to the yaw of the fixed frame M in the world. It equals the yaw of S in M if M is level.
+// For a tilted M, it stays about the z-axis of the world, so it does not pull on the roll and pitch of the state.
+inline gtsam::Expression<gtsam::Rot2> yawRelativeToFixedFrameInWorld(const gtsam::Rot3_& exp_R_W_S, const gtsam::Rot3_& exp_R_W_M) {
+  return gtsam::between(gtsam::Expression<gtsam::Rot2>(&yawAsRot2, exp_R_W_M), gtsam::Expression<gtsam::Rot2>(&yawAsRot2, exp_R_W_S));
+}
+
 /**
  * Expression that constrains the yaw of a sensor frame S in a fixed frame M.
- * If M is not the world frame and fixed frames are optimized, the yaw goes through the alignment T_W_M.
+ * If M is not the world frame and fixed frames are optimized, the yaw is taken in the world, relative to the yaw of the alignment T_W_M.
+ * The tilt of M is ignored, so the measurement assumes a level M.
  * The yaw is evaluated on S, so the constraint holds for any IMU mounting orientation.
  * A yaw measurement has no position, so it reuses the current alignment keyframe of M and never creates one.
  */
@@ -43,7 +51,8 @@ class GmsfUnaryExpressionAbsoluteYaw final : public GmsfUnaryExpressionAbsolut<g
                                  const double createReferenceAlignmentKeyframeEveryNSeconds)
       : GmsfUnaryExpressionAbsolut(yawUnaryMeasurementPtr, imuFrameName, T_I_sensorFrame, createReferenceAlignmentKeyframeEveryNSeconds),
         yawUnaryMeasurementPtr_(yawUnaryMeasurementPtr),
-        exp_R_fixedFrame_sensorFrame_(gtsam::Rot3::Identity()) {}
+        exp_R_W_S_(gtsam::Rot3::Identity()),
+        exp_R_W_fixedFrame_(gtsam::Rot3::Identity()) {}
 
   // Destructor
   ~GmsfUnaryExpressionAbsoluteYaw() = default;
@@ -59,8 +68,7 @@ class GmsfUnaryExpressionAbsoluteYaw final : public GmsfUnaryExpressionAbsolut<g
  protected:
   // i) Generate Expression for Basic IMU State in World Frame at Key -------------------------------------
   void generateImuStateInWorldFrameAtKey(const gtsam::Key& closestGeneralKey) final {
-    exp_R_fixedFrame_sensorFrame_ =
-        gtsam::rotation(gtsam::Expression<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestGeneralKey)));  // R_W_I at this point
+    exp_R_W_S_ = gtsam::rotation(gtsam::Expression<gtsam::Pose3>(gtsam::symbol_shorthand::X(closestGeneralKey)));  // R_W_I at this point
   }
 
   // ii) Holistically Optimize over Fixed Frames -----------------------------------------------------------
@@ -75,16 +83,13 @@ class GmsfUnaryExpressionAbsoluteYaw final : public GmsfUnaryExpressionAbsolut<g
     throw std::logic_error("GmsfUnaryExpressionAbsoluteYaw: a yaw measurement has no position.");
   }
 
+  // The state stays in the world, as the yaw is taken about the z-axis of the world
   void transformStateToReferenceFrameMeasurement(const gtsam::Pose3_& exp_T_W_fixedFrame) override {
-    exp_R_fixedFrame_sensorFrame_ =
-        inverseRot3(gtsam::rotation(exp_T_W_fixedFrame)) * exp_R_fixedFrame_sensorFrame_;  // R_fixedFrame_I at this point
+    exp_R_W_fixedFrame_ = gtsam::rotation(exp_T_W_fixedFrame);
   }
 
   // iii) Transform Measurement to Core Imu Frame -----------------------------------------------------------
-  void transformImuStateToSensorFrameState() final {
-    exp_R_fixedFrame_sensorFrame_ =
-        exp_R_fixedFrame_sensorFrame_ * gtsam::Rot3_(gtsam::Rot3(T_I_sensorFrameInit_.rotation()));  // R_fixedFrame_sensorFrame
-  }
+  void transformImuStateToSensorFrameState() final { exp_R_W_S_ = exp_R_W_S_ * gtsam::Rot3_(gtsam::Rot3(T_I_sensorFrameInit_.rotation())); }
 
   // iv) Extrinsic Calibration ---------------------------------------------------------------------
   void transformSensorFrameStateToSensorFrameCorrectedState(DynamicDictionaryContainer& /*gtsamDynamicExpressionKeys*/) final {
@@ -103,15 +108,16 @@ class GmsfUnaryExpressionAbsoluteYaw final : public GmsfUnaryExpressionAbsolut<g
 
   // Return Expression
   [[nodiscard]] const gtsam::Expression<gtsam::Rot2> getGtsamExpression() const override {
-    return gtsam::Expression<gtsam::Rot2>(&yawAsRot2, exp_R_fixedFrame_sensorFrame_);
+    return yawRelativeToFixedFrameInWorld(exp_R_W_S_, exp_R_W_fixedFrame_);
   }
 
  private:
   // Full Measurement Type
   std::shared_ptr<UnaryMeasurementXDAbsolute<double, 1>> yawUnaryMeasurementPtr_;
 
-  // Expression
-  gtsam::Expression<gtsam::Rot3> exp_R_fixedFrame_sensorFrame_;
+  // Expressions
+  gtsam::Expression<gtsam::Rot3> exp_R_W_S_;
+  gtsam::Expression<gtsam::Rot3> exp_R_W_fixedFrame_;
 };
 
 }  // namespace holistic_fusion

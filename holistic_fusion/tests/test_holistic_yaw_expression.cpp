@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -26,12 +27,11 @@ void require(bool condition, const std::string& message) {
 using gtsam::symbol_shorthand::R;
 using gtsam::symbol_shorthand::X;
 
-// yaw(R_M_S) with R_M_S = R_W_M^-1 * R_W_I * R_I_S, as the yaw expression composes it
+// Yaw of S, with R_W_S = R_W_I * R_I_S, relative to the yaw of R_W_M
 gtsam::Expression<gtsam::Rot2> yawOfSensorInFixedFrame(const gtsam::Rot3& R_I_S) {
   const gtsam::Rot3_ R_W_I = gtsam::rotation(gtsam::Pose3_(X(0)));
   const gtsam::Rot3_ R_W_M = gtsam::rotation(gtsam::Pose3_(R(0)));
-  const gtsam::Rot3_ R_M_S = holistic_fusion::inverseRot3(R_W_M) * R_W_I * gtsam::Rot3_(R_I_S);
-  return gtsam::Expression<gtsam::Rot2>(&holistic_fusion::yawAsRot2, R_M_S);
+  return holistic_fusion::yawRelativeToFixedFrameInWorld(R_W_I * gtsam::Rot3_(R_I_S), R_W_M);
 }
 
 void yawIsEvaluatedInTheFixedFrame() {
@@ -43,6 +43,27 @@ void yawIsEvaluatedInTheFixedFrame() {
   const double yaw_M_S = yawOfSensorInFixedFrame(R_I_S).value(values).theta();
 
   require(std::abs(yaw_M_S - 0.6) < 1e-9, "Yaw of S in M is wrong: " + std::to_string(yaw_M_S));
+}
+
+// With a tilted fixed frame M and a level sensor, the factor must pull on the state only about the z-axis of the world
+void tiltedFixedFrameOnlyConstrainsStateAboutWorldZ() {
+  const gtsam::Rot3 R_W_M = gtsam::Rot3::Ypr(0.3, -0.25, 0.35);
+  const gtsam::Rot3 R_W_S = gtsam::Rot3::Rz(0.9);
+  gtsam::Values values;
+  values.insert(X(0), gtsam::Pose3(R_W_S, gtsam::Point3(0.5, -1.0, 0.2)));
+  values.insert(R(0), gtsam::Pose3(R_W_M, gtsam::Point3(0.1, 0.2, 0.3)));
+  const gtsam::ExpressionFactor<gtsam::Rot2> factor(gtsam::noiseModel::Isotropic::Sigma(1, 1.0), gtsam::Rot2::fromAngle(0.6),
+                                                    yawOfSensorInFixedFrame(gtsam::Rot3()));
+  std::vector<gtsam::Matrix> H(2);
+  const double error = factor.unwhitenedError(values, H)(0);
+  const gtsam::KeyVector& keys = factor.keys();
+  const gtsam::Matrix& H_state = H[std::find(keys.begin(), keys.end(), X(0)) - keys.begin()];
+
+  // A rotation about axis a of W is the right perturbation R_W_S^T * a of R_W_S
+  const gtsam::Matrix13 H_state_aboutAxesOfW = H_state.leftCols<3>() * R_W_S.matrix().transpose();
+
+  require(std::abs(error) < 1e-9, "Yaw of S relative to the yaw of M is wrong: " + std::to_string(error));
+  require(H_state_aboutAxesOfW.isApprox(gtsam::Matrix13(0.0, 0.0, 1.0), 1e-9), "State is not pulled only about z of the world");
 }
 
 void jacobiansMatchNumericalDerivatives() {
@@ -93,6 +114,7 @@ void holisticMatchesClassicInWorldFrame(const gtsam::Rot3& R_I_S, const gtsam::P
 int main() {
   try {
     yawIsEvaluatedInTheFixedFrame();
+    tiltedFixedFrameOnlyConstrainsStateAboutWorldZ();
     jacobiansMatchNumericalDerivatives();
     errorWrapsAroundPi();
     holisticMatchesClassicInWorldFrame(gtsam::Rot3::Rx(M_PI), gtsam::Pose3(gtsam::Rot3::RzRyRx(0.2, -0.1, 2.4), gtsam::Point3(1, 2, 3)),
