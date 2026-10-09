@@ -130,13 +130,7 @@ void SmbEstimator::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuPtr) {
     REGULAR_COUT << RED_START << " IMU callback is setting global yaw and position, as no other odometry is available. Initializing..."
                  << COLOR_END << std::endl;
 
-    holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-        "IMU_init_6D", int(graphConfigPtr_->imuRate_), staticTransformsPtr_->getImuFrame(),
-        staticTransformsPtr_->getImuFrame() + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(),
-        imuPtr->header.stamp.sec + imuPtr->header.stamp.nanosec * 1e-9, 1.0, Eigen::Isometry3d::Identity(),
-        Eigen::MatrixXd::Identity(6, 1));
-
-    holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+    holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
     holistic_fusion::HolisticFusion::pretendFirstMeasurementReceived();
   }
   // Remove if norm is larger than 100
@@ -205,7 +199,7 @@ void SmbEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   } else if (areYawAndPositionInited()) {
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   } else {
-    this->initYawAndPosition(unary6DMeasurement);
+    this->initHeadingAndPosition(unary6DMeasurement);
   }
 
   addToPathMsg(measLio_mapImuPathPtr_, odomLidarPtr->header.frame_id  + referenceFrameAlignedNameId, odomLidarPtr->header.stamp,
@@ -237,10 +231,7 @@ void SmbEstimator::wheelOdometryPoseCallback_(const nav_msgs::msg::Odometry::Con
 
   if (!areYawAndPositionInited()) {
     if (!useLioOdometryFlag_) {
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelOdometryBetweenRate_), wheelOdometryFrame, wheelOdometryFrame + sensorFrameCorrectedNameId,
-          holistic_fusion::RobustNorm::None(), wheelOdometryTimeK, 1.0, Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
     }
   } else if (wheelOdometryCallbackCounter_ % 5 == 0 && wheelOdometryCallbackCounter_ > 0) {
     Eigen::Isometry3d T_Bkm1_Bk = T_O_Bw_km1_.inverse() * T_O_Bw_k;
@@ -272,11 +263,7 @@ void SmbEstimator::wheelLinearVelocitiesCallback_(const std_msgs::msg::Float64Mu
 
   if (!areYawAndPositionInited()) {
     if (!useLioOdometryFlag_ && !useWheelOdometryBetweenFlag_) {
-      holistic_fusion::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
-          "Lidar_unary_6D", int(wheelLinearVelocitiesRate_), wheelLinearVelocityLeftFrame,
-          wheelLinearVelocityLeftFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), timeK, 1.0,
-          Eigen::Isometry3d::Identity(), Eigen::MatrixXd::Identity(6, 1));
-      holistic_fusion::HolisticFusion::initYawAndPosition(unary6DMeasurement);
+      holistic_fusion::HolisticFusion::initHeadingAndPositionAtStart();
     }
   } else {
     holistic_fusion::UnaryMeasurementXD<Eigen::Vector3d, 3> leftWheelLinearVelocityMeasurement(

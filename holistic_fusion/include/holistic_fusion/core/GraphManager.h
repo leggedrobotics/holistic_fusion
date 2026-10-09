@@ -97,6 +97,8 @@ class GraphManager {
 
   // Set T_W_F
   bool setInitialWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
+  // The guess set above, or identity if none is set
+  gtsam::Pose3 getInitialWorldFrameToFixedFrameTransform(const std::string& fixedFrame);
 
   // Update of graph  ----------------------------------------------------------
   // Real-time Graph Update

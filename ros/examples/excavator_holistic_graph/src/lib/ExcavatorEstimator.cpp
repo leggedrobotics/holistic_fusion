@@ -125,7 +125,7 @@ void ExcavatorEstimator::lidarOdometryCallback_(const nav_msgs::Odometry::ConstP
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   } else if (!(useLeftGnssFlag_ || useRightGnssFlag_) || secondsSinceStart() > 15) {  // Initializing
     REGULAR_COUT << GREEN_START << " LiDAR odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-    this->initYawAndPosition(unary6DMeasurement);
+    this->initHeadingAndPosition(unary6DMeasurement);
   }
 
   // Wrap up iteration
@@ -183,9 +183,16 @@ void ExcavatorEstimator::gnssCallback_(const sensor_msgs::NavSatFix::ConstPtr& l
 
   // State Machine
   if (!areYawAndPositionInited() && areRollAndPitchInited()) {  // Try to initialize yaw and position if not done already
-    if (this->initYawAndPositionInWorld(yaw_W_C, W_t_W_GnssL,
-                                        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame(),
-                                        dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame())) {
+    const std::string& cabinFrame = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getCabinFrame();
+    const std::string& leftGnssFrame = dynamic_cast<ExcavatorStaticTransforms*>(staticTransformsPtr_.get())->getLeftGnssFrame();
+    const std::string& worldFrame = staticTransformsPtr_->getWorldFrame();
+    const holistic_fusion::UnaryMeasurementXDAbsolute<double, 1> yaw_W_S1(
+        "InitYaw", int(gnssRate_), cabinFrame, cabinFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leftGnssMsgPtr->header.stamp.toSec(),
+        1.0, yaw_W_C, Eigen::Matrix<double, 1, 1>::Ones(), worldFrame, worldFrame);
+    const holistic_fusion::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> W_t_W_S2(
+        "InitPosition", int(gnssRate_), leftGnssFrame, leftGnssFrame + sensorFrameCorrectedNameId, holistic_fusion::RobustNorm::None(), leftGnssMsgPtr->header.stamp.toSec(),
+        1.0, W_t_W_GnssL, Eigen::Vector3d::Ones(), worldFrame, worldFrame);
+    if (this->initYawAndPosition(yaw_W_S1, W_t_W_S2)) {
       REGULAR_COUT << " Set yaw and position successfully." << std::endl;
     }
   } else {  // Already initialized --> add to graph

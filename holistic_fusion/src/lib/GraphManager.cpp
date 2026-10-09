@@ -368,6 +368,12 @@ bool GraphManager::setInitialWorldFrameToFixedFrameTransform(const Eigen::Isomet
   return true;
 }
 
+gtsam::Pose3 GraphManager::getInitialWorldFrameToFixedFrameTransform(const std::string& fixedFrame) {
+  gtsam::Pose3 T_W_F = gtsam::Pose3::Identity();
+  gtsamDynamicExpressionKeys_.get<gtsam::Pose3>().getInitialGuessForFramePair(worldFrame_, fixedFrame, T_W_F);
+  return T_W_F;
+}
+
 // Unary factors ----------------------------------------------------------------
 // Key Lookup
 bool GraphManager::hasReferenceFrameKeyframe(const std::string& worldFrame, const std::string& fixedFrame) {

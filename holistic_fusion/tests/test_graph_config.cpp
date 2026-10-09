@@ -275,7 +275,7 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   }
   require(estimator.areRollAndPitchInited(), "Stationary IMU alignment failed");
   require(config->gyroBiasPrior_.isApprox(gyro_bias), "Static initialization must use the measured gyro-bias mean");
-  require(estimator.initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), "imu", "imu"), "Pose initialization failed");
+  require(estimator.initHeadingAndPositionAtStart(), "Pose initialization failed");
   estimator.pretendFirstMeasurementReceived();
   add_imu();
   require(estimator.isGraphInited(), "Graph initialization failed");

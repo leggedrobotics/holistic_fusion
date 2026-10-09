@@ -7,6 +7,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <chrono>
+#include <cmath>
 #include <stdexcept>
 
 // Implementation
@@ -102,68 +103,85 @@ bool HolisticFusion::isGraphInited() const {
 }
 
 // Initialization -----------------------
-bool HolisticFusion::initYawAndPositionInWorld(const double yaw_fixedFrame_frame1, const Eigen::Vector3d& fixedFrame_t_fixedFrame_frame2,
-                                         const std::string& frame1, const std::string& frame2) {
-  // Locking
+bool HolisticFusion::initHeadingAndPosition(const UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6>& T_M_S) {
   const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+  if (!canInitYawAndPosition_()) {
+    return false;
+  }
 
-  // Different Modes
-  if (!alignedImuFlag_) {  // Case 1: IMU not yet aligned --> wait for IMU callback to align roll and pitch of IMU
+  const gtsam::Pose3 T_W_Smeas = initialT_W_fixedFrame_(T_M_S) * gtsam::Pose3(T_M_S.unaryMeasurement().matrix());
+  const gtsam::Rot3 R_W_Iest(preIntegratedNavStatePtr_->getT_W_Ik().rotation());
+  const gtsam::Rot3 R_I_S(
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), T_M_S.sensorFrameName()).rotation());
 
+  // Removing the twist of the offset about the z-axis of the world leaves a rotation about a horizontal axis, i.e. zero heading error
+  const gtsam::Quaternion q_W_Wmeas = (R_W_Iest * R_I_S * T_W_Smeas.rotation().inverse()).toQuaternion();
+  const gtsam::Rot3 R_W_I = gtsam::Rot3::Rz(-2.0 * std::atan2(q_W_Wmeas.z(), q_W_Wmeas.w())) * R_W_Iest;
+
+  setInitialOrientationAndPosition_(R_W_I, T_W_Smeas.translation(), T_M_S.sensorFrameName());
+  return true;
+}
+
+bool HolisticFusion::initYawAndPosition(const UnaryMeasurementXDAbsolute<double, 1>& yaw_M_S1,
+                                        const UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& M_t_M_S2) {
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+  if (!canInitYawAndPosition_()) {
+    return false;
+  }
+
+  const double yaw_W_S1meas = yaw_M_S1.unaryMeasurement() + initialT_W_fixedFrame_(yaw_M_S1).rotation().yaw();
+  const gtsam::Rot3 R_W_Iest(preIntegratedNavStatePtr_->getT_W_Ik().rotation());
+  const gtsam::Rot3 R_I_S1(
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), yaw_M_S1.sensorFrameName()).rotation());
+  // A rotation about the z-axis of the world adds its angle to the Euler yaw
+  const gtsam::Rot3 R_W_I = gtsam::Rot3::Rz(yaw_W_S1meas - (R_W_Iest * R_I_S1).yaw()) * R_W_Iest;
+
+  const Eigen::Vector3d W_t_W_S2 = initialT_W_fixedFrame_(M_t_M_S2).transformFrom(gtsam::Point3(M_t_M_S2.unaryMeasurement()));
+  setInitialOrientationAndPosition_(R_W_I, W_t_W_S2, M_t_M_S2.sensorFrameName());
+  return true;
+}
+
+bool HolisticFusion::initHeadingAndPositionAtStart() {
+  const std::lock_guard<std::mutex> initYawAndPositionLock(initYawAndPositionMutex_);
+  if (!canInitYawAndPosition_()) {
+    return false;
+  }
+  foundInitialYawAndPositionFlag_ = true;
+  REGULAR_COUT << GREEN_START << " Initialized the world at the gravity-aligned start pose of "
+               << staticTransformsPtr_->getInitializationFrame() << "." << COLOR_END << std::endl;
+  return true;
+}
+
+bool HolisticFusion::canInitYawAndPosition_() const {
+  if (!alignedImuFlag_) {
     REGULAR_COUT << RED_START << " Tried to set initial yaw, but initial attitude is not yet set." << COLOR_END << std::endl;
     return false;
-
-  } else if (!areYawAndPositionInited()) {  // Case 2: Imu is aligned, but roll and pitch not yet --> do it
-                                            // Transform yaw to imu frame
-    REGULAR_COUT << " Pre-integrated state before init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
-
-    const gtsam::Rot3 yawR_W_frame1 = gtsam::Rot3::Yaw(yaw_fixedFrame_frame1);
-    REGULAR_COUT << GREEN_START << " Setting yaw of " << frame1 << " frame in " << staticTransformsPtr_->getWorldFrame() << " frame."
-                 << COLOR_END << std::endl;
-    const double yaw_W_I0_ =
-        (yawR_W_frame1 *
-         gtsam::Pose3(staticTransformsPtr_->rv_T_frame1_frame2(frame1, staticTransformsPtr_->getImuFrame()).matrix()).rotation())
-            .yaw();
-    // Set Yaw
-    preIntegratedNavStatePtr_->updateYawInWorld(yaw_W_I0_, graphConfigPtr_->odomNotJumpAtStartFlag_);
-
-    // Transform position to imu frame
-    Eigen::Matrix3d R_W_I0 = preIntegratedNavStatePtr_->getT_W_Ik().rotation().matrix();
-    // TODO: fixedFrame not necessarily world
-    Eigen::Vector3d W_t_W_I0 =
-        W_t_W_Frame1_to_W_t_W_Frame2_(fixedFrame_t_fixedFrame_frame2, frame2, staticTransformsPtr_->getImuFrame(), R_W_I0);
-    // Set Position
-    preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I0, graphConfigPtr_->odomNotJumpAtStartFlag_);
-
-    REGULAR_COUT << " Preintegrated state after init: " << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().matrix() << std::endl;
-
-    // Wrap Up
-    foundInitialYawAndPositionFlag_ = true;
-    // World Frame
-    REGULAR_COUT << " --------------------" << std::endl;
-    REGULAR_COUT << GREEN_START << " Initial global yaw of from world frame to imu frame has been set to (deg) " << 180.0 * yaw_W_I0_ / M_PI
-                 << "." << COLOR_END << std::endl;
-    REGULAR_COUT << GREEN_START << " Initial global position of imu frame in world frame has been set to (m) " << W_t_W_I0.transpose()
-                 << "." << COLOR_END << std::endl;
-    // Odom Frame
-    const double& yaw_O_I0 = gtsam::Rot3(preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().rotation().matrix()).yaw();  // alias
-    REGULAR_COUT << " --------------------" << std::endl;
-    REGULAR_COUT << GREEN_START << " Initial global yaw of from odom frame to imu frame has been set to (deg) " << 180.0 * yaw_O_I0 / M_PI
-                 << "." << COLOR_END << std::endl;
-    REGULAR_COUT << GREEN_START << " Initial global position of imu frame in odom frame has been set to (m) "
-                 << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().translation().transpose() << "." << COLOR_END << std::endl;
-    // Return
-    return true;
-  } else {  // Case 3: Initial yaw and position already set --> do nothing
+  }
+  if (areYawAndPositionInited()) {
     REGULAR_COUT << RED_START << " Tried to set initial yaw, but it has been set before." << COLOR_END << std::endl;
     return false;
   }
+  return true;
 }
 
-bool HolisticFusion::initYawAndPosition(const UnaryMeasurementXD<Eigen::Isometry3d, 6>& unary6DMeasurement) {
-  gtsam::Pose3 T_fixedFrame_frame1(unary6DMeasurement.unaryMeasurement().matrix());
-  return initYawAndPositionInWorld(T_fixedFrame_frame1.rotation().yaw(), T_fixedFrame_frame1.translation(),
-                                   unary6DMeasurement.sensorFrameName(), unary6DMeasurement.sensorFrameName());
+gtsam::Pose3 HolisticFusion::initialT_W_fixedFrame_(const UnaryMeasurementAbsolute& measurement) {
+  // Without optimized fixed frames, measurements in M are taken as measurements in the world
+  if (measurement.fixedFrameName() == measurement.worldFrameName() || !graphConfigPtr_->optimizeReferenceFramePosesWrtWorldFlag_) {
+    return gtsam::Pose3::Identity();
+  }
+  return graphMgrPtr_->getInitialWorldFrameToFixedFrameTransform(measurement.fixedFrameName());
+}
+
+void HolisticFusion::setInitialOrientationAndPosition_(const gtsam::Rot3& R_W_I, const Eigen::Vector3d& W_t_W_S,
+                                                       const std::string& sensorFrame) {
+  preIntegratedNavStatePtr_->updateOrientationInWorld(R_W_I.matrix(), graphConfigPtr_->odomNotJumpAtStartFlag_);
+  const Eigen::Vector3d W_t_W_I = W_t_W_Frame1_to_W_t_W_Frame2_(W_t_W_S, sensorFrame, staticTransformsPtr_->getImuFrame(), R_W_I.matrix());
+  preIntegratedNavStatePtr_->updatePositionInWorld(W_t_W_I, graphConfigPtr_->odomNotJumpAtStartFlag_);
+  foundInitialYawAndPositionFlag_ = true;
+
+  REGULAR_COUT << GREEN_START
+               << " Initial pose of imu frame in world frame has been set to RPY (deg): " << R_W_I.rpy().transpose() * (180.0 / M_PI)
+               << ", t (m): " << W_t_W_I.transpose() << "." << COLOR_END << std::endl;
 }
 
 bool HolisticFusion::initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame) {
