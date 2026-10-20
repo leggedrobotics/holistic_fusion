@@ -80,6 +80,9 @@ regarding installation and usage.
 
 Please refer to our [Doxygen](https://leggedrobotics.github.io/holistic_fusion/doxy/html) for documentation of the code.
 
+The [experimental articulated-turn model](graph_msf/docs/articulated_turn.md)
+documents the cabin/BASE joint factors, shared uncertainty and remaining runtime integration.
+
 ## Paper
 
 If you find this code useful or use it in your work, please consider citing:
