@@ -17,47 +17,56 @@ void TimeGraphKeyBuffer::addToBuffer(const double ts, const gtsam::Key& key) {
               << std::setprecision(14) << ts << std::endl;
   }
 
-  // Mutex block
-  {
-    // Writing to IMU buffer --> acquire mutex
-    const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    timeToKeyBuffer_[ts] = key;
-    keyToTimeBuffer_[key] = ts;
-    if (ts > tLatestInBuffer_) {
-      tLatestInBuffer_ = ts;
-    }
+  // Keep insertion and pruning in one critical section so lookup iterators
+  // cannot race an erase.
+  const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
+  timeToKeyBuffer_[ts] = key;
+  keyToTimeBuffer_[key] = ts;
+  if (ts > tLatestInBuffer_) {
+    tLatestInBuffer_ = ts;
   }
 
-  // If Key buffer is too large, remove first element
-  if (timeToKeyBuffer_.size() > bufferLength_) {
-    timeToKeyBuffer_.erase(timeToKeyBuffer_.begin());
-    keyToTimeBuffer_.erase(keyToTimeBuffer_.begin());
+  if (timeToKeyBuffer_.size() > static_cast<size_t>(bufferLength_)) {
+    const auto oldestIterator = timeToKeyBuffer_.begin();
+    keyToTimeBuffer_.erase(oldestIterator->second);
+    timeToKeyBuffer_.erase(oldestIterator);
   }
 }
 
 bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key& key, const std::string& callingName,
                                                    const double maxSearchDeviation, const double tK) {
-  std::_Rb_tree_iterator<std::pair<const double, gtsam::Key>> upperIterator;
+  double latestTimestampInBuffer = 0.0;
   {
-    // Read from IMU buffer --> acquire mutex
+    // Hold the mutex until the selected timestamp and key have been copied.
     const std::lock_guard<std::mutex> writeInBufferLock(writeInBufferMutex_);
-    upperIterator = timeToKeyBuffer_.upper_bound(tK);
+    if (timeToKeyBuffer_.empty()) {
+      std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << "called from " << callingName << ": Buffer is empty!"
+                << COLOR_END << std::endl;
+      return false;
+    }
+
+    const auto upperIterator = timeToKeyBuffer_.upper_bound(tK);
+    auto closestIterator = timeToKeyBuffer_.begin();
+    if (upperIterator == timeToKeyBuffer_.begin()) {
+      // Query is before the oldest key.
+      closestIterator = upperIterator;
+    } else if (upperIterator == timeToKeyBuffer_.end()) {
+      // Query is at or after the newest key.
+      closestIterator = timeToKeyBuffer_.end();
+      --closestIterator;
+    } else {
+      auto lowerIterator = upperIterator;
+      --lowerIterator;
+      // Preserve the previous tie-break: choose the newer key.
+      closestIterator = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator : upperIterator;
+    }
+
+    tInGraph = closestIterator->first;
+    key = closestIterator->second;
+    latestTimestampInBuffer = tLatestInBuffer_;
   }
 
-  // Empty buffer
-  if (timeToKeyBuffer_.empty()) {
-    std::cerr << YELLOW_START << "GMsf-TimeKeyBuffer " << RED_START << "called from " << callingName << ": Buffer is empty!" << COLOR_END
-              << std::endl;
-    return false;
-  }
-
-  auto lowerIterator = upperIterator;
-  --lowerIterator;
-
-  // Keep key which is closer to tLidar
-  tInGraph = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->first : upperIterator->first;
-  key = std::abs(tK - lowerIterator->first) < std::abs(upperIterator->first - tK) ? lowerIterator->second : upperIterator->second;
-  double timeDeviation = tInGraph - tK;
+  const double timeDeviation = tInGraph - tK;
 
   if (verboseLevel_ >= 2) {
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " " << callingName << std::setprecision(14)
@@ -66,8 +75,8 @@ bool TimeGraphKeyBuffer::getClosestKeyAndTimestamp(double& tInGraph, gtsam::Key&
               << " found time step: " << tInGraph << " at key " << key << std::endl;
     std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Time Deviation (t_graph-t_request): " << 1000 * timeDeviation
               << " ms" << std::endl;
-    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << tLatestInBuffer_
-              << ", hence absolut delay of measurement is " << 1000 * (tLatestInBuffer_ - tK) << "ms." << std::endl;
+    std::cout << YELLOW_START << "GMsf-TimeKeyBuffer" << COLOR_END << " Latest IMU timestamp: " << latestTimestampInBuffer
+              << ", hence absolut delay of measurement is " << 1000 * (latestTimestampInBuffer - tK) << "ms." << std::endl;
   }
 
   // Check for error and warn user

@@ -5,6 +5,9 @@ This file is released under the "BSD-3-Clause License".
 Please see the LICENSE file that has been included as part of this package.
  */
 
+// C++
+#include <algorithm>
+
 // Implementation
 #include "graph_msf/interface/GraphMsfHolistic.h"
 
@@ -16,6 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 /// Absolute
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePose3.h"
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsolutePosition3.h"
+#include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionAbsoluteVelocity3.h"
 /// Local
 #include "graph_msf/factors/gmsf_expression/GmsfUnaryExpressionLocalVelocity3.h"
 
@@ -111,7 +115,46 @@ void GraphMsfHolistic::addUnaryPosition3AbsoluteMeasurement(
 
 // Velocity3 in Fixed Frame
 void GraphMsfHolistic::addUnaryVelocity3AbsoluteMeasurement(UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>& F_v_F_S) {
-  throw std::runtime_error("Velocity measurements in fixed frame are not yet supported.");
+  if (!validFirstMeasurementReceivedFlag_) {
+    validFirstMeasurementReceivedFlag_ = true;
+  }
+
+  if (!initedGraphFlag_) {
+    return;
+  }
+
+  const bool covarianceViolatedFlag =
+      isCovarianceViolated_<3>(F_v_F_S.unaryMeasurementNoiseDensity(), F_v_F_S.covarianceViolationThreshold());
+  if (checkAndPrintCovarianceViolation_(F_v_F_S.measurementName(), covarianceViolatedFlag)) {
+    return;
+  }
+
+  double imuTimestamp = 0.0;
+  ImuMeasurement imuMeasurement;
+  const double maxImuSearchDeviation = std::max(graphConfigPtr_->maxSearchDeviation_, 1.5 / graphConfigPtr_->imuRate_);
+  if (!coreImuBufferPtr_->getClosestImuMeasurement(imuTimestamp, imuMeasurement, maxImuSearchDeviation, F_v_F_S.timeK())) {
+    REGULAR_COUT << RED_START << " No IMU measurement close enough to absolute velocity '" << F_v_F_S.measurementName() << "' at "
+                 << std::setprecision(14) << F_v_F_S.timeK() << "; not adding the factor." << COLOR_END << std::endl;
+    return;
+  }
+
+  const auto measurementPtr = std::make_shared<UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3>>(F_v_F_S);
+  const Eigen::Isometry3d T_I_sensorFrame =
+      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), F_v_F_S.sensorFrameName());
+
+  auto horizontalExpressionPtr = std::make_shared<GmsfUnaryExpressionAbsoluteVelocityXY>(
+      measurementPtr, staticTransformsPtr_->getImuFrame(), T_I_sensorFrame, imuMeasurement.angularVelocity);
+  auto verticalExpressionPtr = std::make_shared<GmsfUnaryExpressionAbsoluteVelocityZ>(
+      measurementPtr, staticTransformsPtr_->getImuFrame(), T_I_sensorFrame, imuMeasurement.angularVelocity);
+  const bool factorsAdded = graphMgrPtr_->addUnaryGmsfExpressionFactorPair(horizontalExpressionPtr, verticalExpressionPtr);
+  if (!factorsAdded) {
+    return;
+  }
+
+  {
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
 }
 
 // Local Measurements: Fully Local ---------------------------------------------------------

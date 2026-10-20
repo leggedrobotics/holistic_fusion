@@ -26,6 +26,27 @@ GraphMsfClassic::GraphMsfClassic() {
   REGULAR_COUT << GREEN_START << " GraphMsfClassic-Constructor called." << COLOR_END << std::endl;
 }
 
+bool GraphMsfClassic::addUnaryAttitudeAbsoluteMeasurement(
+    const UnaryMeasurementXD<Eigen::Vector3d, 2>& bodyDirectionMeasurement) {
+  if (!initedGraphFlag_) {
+    return false;
+  }
+
+  const bool covarianceViolatedFlag = isCovarianceViolated_<2>(
+      bodyDirectionMeasurement.unaryMeasurementNoiseDensity(), bodyDirectionMeasurement.covarianceViolationThreshold());
+  if (checkAndPrintCovarianceViolation_(bodyDirectionMeasurement.measurementName(), covarianceViolatedFlag)) {
+    return false;
+  }
+
+  const bool inserted =
+      graphMgrPtr_->addPose3AttitudeFactor(bodyDirectionMeasurement, Eigen::Vector3d::UnitZ());
+  if (inserted) {
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    optimizeGraphFlag_ = true;
+  }
+  return inserted;
+}
+
 // Unary ----------------------------
 void GraphMsfClassic::addUnaryYawAbsoluteMeasurement(const UnaryMeasurementXDAbsolute<double, 1>& yaw_W_frame) {
   // Only take actions if graph has been initialized
