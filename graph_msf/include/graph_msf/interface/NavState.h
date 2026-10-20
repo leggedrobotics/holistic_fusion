@@ -10,12 +10,14 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <mutex>
+#include <memory>
 
 // Eigen
 #include <utility>
 
 // Workspace
 #include "graph_msf/core/GraphState.hpp"
+#include "graph_msf/interface/ArticulatedTurnRuntime.h"
 
 namespace graph_msf {
 
@@ -68,6 +70,7 @@ class SafeIntegratedNavState : public NavState {
     T_W_O_ = safeIntegratedNavState.T_W_O_;
     T_O_Ik_gravityAligned_ = safeIntegratedNavState.T_O_Ik_gravityAligned_;
     relocalizedWorldToOdom_ = safeIntegratedNavState.relocalizedWorldToOdom_;
+    articulatedTurnState_ = safeIntegratedNavState.articulatedTurnState_;
   }
 
   // Regular Constructor
@@ -100,7 +103,13 @@ class SafeIntegratedNavState : public NavState {
 
   bool isrelocalizedWorldToOdom() const { return relocalizedWorldToOdom_; }
 
+  // Captured atomically with this navigation state by GraphManager. A later
+  // optimizer revision must never be paired with this already-returned pose.
+  const std::shared_ptr<const ArticulatedTurnState>& getArticulatedTurnState() const { return articulatedTurnState_; }
+  void setArticulatedTurnState(std::shared_ptr<const ArticulatedTurnState> state) { articulatedTurnState_ = std::move(state); }
+
  private:
+  std::shared_ptr<const ArticulatedTurnState> articulatedTurnState_;
   // Transformations
   Eigen::Isometry3d T_W_O_ = Eigen::Isometry3d::Identity();
   Eigen::Isometry3d T_O_Ik_gravityAligned_ = Eigen::Isometry3d::Identity();

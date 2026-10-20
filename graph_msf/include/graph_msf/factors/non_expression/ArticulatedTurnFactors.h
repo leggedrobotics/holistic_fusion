@@ -3,6 +3,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Unit3.h>
+#include <gtsam/navigation/AHRSFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <cmath>
@@ -226,6 +227,75 @@ class BaseRotationBetweenFactor
 
  private:
   gtsam::Rot3 measured_delta_base_;
+  gtsam::Rot3 R_IC_;
+};
+
+// Bias-aware alternative for driving. The preintegrated measurements must use
+// independent gyro rates expressed in the physical BASE frame after validating
+// leg rigidity, timing and kinematics. Cabin gyros must not enter this PIM.
+//
+// The caller owns the BASE gyro-bias variable and its prior/dynamics. Reusing
+// one bias key across intervals retains a constant shared bias; changing bias
+// keys requires a between-bias process model. This factor does not make BASE
+// heading or joint zero observable without supporting physical measurements.
+class BaseAhrsBetweenFactor
+    : public gtsam::NoiseModelFactor5<gtsam::Pose3, double, gtsam::Pose3, double,
+                                     gtsam::Vector3> {
+ public:
+  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, double, gtsam::Pose3, double,
+                                       gtsam::Vector3>;
+  using Base::evaluateError;
+
+  BaseAhrsBetweenFactor(gtsam::Key pose_i_key, gtsam::Key turn_i_key,
+                         gtsam::Key pose_j_key, gtsam::Key turn_j_key,
+                         gtsam::Key base_bias_key,
+                         const gtsam::PreintegratedAhrsMeasurements& measurements,
+                         const gtsam::Rot3& R_IC)
+      : Base(gtsam::noiseModel::Gaussian::Covariance(measurements.preintMeasCov()),
+              pose_i_key, turn_i_key, pose_j_key, turn_j_key, base_bias_key),
+        measurements_(measurements), R_IC_(R_IC) {}
+
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return gtsam::NonlinearFactor::shared_ptr(new BaseAhrsBetweenFactor(*this));
+  }
+
+  gtsam::Vector evaluateError(const gtsam::Pose3& pose_i, const double& turn_i,
+                              const gtsam::Pose3& pose_j, const double& turn_j,
+                              const gtsam::Vector3& base_bias,
+                              gtsam::OptionalMatrixType H_pose_i = OptionalNone,
+                              gtsam::OptionalMatrixType H_turn_i = OptionalNone,
+                              gtsam::OptionalMatrixType H_pose_j = OptionalNone,
+                              gtsam::OptionalMatrixType H_turn_j = OptionalNone,
+                              gtsam::OptionalMatrixType H_bias = OptionalNone) const override {
+    gtsam::Matrix36 H_rotation_pose_i, H_rotation_pose_j;
+    gtsam::Matrix31 H_rotation_turn_i, H_rotation_turn_j;
+    const gtsam::Rot3 base_i = articulatedBaseRotation(
+        pose_i, turn_i, R_IC_, H_rotation_pose_i, H_rotation_turn_i);
+    const gtsam::Rot3 base_j = articulatedBaseRotation(
+        pose_j, turn_j, R_IC_, H_rotation_pose_j, H_rotation_turn_j);
+    gtsam::Matrix33 H_error_i, H_error_j, H_error_bias;
+    const gtsam::Vector3 error = measurements_.computeError(
+        base_i, base_j, base_bias, H_error_i, H_error_j, H_error_bias);
+    if (H_pose_i) {
+      *H_pose_i = H_error_i * H_rotation_pose_i;
+    }
+    if (H_turn_i) {
+      *H_turn_i = H_error_i * H_rotation_turn_i;
+    }
+    if (H_pose_j) {
+      *H_pose_j = H_error_j * H_rotation_pose_j;
+    }
+    if (H_turn_j) {
+      *H_turn_j = H_error_j * H_rotation_turn_j;
+    }
+    if (H_bias) {
+      *H_bias = H_error_bias;
+    }
+    return error;
+  }
+
+ private:
+  gtsam::PreintegratedAhrsMeasurements measurements_;
   gtsam::Rot3 R_IC_;
 };
 

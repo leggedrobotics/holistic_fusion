@@ -13,6 +13,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Workspace
 #include "graph_msf/core/GraphManager.h"
+#include "graph_msf/factors/non_expression/BaselineHeadingFactor.h"
 
 // Unary Factors
 #include "graph_msf/factors/non_expression/unaryPitchFactor.h"
@@ -24,6 +25,37 @@ namespace graph_msf {
 // Constructor
 GraphMsfClassic::GraphMsfClassic() {
   REGULAR_COUT << GREEN_START << " GraphMsfClassic-Constructor called." << COLOR_END << std::endl;
+}
+
+void GraphMsfClassic::configureArticulatedTurn(const ArticulatedTurnConfig& config) {
+  if (!graphMgrPtr_) throw std::logic_error("GraphMSF setup must precede articulated configuration");
+  if (initedGraphFlag_) throw std::logic_error("Articulated turn cannot be reconfigured after graph initialization");
+  graphMgrPtr_->configureArticulatedTurn(config);
+}
+
+bool GraphMsfClassic::addArticulatedTurnSample(const ArticulatedTurnSample& sample) {
+  return graphMgrPtr_ && graphMgrPtr_->addArticulatedTurnSample(sample);
+}
+
+void GraphMsfClassic::invalidateArticulatedTurn(const std::string& reason) {
+  if (graphMgrPtr_) graphMgrPtr_->invalidateArticulatedTurn(reason);
+}
+
+ArticulatedTurnState GraphMsfClassic::getArticulatedTurnState() const {
+  return graphMgrPtr_ ? graphMgrPtr_->getArticulatedTurnState() : ArticulatedTurnState{};
+}
+
+bool GraphMsfClassic::addArticulatedBaselineHeading(double stamp, double heading,
+                                                  const Eigen::Vector3d& baseline_imu, double sigma) {
+  if (!initedGraphFlag_ || !std::isfinite(stamp) || !std::isfinite(heading) ||
+      !std::isfinite(sigma) || sigma<=0.0 || !baseline_imu.allFinite() || baseline_imu.norm()<1e-6) return false;
+  const bool inserted=graphMgrPtr_->addUnaryFactorInImuFrame<BodyBaselineHeading,1,BaselineHeadingFactor,gtsam::symbol_shorthand::X>(
+      BodyBaselineHeading{heading,baseline_imu.normalized()},gtsam::Vector1(sigma),stamp);
+  if (inserted) {
+    const std::lock_guard<std::mutex> lock(optimizeGraphMutex_);
+    optimizeGraphFlag_=true;
+  }
+  return inserted;
 }
 
 bool GraphMsfClassic::addUnaryAttitudeAbsoluteMeasurement(

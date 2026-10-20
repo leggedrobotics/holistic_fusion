@@ -110,16 +110,19 @@ if(BUILD_TESTING)
         test/test_absolute_velocity_expression.cpp
         test/test_buffer_lookup.cpp
         test/test_pose3_attitude_factor.cpp
+        test/test_articulated_nav_snapshot.cpp
     )
     target_link_libraries(test_graph_msf PRIVATE ${PROJECT_NAME} GTest::gtest_main)
     gtest_discover_tests(test_graph_msf DISCOVERY_MODE PRE_TEST)
 
-    # Experimental articulated-state factors. These tests use the real GTSAM
-    # solver without changing GraphManager or any ROS runtime path.
+    # Articulated geometry and runtime lifecycle tests using the real solver.
     add_executable(test_articulated_turn
         test/test_articulated_turn_factors.cpp
         test/test_articulated_turn_graph.cpp
         test/test_articulated_base_state.cpp
+        test/test_base_vertical_gyro_factor.cpp
+        test/test_baseline_heading_factor.cpp
+        test/test_articulated_turn_runtime.cpp
     )
     target_link_libraries(test_articulated_turn PRIVATE
         gtsam gtsam_unstable Eigen3::Eigen GTest::gtest_main)

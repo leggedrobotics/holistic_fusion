@@ -10,6 +10,9 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
+#include <gtsam/inference/Symbol.h>
+#include <graph_msf/interface/Terminal.h>
+#include <iomanip>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 // Workspace
@@ -74,6 +77,10 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 1: Catching the failure of marginalization (as some states which should be marginalized have not been optimized before)
     catch (const std::out_of_range& outOfRangeException) {
+      if (rejectRecovery_) {
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return false;
+      }
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " OutOfRange-Exception while optimizing graph: '"
                 << outOfRangeException.what() << "'." << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
@@ -153,6 +160,10 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 2: Catching the addition of a bad factor (pointing to a state that does not exist)
     catch (const gtsam::ValuesKeyDoesNotExist& valuesKeyDoesNotExistException) {
+      if (rejectRecovery_) {
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return false;
+      }
       std::cout << "----------------------------------------------------------" << std::endl;
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " ValuesKeyDoesNotExist exception while optimizing graph: '" << COLOR_END
                 << valuesKeyDoesNotExistException.what() << "'" << std::endl;
@@ -224,6 +235,10 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 3: ValuesKeyAlreadyExists
     catch (const gtsam::ValuesKeyAlreadyExists& valuesKeyAlreadyExistsException) {
+      if (rejectRecovery_) {
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return false;
+      }
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " ValuesKeyAlreadyExists exception while optimizing graph: '"
                 << valuesKeyAlreadyExistsException.what() << "'" << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
@@ -234,12 +249,20 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
     // Case 4: Runtime error --> can't handle explicitly
     catch (const std::runtime_error& runtimeError) {
+      if (rejectRecovery_) {
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return false;
+      }
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
       throw std::runtime_error(runtimeError.what());
     }
     // Case 5: Typical indeterminant linear system
     catch (const gtsam::IndeterminantLinearSystemException& indeterminantLinearSystemException) {
+      if (rejectRecovery_) {
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+        return false;
+      }
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminantLinearSystem exception while optimizing graph: '"
                 << indeterminantLinearSystemException.what() << "'" << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
@@ -354,12 +377,26 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
   gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) override {
     return fixedLagSmootherPtr_->calculateEstimate<gtsam::Vector>(key);
   }
+  double calculateEstimatedScalar(const gtsam::Key& key) override {
+    return fixedLagSmootherPtr_->calculateEstimate<double>(key);
+  }
+
+  gtsam::Matrix calculateJointCovarianceAtKeys(const gtsam::Key& first_key,
+                                               const gtsam::Key& second_key) override {
+    const auto joint = fixedLagSmootherPtr_->getISAM2().joint(first_key, second_key);
+    const auto information = joint->hessian(gtsam::Ordering{first_key, second_key}).first;
+    const Eigen::LDLT<gtsam::Matrix> decomposition(information);
+    if (decomposition.info() != Eigen::Success || !decomposition.isPositive()) {
+      throw std::runtime_error("Invalid articulated joint information matrix");
+    }
+    return decomposition.solve(gtsam::Matrix::Identity(information.rows(), information.cols()));
+  }
 
   // Marginal Covariance
   gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) override {
     // Check
     if (!optimizedAtLeastOnceFlag_) {
-      REGULAR_COUT << RED_START << "GraphMSF: OptimizerIsam2FixedLag: No optimization has been performed yet." << COLOR_END << std::endl;
+      std::cout << RED_START << "GraphMSF: OptimizerIsam2FixedLag: No optimization has been performed yet." << COLOR_END << std::endl;
     }
     return fixedLagSmootherPtr_->marginalCovariance(key);
   }

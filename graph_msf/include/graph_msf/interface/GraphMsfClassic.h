@@ -10,6 +10,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // Inherited Class
 #include "graph_msf/interface/GraphMsf.h"
+#include "graph_msf/interface/ArticulatedTurnRuntime.h"
 
 // Package
 #include "graph_msf/measurements/BinaryMeasurementXD.h"
@@ -22,6 +23,12 @@ class GraphMsfClassic : virtual public GraphMsf {
  public:
   GraphMsfClassic();
   virtual ~GraphMsfClassic() = default;
+
+  void configureArticulatedTurn(const ArticulatedTurnConfig& config);
+  bool addArticulatedTurnSample(const ArticulatedTurnSample& sample);
+  ArticulatedTurnState getArticulatedTurnState() const;
+  void invalidateArticulatedTurn(const std::string& reason);
+  bool addArticulatedBaselineHeading(double stamp, double heading, const Eigen::Vector3d& baseline_imu, double sigma);
 
   // Adder Functions for Holistic Fusion
   /// Unary Measurements

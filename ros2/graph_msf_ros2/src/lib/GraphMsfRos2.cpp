@@ -466,6 +466,18 @@ void GraphMsfRos2::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imuMsgPtr)
 void GraphMsfRos2::publishState(
     const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
     const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  Eigen::Isometry3d T_base_imu;
+  {
+    std::shared_lock<std::shared_mutex> lock(staticTransformsPtr_->mutex());
+    T_base_imu=staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(),staticTransformsPtr_->getImuFrame());
+  }
+  publishStateWithBaseToImuTransform(integratedNavStatePtr,optimizedStateWithCovarianceAndBiasPtr,T_base_imu);
+}
+
+void GraphMsfRos2::publishStateWithBaseToImuTransform(
+    const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+    const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
+    const Eigen::Isometry3d& T_base_imu) {
   // Covariances
   Eigen::Matrix<double, 6, 6> poseCovarianceRos, twistCovarianceRos;
   graph_msf::GraphMsfRos2::extractCovariancesFromOptimizedState(poseCovarianceRos, twistCovarianceRos,
@@ -484,7 +496,7 @@ void GraphMsfRos2::publishState(
   // Queue TF transforms data for separate thread processing
   {
     std::lock_guard<std::mutex> lock(tfTransformQueueMutex_);
-    tfTransformQueue_.emplace(integratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, timeK);
+    tfTransformQueue_.emplace(integratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr, timeK, T_base_imu);
   }
   tfTransformQueueCondition_.notify_one();
 
@@ -517,16 +529,14 @@ void GraphMsfRos2::publishState(
 }
 
 // Publish to TF
-void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr) {
+void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                                        const Eigen::Isometry3d& T_base_imu) {
   // Time
   const double& timeK = integratedNavStatePtr->getTimeK();  // Alias
 
-  std::shared_lock<std::shared_mutex> lock(staticTransformsPtr_->mutex());
-
-  // B_O
-  Eigen::Isometry3d T_B_Ok =
-      staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
-      integratedNavStatePtr->getT_O_Ik_gravityAligned().inverse();
+  // Compose with the transform captured for this exact timestamp, never the
+  // mutable current joint transform read later by this worker.
+  Eigen::Isometry3d T_B_Ok = T_base_imu * integratedNavStatePtr->getT_O_Ik_gravityAligned().inverse();
   publishTfTreeTransform(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
@@ -836,7 +846,7 @@ void GraphMsfRos2::tfTransformThreadFunction() {
       lock.unlock();
 
       // Publish TF transforms
-      publishTfTransforms(data.integratedNavStatePtr);
+      publishTfTransforms(data.integratedNavStatePtr, data.T_base_imu);
       publishOptimizedStateTfTransforms(data.optimizedStateWithCovarianceAndBiasPtr, data.timeK);
 
       // Re-lock for the next iteration

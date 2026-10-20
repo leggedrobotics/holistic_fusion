@@ -65,10 +65,13 @@ struct TfTransformData {
   std::shared_ptr<graph_msf::SafeIntegratedNavState> integratedNavStatePtr;
   std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr;
   double timeK;
+  Eigen::Isometry3d T_base_imu;  // immutable transform for this state timestamp
 
   TfTransformData(std::shared_ptr<graph_msf::SafeIntegratedNavState> integratedState,
-                  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedState, double timestamp)
-      : integratedNavStatePtr(integratedState), optimizedStateWithCovarianceAndBiasPtr(optimizedState), timeK(timestamp) {}
+                  std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias> optimizedState, double timestamp,
+                  const Eigen::Isometry3d& baseToImu)
+      : integratedNavStatePtr(integratedState), optimizedStateWithCovarianceAndBiasPtr(optimizedState), timeK(timestamp),
+        T_base_imu(baseToImu) {}
 };
 
 class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rclcpp::Node {
@@ -120,7 +123,13 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   // Publishing -----------------------------------
   virtual void publishState(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                             const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
-  void publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr);
+  // Derived articulated estimators pass their coherent per-state transform.
+  void publishStateWithBaseToImuTransform(
+      const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+      const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr,
+      const Eigen::Isometry3d& T_base_imu);
+  void publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                           const Eigen::Isometry3d& T_base_imu);
   void publishOptimizedStateTfTransforms(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
       const double timeStamp);

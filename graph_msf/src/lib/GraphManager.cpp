@@ -25,6 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 // Workspace
 #include "graph_msf/config/AdmissibleGtsamSymbols.h"
 #include "graph_msf/core/GraphManager.h"
+#include "graph_msf/core/ArticulatedTurnGraph.h"
 #include "graph_msf/geometry/conversions.h"
 // ISAM2
 #include "graph_msf/core/optimizer/OptimizerIsam2Batch.hpp"
@@ -69,6 +70,29 @@ GraphManager::GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::str
       batchOptimizerPtr_ = std::make_shared<OptimizerLMBatch>(graphConfigPtr_);
     }
   }
+}
+
+void GraphManager::configureArticulatedTurn(const ArticulatedTurnConfig& config) {
+  std::lock_guard<std::mutex> lifecycle(articulatedLifecycleMutex_);
+  std::lock_guard<std::mutex> graph(operateOnGraphDataMutex_);
+  if (propagatedStateKey_ != 0 || !rtGraphValuesBufferPtr_->empty())
+    throw std::logic_error("Configure articulated turn before graph initialization");
+  if (config.enable && !graphConfigPtr_->realTimeSmootherUseIsamFlag_)
+    throw std::invalid_argument("Articulated turn requires the ISAM2 fixed-lag optimizer");
+  articulatedTurnGraph_ = config.enable ? std::make_shared<ArticulatedTurnGraph>(config) : nullptr;
+  rtOptimizerPtr_->setRejectRecovery(config.enable);
+}
+
+bool GraphManager::addArticulatedTurnSample(const ArticulatedTurnSample& sample) {
+  return articulatedTurnGraph_ && articulatedTurnGraph_->addSample(sample);
+}
+
+void GraphManager::invalidateArticulatedTurn(const std::string& reason) {
+  if (articulatedTurnGraph_) articulatedTurnGraph_->fault(reason);
+}
+
+ArticulatedTurnState GraphManager::getArticulatedTurnState() const {
+  return articulatedTurnGraph_ ? articulatedTurnGraph_->state() : ArticulatedTurnState{};
 }
 
 // Initialization Interface ---------------------------------------------------
@@ -200,6 +224,8 @@ std::size_t GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& return
                                                   std::shared_ptr<SafeNavStateWithCovarianceAndBias>& newOptimizedNavStatePtr,
                                                   const std::shared_ptr<ImuBuffer>& imuBufferPtr, const double imuTimeK,
                                                   bool createNewStateFlag) {
+  std::unique_lock<std::mutex> articulatedLifecycle(articulatedLifecycleMutex_, std::defer_lock);
+  if (articulatedTurnGraph_ && createNewStateFlag) articulatedLifecycle.lock();
   // Logging of latency
   if (graphConfigPtr_->logLatencyAndUpdateDurationToMemoryFlag_) {
     latencyStartTime_ = std::chrono::high_resolution_clock::now();
@@ -265,6 +291,8 @@ std::size_t GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& return
   returnPreIntegratedNavState.update(T_W_O_, Eigen::Isometry3d(T_O_Ik_nav.pose().matrix()), T_O_Ik_nav.bodyVelocity(),
                                      optimizedGraphState_.imuBias().correctGyroscope(imuMeas.rbegin()->second.angularVelocity), imuTimeK,
                                      false);
+  returnPreIntegratedNavState.setArticulatedTurnState(articulatedTurnGraph_
+      ? std::make_shared<const ArticulatedTurnState>(articulatedTurnGraph_->state()) : nullptr);
 
   // Check whether new state can be created (in case fixed lag smoother has a short window)
   if (createNewStateFlag && imuTimeK - lastOptimizedStateTime_ > graphConfigPtr_->realTimeSmootherLag_ - WORST_CASE_OPTIMIZATION_TIME &&
@@ -295,6 +323,18 @@ std::size_t GraphManager::addImuFactorAndGetState(SafeIntegratedNavState& return
     valuesEstimate.insert(gtsam::symbol_shorthand::X(newKey), W_imuPropagatedState_.pose());
     valuesEstimate.insert(gtsam::symbol_shorthand::V(newKey), W_imuPropagatedState_.velocity());
     valuesEstimate.insert(gtsam::symbol_shorthand::B(newKey), optimizedGraphState_.imuBias());
+    if (articulatedTurnGraph_) {
+      gtsam::NonlinearFactorGraph articulatedFactors;
+      std::map<gtsam::Key,double> articulatedTimestamps;
+      articulatedTurnGraph_->append(newKey, imuTimeK, W_imuPropagatedState_.pose(),
+                                    articulatedFactors, valuesEstimate, articulatedTimestamps);
+      rtFactorGraphBufferPtr_->push_back(articulatedFactors);
+      for (const auto& stamp : articulatedTimestamps) (*rtGraphKeysTimestampsMapBufferPtr_)[stamp.first] = stamp.second;
+      if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+        batchFactorGraphBufferPtr_->push_back(articulatedFactors);
+        for (const auto& stamp : articulatedTimestamps) (*batchGraphKeysTimestampsMapBufferPtr_)[stamp.first] = stamp.second;
+      }
+    }
     rtGraphValuesBufferPtr_->insert(valuesEstimate);
     if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
       batchGraphValuesBufferPtr_->insert(valuesEstimate);
@@ -591,6 +631,8 @@ Eigen::Matrix<double, 6, 6> GraphManager::calculatePoseCovarianceAtKeyInWorldFra
 }
 
 void GraphManager::updateGraph() {
+  std::unique_lock<std::mutex> articulatedLifecycle(articulatedLifecycleMutex_, std::defer_lock);
+  if (articulatedTurnGraph_) articulatedLifecycle.lock();
   // At compile time get the symbols for the 6D and 3D states
   constexpr int numDynamic6DStates = countNDStates<6>();
   constexpr int numDynamic3DStates = countNDStates<3>();
@@ -611,7 +653,7 @@ void GraphManager::updateGraph() {
     const std::lock_guard<std::mutex> operateOnGraphDataLock(operateOnGraphDataMutex_);
     // Get current key and time
     currentPropagatedKey = propagatedStateKey_;
-    currentPropagatedTime = propagatedStateTime_;
+    currentPropagatedTime = articulatedTurnGraph_ ? timeToKeyBufferPtr_->getLatestTimestampInBuffer() : propagatedStateTime_;
     currentAngularVelocity = currentAngularVelocity_;
     // Get copy of factors and values and empty buffers
     newRtGraphFactors = *rtFactorGraphBufferPtr_;
@@ -631,7 +673,12 @@ void GraphManager::updateGraph() {
 
     // Empty Buffer Pre-integrator --> everything missed during the update will
     // be in here
-    if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
+    if (articulatedTurnGraph_) {
+      // The newest X can precede the latest IMU when keys run at a lower rate.
+      // Keep its already-integrated tail; resetting here would silently drop
+      // that key-to-current-IMU segment after the optimizer commits.
+      *imuBufferPreintegratorPtr_ = *imuStepPreintegratorPtr_;
+    } else if (graphConfigPtr_->usingBiasForPreIntegrationFlag_) {
       imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(optimizedGraphState_.imuBias());
     } else {
       imuBufferPreintegratorPtr_->resetIntegrationAndSetBias(gtsam::imuBias::ConstantBias());
@@ -654,8 +701,9 @@ void GraphManager::updateGraph() {
   }
   // Batch Smoother
   if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_ && newBatchGraphFactors.size() > 0) {
-    successfulOptimizationFlag =
+    const bool batchSuccess =
         addFactorsToBatchSmootherAndOptimize(newBatchGraphFactors, newBatchGraphValues, newBatchGraphKeysTimestampsMap, graphConfigPtr_);
+    successfulOptimizationFlag = successfulOptimizationFlag && batchSuccess;
   } else if (graphConfigPtr_->verboseLevel_ > 3) {
     REGULAR_COUT << " No factors present in batch smoother, not optimizing." << std::endl;
   }
@@ -670,6 +718,7 @@ void GraphManager::updateGraph() {
 
   // Return if optimization failed
   if (!successfulOptimizationFlag) {
+    if (articulatedTurnGraph_) articulatedTurnGraph_->fault("graph optimizer transaction failed");
     REGULAR_COUT << RED_START << " Graph optimization failed. " << COLOR_END << std::endl;
     return;
   }
@@ -679,6 +728,7 @@ void GraphManager::updateGraph() {
   gtsam::NavState resultNavState =
       calculateNavStateAtGeneralKey(successfulOptimizationFlag, rtOptimizerPtr_, currentPropagatedKey, __func__);
   if (!successfulOptimizationFlag) {
+    if (articulatedTurnGraph_) articulatedTurnGraph_->fault("optimized cabin pose was marginalized or unavailable");
     REGULAR_COUT << RED_START << " Skipping result extraction for marginalized key "
                  << gtsam::Symbol(gtsam::symbol_shorthand::X(currentPropagatedKey))
                  << " after fixed-lag optimization." << COLOR_END << std::endl;
@@ -918,6 +968,10 @@ void GraphManager::updateGraph() {
 
     // // 4. Transformation between World and Odom
     // T_W_O_ = Eigen::Isometry3d((W_imuPropagatedState_.pose() * O_imuPropagatedState_.pose().inverse()).matrix());
+
+    // Publish the joint posterior only after the matching navigation revision
+    // is committed, under the same lock used to capture returned IMU states.
+    if (articulatedTurnGraph_) articulatedTurnGraph_->optimized(*rtOptimizerPtr_, currentPropagatedKey);
 
     // Update the time of the last optimized state
     lastOptimizedStateTime_ = currentPropagatedTime;
@@ -1240,6 +1294,17 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     const char stateCategory = symbol.chr();
     const double timeStamp = keyTimestampMap.at(key);
 
+    if (stateCategory == 'u') {
+      const std::string identifier="u_leg_gyro_bias";
+      if (!fileStreams.count(identifier)) {
+        fileStreams[identifier].open(savePath+timeString+"/"+identifier+".csv");
+        fileStreams[identifier] << "time,key_index,bias_x,bias_y,bias_z\n";
+      }
+      fileStreams[identifier] << std::setprecision(17) << timeStamp << ',' << symbol.index() << ','
+                              << vector.x() << ',' << vector.y() << ',' << vector.z() << '\n';
+      continue;
+    }
+
     // Additional strings
     std::string stateCategoryString = "";
     std::string frameInformation = "";
@@ -1283,6 +1348,14 @@ void GraphManager::saveOptimizedValuesToFile(const gtsam::Values& optimizedValue
     // Write the values to the appropriate file
     fileLogger_.writePoint3ToCsvFile(fileStreams, vector, transformIdentifier, timeStamp);
   }  // end of for loop over all vector states
+
+  for (const auto& item : optimizedValues.extract<double>()) {
+    const char symbol=gtsam::Symbol(item.first).chr();
+    if (symbol!='q' && symbol!='h') continue;
+    const std::string identifier=symbol=='q' ? "q_articulated_turn" : "h_parked_base_heading";
+    fileLogger_.createDoubleCsvFileStream(fileStreams,savePath,identifier,timeString);
+    fileLogger_.writeDoubleToCsvFile(fileStreams,item.second,identifier,keyTimestampMap.at(item.first));
+  }
 
   // C. Bias states (accelerometer and gyroscope) -----------------------------------------------------------
   for (const auto& keyBiasPair : optimizedValues.extract<gtsam::imuBias::ConstantBias>()) {

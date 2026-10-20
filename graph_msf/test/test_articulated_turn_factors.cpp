@@ -239,4 +239,53 @@ TEST(ArticulatedTurnFactors, NativeFactorsCloneAndEvaluateThroughValues) {
   }
 }
 
+TEST(ArticulatedTurnFactors, BaseAhrsAnalyticJacobiansIncludeSharedGyroBias) {
+  const auto R_IC = gtsam::Rot3::RzRyRx(0.13, -0.16, 0.29);
+  const auto base_i = gtsam::Rot3::RzRyRx(0.19, -0.25, 3.1);
+  const gtsam::Vector3 nominal_bias(0.01, -0.015, 0.02);
+  const gtsam::Vector3 evaluated_bias(0.012, -0.016, 0.018);
+  const auto params = std::make_shared<gtsam::PreintegratedRotationParams>();
+  params->gyroscopeCovariance = 1e-6 * gtsam::Matrix33::Identity();
+  gtsam::PreintegratedAhrsMeasurements measurements(params, nominal_bias);
+  for (int i = 0; i < 40; ++i) {
+    measurements.integrateMeasurement(gtsam::Vector3(0.12 + 0.001 * i, -0.09, 0.45), 0.0025);
+  }
+  const auto base_j = measurements.predict(base_i, evaluated_bias) *
+                      gtsam::Rot3::RzRyRx(0.03, -0.02, 0.04);
+  const double q_i = 2.2;
+  const double q_j = -2.1;
+  const auto pose_i = cabinImuPose(base_i, q_i, R_IC);
+  const auto pose_j = cabinImuPose(base_j, q_j, R_IC);
+  const auto bias_key = gtsam::Symbol('d', 0);
+  const graph_msf::BaseAhrsBetweenFactor factor(
+      kPoseI, kTurnI, kPoseJ, kTurnJ, bias_key, measurements, R_IC);
+  gtsam::Matrix H_pose_i, H_turn_i, H_pose_j, H_turn_j, H_bias;
+  factor.evaluateError(pose_i, q_i, pose_j, q_j, evaluated_bias,
+                        H_pose_i, H_turn_i, H_pose_j, H_turn_j, H_bias);
+  expectMatrixNear(H_pose_i, finitePoseJacobian(
+      [&](const auto& p) { return factor.evaluateError(p, q_i, pose_j, q_j, evaluated_bias); }, pose_i));
+  expectMatrixNear(H_turn_i, finiteScalarJacobian(
+      [&](double q) { return factor.evaluateError(pose_i, q, pose_j, q_j, evaluated_bias); }, q_i));
+  expectMatrixNear(H_pose_j, finitePoseJacobian(
+      [&](const auto& p) { return factor.evaluateError(pose_i, q_i, p, q_j, evaluated_bias); }, pose_j));
+  expectMatrixNear(H_turn_j, finiteScalarJacobian(
+      [&](double q) { return factor.evaluateError(pose_i, q_i, pose_j, q, evaluated_bias); }, q_j));
+  gtsam::Matrix33 finite_bias;
+  for (int column = 0; column < 3; ++column) {
+    gtsam::Vector3 step = gtsam::Vector3::Zero();
+    step(column) = 1e-6;
+    finite_bias.col(column) =
+        (factor.evaluateError(pose_i, q_i, pose_j, q_j, evaluated_bias + step) -
+         factor.evaluateError(pose_i, q_i, pose_j, q_j, evaluated_bias - step)) / 2e-6;
+  }
+  expectMatrixNear(H_bias, finite_bias);
+  gtsam::Values values;
+  values.insert(kPoseI, pose_i);
+  values.insert(kTurnI, q_i);
+  values.insert(kPoseJ, pose_j);
+  values.insert(kTurnJ, q_j);
+  values.insert(bias_key, evaluated_bias);
+  EXPECT_NEAR(factor.clone()->error(values), factor.error(values), 1e-12);
+}
+
 }  // namespace

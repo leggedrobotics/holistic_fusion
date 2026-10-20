@@ -34,6 +34,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/core/optimizer/OptimizerBase.h"
 #include "graph_msf/imu/ImuBuffer.hpp"
 #include "graph_msf/interface/NavState.h"
+#include "graph_msf/interface/ArticulatedTurnRuntime.h"
 #include "graph_msf/measurements/Measurement.h"
 #include "graph_msf/measurements/UnaryMeasurement.h"
 #include "graph_msf/measurements/UnaryMeasurementAbsolute.h"
@@ -63,6 +64,8 @@ struct UnaryFactorStatistics {
  *         real-time and batch optimization. It also provides the interface to add measurements to the graph and to retrieve the
  *         optimized states.
  */
+class ArticulatedTurnGraph;
+
 class GraphManager {
  public:
   GraphManager(std::shared_ptr<GraphConfig> graphConfigPtr, std::string imuFrame, std::string worldFrame);
@@ -79,6 +82,11 @@ class GraphManager {
                 << std::endl;
     }
   };
+
+  void configureArticulatedTurn(const ArticulatedTurnConfig& config);
+  bool addArticulatedTurnSample(const ArticulatedTurnSample& sample);
+  ArticulatedTurnState getArticulatedTurnState() const;
+  void invalidateArticulatedTurn(const std::string& reason);
 
   // Initialization Interface ---------------------------------------------------
   bool initImuIntegrators(double gravityValue);
@@ -292,6 +300,10 @@ class GraphManager {
 
   // Member variables
   /// Mutex
+  // Serializes Q creation with optimizer commit/rejection. Raw input delivery
+  // and snapshot reads use ArticulatedTurnGraph's separate short-held mutex.
+  std::mutex articulatedLifecycleMutex_;
+  std::shared_ptr<ArticulatedTurnGraph> articulatedTurnGraph_;
   std::mutex operateOnGraphDataMutex_;
   std::mutex optimizationRunningMutex_;
 };

@@ -45,9 +45,21 @@ class OptimizerBase {
   virtual gtsam::imuBias::ConstantBias calculateEstimatedBias(const gtsam::Key& key) = 0;
   virtual gtsam::Point3 calculateEstimatedPoint3(const gtsam::Key& key) = 0;
   virtual gtsam::Vector calculateEstimatedVector(const gtsam::Key& key) = 0;
+  virtual double calculateEstimatedScalar(const gtsam::Key&) {
+    throw std::logic_error("Scalar extraction is unsupported by this optimizer");
+  }
 
   // Marginal Covariance
   virtual gtsam::Matrix calculateMarginalCovarianceMatrixAtKey(const gtsam::Key& key) = 0;
+  // The block order MUST be [first_key, second_key], independently of Symbol
+  // ordering. Implementations must use the optimizer's actual joint posterior.
+  virtual gtsam::Matrix calculateJointCovarianceAtKeys(const gtsam::Key&, const gtsam::Key&) {
+    throw std::logic_error("Joint covariance extraction is unsupported by this optimizer");
+  }
+
+  // Coupled articulated states require all-or-nothing updates; filtering failed
+  // factors or inserting recovery priors would silently change their model.
+  void setRejectRecovery(bool value) { rejectRecovery_ = value; }
 
   // Add latest IMU bias before optimization
   virtual void addLatestImuBiasBelief(const gtsam::imuBias::ConstantBias& imuBias) { latestImuBias_ = imuBias; }
@@ -56,6 +68,7 @@ class OptimizerBase {
   virtual void addLatestPoseBelief(const gtsam::Pose3& pose) { latestPose_ = pose; }
 
  protected:
+  bool rejectRecovery_{false};
   // Config
   std::shared_ptr<GraphConfig> graphConfigPtr_;
 

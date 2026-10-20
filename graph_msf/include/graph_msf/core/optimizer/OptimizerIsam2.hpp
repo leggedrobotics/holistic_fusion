@@ -68,6 +68,10 @@ class OptimizerIsam2 : public OptimizerBase {
     relinTh['l'] =
         (gtsam::Vector(3) << graphConfigPtr_->landmarkReLinTh_, graphConfigPtr_->landmarkReLinTh_, graphConfigPtr_->landmarkReLinTh_)
             .finished();
+    // Articulated turn, parked-station heading, and independent leg gyro bias.
+    relinTh['q'] = gtsam::Vector::Constant(1, graphConfigPtr_->rotationReLinTh_);
+    relinTh['h'] = gtsam::Vector::Constant(1, graphConfigPtr_->rotationReLinTh_);
+    relinTh['u'] = gtsam::Vector::Constant(3, graphConfigPtr_->gyroBiasReLinTh_);
     /// Set relinearization thresholds
     isam2Params_.relinearizeThreshold = relinTh;
 

@@ -288,5 +288,204 @@ TEST(ArticulatedTurnGraph, RefreshingStationTimestampRetainsReferenceUncertainty
               expectedHeadingVariance * 1e-4);
 }
 
+TEST(ArticulatedTurnGraph, DrivingAndSimultaneousSlewRecoverTiltedTrajectoryWithoutParkedConstraint) {
+  // Independent, calibrated BASE-frame increments are synthetic observations
+  // in this test. No parked constraint or absolute BASE heading is supplied.
+  const auto R_IC = gtsam::Rot3::RzRyRx(-0.12, 0.07, 0.35);
+  const size_t count = 25;
+  for (const bool slew_during_driving : {false, true}) {
+    gtsam::NonlinearFactorGraph graph;
+    gtsam::Values initial;
+    std::vector<gtsam::Rot3> bases;
+    std::vector<double> turns;
+    for (size_t i = 0; i < count; ++i) {
+      const double phase = static_cast<double>(i);
+      const auto base = gtsam::Rot3::RzRyRx(
+          (8.0 + 3.0 * std::sin(0.3 * phase)) * kDeg,
+          (-7.0 + 2.0 * std::cos(0.2 * phase)) * kDeg,
+          170.0 * kDeg + 0.045 * phase);
+      const double q = slew_during_driving ? 0.65 + 1.4 * std::sin(0.25 * phase) : 0.65;
+      bases.push_back(base);
+      turns.push_back(q);
+      const auto pose = cabinImuPose(base, q, R_IC);
+      graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+          poseKey(i), pose, poseNoise(0.05 * kDeg));
+      if (i == 0) {
+        graph.emplace_shared<gtsam::PriorFactor<double>>(turnKey(i), q, scalarNoise(2.0 * kDeg));
+      } else {
+        graph.emplace_shared<BaseRotationBetweenFactor>(
+            poseKey(i - 1), turnKey(i - 1), poseKey(i), turnKey(i),
+            bases[i - 1].between(base), R_IC,
+            gtsam::noiseModel::Isotropic::Sigma(3, 0.02 * kDeg));
+      }
+      gtsam::Vector6 perturbation = gtsam::Vector6::Zero();
+      perturbation.head<3>() << 0.01, -0.015, 0.02;
+      initial.insert(poseKey(i), pose.retract(perturbation));
+      initial.insert(turnKey(i), q + 0.08);
+    }
+    const auto result = optimize(graph, initial);
+    EXPECT_LT(graph.error(result), 1e-8);
+    for (size_t i = 0; i < count; ++i) {
+      EXPECT_NEAR(result.at<double>(turnKey(i)), turns[i], 1e-7);
+      const auto recovered_base = articulatedBaseRotation(
+          result.at<gtsam::Pose3>(poseKey(i)), result.at<double>(turnKey(i)), R_IC);
+      EXPECT_LT(gtsam::Rot3::Logmap(bases[i].between(recovered_base)).norm(), 1e-7);
+    }
+  }
+}
+
+TEST(ArticulatedTurnGraph, UnobservedDrivingGyroBiasRetainsQuadraticJointUncertainty) {
+  // On level ground, absolute cabin attitude plus an independent yaw-rate
+  // sensor cannot distinguish BASE gyro bias from slow joint motion. The
+  // deliberately biased measurement must produce honest drift/uncertainty,
+  // rather than an invented calibration or a white-noise-only confidence.
+  const auto bias_key = gtsam::Symbol('d', 0);
+  constexpr double dt = 0.5;
+  constexpr double true_base_rate = 0.04;
+  constexpr double true_turn_rate = 0.01;
+  constexpr double true_bias_z = 0.006;
+  constexpr double sigma_bias = 0.006;
+  constexpr double sigma_gyro = 0.0002;
+  constexpr double sigma_pose = 0.0001;
+  constexpr double sigma_reference = 0.01;
+  const auto params = std::make_shared<gtsam::PreintegratedRotationParams>();
+  params->gyroscopeCovariance = sigma_gyro * sigma_gyro * gtsam::Matrix33::Identity();
+  for (size_t count : {size_t{3}, size_t{21}, size_t{41}}) {
+    gtsam::NonlinearFactorGraph graph;
+    gtsam::Values initial;
+    graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(
+        bias_key, gtsam::Vector3::Zero(), gtsam::noiseModel::Isotropic::Sigma(3, sigma_bias));
+    initial.insert(bias_key, gtsam::Vector3::Zero().eval());
+    for (size_t i = 0; i < count; ++i) {
+      const double t = i * dt;
+      const double true_q = 0.65 + true_turn_rate * t;
+      const auto pose = cabinImuPose(gtsam::Rot3::Rz(0.2 + true_base_rate * t), true_q);
+      graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(poseKey(i), pose, poseNoise(sigma_pose));
+      if (i == 0) {
+        graph.emplace_shared<gtsam::PriorFactor<double>>(turnKey(i), true_q, scalarNoise(sigma_reference));
+      } else {
+        gtsam::PreintegratedAhrsMeasurements pim(params, gtsam::Vector3::Zero());
+        pim.integrateMeasurement(gtsam::Vector3(0.0, 0.0, true_base_rate + true_bias_z), dt);
+        graph.emplace_shared<BaseAhrsBetweenFactor>(
+            poseKey(i - 1), turnKey(i - 1), poseKey(i), turnKey(i), bias_key, pim, gtsam::Rot3());
+      }
+      initial.insert(poseKey(i), pose);
+      initial.insert(turnKey(i), true_q - true_bias_z * t);
+    }
+    const auto result = optimize(graph, initial);
+    EXPECT_LT(graph.error(result), 1e-9);
+    const gtsam::Marginals marginals(graph, result);
+    const double elapsed = (count - 1) * dt;
+    const double true_q_final = 0.65 + true_turn_rate * elapsed;
+    const double expected_variance = sigma_reference * sigma_reference +
+                                     2.0 * sigma_pose * sigma_pose +
+                                     elapsed * sigma_gyro * sigma_gyro +
+                                     elapsed * elapsed * sigma_bias * sigma_bias;
+    EXPECT_NEAR(result.at<double>(turnKey(count - 1)),
+                true_q_final - true_bias_z * elapsed, 1e-8);
+    EXPECT_NEAR(result.at<gtsam::Vector3>(bias_key).z(), 0.0, 1e-10);
+    EXPECT_NEAR(marginals.marginalCovariance(bias_key)(2, 2),
+                sigma_bias * sigma_bias, sigma_bias * sigma_bias * 1e-5);
+    EXPECT_NEAR(marginals.marginalCovariance(turnKey(count - 1))(0, 0),
+                expected_variance, expected_variance * 1e-5);
+    const double incorrectly_independent_bias_variance =
+        sigma_reference * sigma_reference + 2.0 * sigma_pose * sigma_pose +
+        elapsed * sigma_gyro * sigma_gyro + elapsed * dt * sigma_bias * sigma_bias;
+    if (count >= 21) {
+      EXPECT_GT(marginals.marginalCovariance(turnKey(count - 1))(0, 0),
+                10.0 * incorrectly_independent_bias_variance);
+    }
+  }
+}
+
+TEST(ArticulatedTurnGraph, FixedLagParkDriveParkCarriesOneJointReferenceAndBiasStateContinuously) {
+  gtsam::ISAM2Params isam_params;
+  isam_params.relinearizeSkip = 1;
+  isam_params.factorization = gtsam::ISAM2Params::QR;
+  gtsam::IncrementalFixedLagSmoother smoother(1.0, isam_params);
+  const auto bias_key = gtsam::Symbol('d', 0);
+  const gtsam::Key second_heading_key = gtsam::Symbol('h', 1);
+  const auto R_IC = gtsam::Rot3::RzRyRx(0.08, -0.06, 0.31);
+  const gtsam::Vector3 true_bias(0.0, 0.0, 0.003);
+  constexpr double dt = 0.2;
+  const double sigma_reference = 2.0 * kDeg;
+  const double sigma_pose = 0.05 * kDeg;
+  const double sigma_parked = 0.01 * kDeg;
+  const auto params = std::make_shared<gtsam::PreintegratedRotationParams>();
+  params->gyroscopeCovariance = 4e-6 * gtsam::Matrix33::Identity();
+  double previous_heading = 0.4;
+  double variance_before_drive = 0.0;
+  double variance_end_drive = 0.0;
+  double previous_q_estimate = 0.0;
+  double previous_true_q = 0.0;
+  for (size_t i = 0; i < 60; ++i) {
+    const double t = i * dt;
+    const bool first_station = i < 12;
+    const bool second_station = i >= 35;
+    const double heading = i < 12 ? 0.4 : (i < 35 ? 0.4 + 0.04 * (i - 11) : 1.32);
+    const double q = 0.65 + 1.2 * std::sin(0.12 * i);
+    const auto pose = cabinImuPose(gtsam::Rot3::Rz(heading), q, R_IC);
+    gtsam::NonlinearFactorGraph factors;
+    gtsam::Values values;
+    gtsam::FixedLagSmoother::KeyTimestampMap timestamps{
+        {poseKey(i), t}, {turnKey(i), t}, {bias_key, t}};
+    factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(poseKey(i), pose, poseNoise(sigma_pose));
+    values.insert(poseKey(i), pose);
+    values.insert(turnKey(i), q);
+    if (i == 0) {
+      // Exactly one reference prior over the complete parked/driving sequence.
+      factors.emplace_shared<gtsam::PriorFactor<double>>(turnKey(i), q, scalarNoise(sigma_reference));
+      factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(
+          bias_key, true_bias, gtsam::noiseModel::Isotropic::Sigma(3, 0.006));
+      values.insert(bias_key, true_bias);
+    } else {
+      gtsam::PreintegratedAhrsMeasurements pim(params, true_bias);
+      const gtsam::Vector3 true_rate(0.0, 0.0, (heading - previous_heading) / dt);
+      pim.integrateMeasurement(true_rate + true_bias, dt);
+      factors.emplace_shared<BaseAhrsBetweenFactor>(
+          poseKey(i - 1), turnKey(i - 1), poseKey(i), turnKey(i), bias_key, pim, R_IC);
+    }
+    if (first_station || second_station) {
+      const auto station_key = first_station ? kHeading : second_heading_key;
+      if (i == 0 || i == 35) {
+        // A numerical seed only: no replacement q prior and no heading prior.
+        values.insert(station_key, heading);
+      }
+      timestamps[station_key] = t;
+      factors.emplace_shared<ParkedBaseHeadingFactor>(
+          poseKey(i), turnKey(i), station_key, R_IC, scalarNoise(sigma_parked));
+    }
+    ASSERT_NO_THROW(smoother.update(factors, values, timestamps));
+    const auto estimate = smoother.calculateEstimate();
+    const double q_estimate = estimate.at<double>(turnKey(i));
+    const double q_variance = smoother.marginalCovariance(turnKey(i))(0, 0);
+    EXPECT_NEAR(q_estimate, q, 1e-8);
+    EXPECT_GE(q_variance, sigma_reference * sigma_reference * (1.0 - 1e-5));
+    EXPECT_TRUE(estimate.exists(bias_key));
+    if (i > 0) {
+      EXPECT_NEAR(q_estimate - previous_q_estimate, q - previous_true_q, 1e-8);
+    }
+    if (i >= 18) {
+      EXPECT_FALSE(estimate.exists(kHeading));
+      EXPECT_FALSE(estimate.exists(turnKey(0)));
+    }
+    if (i == 11) variance_before_drive = q_variance;
+    if (i == 34) variance_end_drive = q_variance;
+    if (i == 35) {
+      // Creating the next station must not reset accumulated uncertainty.
+      EXPECT_GE(q_variance, variance_before_drive);
+      EXPECT_GT(q_variance, 0.99 * variance_end_drive);
+      EXPECT_TRUE(estimate.exists(second_heading_key));
+    }
+    previous_heading = heading;
+    previous_q_estimate = q_estimate;
+    previous_true_q = q;
+  }
+  EXPECT_GT(variance_end_drive, variance_before_drive);
+  const auto final = smoother.calculateEstimate();
+  EXPECT_NEAR(final.at<double>(second_heading_key), 1.32, 1e-8);
+  EXPECT_NEAR(final.at<gtsam::Vector3>(bias_key).z(), true_bias.z(), 1e-8);
+}
+
 }  // namespace
 }  // namespace graph_msf
