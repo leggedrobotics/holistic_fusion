@@ -323,6 +323,51 @@ void disabledMarginalWindowHandlesSingleState() {
   require(std::abs(covariance(0, 0) - 0.25) < 1e-8, "Whole-graph marginal covariance is incorrect");
 }
 
+void batchSmootherReturnsOptimizedNavStates() {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->useImuSignalLowPassFilter_ = false;
+  config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
+  config->useAdditionalSlowBatchSmootherFlag_ = true;
+  config->accBiasPrior_ = Eigen::Vector3d(0.1, -0.2, 0.3);
+  config->gyroBiasPrior_ = Eigen::Vector3d(0.01, -0.02, 0.03);
+  holistic_fusion::GraphManager manager(config, "imu", "world");
+  require(manager.initImuIntegrators(config->gravityMagnitude_), "IMU integrator initialization failed");
+  require(manager.initPoseVelocityBiasGraph(1.0, gtsam::Pose3(), gtsam::Pose3(), config->gyroBiasPrior_),
+          "Prior graph initialization failed");
+  auto buffer = std::make_shared<holistic_fusion::ImuBuffer>(config);
+  const Eigen::Vector3d acceleration = Eigen::Vector3d(1.0, 0.0, config->gravityMagnitude_) + config->accBiasPrior_;
+  buffer->addToImuBuffer(0.99, acceleration, config->gyroBiasPrior_);
+  buffer->addToImuBuffer(1.0, acceleration, config->gyroBiasPrior_);
+  holistic_fusion::SafeIntegratedNavState state;
+  std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias> optimized_state;
+  for (int index = 1; index <= 20; ++index) {
+    const double timestamp = 1.0 + 0.01 * index;
+    buffer->addToImuBuffer(timestamp, acceleration, config->gyroBiasPrior_);
+    manager.addImuFactorAndGetState(state, optimized_state, buffer, timestamp, index % 10 == 0);
+  }
+  manager.updateGraph();
+
+  const auto result = manager.optimizeSlowBatchSmoother(10, false);
+
+  require(result.has_value(), "Enabled batch smoother returned no result");
+  require(result->navStates.size() == 3, "Batch result does not hold one nav state per graph state");
+  const auto& last = result->navStates.back();
+  require(std::abs(result->navStates[1].timeK - 1.1) < 1e-12 && std::abs(last.timeK - 1.2) < 1e-12,
+          "Batch nav states are not sorted by their graph-key time");
+  require(std::abs(last.T_W_Ik.translation().x() - 0.5 * 0.2 * 0.2) < 1e-6, "Batch pose does not match the integrated motion");
+  require(std::abs(last.W_v_W_I.x() - 0.2) < 1e-6, "Batch velocity does not match the integrated motion");
+  require(last.accelerometerBias.isApprox(config->accBiasPrior_, 1e-6) && last.gyroscopeBias.isApprox(config->gyroBiasPrior_, 1e-6),
+          "Batch bias does not belong to the nav state");
+}
+
+void disabledBatchSmootherReturnsNoResult() {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->useAdditionalSlowBatchSmootherFlag_ = false;
+  holistic_fusion::GraphManager manager(config, "imu", "world");
+
+  require(!manager.optimizeSlowBatchSmoother(10, false).has_value(), "Disabled batch smoother returned a result");
+}
+
 }  // namespace
 
 int main() {
@@ -340,6 +385,8 @@ int main() {
     stationaryPropagationUsesInitializedGravity(false);
     stationaryPropagationUsesInitializedGravity(true);
     disabledMarginalWindowHandlesSingleState();
+    batchSmootherReturnsOptimizedNavStates();
+    disabledBatchSmootherReturnsNoResult();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

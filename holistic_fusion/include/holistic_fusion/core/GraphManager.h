@@ -25,6 +25,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "holistic_fusion/core/TimeGraphKeyBuffer.h"
 #include "holistic_fusion/core/optimizer/OptimizerBase.h"
 #include "holistic_fusion/imu/ImuBuffer.hpp"
+#include "holistic_fusion/interface/BatchOptimizationResult.h"
 #include "holistic_fusion/interface/NavState.h"
 #include "holistic_fusion/measurements/Measurement.h"
 #include "holistic_fusion/measurements/UnaryMeasurement.h"
@@ -104,6 +105,7 @@ class GraphManager {
 
   // Slow Graph Update (if desired)
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
+  std::optional<BatchOptimizationResult> optimizeSlowBatchSmoother(int maxIterations, const bool computePoseCovarianceFlag);
 
   // Logging of real-time navigation states
   bool logRealTimeNavStates(const std::string& savePath, const std::string& timeString);
@@ -146,6 +148,9 @@ class GraphManager {
 
  private:
   // Methods
+  // Returns false if the slow batch smoother is disabled.
+  bool runSlowBatchSmootherOptimization_(int maxIterations);
+  BatchOptimizationResult extractBatchOptimizationResult_(const bool computePoseCovarianceFlag);
   template <class CHILDPTR>
   bool addFactorToRtAndBatchGraph_(const gtsam::NoiseModelFactor* noiseModelFactorPtr, const bool addToOnlineSmootherFlag = true);
   template <class CHILDPTR>
