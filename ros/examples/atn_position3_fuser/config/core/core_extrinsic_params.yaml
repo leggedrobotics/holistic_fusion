@@ -1,8 +1,8 @@
 #External Prior/Transform Input
 extrinsics:
   # Published by GMSF
-  worldFrame: "world"
-  odomFrame: "odom"
+  worldFrame: "world_graph_msf"
+  odomFrame: "odom_graph_msf"
   # Used for estimation
   imuFrame: "cpt7_imu" # "cpt7_imu", "ap20_imu", "ap20_imu" used to be "State" (in older bags)
   baseLinkFrame: "box_base"
