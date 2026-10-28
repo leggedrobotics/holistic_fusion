@@ -4,7 +4,7 @@ extrinsics:
   worldFrame: "world_graph_msf_"
   odomFrame: "odom_graph_msf_"
   # Used for estimation
-  imuFrame: "imu_link"
+  imuFrame: "cpt7_imu"
   baseLinkFrame: "base"
   initializeZeroYawAndPositionOfFrame: "base" # Initialize the yaw and position of the base frame to zero
   # this is just meant to avoid any jump after getting the first true measurements

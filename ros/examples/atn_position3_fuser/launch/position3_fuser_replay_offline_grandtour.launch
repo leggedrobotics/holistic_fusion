@@ -10,12 +10,13 @@
           <!-- General Parameters -->
           <arg name="use_sim_time" default="true" doc="Use simulation time for replay"/>
           <arg name="run_estimator" default="true" doc="Enable the position fusion estimator"/>
-          <arg name="description_name" default="boxi_description" />
 
           <!-- Visualization Parameters -->
           <arg name="run_rviz" default="true" doc="Launch RViz for visualization"/>
           <arg name="rviz_file_path" default="$(find atn_position3_fuser)/rviz/rviz_imuOdom.rviz"
                      doc="Path to RViz configuration file"/>
+
+          <arg name="description_name" default="boxi_description"/>
 
           <!-- System Parameters -->
           <arg name="model" default="$(find box_model)/urdf/box/box.urdf.xacro"
@@ -33,7 +34,7 @@
           </include>
 
           <!-- Visualization -->
-          <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file_path)" if="$(arg run_rviz)"/>
+          <node type="rviz" name="hf_rviz" pkg="rviz" args="-d $(arg rviz_file_path)" if="$(arg run_rviz)"/>
 
           <!-- Bag-driven replay normally provides TF; enable this for a standalone model. -->
           <arg name="publish_model" default="false"/>
