@@ -19,6 +19,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "holistic_fusion/config/GraphConfig.h"
 #include "holistic_fusion/config/StaticTransforms.h"
 #include "holistic_fusion/imu/ImuBuffer.hpp"
+#include "holistic_fusion/interface/BatchOptimizationResult.h"
 #include "holistic_fusion/interface/NavState.h"
 #include "holistic_fusion/measurements/BinaryMeasurementXD.h"
 #include "holistic_fusion/measurements/UnaryMeasurementXDAbsolute.h"
@@ -47,7 +48,11 @@ class HolisticFusion {
   bool initWorldFrameToFixedFrameTransform(const Eigen::Isometry3d& T_W_F, const std::string& fixedFrame);
 
   // Trigger offline smoother optimization
+  // Writes the optimized states to files in savePath. Returns false if the slow batch smoother is disabled.
   bool optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag);
+  // Returns the optimized navigation states without writing files. Returns std::nullopt if the slow batch smoother is disabled.
+  // Computing the pose covariances is slow for long trajectories.
+  std::optional<BatchOptimizationResult> optimizeSlowBatchSmoother(int maxIterations, const bool computePoseCovarianceFlag);
 
   // Logging of the real-time states
   bool logRealTimeNavStates(const std::string& savePath);

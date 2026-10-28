@@ -76,6 +76,10 @@ bool HolisticFusion::optimizeSlowBatchSmoother(int maxIterations, const std::str
   return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, savePath, saveCovarianceFlag);
 }
 
+std::optional<BatchOptimizationResult> HolisticFusion::optimizeSlowBatchSmoother(int maxIterations, const bool computePoseCovarianceFlag) {
+  return graphMgrPtr_->optimizeSlowBatchSmoother(maxIterations, computePoseCovarianceFlag);
+}
+
 bool HolisticFusion::logRealTimeNavStates(const std::string& savePath) {
   // String of time without line breaks: year_month_day_hour_min_sec
   std::ostringstream oss;

@@ -8,6 +8,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define MIN_ITERATIONS_BEFORE_REMOVING_STATIC_TRANSFORM 200
 
 // C++
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
@@ -859,29 +860,19 @@ void GraphManager::updateGraph() {
 }
 
 bool GraphManager::optimizeSlowBatchSmoother(int maxIterations, const std::string& savePath, const bool saveCovarianceFlag) {
-  if (graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
-    // Time duration of optimization
-    std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
-    // Optimization
-    batchOptimizerPtr_->optimize(maxIterations);
-    const gtsam::Values& optimizedStateValues = batchOptimizerPtr_->getAllOptimizedStates();
-    // Key to timestamp map
-    const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
-    // Calculate Duration
-    std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
-    double optimizationDuration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
-    std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
-    std::cout << "Number of optimization variables: " << optimizedStateValues.size() << std::endl;
-
-    // Save Optimized Result
-    saveOptimizedValuesToFile(optimizedStateValues, keyTimestampMap, savePath, saveCovarianceFlag);
-
-    // Return
-    return true;
-  } else {
+  if (!runSlowBatchSmootherOptimization_(maxIterations)) {
     return false;
   }
+  saveOptimizedValuesToFile(batchOptimizerPtr_->getAllOptimizedStates(), batchOptimizerPtr_->getFullKeyTimestampMap(), savePath,
+                            saveCovarianceFlag);
+  return true;
+}
+
+std::optional<BatchOptimizationResult> GraphManager::optimizeSlowBatchSmoother(int maxIterations, const bool computePoseCovarianceFlag) {
+  if (!runSlowBatchSmootherOptimization_(maxIterations)) {
+    return std::nullopt;
+  }
+  return extractBatchOptimizationResult_(computePoseCovarianceFlag);
 }
 
 // Logging of the real-time navigation states
@@ -1261,6 +1252,53 @@ gtsam::NavState GraphManager::calculateStateAtGeneralKey(bool& computeSuccessful
 }
 
 // Private --------------------------------------------------------------------
+
+bool GraphManager::runSlowBatchSmootherOptimization_(int maxIterations) {
+  if (!graphConfigPtr_->useAdditionalSlowBatchSmootherFlag_) {
+    return false;
+  }
+  std::chrono::time_point<std::chrono::high_resolution_clock> startOptimizationTime = std::chrono::high_resolution_clock::now();
+  batchOptimizerPtr_->optimize(maxIterations);
+  std::chrono::time_point<std::chrono::high_resolution_clock> endOptimizationTime = std::chrono::high_resolution_clock::now();
+  double optimizationDuration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endOptimizationTime - startOptimizationTime).count();
+  std::cout << "Optimization took " << optimizationDuration / 1000 << " seconds." << std::endl;
+  std::cout << "Number of optimization variables: " << batchOptimizerPtr_->getAllOptimizedStates().size() << std::endl;
+  return true;
+}
+
+BatchOptimizationResult GraphManager::extractBatchOptimizationResult_(const bool computePoseCovarianceFlag) {
+  const gtsam::Values& optimizedStateValues = batchOptimizerPtr_->getAllOptimizedStates();
+  const std::map<gtsam::Key, double>& keyTimestampMap = batchOptimizerPtr_->getFullKeyTimestampMap();
+
+  BatchOptimizationResult result;
+  // X, V and B of one navigation state always share the same key index.
+  for (const auto& [poseKey, T_W_Ik] : optimizedStateValues.extract<gtsam::Pose3>()) {
+    const gtsam::Symbol poseSymbol(poseKey);
+    if (poseSymbol.chr() != 'x') {
+      continue;
+    }
+    const gtsam::Key index = poseSymbol.index();
+    const gtsam::imuBias::ConstantBias& bias =
+        optimizedStateValues.at<gtsam::imuBias::ConstantBias>(gtsam::symbol_shorthand::B(index));
+
+    BatchOptimizedNavState navState;
+    navState.timeK = keyTimestampMap.at(poseKey);
+    navState.T_W_Ik = Eigen::Isometry3d(T_W_Ik.matrix());
+    navState.W_v_W_I = optimizedStateValues.at<gtsam::Vector3>(gtsam::symbol_shorthand::V(index));
+    navState.accelerometerBias = bias.accelerometer();
+    navState.gyroscopeBias = bias.gyroscope();
+    if (computePoseCovarianceFlag) {
+      navState.poseCovarianceInWorld =
+          convertCovarianceGtsamConventionToRosConvention(calculatePoseCovarianceAtKeyInWorldFrame(batchOptimizerPtr_, poseKey, __func__));
+    }
+    result.navStates.push_back(std::move(navState));
+  }
+
+  std::sort(result.navStates.begin(), result.navStates.end(),
+            [](const BatchOptimizedNavState& a, const BatchOptimizedNavState& b) { return a.timeK < b.timeK; });
+  return result;
+}
 
 // Update of the two IMU pre-integrators
 void GraphManager::updateImuIntegrators_(const TimeToImuMap& imuMeas) {
