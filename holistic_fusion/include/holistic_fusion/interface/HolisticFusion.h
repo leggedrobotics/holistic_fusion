@@ -9,10 +9,8 @@ Please see the LICENSE file that has been included as part of this package.
 #define HOLISTIC_FUSION_H
 
 // C++
-#include <atomic>
 #include <mutex>
 #include <stdexcept>
-#include <thread>
 #include <unordered_set>
 
 // GTSAM
@@ -39,7 +37,7 @@ class HolisticFusion {
   // Constructor
   HolisticFusion();
   // Destructor
-  virtual ~HolisticFusion();
+  virtual ~HolisticFusion() = default;
 
   // Setup
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
@@ -77,7 +75,7 @@ class HolisticFusion {
   bool isGraphInited() const;
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
-  // Main: IMU
+  // May optimize synchronously in measurement time before propagating the new IMU sample.
   bool addCoreImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                         std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
                                         std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
@@ -166,7 +164,7 @@ class HolisticFusion {
   //// Initialize the graph
   void initGraph_(const double timeStamp_k, const Eigen::Vector3d& imuAngularVelocity);
   //// Updating the factor graph
-  void optimizeGraph_();
+  void optimizeGraph_(double imuTimeK);
 
   /// Initialization
   //// Whether the yaw and the position can be initialized now. Prints the reason if not.
@@ -181,10 +179,8 @@ class HolisticFusion {
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
 
-  // Threads
-  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
-                                     /// new lidar measurement has arrived
-  std::atomic<bool> stopOptimizeGraphThread_{false};
+  double lastOptimizationTimestamp_ = 0.0;
+  bool optimizedAtLeastOnce_ = false;
 
   // Mutex
   std::mutex initYawAndPositionMutex_;

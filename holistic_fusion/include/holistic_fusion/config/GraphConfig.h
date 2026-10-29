@@ -53,6 +53,7 @@ struct GraphConfig {
   bool slowBatchSmootherUseCholeskyFactorizationFlag_ = false;
   // Optimizer Config
   double gaussNewtonWildfireThreshold_ = 0.001;
+  // Rates use core IMU timestamps. A zero minimum disables periodic updates.
   double minOptimizationFrequency_ = 5;
   double maxOptimizationFrequency_ = 100;
   int additionalOptimizationIterations_ = 0;
