@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
+#include <vector>
 
 // Implementation
 #include "holistic_fusion/interface/HolisticFusion.h"
@@ -66,6 +67,63 @@ void HolisticFusion::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, co
   graphMgrPtr_ =
       std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getWorldFrame());
   std::cout << "HolisticFusion: GraphManager created." << std::endl;
+}
+
+void HolisticFusion::configureMeasurementDelay(double delaySeconds) {
+  if (!std::isfinite(delaySeconds) || delaySeconds < 0.0) {
+    throw std::invalid_argument("HolisticFusion: measurement delay must be finite and nonnegative.");
+  }
+  const std::lock_guard<std::mutex> lock(measurementQueueMutex_);
+  if (receivedCoreImu_ || !queuedMeasurements_.empty()) {
+    throw std::logic_error("HolisticFusion: configure measurement delay before the first IMU or queued measurement.");
+  }
+  measurementDelay_ = delaySeconds;
+}
+
+void HolisticFusion::enqueueMeasurement(double timestamp, const std::string& source, std::function<void()> apply) {
+  if (!std::isfinite(timestamp) || source.empty() || !apply) {
+    throw std::invalid_argument("HolisticFusion: queued measurement needs a finite timestamp, nonempty source, and callback.");
+  }
+  const std::lock_guard<std::mutex> lock(measurementQueueMutex_);
+  if (!measurementDelay_) {
+    throw std::logic_error("HolisticFusion: configure measurement delay before enqueueing measurements.");
+  }
+  const double dueTimestamp = timestamp + *measurementDelay_;
+  if (!std::isfinite(dueTimestamp)) {
+    throw std::invalid_argument("HolisticFusion: queued measurement timestamp plus delay must be finite.");
+  }
+  if (lastQueuedImuTimestamp_ && dueTimestamp <= *lastQueuedImuTimestamp_) {
+    throw std::invalid_argument("HolisticFusion: late measurement from " + source + " exceeded the configured measurement delay.");
+  }
+  const auto previous = latestSourceTimestamps_.find(source);
+  if (previous != latestSourceTimestamps_.end() && timestamp <= previous->second) {
+    throw std::invalid_argument("HolisticFusion: queued measurement timestamps must increase strictly for source " + source + ".");
+  }
+  queuedMeasurements_.emplace(std::make_pair(timestamp, source), std::move(apply));
+  latestSourceTimestamps_[source] = timestamp;
+}
+
+void HolisticFusion::applyQueuedMeasurements_(double imuTimeK) {
+  std::vector<std::function<void()>> dueMeasurements;
+  {
+    const std::lock_guard<std::mutex> lock(measurementQueueMutex_);
+    receivedCoreImu_ = true;
+    if (!measurementDelay_) {
+      return;
+    }
+    if (!std::isfinite(imuTimeK) || (lastQueuedImuTimestamp_ && imuTimeK <= *lastQueuedImuTimestamp_)) {
+      throw std::invalid_argument("HolisticFusion: ordered ingestion requires finite, strictly increasing IMU timestamps.");
+    }
+    lastQueuedImuTimestamp_ = imuTimeK;
+    auto next = queuedMeasurements_.begin();
+    while (next != queuedMeasurements_.end() && next->first.first + *measurementDelay_ <= imuTimeK) {
+      dueMeasurements.push_back(std::move(next->second));
+      next = queuedMeasurements_.erase(next);
+    }
+  }
+  for (auto& apply : dueMeasurements) {
+    apply();
+  }
 }
 
 // Trigger functions -----------------------
@@ -182,11 +240,12 @@ bool HolisticFusion::addCoreImuMeasurementAndGetState(
     std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
     Eigen::Matrix<double, 6, 1>& returnAddedImuMeasurements) {
   // Setup -------------------------
-  // Increase counter
-  ++imuCallbackCounter_;
-
   // Adapt time stamp
   imuTimeK += graphConfigPtr_->imuTimeOffset_;
+  applyQueuedMeasurements_(imuTimeK);
+
+  // Increase counter
+  ++imuCallbackCounter_;
 
   // First Iteration
   if (preIntegratedNavStatePtr_ == nullptr) {

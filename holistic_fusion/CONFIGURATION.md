@@ -76,6 +76,31 @@ All 65 fields have consumers in the built core. `HolisticFusionDualGraph` is not
 
 ## Optimizer API limits
 
+### Ordered measurement ingestion
+
+Measurement-time optimization alone does not fix the order of factors from asynchronous producers.
+Call `HolisticFusion::configureMeasurementDelay(delaySeconds)` before the first IMU or queued measurement to enable ordered ingestion.
+Submit each correction through `enqueueMeasurement(timestamp, source, callback)`.
+Use one IMU caller and stable source names.
+The callback can initialize the estimator or add one or more measurement factors.
+
+The IMU caller applies corrections before propagation at the first corrected IMU timestamp at or after `timestamp + delaySeconds`.
+Equal-time corrections are ordered by source name.
+Timestamps must use the clock after `imuTimeOffset` is applied.
+Each source and the IMU stream must have strictly increasing timestamps.
+The queue rejects late corrections with the source name in the exception.
+It does not wait for producers or flush pending corrections after the last IMU sample.
+
+Choose the delay to cover producer latency relative to the IMU stream.
+Keep the delayed measurements within the real-time smoother window.
+This delays corrections but does not hold IMU propagation for missing inputs.
+Callbacks and optimization run synchronously on the IMU caller.
+All asynchronous graph updates must use the queue for arrival-independent factor ordering.
+Direct measurement APIs remain available for callers that manage ordering themselves.
+Discard the estimator if a queued callback throws because a partial graph update cannot be rolled back.
+
+### Backend limits
+
 `optimize(maxIterations)` uses the iteration limit in the LM batch backend. The ISAM2 batch backend performs one update. The fixed-lag wrappers return their current estimate. Do not use this argument to control fixed-lag update iterations.
 
 GTSAM's LM fixed-lag smoother uses scalar damping. It does not implement every damping option available to the full LM batch optimizer. These options are not exposed as GraphConfig settings.
