@@ -7,6 +7,7 @@ Please see the LICENSE file that has been included as part of this package.
 
 // C++
 #include <chrono>
+#include <cmath>
 #include <stdexcept>
 
 // Implementation
@@ -22,15 +23,6 @@ namespace holistic_fusion {
 /// Constructor -----------
 HolisticFusion::HolisticFusion() {
   REGULAR_COUT << GREEN_START << " HolisticFusion-Constructor called." << COLOR_END << std::endl;
-}
-
-/// Destructor -----------
-HolisticFusion::~HolisticFusion() {
-  // Properly stop the optimizeGraphThread_ before destruction to avoid std::terminate.
-  stopOptimizeGraphThread_ = true;
-  if (optimizeGraphThread_.joinable()) {
-    optimizeGraphThread_.join();
-  }
 }
 
 void HolisticFusion::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr) {
@@ -56,6 +48,15 @@ void HolisticFusion::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, co
     throw std::invalid_argument("HolisticFusion: createStateEveryNthImuMeasurement must be positive.");
   }
 
+  if (!std::isfinite(graphConfigPtr_->maxOptimizationFrequency_) || graphConfigPtr_->maxOptimizationFrequency_ <= 0.0) {
+    throw std::invalid_argument("HolisticFusion: maxOptimizationFrequency must be finite and positive.");
+  }
+  if (!std::isfinite(graphConfigPtr_->minOptimizationFrequency_) || graphConfigPtr_->minOptimizationFrequency_ < 0.0 ||
+      graphConfigPtr_->minOptimizationFrequency_ > graphConfigPtr_->maxOptimizationFrequency_) {
+    throw std::invalid_argument(
+        "HolisticFusion: minOptimizationFrequency must be finite, nonnegative, and no greater than maxOptimizationFrequency.");
+  }
+
   // Imu Buffer
   // Initialize IMU buffer
   coreImuBufferPtr_ = std::make_shared<holistic_fusion::ImuBuffer>(graphConfigPtr_);
@@ -65,10 +66,6 @@ void HolisticFusion::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, co
   graphMgrPtr_ =
       std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getWorldFrame());
   std::cout << "HolisticFusion: GraphManager created." << std::endl;
-
-  /// Initialize helper threads
-  optimizeGraphThread_ = std::thread(&HolisticFusion::optimizeGraph_, this);
-  REGULAR_COUT << " Initialized thread for optimizing the graph in parallel." << std::endl;
 }
 
 // Trigger functions -----------------------
@@ -308,6 +305,7 @@ bool HolisticFusion::addCoreImuMeasurementAndGetState(
   }
 
   // Case 5: Normal operation, meaning predicting the next state via integration -------------
+  optimizeGraph_(imuTimeK);
   // Only create state every n-th measurements (or at first successful iteration)
   bool createNewStateFlag = imuCallbackCounter_ % graphConfigPtr_->createStateEveryNthImuMeasurement_ == 0 || !normalOperationFlag_;
   // Add IMU factor and return propagated & optimized state
@@ -397,41 +395,26 @@ void HolisticFusion::initGraph_(const double timeStamp_k, const Eigen::Vector3d&
                << preIntegratedNavStatePtr_->getT_O_Ik_gravityAligned().translation().transpose() << std::endl;
   REGULAR_COUT << " Factor graph key of very first node: " << graphMgrPtr_->getPropagatedStateKey() << std::endl;
 
-  // Set flag
+  lastOptimizationTimestamp_ = timeStamp_k;
+  optimizedAtLeastOnce_ = false;
   initedGraphFlag_ = true;
 }
 
-void HolisticFusion::optimizeGraph_() {
-  // While loop
-  REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
-  double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-  double currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-  bool optimizedAtLeastOnce = false;
-  while (!stopOptimizeGraphThread_) {
-    bool optimizeGraphFlag = false;
-    // Mutex for optimizeGraph Flag
-    {
-      // Lock
-      const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
-      currentTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
-      // Optimize at most at the rate of maxOptimizationFrequency but at least every second
-      if ((optimizeGraphFlag_ && ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->maxOptimizationFrequency_))) ||
-          ((currentTime - lastOptimizedTime) > (1.0 / graphConfigPtr_->minOptimizationFrequency_) && optimizedAtLeastOnce)) {
-        optimizeGraphFlag = true;
-        lastOptimizedTime = currentTime;
-        optimizedAtLeastOnce = true;
-        optimizeGraphFlag_ = false;
-      }
+void HolisticFusion::optimizeGraph_(double imuTimeK) {
+  {
+    const std::lock_guard<std::mutex> optimizeGraphLock(optimizeGraphMutex_);
+    const double elapsed = imuTimeK - lastOptimizationTimestamp_;
+    const bool measurementUpdateDue = optimizeGraphFlag_ && elapsed >= 1.0 / graphConfigPtr_->maxOptimizationFrequency_;
+    const bool periodicUpdateDue = optimizedAtLeastOnce_ && graphConfigPtr_->minOptimizationFrequency_ > 0.0 &&
+                                   elapsed >= 1.0 / graphConfigPtr_->minOptimizationFrequency_;
+    if (!measurementUpdateDue && !periodicUpdateDue) {
+      return;
     }
-
-    // Optimize
-    if (optimizeGraphFlag) {
-      graphMgrPtr_->updateGraph();
-    }  // else just sleep for a short amount of time before polling again
-    else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    lastOptimizationTimestamp_ = imuTimeK;
+    optimizedAtLeastOnce_ = true;
+    optimizeGraphFlag_ = false;
   }
+  graphMgrPtr_->updateGraph();
 }
 
 /// Utility Functions -----------------------

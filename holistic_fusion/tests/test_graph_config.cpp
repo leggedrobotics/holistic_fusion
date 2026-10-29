@@ -1,8 +1,10 @@
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <gtsam/slam/PriorFactor.h>
 
@@ -286,6 +288,84 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   require(state->getI_v_W_I().norm() < 1e-8, "Stationary propagation uses a stale gravity vector");
 }
 
+void rejectsInvalidOptimizationFrequencies() {
+  const double infinity = std::numeric_limits<double>::infinity();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  for (const auto frequencies : {std::pair{0.0, 0.0}, std::pair{-1.0, 4.0}, std::pair{5.0, 4.0},
+                                  std::pair{nan, 4.0}, std::pair{1.0, infinity}}) {
+    auto config = std::make_shared<holistic_fusion::GraphConfig>();
+    config->minOptimizationFrequency_ = frequencies.first;
+    config->maxOptimizationFrequency_ = frequencies.second;
+    TestEstimator estimator;
+    bool rejected = false;
+    try {
+      estimator.setup(config, std::make_shared<TestTransforms>());
+    } catch (const std::invalid_argument& error) {
+      rejected = std::string(error.what()).find("OptimizationFrequency") != std::string::npos;
+    }
+    require(rejected, "Invalid optimization frequencies were accepted");
+  }
+}
+
+void optimizationUsesMeasurementTime(bool periodic_updates) {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->imuRate_ = 8.0;
+  config->imuBufferLength_ = 32;
+  config->useImuSignalLowPassFilter_ = false;
+  config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
+  config->createStateEveryNthImuMeasurement_ = 1;
+  config->maxOptimizationFrequency_ = 4.0;
+  config->minOptimizationFrequency_ = periodic_updates ? 1.0 : 0.0;
+  TestEstimator estimator;
+  estimator.setup(config, std::make_shared<TestTransforms>());
+  std::shared_ptr<holistic_fusion::SafeIntegratedNavState> state;
+  std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias> optimized_state;
+  Eigen::Matrix<double, 6, 1> measurements;
+  double timestamp = 1.0;
+  const auto add_imu = [&]() {
+    timestamp += 0.125;
+    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, config->gravityMagnitude_),
+                                             Eigen::Vector3d::Zero(), timestamp, state, optimized_state, measurements);
+  };
+  for (int index = 0; index < 16 && !estimator.areRollAndPitchInited(); ++index) {
+    add_imu();
+  }
+  require(estimator.areRollAndPitchInited(), "Stationary IMU alignment failed");
+  require(estimator.initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), "imu", "imu"), "Pose initialization failed");
+  estimator.pretendFirstMeasurementReceived();
+  add_imu();
+  require(estimator.isGraphInited(), "Graph initialization failed");
+  const double initialized_at = timestamp;
+  const auto add_yaw = [&]() {
+    estimator.addUnaryYawAbsoluteMeasurement(holistic_fusion::UnaryMeasurementXDAbsolute<double, 1>(
+        "yaw", 4, "imu", "imu", holistic_fusion::RobustNorm::None(), timestamp, 0.0, 0.0,
+        Eigen::Matrix<double, 1, 1>::Constant(0.1), "world", "world"));
+  };
+  const auto require_optimized_at = [&](double expected) {
+    require(optimized_state != nullptr && std::abs(optimized_state->getTimeK() - expected) < 1e-12,
+            "Optimization did not follow the measurement-time schedule");
+  };
+
+  add_yaw();
+  add_imu();
+  require(optimized_state == nullptr, "Optimization ran before the measurement-time interval elapsed");
+  add_imu();
+  require_optimized_at(initialized_at + 0.125);
+
+  add_yaw();
+  add_imu();
+  require_optimized_at(initialized_at + 0.125);
+  add_imu();
+  require_optimized_at(initialized_at + 0.375);
+
+  for (int index = 0; index < 7; ++index) {
+    add_imu();
+    require_optimized_at(initialized_at + 0.375);
+  }
+  add_imu();
+  require_optimized_at(initialized_at + (periodic_updates ? 1.375 : 0.375));
+}
+
 void rejectsInMotionInitialization() {
   auto config = std::make_shared<holistic_fusion::GraphConfig>();
   config->staticAtStartup_ = false;
@@ -372,6 +452,9 @@ void disabledBatchSmootherReturnsNoResult() {
 
 int main() {
   try {
+    optimizationUsesMeasurementTime(true);
+    optimizationUsesMeasurementTime(false);
+    rejectsInvalidOptimizationFrequencies();
     rejectsInvalidIsamRelinearizationInterval();
     rejectsInvalidStateAndOptimizationCounts();
     rejectsInMotionInitialization();
