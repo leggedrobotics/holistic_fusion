@@ -9,10 +9,12 @@ Please see the LICENSE file that has been included as part of this package.
 #define HOLISTIC_FUSION_H
 
 // C++
-#include <atomic>
+#include <functional>
+#include <map>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
-#include <thread>
+#include <unordered_map>
 #include <unordered_set>
 
 // Package
@@ -36,7 +38,7 @@ class HolisticFusion {
   // Constructor
   HolisticFusion();
   // Destructor
-  virtual ~HolisticFusion();
+  virtual ~HolisticFusion() = default;
 
   // Setup
   void setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const std::shared_ptr<StaticTransforms> staticTransformsPtr);
@@ -63,7 +65,19 @@ class HolisticFusion {
   bool isGraphInited() const;
   bool getNormalOperationFlag() const { return normalOperationFlag_; }
 
-  // Main: IMU
+  // Enables ordered ingestion before the first IMU or queued measurement. Delay must be finite and nonnegative, in seconds.
+  // Corrections wait for their measurement timestamp plus delay. IMU propagation does not wait for producers.
+  void configureMeasurementDelay(double delaySeconds);
+
+  // Thread-safe. Timestamps are finite seconds in the corrected IMU clock and must increase strictly within each source.
+  // The single IMU caller applies callbacks before propagation, in (timestamp, source) order, at the first IMU at or after
+  // timestamp + delay. Enqueue before that IMU call starts. Late arrivals throw rather than silently change graph ordering.
+  // Use stable, nonempty source names and route all asynchronous graph mutations through this API for deterministic replay.
+  // Callbacks may call initialization and measurement APIs, but must not call the core IMU API. Captures must remain valid.
+  // Callback exceptions propagate to the IMU caller. Discard the estimator after a callback throws.
+  void enqueueMeasurement(double timestamp, const std::string& source, std::function<void()> apply);
+
+  // May optimize synchronously in measurement time before propagating the new IMU sample.
   bool addCoreImuMeasurementAndGetState(const Eigen::Vector3d& linearAcc, const Eigen::Vector3d& angularVel, const double imuTimeK,
                                         std::shared_ptr<SafeIntegratedNavState>& returnPreIntegratedNavStatePtr,
                                         std::shared_ptr<SafeNavStateWithCovarianceAndBias>& returnOptimizedStateWithCovarianceAndBiasPtr,
@@ -152,17 +166,23 @@ class HolisticFusion {
   //// Initialize the graph
   void initGraph_(const double timeStamp_k, const Eigen::Vector3d& imuAngularVelocity);
   //// Updating the factor graph
-  void optimizeGraph_();
+  void optimizeGraph_(double imuTimeK);
+  void applyQueuedMeasurements_(double imuTimeK);
 
   /// Utility functions
   //// Geometric transformation to IMU in world frame
   Eigen::Vector3d W_t_W_Frame1_to_W_t_W_Frame2_(const Eigen::Vector3d& W_t_W_frame1, const std::string& frame1, const std::string& frame2,
                                                 const Eigen::Matrix3d& R_W_frame2);
 
-  // Threads
-  std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
-                                     /// new lidar measurement has arrived
-  std::atomic<bool> stopOptimizeGraphThread_{false};
+  double lastOptimizationTimestamp_ = 0.0;
+  bool optimizedAtLeastOnce_ = false;
+
+  std::mutex measurementQueueMutex_;
+  std::optional<double> measurementDelay_;
+  std::optional<double> lastQueuedImuTimestamp_;
+  bool receivedCoreImu_ = false;
+  std::map<std::pair<double, std::string>, std::function<void()>> queuedMeasurements_;
+  std::unordered_map<std::string, double> latestSourceTimestamps_;
 
   // Mutex
   std::mutex initYawAndPositionMutex_;

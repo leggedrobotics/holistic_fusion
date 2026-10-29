@@ -1,8 +1,11 @@
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <gtsam/slam/PriorFactor.h>
 
@@ -286,6 +289,237 @@ void stationaryPropagationUsesInitializedGravity(bool estimate_gravity) {
   require(state->getI_v_W_I().norm() < 1e-8, "Stationary propagation uses a stale gravity vector");
 }
 
+void rejectsInvalidOptimizationFrequencies() {
+  const double infinity = std::numeric_limits<double>::infinity();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  for (const auto frequencies : {std::pair{0.0, 0.0}, std::pair{-1.0, 4.0}, std::pair{5.0, 4.0},
+                                  std::pair{nan, 4.0}, std::pair{1.0, infinity}}) {
+    auto config = std::make_shared<holistic_fusion::GraphConfig>();
+    config->minOptimizationFrequency_ = frequencies.first;
+    config->maxOptimizationFrequency_ = frequencies.second;
+    TestEstimator estimator;
+    bool rejected = false;
+    try {
+      estimator.setup(config, std::make_shared<TestTransforms>());
+    } catch (const std::invalid_argument& error) {
+      rejected = std::string(error.what()).find("OptimizationFrequency") != std::string::npos;
+    }
+    require(rejected, "Invalid optimization frequencies were accepted");
+  }
+}
+
+void optimizationUsesMeasurementTime(bool periodic_updates) {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->imuRate_ = 8.0;
+  config->imuBufferLength_ = 32;
+  config->useImuSignalLowPassFilter_ = false;
+  config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
+  config->createStateEveryNthImuMeasurement_ = 1;
+  config->maxOptimizationFrequency_ = 4.0;
+  config->minOptimizationFrequency_ = periodic_updates ? 1.0 : 0.0;
+  TestEstimator estimator;
+  estimator.setup(config, std::make_shared<TestTransforms>());
+  std::shared_ptr<holistic_fusion::SafeIntegratedNavState> state;
+  std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias> optimized_state;
+  Eigen::Matrix<double, 6, 1> measurements;
+  double timestamp = 1.0;
+  const auto add_imu = [&]() {
+    timestamp += 0.125;
+    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, config->gravityMagnitude_),
+                                             Eigen::Vector3d::Zero(), timestamp, state, optimized_state, measurements);
+  };
+  for (int index = 0; index < 16 && !estimator.areRollAndPitchInited(); ++index) {
+    add_imu();
+  }
+  require(estimator.areRollAndPitchInited(), "Stationary IMU alignment failed");
+  require(estimator.initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), "imu", "imu"), "Pose initialization failed");
+  estimator.pretendFirstMeasurementReceived();
+  add_imu();
+  require(estimator.isGraphInited(), "Graph initialization failed");
+  const double initialized_at = timestamp;
+  const auto add_yaw = [&]() {
+    estimator.addUnaryYawAbsoluteMeasurement(holistic_fusion::UnaryMeasurementXDAbsolute<double, 1>(
+        "yaw", 4, "imu", "imu", holistic_fusion::RobustNorm::None(), timestamp, 0.0, 0.0,
+        Eigen::Matrix<double, 1, 1>::Constant(0.1), "world", "world"));
+  };
+  const auto require_optimized_at = [&](double expected) {
+    require(optimized_state != nullptr && std::abs(optimized_state->getTimeK() - expected) < 1e-12,
+            "Optimization did not follow the measurement-time schedule");
+  };
+
+  add_yaw();
+  add_imu();
+  require(optimized_state == nullptr, "Optimization ran before the measurement-time interval elapsed");
+  add_imu();
+  require_optimized_at(initialized_at + 0.125);
+
+  add_yaw();
+  add_imu();
+  require_optimized_at(initialized_at + 0.125);
+  add_imu();
+  require_optimized_at(initialized_at + 0.375);
+
+  for (int index = 0; index < 7; ++index) {
+    add_imu();
+    require_optimized_at(initialized_at + 0.375);
+  }
+  add_imu();
+  require_optimized_at(initialized_at + (periodic_updates ? 1.375 : 0.375));
+}
+
+struct MeasurementReplay {
+  std::vector<Eigen::Matrix4d> poses;
+  std::vector<double> optimized_timestamps;
+};
+
+MeasurementReplay replayYawMeasurement(bool ordered, bool arrives_later) {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->imuRate_ = 8.0;
+  config->imuBufferLength_ = 32;
+  config->useImuSignalLowPassFilter_ = false;
+  config->realTimeSmootherUseCholeskyFactorizationFlag_ = false;
+  config->createStateEveryNthImuMeasurement_ = 1;
+  config->maxOptimizationFrequency_ = 4.0;
+  config->minOptimizationFrequency_ = 0.0;
+  TestEstimator estimator;
+  estimator.setup(config, std::make_shared<TestTransforms>());
+  if (ordered) {
+    estimator.configureMeasurementDelay(0.375);
+  }
+  std::shared_ptr<holistic_fusion::SafeIntegratedNavState> state;
+  std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias> optimized_state;
+  Eigen::Matrix<double, 6, 1> measurements;
+  double timestamp = 1.0;
+  const auto add_imu = [&]() {
+    timestamp += 0.125;
+    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, config->gravityMagnitude_),
+                                             Eigen::Vector3d::Zero(), timestamp, state, optimized_state, measurements);
+  };
+  for (int index = 0; index < 16 && !estimator.areRollAndPitchInited(); ++index) {
+    add_imu();
+  }
+  require(estimator.areRollAndPitchInited(), "Stationary IMU alignment failed");
+  const auto initialize = [&]() {
+    require(estimator.initYawAndPositionInWorld(0.0, Eigen::Vector3d::Zero(), "imu", "imu"), "Pose initialization failed");
+    estimator.pretendFirstMeasurementReceived();
+  };
+  if (ordered) {
+    estimator.enqueueMeasurement(timestamp - 0.25, "initialization", initialize);
+  } else {
+    initialize();
+  }
+  add_imu();
+  require(estimator.isGraphInited(), "Graph initialization failed");
+  const double measurement_timestamp = timestamp + 0.125;
+  const auto add_yaw = [&]() {
+    estimator.addUnaryYawAbsoluteMeasurement(holistic_fusion::UnaryMeasurementXDAbsolute<double, 1>(
+        "yaw", 4, "imu", "imu", holistic_fusion::RobustNorm::None(), measurement_timestamp, 0.0, 0.2,
+        Eigen::Matrix<double, 1, 1>::Constant(0.1), "world", "world"));
+  };
+  MeasurementReplay replay;
+  for (int index = 1; index <= 8; ++index) {
+    add_imu();
+    require(state != nullptr, "Initialized estimator did not return a propagated state");
+    replay.poses.push_back(state->getT_W_Ik().matrix());
+    replay.optimized_timestamps.push_back(optimized_state ? optimized_state->getTimeK() : 0.0);
+    if (index == (arrives_later ? 2 : 1)) {
+      if (ordered) {
+        estimator.enqueueMeasurement(measurement_timestamp, "yaw", add_yaw);
+      } else {
+        add_yaw();
+      }
+    }
+  }
+  require(optimized_state != nullptr, "Queued yaw correction did not reach the optimizer");
+  return replay;
+}
+
+void orderedMeasurementsRemoveArrivalTimeDependence() {
+  const auto direct_early = replayYawMeasurement(false, false);
+  const auto direct_late = replayYawMeasurement(false, true);
+  require(direct_early.optimized_timestamps != direct_late.optimized_timestamps,
+          "Replay did not reproduce arrival-dependent optimization");
+  const auto queued_early = replayYawMeasurement(true, false);
+  const auto queued_late = replayYawMeasurement(true, true);
+  require(queued_early.optimized_timestamps == queued_late.optimized_timestamps,
+          "Ordered measurement arrival changed optimization times");
+  for (std::size_t index = 0; index < queued_early.poses.size(); ++index) {
+    require((queued_early.poses[index].array() == queued_late.poses[index].array()).all(),
+            "Ordered measurement arrival changed the propagated pose");
+  }
+}
+
+void queuedMeasurementsUseStableSourceOrderAndRejectLateArrivals() {
+  auto config = std::make_shared<holistic_fusion::GraphConfig>();
+  config->imuTimeOffset_ = 0.125;
+  config->useImuSignalLowPassFilter_ = false;
+  TestEstimator estimator;
+  estimator.setup(config, std::make_shared<TestTransforms>());
+  estimator.configureMeasurementDelay(0.25);
+  std::vector<std::string> applied;
+  estimator.enqueueMeasurement(1.0, "vio", [&]() { applied.push_back("vio"); });
+  estimator.enqueueMeasurement(1.0, "lidar", [&]() { applied.push_back("lidar"); });
+  estimator.enqueueMeasurement(1.125, "lidar", [&]() { applied.push_back("later lidar"); });
+  std::shared_ptr<holistic_fusion::SafeIntegratedNavState> state;
+  std::shared_ptr<holistic_fusion::SafeNavStateWithCovarianceAndBias> optimized_state;
+  Eigen::Matrix<double, 6, 1> measurements;
+  const auto add_imu = [&](double timestamp) {
+    estimator.addCoreImuMeasurementAndGetState(Eigen::Vector3d(0.0, 0.0, config->gravityMagnitude_),
+                                             Eigen::Vector3d::Zero(), timestamp, state, optimized_state, measurements);
+  };
+  add_imu(1.0);
+  require(applied.empty(), "Queued correction was applied before its delay elapsed");
+  add_imu(1.125);
+  require(applied == std::vector<std::string>({"lidar", "vio"}), "Equal-time measurements did not use stable source order");
+  bool rejected = false;
+  try {
+    estimator.enqueueMeasurement(1.0, "late source", []() {});
+  } catch (const std::invalid_argument& error) {
+    rejected = std::string(error.what()).find("late source") != std::string::npos;
+  }
+  require(rejected, "Measurement arriving after its IMU boundary was not rejected with its source");
+  add_imu(1.25);
+  require(applied == std::vector<std::string>({"lidar", "vio", "later lidar"}), "Future correction did not wait for its IMU boundary");
+  rejected = false;
+  try {
+    add_imu(1.125);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "Ordered ingestion accepted a backward IMU timestamp");
+}
+
+void queuedMeasurementsRejectInvalidConfigurationAndSourceTimes() {
+  TestEstimator estimator;
+  for (double delay : {-1.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+    bool rejected = false;
+    try {
+      estimator.configureMeasurementDelay(delay);
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    require(rejected, "Invalid measurement delay was accepted");
+  }
+  estimator.configureMeasurementDelay(0.25);
+  estimator.enqueueMeasurement(1.0, "lidar", []() {});
+  for (double timestamp : {1.0, 0.5, std::numeric_limits<double>::quiet_NaN()}) {
+    bool rejected = false;
+    try {
+      estimator.enqueueMeasurement(timestamp, "lidar", []() {});
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    require(rejected, "Invalid or non-increasing source timestamp was accepted");
+  }
+  bool rejected = false;
+  try {
+    estimator.configureMeasurementDelay(0.5);
+  } catch (const std::logic_error&) {
+    rejected = true;
+  }
+  require(rejected, "Measurement delay changed after enqueueing a correction");
+}
+
 void rejectsInMotionInitialization() {
   auto config = std::make_shared<holistic_fusion::GraphConfig>();
   config->staticAtStartup_ = false;
@@ -372,6 +606,12 @@ void disabledBatchSmootherReturnsNoResult() {
 
 int main() {
   try {
+    orderedMeasurementsRemoveArrivalTimeDependence();
+    queuedMeasurementsUseStableSourceOrderAndRejectLateArrivals();
+    queuedMeasurementsRejectInvalidConfigurationAndSourceTimes();
+    optimizationUsesMeasurementTime(true);
+    optimizationUsesMeasurementTime(false);
+    rejectsInvalidOptimizationFrequencies();
     rejectsInvalidIsamRelinearizationInterval();
     rejectsInvalidStateAndOptimizationCounts();
     rejectsInMotionInitialization();
