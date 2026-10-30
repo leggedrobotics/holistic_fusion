@@ -70,6 +70,9 @@ if(BUILD_TESTING)
     add_executable(heading_expression_test tests/test_heading_expression.cpp)
     target_link_libraries(heading_expression_test PRIVATE holistic_fusion)
     add_test(NAME heading_expression_test COMMAND heading_expression_test)
+    add_executable(init_heading_and_position_test tests/test_init_heading_and_position.cpp)
+    target_link_libraries(init_heading_and_position_test PRIVATE holistic_fusion)
+    add_test(NAME init_heading_and_position_test COMMAND init_heading_and_position_test)
 endif()
 
 # Exported alias target
