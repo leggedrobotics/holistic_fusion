@@ -8,6 +8,9 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "holistic_fusion_ros/HolisticFusionRos.h"
 
+// C++
+#include <thread>
+
 // ROS
 #include <tf/tf.h>
 
