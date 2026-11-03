@@ -113,7 +113,7 @@ void ImuPose3Fuser::pose3Callback_(const nav_msgs::Odometry::ConstPtr& odomPtr) 
     return;
   } else if (!areYawAndPositionInited()) {  // Initializing
     REGULAR_COUT << GREEN_START << " Odometry callback is setting global yaw, as it was not set so far." << COLOR_END << std::endl;
-    this->initYawAndPosition(unary6DMeasurement);
+    this->initHeadingAndPosition(unary6DMeasurement);
   } else if (addMeasurementFlag) {  // Already initialized --> unary factor
     this->addUnaryPose3AbsoluteMeasurement(unary6DMeasurement);
   }

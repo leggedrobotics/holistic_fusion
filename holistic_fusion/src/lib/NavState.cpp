@@ -51,13 +51,8 @@ void NavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik_new, const Eigen::V
   //  }
 }
 
-void NavState::updateYawInWorld(const double yaw_W_Ik) {
-  // Use GTSAM for correcto yaw convention
-  //  gtsam::Pose3 T_O_Ik_old(T_O_Ik_gravityAligned_.matrix());
-  gtsam::Pose3 T_W_Ik_old = gtsam::Pose3(T_W_Ik_.matrix());
-  gtsam::Pose3 T_W_Ik_new =
-      gtsam::Pose3(gtsam::Rot3::Ypr(yaw_W_Ik, T_W_Ik_old.rotation().pitch(), T_W_Ik_old.rotation().roll()), T_W_Ik_old.translation());
-  T_W_Ik_ = T_W_Ik_new.matrix();
+void NavState::updateOrientationInWorld(const Eigen::Matrix3d& R_W_Ik) {
+  T_W_Ik_.linear() = R_W_Ik;
 }
 
 void NavState::updatePositionInWorld(const Eigen::Vector3d& W_t_W_Ik) {
@@ -92,11 +87,11 @@ void SafeIntegratedNavState::updateInWorld(const Eigen::Isometry3d& T_W_Ik, cons
   T_O_Ik_gravityAligned_ = T_W_O_.inverse() * T_W_Ik_;
 }
 
-void SafeIntegratedNavState::updateYawInWorld(const double yaw_W_Ik, const bool odomNotJump) {
+void SafeIntegratedNavState::updateOrientationInWorld(const Eigen::Matrix3d& R_W_Ik, const bool odomNotJump) {
   // Mutex for safety
   std::lock_guard<std::mutex> updateLock(stateUpdateMutex_);
   // Parent class
-  NavState::updateYawInWorld(yaw_W_Ik);
+  NavState::updateOrientationInWorld(R_W_Ik);
   // Update Variables of this child class
   if (odomNotJump) {
     T_W_O_ = T_W_Ik_ * T_O_Ik_gravityAligned_.inverse();
