@@ -34,6 +34,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/bool.hpp>
 
 // Workspace
@@ -42,6 +43,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/measurements/UnaryMeasurementXD.h"
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros2/GraphMsfRos2.h"
+#include "b2w_estimator_graph_ros2/HfB2wWheelOdometry.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 1
@@ -89,6 +91,15 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double gnssPositionOutlierThreshold_ = 1.0;
   // LiDAR Odometry
   Eigen::Matrix<double, 6, 1> lioPoseUnaryNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
+  // Robust kernel applied to the LIO/VIO unary (and VIO between) factors: none | huber | cauchy | tukey | gemanmcclure | dcs
+  std::string lioVioRobustNormType_ = "dcs";
+  double lioVioRobustNormConstant_ = 1.0;
+  graph_msf::RobustNorm lioVioRobustNorm() const;
+  // Robust kernel on the GNSS position unary: legacy Huber(0.25)
+  std::string gnssRobustNormType_ = "huber";
+  double gnssRobustNormConstant_ = 0.25;
+  graph_msf::RobustNorm gnssRobustNorm() const;
+  static graph_msf::RobustNorm makeRobustNorm_(const std::string& type, double c, const char* paramName);
   Eigen::Matrix<double, 6, 1> lioBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
   // VIO Odometry
   Eigen::Matrix<double, 6, 1> vioPoseBetweenNoise_ = 100.0 * Eigen::Matrix<double, 6, 1>::Ones();
@@ -158,6 +169,7 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   int lidarBetweenCallbackCounter_ = -1;
   double lidarBetweenTimeKm1_{0.0};
   Eigen::Isometry3d lio_T_M_Lkm1_ = Eigen::Isometry3d::Identity();
+  bool lidarBetweenChainValid_ = false;  // false after a degenerate scan: the next good scan restarts the delta chain
 
   int gnssCallbackCounter_ = -1;
   int lidarUnaryCallbackCounter_ = -1;
@@ -217,6 +229,17 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   enum class LioAlignState { Active, Realigning };
   std::atomic<LioAlignState> lioAlignState_{LioAlignState::Active};
   std::atomic<double> lastAcceptedLioHeaderTime_{0.0};
+  // Source of the world alignment before initialisation. LIO when its odometry actually arrives. When LIO is disabled, never
+  // arrives or stays degenerate for lioAvailabilityTimeoutSec_ and the VIO unary is enabled, the VIO map is aligned with the world
+  // instead: with GNSS the VIO path feeds the GNSS trajectory alignment, without GNSS the world is initialised from VIO. If LIO
+  // shows up before initialisation, it takes over again (the aligner and pose buffer are reset at every switch).
+  enum class InitAlignmentSource { None, Lio, Vio };
+  std::atomic<InitAlignmentSource> initAlignmentSource_{InitAlignmentSource::None};
+  double lioAvailabilityTimeoutSec_ = 3.0;  // <= 0: legacy (LIO assumed available whenever useLioOdometry is set)
+  std::atomic<double> firstVioHeaderTime_{0.0};
+  bool lioAvailable_(double t) const;
+  std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> aligner_();  // current aligner, read under realignMutex_
+  void switchInitAlignmentSource_(InitAlignmentSource source, double t, const std::string& reason);
   std::mutex realignMutex_;  // guards the members below and the aligner swap
   bool realignInjectPending_ = false;
   Eigen::Isometry3d realignT_W_M_ = Eigen::Isometry3d::Identity();
@@ -225,7 +248,74 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   double lioRealignAbsenceTimeoutSec_ = 10.0;
   int lioRealignAttemptEveryNGnssMsgs_ = 5;
   void realignFromGnss_(const Eigen::Vector3d& W_t_W_Gnss, double timeK);
+  // Fallback when GNSS is not available during a re-alignment: anchor the LIO map to the current world estimate.
+  double lioRealignNoGnssFallbackSec_ = 0.0;  // <= 0: disabled (legacy: LIO withheld until a GNSS alignment converges)
+  // Alignment random walk scaling while GNSS is absent: without GNSS the alignment drift is unobservable, so any walk
+  // only lets the optimiser split source disagreement arbitrarily between state and alignment. Scale < 1 freezes it.
+  double alignmentRandomWalkScaleWithoutGnss_ = 1.0;  // 1.0 = legacy
+  double alignmentRandomWalkGnssAbsenceSec_ = 5.0;
+  std::atomic<bool> alignmentRandomWalkScaledActive_{false};
+  // Release at GNSS return: for releaseSeconds after the first valid fix following an absence, the walk is inflated by
+  // sqrt(missed keyframes) (capped) so that the alignments can jump to the drift that became observable again.
+  double alignmentRandomWalkReleaseSeconds_ = 0.0;  // <= 0: disabled
+  double alignmentRandomWalkReleaseMaxFactor_ = 20.0;
+  std::mutex walkReleaseMutex_;
+  double walkReleaseUntil_ = -1.0;
+  double walkReleaseFactor_ = 1.0;
+  double walkAbsenceStart_ = -1.0;
+  Eigen::Matrix<double, 6, 1> currentAlignmentRandomWalk_(const Eigen::Matrix<double, 6, 1>& randomWalk, double t);
+  std::atomic<double> lastValidGnssHeaderTime_{0.0};
+  double realignStartHeaderTime_ = 0.0;  // guarded by realignMutex_
+  // Ring buffer of the published state, ~6 s at IMU rate. T_W_I anchors LIO to the world estimate (re-alignment fallback);
+  // the velocities feed the wheel odometry.
+  struct BufferedState {
+    double t = 0.0;
+    Eigen::Isometry3d T_W_I = Eigen::Isometry3d::Identity();
+    Eigen::Vector3d I_v_W_I = Eigen::Vector3d::Zero();  // IMU velocity in IMU axes
+    Eigen::Vector3d I_w_W_I = Eigen::Vector3d::Zero();  // bias-corrected angular velocity in IMU axes
+  };
+  std::mutex stateBufferMutex_;
+  std::deque<BufferedState> stateBuffer_;
+  bool lookupBufferedState_(double t, double maxDt, BufferedState& out);
+  bool lookupWorldImuPose_(double t, double maxDt, Eigen::Isometry3d& T_W_I);
+  // Source re-origin detection (source-only, no state reference): a pose step the robot cannot physically make
+  // (|dp| > vMax*dt + posMargin or |dR| > wMax*dt + rotMargin) means the source restarted its map frame (e.g. a DLIO
+  // reset re-origins dlio_map under the same name). The source's fixed frame then gets a new epoch suffix, so GMSF
+  // creates a fresh alignment variable initialised from the current state instead of fighting the stale one.
+  struct SourceEpochState {
+    bool enabled = false;
+    double vMax = 4.0, wMax = 3.0, posMargin = 0.5, rotMargin = 0.2;
+    bool havePrev = false;
+    double prevT = 0.0;
+    Eigen::Isometry3d prevPose = Eigen::Isometry3d::Identity();
+    int epoch = 0;
+  };
+  SourceEpochState lioEpoch_, vioEpoch_;
+  // Kinematic plausibility of a relative source step over dt, with the re-origin thresholds of s (used by the between factors)
+  static bool isPlausibleSourceStep_(const SourceEpochState& s, const Eigen::Isometry3d& T_km1_k, double dt);
+  std::string epochFrameName_(SourceEpochState& s, const std::string& baseFrame, double t, const Eigen::Isometry3d& T_M_S, const char* name);
+  void publishState(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                    const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) override;
   // --------------------------------------------------------------------------
+
+  // Wheel-leg odometry from /joint_states with the self-contained hf_b2w_description (HfB2wWheelOdometry.h) -----------------
+  bool useWheelOdometryFlag_ = false;
+  double wheelOdometryRate_ = 20.0;  // [Hz] max rate of wheel-odometry factors
+  std::string wheelOdometryRobustNormType_ = "huber";
+  double wheelOdometryRobustNormConstant_ = 2.0;
+  std::string wheelOdometryBaseFrame_;  // frame of hf_b2w_description (must equal the base link frame)
+  std::unique_ptr<HfB2wWheelOdometry> wheelOdometryPtr_;
+  double lastWheelOdometryTime_ = 0.0;
+  bool wheelOdometryFramesCached_ = false;
+  Eigen::Matrix3d wheelOdometryR_B_I_ = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d wheelOdometryI_t_I_B_ = Eigen::Vector3d::Zero();
+  struct WheelOdometryStats {
+    long accepted = 0, standstill = 0, turning = 0, inconsistent = 0, deviates = 0, noState = 0, missing = 0;
+    double lastReportTime = 0.0;
+  } wheelOdometryStats_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subJointStates_;
+  void jointStatesCallback_(const sensor_msgs::msg::JointState::ConstSharedPtr& jointStatesPtr);
+  void readWheelOdometryParams_();
 
   // Flags
   bool useGnssFlag_ = false;

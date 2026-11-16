@@ -10,6 +10,7 @@ initialization_params:
 
 # Factor Graph
 graph_params:
+  realTimeSmootherNewestKeysLast: true     #GTSAM >= 4.3.2: newest states at the Bayes-tree root
   useIsam: true # if false, then levenberg-marquardt is used, CURRENTLY NO EFFECT
   smootherLag: 2.0                         #Lag of fixed lag smoother[seconds], not needed for ISAM2
   additionalOptimizationIterations: 0                  #Maximum number of additional optimizer iterations after each update with new factors
@@ -39,7 +40,9 @@ noise_params:
   use2ndOrderCoriolis: true                #Use 2nd order coriolis effect
   ### Rotation
   gyrNoiseDensity: 1.71e-08               #Continuous-time "Covariance" of gyroscope measurements, microstrain: sigma^2=1.71-08
-  omegaCoriolis: 0.0                      #Coriolis effect
+  omegaCoriolis: 0.0                      #Earth rotation rate about world z [rad/s] = Omega_E*sin(lat) (NOT the Coriolis parameter 2*Omega_E*sin(lat))
+  coriolisFromLatitude: false             #If true: full Earth rate Omega_E*(0, cos(lat), sin(lat)), needs a world frame with x east, y north, z up
+  coriolisLatitudeDeg: 0.0                #[deg]
   ### Bias
   accBiasRandomWalk: 1.0e-05 #gnss:1.0e-06 #lidar: 1e-01              #Continuous-time "Covariance" describing accelerometer bias random walk, default: 1.0e-06
   gyrBiasRandomWalk: 9.33e-08 #gnss:9.33e-08 #lidar: 9.33e-01            #Continuous-time "Covariance" describing gyroscope bias random walk, default: 9.33e-08

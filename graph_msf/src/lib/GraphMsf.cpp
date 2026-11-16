@@ -6,17 +6,74 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // C++
+#include <pthread.h>
+#include <iomanip>
 #include <algorithm>
+#include <cmath>
 #include <chrono>
+#include <cstdint>
+#include <vector>
 
 // Implementation
 #include "graph_msf/interface/GraphMsf.h"
+
+#include <gtsam/config.h>
+#ifdef GTSAM_USE_TBB
+#include <tbb/global_control.h>
+#endif
 
 // Workspace
 #include "graph_msf/core/GraphManager.h"
 #include "graph_msf/interface/constants.h"
 
 namespace graph_msf {
+
+namespace {
+// Wall-clock duration of every graph update (smoother + state/covariance extraction), logged once per minute for the last minute
+// and the whole run, so a slow or shared CPU (e.g. a Jetson) shows up as a growing p95/max.
+class UpdateTimingLog {
+ public:
+  void add(const double ms, const std::chrono::steady_clock::time_point now) {
+    window_.push_back(ms);
+    histogram_[std::min<size_t>(static_cast<size_t>(ms / kBinMs), histogram_.size() - 1)]++;
+    runMaxMs_ = std::max(runMaxMs_, ms);
+    ++runCount_;
+    if (now - lastReport_ >= std::chrono::seconds(60)) {
+      report_();
+      window_.clear();
+      lastReport_ = now;
+    }
+  }
+
+ private:
+  void report_() {
+    std::sort(window_.begin(), window_.end());
+    double sum = 0.0;
+    for (const double v : window_) sum += v;
+    const size_t n = window_.size();
+    REGULAR_COUT << std::fixed << std::setprecision(2) << " [timing] graph update, last 60 s: n=" << n << " mean=" << sum / n
+                 << " p50=" << window_[n / 2] << " p95=" << window_[std::min(n - 1, (n * 95) / 100)] << " max=" << window_.back()
+                 << " ms | whole run: n=" << runCount_ << " p50=" << runPercentile_(0.5) << " p95=" << runPercentile_(0.95)
+                 << " p99=" << runPercentile_(0.99) << " max=" << runMaxMs_ << " ms" << std::defaultfloat << std::endl;
+  }
+  double runPercentile_(const double q) const {
+    const uint64_t target = static_cast<uint64_t>(std::ceil(q * static_cast<double>(runCount_)));
+    uint64_t cumulative = 0;
+    for (size_t i = 0; i < histogram_.size(); ++i) {
+      cumulative += histogram_[i];
+      if (cumulative >= target) return (static_cast<double>(i) + 1.0) * kBinMs;
+    }
+    return runMaxMs_;
+  }
+
+  static constexpr double kBinMs = 0.05;
+  std::vector<double> window_;
+  std::vector<uint32_t> histogram_ = std::vector<uint32_t>(20001, 0);  // 0.05 ms bins up to 1 s, the last bin collects slower ones
+  double runMaxMs_ = 0.0;
+  uint64_t runCount_ = 0;
+  std::chrono::steady_clock::time_point lastReport_ = std::chrono::steady_clock::now();
+};
+}  // namespace
 
 // Public -----------------------------------------------------------
 /// Constructor -----------
@@ -44,6 +101,16 @@ void GraphMsf::setup(const std::shared_ptr<GraphConfig> graphConfigPtr, const st
   graphMgrPtr_ =
       std::make_shared<GraphManager>(graphConfigPtr_, staticTransformsPtr_->getImuFrame(), staticTransformsPtr_->getWorldFrame());
   std::cout << "GraphMsf: GraphManager created." << std::endl;
+
+  // Cap GTSAM's TBB thread pool (process-wide; GTSAM is the only TBB user in this node)
+#ifdef GTSAM_USE_TBB
+  if (graphConfigPtr_->maxOptimizerThreads_ > 0) {
+    tbbParallelismLimitPtr_ = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism,
+                                                                    static_cast<size_t>(graphConfigPtr_->maxOptimizerThreads_));
+  }
+  REGULAR_COUT << " GTSAM elimination threads (TBB): "
+               << tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism) << std::endl;
+#endif
 
   /// Initialize helper threads
   optimizeGraphThread_ = std::thread(&GraphMsf::optimizeGraph_, this);
@@ -289,6 +356,11 @@ bool GraphMsf::addCoreImuMeasurementAndGetState(
     flushDeferredUnaryMeasurements_();
   }
 
+  // Gravity-direction factor
+  if (graphConfigPtr_->useGravityDirectionFactorFlag_) {
+    accumulateGravityDirection_(linearAccInMps2, angularVel, imuTimeK, newStateCreatedFlag, returnOptimizedStateWithCovarianceAndBiasPtr);
+  }
+
   // Set to normal operation
   if (!normalOperationFlag_) {
     normalOperationFlag_ = true;
@@ -501,6 +573,8 @@ GraphMsf::~GraphMsf() {
 }
 
 void GraphMsf::optimizeGraph_() {
+  pthread_setname_np(pthread_self(), "gmsf_optimizer");  // thread name for top/htop and per-thread CPU accounting
+  UpdateTimingLog updateTimingLog;
   // While loop
   REGULAR_COUT << " Thread for updating graph is ready." << std::endl;
   double lastOptimizedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -525,12 +599,70 @@ void GraphMsf::optimizeGraph_() {
 
     // Optimize
     if (optimizeGraphFlag) {
+      const auto updateStart = std::chrono::steady_clock::now();
       graphMgrPtr_->updateGraph();
+      const auto updateEnd = std::chrono::steady_clock::now();
+      updateTimingLog.add(std::chrono::duration<double, std::milli>(updateEnd - updateStart).count(), updateEnd);
     }  // else just sleep for a short amount of time before polling again
     else {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
+}
+
+// Gravity-direction factor --------------------------------------------------------------------------------------------------------
+void GraphMsf::accumulateGravityDirection_(const Eigen::Vector3d& acc, const Eigen::Vector3d& gyro, const double imuTimeK,
+                                           const bool stateCreatedNow,
+                                           const std::shared_ptr<SafeNavStateWithCovarianceAndBias>& optimizedStatePtr) {
+  if (!optimizedStatePtr) {
+    return;
+  }
+  auto& w = gravityWindow_;
+  const Eigen::Vector3d f = acc - optimizedStatePtr->getAccelerometerBias();
+  const Eigen::Vector3d rate = gyro - optimizedStatePtr->getGyroscopeBias();
+  const Eigen::Matrix3d R_W_I = preIntegratedNavStatePtr_->getT_W_Ik().rotation();
+  const Eigen::Vector3d W_v_opt = optimizedStatePtr->getT_W_Ik().rotation() * optimizedStatePtr->getI_v_W_I();
+  if (w.t0 < 0.0 || imuTimeK < w.t0) {
+    w = GravityWindow{};
+    w.t0 = imuTimeK;
+    w.v0_W = W_v_opt;
+    w.v0Time = optimizedStatePtr->getTimeK();
+  }
+  w.sumW_f += R_W_I * f;
+  ++w.n;
+  w.maxRate = std::max(w.maxRate, rate.norm());
+  // Close the window on a sample that created a graph state, so that the factor attaches to that exact state
+  if (imuTimeK - w.t0 < graphConfigPtr_->gravityFactorWindowSec_ || !stateCreatedNow) {
+    return;
+  }
+  const double v1Time = optimizedStatePtr->getTimeK();
+  const double dtOpt = v1Time - w.v0Time;
+  auto& st = gravityStats_;
+  if (w.maxRate > graphConfigPtr_->gravityFactorMaxAngularRate_) {
+    ++st.rejectedRate;
+  } else if (dtOpt < 0.5 * graphConfigPtr_->gravityFactorWindowSec_) {
+    ++st.rejectedNoVelocity;  // optimized state not advancing (e.g. optimizer stalled)
+  } else {
+    const Eigen::Vector3d W_a = (W_v_opt - w.v0_W) / dtOpt;  // linear acceleration from the optimized (externally constrained) velocity
+    // Mean specific force in the window-end IMU frame (relative rotations only) minus linear acceleration -> R_W_I^T * g * e_z (up)
+    const Eigen::Vector3d I_f_up = R_W_I.transpose() * (w.sumW_f / w.n - W_a);
+    if (W_a.norm() > graphConfigPtr_->gravityFactorMaxLinearAcc_) {
+      ++st.rejectedLinAcc;
+    } else if (std::abs(I_f_up.norm() - graphConfigPtr_->gravityMagnitude_) > graphConfigPtr_->gravityFactorMaxAccDeviation_) {
+      ++st.rejectedAcc;
+    } else {
+      const UnaryAddOutcome outcome = graphMgrPtr_->addGravityDirectionFactor(
+          I_f_up.normalized(), graphConfigPtr_->gravityFactorSigma_, graphConfigPtr_->gravityFactorHuberConstant_, imuTimeK);
+      outcome.status == UnaryAddStatus::Added ? ++st.added : ++st.notAdded;
+    }
+  }
+  if (imuTimeK - st.lastReport > 60.0) {
+    REGULAR_COUT << GREEN_START << " [Gravity factor] added " << st.added << ", rejected: rotating " << st.rejectedRate
+                 << ", accelerating " << st.rejectedLinAcc << ", |f| != g " << st.rejectedAcc << ", no velocity " << st.rejectedNoVelocity
+                 << ", not attached " << st.notAdded << COLOR_END << std::endl;
+    st.lastReport = imuTimeK;
+  }
+  gravityWindow_ = GravityWindow{};
 }
 
 /// Utility Functions -----------------------

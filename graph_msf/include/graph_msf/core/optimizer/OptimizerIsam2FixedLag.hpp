@@ -10,9 +10,12 @@ Please see the LICENSE file that has been included as part of this package.
 
 // GTSAM
 #include <gtsam/linear/linearExceptions.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include <gtsam/nonlinear/IncrementalFixedLagSmoother.h>
 #include <chrono>
+#include <map>
 #include <set>
+#include <stdexcept>
+#include <vector>
 #include <sstream>
 
 // Workspace
@@ -33,12 +36,14 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
     }
 
     // Initialize Real-time Smoother -----------------------------------------------
-    fixedLagSmootherPtr_ =
-        std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_,
-                                                             isam2Params_);  // std::make_shared<gtsam::ISAM2>(isamParams_);
+    gtsam::IncrementalFixedLagSmootherParams smootherParams(isam2Params_);
+    smootherParams.newestKeysLast = graphConfigPtr_->realTimeSmootherNewestKeysLast_;
+    fixedLagSmootherPtr_ = std::make_shared<gtsam::IncrementalFixedLagSmoother>(graphConfigPtr_->realTimeSmootherLag_, smootherParams);
+    std::cout << "Real-time smoother: newestKeysLast=" << smootherParams.newestKeysLast << std::endl;
     fixedLagSmootherPtr_->params().print("GraphMSF: Factor Graph Parameters of real-time graph.");
   }
   ~OptimizerIsam2FixedLag() = default;
+
 
   bool update() override {
     lastUpdateDiagnostics_ = UpdateDiagnostics{};
@@ -57,6 +62,28 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                 << " Maximum recursion depth reached (" << depth << "). Aborting optimization." 
                 << COLOR_END << std::endl;
       return false;
+    }
+
+    // Timestamps of keys without a value in the smoother or in this batch: GTSAM >= 4.3 rejects the whole update with
+    // std::invalid_argument (older GTSAM let them advance the smoother clock and silently marginalize live states). Drop them.
+    {
+      const gtsam::Values& linearizationPoint = fixedLagSmootherPtr_->getLinearizationPoint();
+      std::map<gtsam::Key, double> sanitizedKeysTimeStampMap;
+      std::vector<gtsam::Key> droppedTimestampKeys;
+      for (const auto& keyTimeStamp : newGraphKeysTimeStampMap) {
+        if (newGraphValues.exists(keyTimeStamp.first) || linearizationPoint.exists(keyTimeStamp.first)) {
+          sanitizedKeysTimeStampMap.insert(keyTimeStamp);
+        } else {
+          droppedTimestampKeys.push_back(keyTimeStamp.first);
+        }
+      }
+      if (!droppedTimestampKeys.empty()) {
+        std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Dropping " << droppedTimestampKeys.size()
+                  << " timestamp(s) of keys without a value in the smoother or in this batch, e.g. "
+                  << gtsam::Symbol(droppedTimestampKeys.front()) << "." << COLOR_END << std::endl;
+        // Same depth: the sanitized map cannot trigger this branch again.
+        return update(newGraphFactors, newGraphValues, sanitizedKeysTimeStampMap, depth);
+      }
     }
 
     // Make copy of the fixedLagSmootherPtr_ to avoid changing the original graph
@@ -253,9 +280,9 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " OutOfRange-Exception while optimizing graph: '"
                 << outOfRangeException.what() << "'." << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START
-                << " This happens if the FixedLagSmoother tries to marginalize out states that have never been optimized before. This e.g. "
-                   "happens if the graph hasn't been optimized for the duration of the smoother lag. Increase the lag or optimization "
-                   "frequency in this case."
+                << " This happens if the FixedLagSmoother tries to marginalize out states that have never been optimized before (e.g. the "
+                   "graph hasn't been optimized for the duration of the smoother lag). On GTSAM < 4.3 it was also raised by smoother bugs "
+                   "for values without factors or timestamps without values (borglab/gtsam#2749, #2769, #2770)."
                 << COLOR_END << std::endl;
       printBatchDiagnostics("OutOfRange during fixed-lag update");
 
@@ -402,6 +429,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
                   << " Could not filter out any factors that caused the error (i.e. containing the key "
                   << gtsam::Symbol(valuesKeyNotExistent) << "). Aborting optimization." << COLOR_END << std::endl;
         std::cout << "----------------------------------------------------------" << std::endl;
+        *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
         return false;
       }
     }
@@ -416,7 +444,15 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
       throw std::runtime_error(valuesKeyAlreadyExistsException.what());
     }
-    // Case 4: Runtime error --> can't handle explicitly
+    // Case 4: Invalid argument (GTSAM input validation) --> restore and skip the batch instead of terminating the node
+    catch (const std::invalid_argument& invalidArgument) {
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " Invalid-argument exception while optimizing graph: '"
+                << invalidArgument.what() << "'. Restoring the smoother and skipping this batch." << COLOR_END << std::endl;
+      printBatchDiagnostics("InvalidArgument during fixed-lag update");
+      *fixedLagSmootherPtr_ = fixedLagSmootherCopy;
+      return false;
+    }
+    // Case 4b: Runtime error --> can't handle explicitly
     catch (const std::runtime_error& runtimeError) {
       std::cout << YELLOW_START << "GMsf-ISAM2" << RED_START << " Runtime error while optimizing graph: " << runtimeError.what()
                 << COLOR_END << std::endl;
@@ -424,8 +460,8 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       throw std::runtime_error(runtimeError.what());
     }
     // Case 5: Typical indeterminant linear system
-    catch (const gtsam::IndeterminantLinearSystemException& indeterminantLinearSystemException) {
-      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminantLinearSystem exception while optimizing graph: '"
+    catch (const gtsam::IndeterminateSystemException& indeterminantLinearSystemException) {
+      std::cerr << YELLOW_START << "GMsf-ISAM2" << RED_START << " IndeterminateSystem exception while optimizing graph: '"
                 << indeterminantLinearSystemException.what() << "'" << COLOR_END << std::endl;
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END
                 << " This happens if the linear system is indeterminant, which usually indicates that there are not enough constraints to "
@@ -435,7 +471,7 @@ class OptimizerIsam2FixedLag : public OptimizerIsam2 {
       // Get key
       gtsam::Key key = indeterminantLinearSystemException.nearbyVariable();
       std::cout << YELLOW_START << "GMsf-ISAM2" << COLOR_END << " The key causing the issue is: " << gtsam::Symbol(key) << std::endl;
-      printBatchDiagnostics("IndeterminantLinearSystemException", &key);
+      printBatchDiagnostics("IndeterminateSystemException", &key);
 
       // If bias --> fix graph
       const gtsam::Symbol symbol(key);

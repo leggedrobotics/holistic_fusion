@@ -23,6 +23,8 @@ def generate_launch_description():
     vio_odometry_topic_name = LaunchConfiguration("vio_odometry_topic_name")
     vio_odometry_between_topic_name = LaunchConfiguration("vio_odometry_between_topic_name")
     logging_dir_location = LaunchConfiguration("logging_dir_location")
+    use_rviz = LaunchConfiguration("use_rviz")
+    extra_params_file = LaunchConfiguration("extra_params_file")
 
     # Static parameter files
     core_graph_config_param_file = os.path.join(pkg_dir, "config", "core", "core_graph_config.yaml")
@@ -38,11 +40,15 @@ def generate_launch_description():
         DeclareLaunchArgument("imu_topic_name", default_value="/imu_sensor_broadcaster/imu", description="IMU topic name"),
         DeclareLaunchArgument("lidar_odometry_topic_name", default_value="/dlio/odom_node/map_pose", description="Lidar odometry topic name"),
         DeclareLaunchArgument("lio_degeneracy_topic_name", default_value="/dlio/odom_node/degenerate", description="Lidar degeneracy topic name"),
-        DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio2/odom_node/odom22", description="Between lidar odometry topic name"),
+        DeclareLaunchArgument("between_lidar_odometry_topic_name", default_value="/dlio/odom_node/odom", description="Between lidar odometry topic name (nav_msgs/Odometry)"),
         DeclareLaunchArgument("vio_odometry_topic_name", default_value="/zed/zed_node/pose_with_covariance", description="VIO odometry topic name"),
         DeclareLaunchArgument("vio_odometry_between_topic_name", default_value="/zed/zed_node/odom", description="Between VIO odometry topic name"),
         DeclareLaunchArgument("gnss_topic_name", default_value="/navsatfix", description="GNSS topic name"),
+        DeclareLaunchArgument("joint_states_topic_name", default_value="/joint_states", description="Joint states (wheel odometry)"),
         DeclareLaunchArgument("logging_dir_location", default_value=os.path.join(pkg_dir, "logging"), description="Logging directory location"),
+        DeclareLaunchArgument("use_rviz", default_value="true", description="Start RViz alongside the estimator"),
+        DeclareLaunchArgument("extra_params_file", default_value=os.path.join(pkg_dir, "config", "overlays", "none.yaml"),
+                              description="Parameter overlay loaded last; overrides any parameter of the estimator node"),
 
         # Main Node without GNSS
         Node(
@@ -61,7 +67,9 @@ def generate_launch_description():
                 os.path.join(pkg_dir, "config", "core", "core_graph_params_gnss.yaml"),
                 core_extrinsic_param_file,
                 os.path.join(pkg_dir, "config", "b2w_specific", "b2w_graph_params_gnss.yaml"),
+                os.path.join(pkg_dir, "config", "b2w_specific", "hf_b2w_description.yaml"),
                 b2w_extrinsic_param_file,
+                extra_params_file,
             ],
             remappings=[
                 ("/imu_topic", imu_topic_name),
@@ -71,6 +79,7 @@ def generate_launch_description():
                 ("/vio_odometry_topic", vio_odometry_topic_name),
                 ("/vio_odometry_between_topic", vio_odometry_between_topic_name),
                 ("/gnss_topic", gnss_topic_name),
+                ("/joint_states_topic", LaunchConfiguration("joint_states_topic_name")),
             ],
             # condition=UnlessCondition(use_gnss_unary),
         ),
@@ -92,5 +101,6 @@ def generate_launch_description():
             # That private connection aborts RViz during shutdown/cleanup.
             additional_env={"DBUS_SESSION_BUS_ADDRESS": rviz_dbus_address},
             output="log",
+            condition=IfCondition(use_rviz),
         ),
     ])

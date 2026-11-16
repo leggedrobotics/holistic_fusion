@@ -67,6 +67,17 @@ void GraphMsfRos2::declareRosParams() {
   this->declare_parameter("noise_params.use2ndOrderCoriolis", false);
   this->declare_parameter("noise_params.gyrNoiseDensity", 0.0);
   this->declare_parameter("noise_params.omegaCoriolis", 0.0);
+  this->declare_parameter("gravity_factor.enabled", false);
+  this->declare_parameter("gravity_factor.windowSec", 1.0);
+  this->declare_parameter("gravity_factor.sigma", 0.02);
+  this->declare_parameter("gravity_factor.huberConstant", 1.5);
+  this->declare_parameter("gravity_factor.maxAccDeviation", 0.3);
+  this->declare_parameter("gravity_factor.maxAngularRate", 0.5);
+  this->declare_parameter("gravity_factor.maxLinearAcc", 1.0);
+  this->declare_parameter("graph_params.realTimeSmootherNewestKeysLast", true);
+  this->declare_parameter("graph_params.maxOptimizerThreads", 0);
+  this->declare_parameter("noise_params.coriolisFromLatitude", false);
+  this->declare_parameter("noise_params.coriolisLatitudeDeg", 0.0);
   this->declare_parameter("noise_params.accBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.gyrBiasRandomWalkNoiseDensity", 0.0);
   this->declare_parameter("noise_params.biasAccOmegaInit", 0.0);

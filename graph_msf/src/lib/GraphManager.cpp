@@ -20,6 +20,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <limits>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -31,6 +32,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <gtsam/slam/dataset.h>
 
 // Factors
+#include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 
@@ -256,10 +258,19 @@ bool GraphManager::initImuIntegrators(const double gravityValue) {
   imuParamsPtr_->setIntegrationCovariance(gtsam::Matrix33::Identity(3, 3) *
                                           std::pow(graphConfigPtr_->integrationNoiseDensity_, 2));  // error committed in integrating
                                                                                                     // position from velocities
-  imuParamsPtr_->setUse2ndOrderCoriolis(graphConfigPtr_->use2ndOrderCoriolisFlag_);
+  // use2ndOrderCoriolis: GTSAM >= 4.3 always uses the exact rotating-frame model and removed the setter; the parameter is kept
+  // only so existing configs load.
   /// Rotation
   imuParamsPtr_->setGyroscopeCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroNoiseDensity_, 2));
-  imuParamsPtr_->setOmegaCoriolis(gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis_);
+  // GTSAM expects the Earth rotation rate expressed in the navigation (world) frame, not the Coriolis parameter 2*Omega*sin(lat).
+  gtsam::Vector3 omegaCoriolisWorld = gtsam::Vector3(0, 0, 1) * graphConfigPtr_->omegaCoriolis_;
+  if (graphConfigPtr_->coriolisFromLatitudeFlag_) {
+    constexpr double kEarthRotationRate = 7.2921150e-5;  // [rad/s], WGS84
+    const double latitudeRad = graphConfigPtr_->coriolisLatitudeDeg_ * M_PI / 180.0;
+    omegaCoriolisWorld = kEarthRotationRate * gtsam::Vector3(0.0, std::cos(latitudeRad), std::sin(latitudeRad));  // x=E, y=N, z=U
+  }
+  imuParamsPtr_->setOmegaCoriolis(omegaCoriolisWorld);
+  REGULAR_COUT << " IMU omegaCoriolis (world frame) [rad/s]: " << omegaCoriolisWorld.transpose() << std::endl;
   /// Bias
   imuParamsPtr_->setBiasAccCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->accBiasRandomWalkNoiseDensity_, 2));
   imuParamsPtr_->setBiasOmegaCovariance(gtsam::Matrix33::Identity(3, 3) * std::pow(graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_, 2));
@@ -561,6 +572,26 @@ UnaryAddOutcome GraphManager::classifyUnaryMeasurementTime_(gtsam::Key& returned
   return {UnaryAddStatus::Added, 0.0};
 }
 
+// Gravity direction (soft S2 constraint on roll/pitch) ---------------------------------------------------------------------------
+UnaryAddOutcome GraphManager::addGravityDirectionFactor(const Eigen::Vector3d& I_up, const double sigma, const double huberConstant,
+                                                        const double measurementTime) {
+  GRAPH_MSF_SCOPED_TIMER("GraphManager::addGravityDirectionFactor");
+  gtsam::Key closestKey;
+  double closestGraphTime = 0.0;
+  const UnaryAddOutcome outcome = classifyUnaryMeasurementTime_(closestKey, closestGraphTime, "GravityDirection", measurementTime);
+  if (outcome.status != UnaryAddStatus::Added) {
+    return outcome;
+  }
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Isotropic::Sigma(2, sigma);
+  if (huberConstant > 0.0) {
+    noise = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(huberConstant), noise);
+  }
+  // R_W_I * I_up == W_up
+  const gtsam::AttitudeFactor<gtsam::Pose3> factor(gtsam::symbol_shorthand::X(closestKey), gtsam::Unit3(0.0, 0.0, 1.0), noise, gtsam::Unit3(I_up));
+  addFactorSafelyToRtAndBatchGraph_<const gtsam::AttitudeFactor<gtsam::Pose3>*>(&factor, measurementTime);
+  return {UnaryAddStatus::Added, 0.0};
+}
+
 // Key Lookup
 UnaryAddOutcome GraphManager::getUnaryFactorGeneralKey(gtsam::Key& returnedKey, double& returnedGraphTime,
                                                        const UnaryMeasurement& unaryMeasurement) {
@@ -813,7 +844,7 @@ void GraphManager::updateGraph() {
   std::map<gtsam::Key, double> newRtGraphKeysTimestampsMap, newBatchGraphKeysTimestampsMap;
   gtsam::Key currentPropagatedKey;
   gtsam::Vector3 currentAngularVelocity;
-  double currentPropagatedTime;
+  double currentPropagatedTime = 0.0;
 
   auto dumpRtFailureDiagnostics = [&](const std::string& reason) {
     const std::map<gtsam::Key, double>& optimizerKeyTimestampMap = rtOptimizerPtr_->getFullKeyTimestampMap();

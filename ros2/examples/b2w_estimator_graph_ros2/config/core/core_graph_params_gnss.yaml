@@ -17,6 +17,8 @@
     # Factor Graph
     graph_params:
       realTimeSmootherLag: 2.0                # Lag of real-time fixed lag smoother[seconds]
+      realTimeSmootherNewestKeysLast: true    # GTSAM >= 4.3.2: newest states and keys of new factors at the Bayes-tree root (faster updates/marginals)
+      maxOptimizerThreads: 1                  # GTSAM elimination threads (TBB). 1 = optimizer thread only; 0 = one per core: the idle TBB workers spin and cost ~13 % of a core here (2026-11-10 profile) for no faster updates. Keep 1 on a shared CPU (Jetson).
       realTimeSmootherUseIsam: true
       realTimeSmootherUseCholeskyFactorization: false  # CHOLESKY faster, QR numerically more stable
       useAdditionalSlowBatchSmoother: false    # If true, a slower smoother is used in addition to the real-time smoother
@@ -48,17 +50,31 @@
       optimizeExtrinsicSensorToSensorCorrectedOffset: false # If true, the extrinsic calibration is optimized
 
     # Noise Parameters
+    # Gravity-direction factor (soft S2 roll/pitch constraint, cf. GaRLILEO): per window, mean specific force minus the linear
+    # acceleration of the optimized velocity points up -> Pose3AttitudeFactor on the window-end state. Off: no benefit on the
+    # Katzensee bench (2026-11-10).
+    gravity_factor:
+      enabled: false
+      windowSec: 1.0           # [s]
+      sigma: 0.02              # [rad] per window
+      huberConstant: 1.5
+      maxAccDeviation: 0.3     # [m/s^2] | |f - a| - g |
+      maxAngularRate: 0.5      # [rad/s]
+      maxLinearAcc: 1.0        # [m/s^2]
+
     noise_params:
       ## IMU
       ### Position
-      accNoiseDensity: 1.0e-01               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]
+      accNoiseDensity: 5.0e-02               # Continuous-time Noise Amplitude Spectral Density (StdDev) [m/s^2/√Hz)]. B2W: 0.002 static, 0.02-0.07 rolling vibration (was 0.1)
       integrationNoiseDensity: 1.0e-03        # Continuous-time Noise Amplitude Spectral Density of integration uncertainty
-      use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect
+      use2ndOrderCoriolis: true               # Whether to use 2nd order coriolis effect (ignored by GTSAM >= 4.3: exact rotating-frame model)
       ### Rotation
       gyrNoiseDensity: 3.4906585e-04          # Continuous-time Noise Amplitude Spectral Density (StdDev) [rad/s/√Hz]
-      omegaCoriolis: 1.06e-04                 # Coriolis effect, positive on northern hemisphere, 0 at the equator, default (central europe, Switzerland): 1.07e-04
+      omegaCoriolis: 5.37e-05                 # [rad/s] Earth rate about world z = Omega_E*sin(lat) (was 1.06e-4 = 2*Omega_E*sin(lat), the Coriolis parameter); used only if coriolisFromLatitude is false
+      coriolisFromLatitude: true              # Full Earth rate Omega_E*(0, cos(lat), sin(lat)); world frame is LV03-aligned (x east, y north, z up)
+      coriolisLatitudeDeg: 47.3               # [deg] Swiss hiking area (Katzensee 47.43, Etzel 47.17)
       ### Bias
-      accBiasRandomWalkNoiseDensity: 1.0e-01  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]
+      accBiasRandomWalkNoiseDensity: 1.0e-02  # Continuous-time Noise Amplitude Spectral Density of Accelerometer bias random walk [m/s^3/√Hz]. Was 0.1: bias free to wander ~1 m/s^2 per 100 s -> no height information from the IMU; 0.01 removes GMSF's ~3 m outage height drift at Katzensee (0.001 worse)
       gyrBiasRandomWalkNoiseDensity: 1.0e-02 # Continuous-time Noise Amplitude Spectral Density of Gyroscope bias random walk [rad/s^2/√Hz]
       biasAccOmegaInit: 1.0e-02               # StdDev of bias at start
       accBiasPrior: 0.0                       # Prior/starting value of accelerometer bias
@@ -73,12 +89,15 @@
 
     # Relinearization
     relinearization_params:
-      positionReLinTh: 1.0e-05                 # Letter "x" in GTSAM variables, Position linearization threshold
-      rotationReLinTh: 5.0e-05                 # Letter "x" in GTSAM variables, Rotation linearization threshold
-      velocityReLinTh: 1.0e-05                 # Letter "v" in GTSAM variables, Linear Velocity linearization threshold
-      accBiasReLinTh: 1.0e-05                  # Letter "b" in GTSAM variables, Accelerometer bias linearization threshold
-      gyrBiasReLinTh: 1.0e-05                  # Letter "b" in GTSAM variables, Gyroscope bias linearization threshold
-      referenceFrameReLinTh: 1.0e-05           # Letter "r" in GTSAM variables, Reference frame linearization threshold, ONLY IF optimizeReferenceFramePosesWrtWorld
+      # 2026-11-10: 1e-2 / 1e-3 (biases) instead of 1e-5 (set 2026-04-02). At 1e-5 every variable of the window crossed its threshold
+      # on every update, so iSAM2 re-solved the whole window each time. 11-dataset bench: node CPU -22 %, optimizer -32 %,
+      # update p50 20 -> 14 ms (Katzensee); RTK error, outage ends and attitude sigmas unchanged.
+      positionReLinTh: 1.0e-02                 # Letter "x" in GTSAM variables, Position linearization threshold
+      rotationReLinTh: 1.0e-02                 # Letter "x" in GTSAM variables, Rotation linearization threshold
+      velocityReLinTh: 1.0e-02                 # Letter "v" in GTSAM variables, Linear Velocity linearization threshold
+      accBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Accelerometer bias linearization threshold
+      gyrBiasReLinTh: 1.0e-03                  # Letter "b" in GTSAM variables, Gyroscope bias linearization threshold
+      referenceFrameReLinTh: 1.0e-02           # Letter "r" in GTSAM variables, Reference frame linearization threshold, ONLY IF optimizeReferenceFramePosesWrtWorld
       calibrationReLinTh: 1.0e-05              # Letter "c" in GTSAM variables, Calibration linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
       displacementReLinTh: 1.0e-05             # Letter "d" in GTSAM variables, Displacement linearization threshold, ONLY IF optimizeExtrinsicSensorToSensorCorrectedOffset
       landmarkReLinTh: 1.0e-05                 # Letter "l" in GTSAM variables, Landmark linearization threshold

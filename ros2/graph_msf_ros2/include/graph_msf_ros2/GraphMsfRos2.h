@@ -121,10 +121,12 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
   // Publishing -----------------------------------
   virtual void publishState(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
                             const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr);
-  void publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr);
+  // TF: the transforms of one IMU tick are collected into tfBatch and sent as ONE /tf message by the TF thread.
+  void publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                           std::vector<geometry_msgs::msg::TransformStamped>& tfBatch);
   void publishOptimizedStateTfTransforms(
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
-      const double timeStamp);
+      const double timeStamp, std::vector<geometry_msgs::msg::TransformStamped>& tfBatch);
   void publishNonTimeCriticalData(
       const Eigen::Matrix<double, 6, 6> poseCovarianceRos, const Eigen::Matrix<double, 6, 6> twistCovarianceRos,
       const Eigen::Vector3d positionVarianceRos, const Eigen::Vector3d orientationVarianceRos,
@@ -133,8 +135,8 @@ class GraphMsfRos2 : public GraphMsfClassic, public GraphMsfHolistic, public rcl
       const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
       const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos);
 
-  void publishTfTreeTransform(const std::string& frameName, const std::string& childFrameName, double timeStamp,
-                              const Eigen::Isometry3d& T_frame_childFrame) const;
+  void addTfTreeTransform(std::vector<geometry_msgs::msg::TransformStamped>& tfBatch, const std::string& frameName,
+                          const std::string& childFrameName, double timeStamp, const Eigen::Isometry3d& T_frame_childFrame) const;
   void publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
                        const Eigen::Matrix<double, 6, 6>& poseCovarianceRos, const Eigen::Matrix<double, 6, 6>& twistCovarianceRos) const;
   void publishDiagVarianceVectors(const Eigen::Vector3d& posVarianceRos, const Eigen::Vector3d& rotVarianceRos,

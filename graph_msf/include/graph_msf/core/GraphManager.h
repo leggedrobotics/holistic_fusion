@@ -82,6 +82,9 @@ class GraphManager {
 
   // Unary Meta Method --> classic GTSAM Factors
   typedef gtsam::Key (*F)(std::uint64_t);
+  // Gravity direction: I_up (unit vector, IMU frame) must map to world +z at the state closest to measurementTime
+  UnaryAddOutcome addGravityDirectionFactor(const Eigen::Vector3d& I_up, double sigma, double huberConstant, double measurementTime);
+
   template <class MEASUREMENT_TYPE, int NOISE_DIM, class FACTOR_TYPE, F SYMBOL_SHORTHAND>
   UnaryAddOutcome addUnaryFactorInImuFrame(const MEASUREMENT_TYPE& unaryMeasurement,
                                            const Eigen::Matrix<double, NOISE_DIM, 1>& unaryNoiseDensity,

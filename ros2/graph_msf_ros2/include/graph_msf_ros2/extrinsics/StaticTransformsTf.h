@@ -22,12 +22,16 @@ class StaticTransformsTf : public StaticTransforms {
 
   virtual ~StaticTransformsTf() = default;
 
+  // Stop listening to /tf and /tf_static once all static transforms are stored. The listener (own spin thread) otherwise
+  // deserialises every /tf message for the node's lifetime, including the node's own 400 Hz output.
+  void releaseTfListener();
+
  protected:
   bool findTransformations() override;
 
   // Members
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-  tf2_ros::TransformListener tf_listener_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 }  // namespace graph_msf

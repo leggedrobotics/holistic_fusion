@@ -8,23 +8,59 @@
       useLioBetweenOdometry: false
       useVioOdometry: true
       useVioOdometryBetween: false
+      lioAvailabilityTimeoutSec: 3.0  # [s] LiDAR odometry counts as unavailable after this long without messages (or while degenerate); before initialisation the VIO map is then aligned with the world instead (GNSS trajectory alignment from VIO, or world := VIO map without GNSS). <= 0: trust useLioOdometry only (legacy)
+      useWheelOdometry: false   # wheel-leg odometry from /joint_states + hf_b2w_description.yaml (see wheel_odometry below)
       ## Rates
       lioOdometryRate: 10
-      lioBetweenRate: 200
+      lioBetweenRate: 10    # [Hz] DLIO odometry rate; between factors are rate-gated to this and it sets the key-search tolerance
       vioOdometryRate: 10
-      vioOdometryBetweenRate: 25
+      vioOdometryBetweenRate: 15  # [Hz] ZED odometry rate in the recordings; sets the between key-search tolerance and rate gate
       gnssRate: 10
+      wheelOdometryRate: 20.0   # [Hz] /joint_states rate on the B2W
+
+    # Wheel-leg odometry: base velocity from wheel spin + leg joint rates + gyro (rolling contact, no slip), fused as body velocity.
+    # Slip handling: per-wheel voting, skid-turn gate, all-wheel-slip gate vs. the current estimate, adaptive noise, robust kernel.
+    # Noise was set from the Katzensee drive (2026-11-09): 0.2 s error p50 0.06, p95 0.25 m/s; 2 s means p95 0.10-0.16 m/s.
+    wheel_odometry:
+      robustNorm: "huber"
+      robustNormConstant: 2.0
+      wheelConsistencyGate: 0.25     # [m/s] wheel estimate further from the 4-wheel median = slipping / lifted wheel, ignored
+      minConsistentWheels: 3
+      maxYawRate: 0.7                # [rad/s] skid-steer turning: no measurement
+      maxDeviationFromState: 0.6     # [m/s] all-wheel slip vs. current velocity estimate: no measurement
+      sigma: [0.3, 0.4, 0.4]         # [m/s] base x, y, z at 20 Hz (correlated terrain errors: kept loose)
+      sigmaPerSpeed: 0.05            # [-] wheel scale changes +-4 % with terrain
+      sigmaPerLegRate: 0.1           # [m/s per rad/s] leg motion
+      # Zero-velocity update with hysteresis: all wheels, legs and the body still for standstillMinDuration (entry), left on the
+      # first moving sample. Without the dwell ~17 % of "still" samples were taken while moving > 0.1 m/s; with 1 s: ~2 %.
+      standstillWheelRate: 0.1       # [rad/s]
+      standstillLegRate: 0.05        # [rad/s]
+      standstillAngularRate: 0.05    # [rad/s]
+      standstillMinDuration: 1.0     # [s]
+      standstillMaxStateSpeed: 0.2   # [m/s] no zero-velocity update while the current estimate moves (sliding with locked wheels)
+      standstillSigma: 0.05          # [m/s]
 
     # Alignment Parameters
     alignment_params:
       initialSe3AlignmentNoiseDensity: [ 5.0, 5.0, 5.0, 5.0, 5.0, 5.0 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-      lioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-      vioSe3AlignmentRandomWalk: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioSe3AlignmentRandomWalk: [ 2.0e-4, 2.0e-4, 1.0e-3, 0.05, 0.05, 0.05 ] # StdDev per keyframe, ORDER RPY(rad) - XYZ(meters). Sized to measured DLIO drift (was 0.5 x6)
+      vioSe3AlignmentRandomWalk: [ 3.0e-4, 3.0e-4, 1.5e-3, 0.10, 0.10, 0.10 ] # StdDev per keyframe, ORDER RPY(rad) - XYZ(meters). Sized to measured ZED drift (was 0.5 x6)
+      randomWalkScaleWithoutGnss: 0.05     # <1: scale the LIO/VIO alignment random walk by this while GNSS is absent (alignment drift is unobservable then); 1.0 = legacy
+      gnssAbsenceSecondsForScale: 5.0     # [s] GNSS absence after which the scale applies
+      randomWalkReleaseSecondsAfterGnssReturn: 8.0 # [s] >0: after GNSS returns from an absence, inflate the walk by sqrt(missed keyframes) for this long so the alignments can jump to the drift that became observable; 0 = off
+      randomWalkReleaseMaxFactor: 20.0    # cap of that inflation factor
 
     lio_realignment:
       enabled: true
       absenceTimeoutSec: 10.0
       attemptEveryNGnssMsgs: 5
+      noGnssFallbackSec: 3.0   # >0: if no GNSS fix for this long during a re-alignment, anchor the LIO map to the current world estimate; 0 = legacy (LIO withheld until GNSS alignment converges, IMU-only in a GNSS outage: cyrill 2.4 km)
+    source_reorigin:     # a source pose step the robot cannot make (re-origin, e.g. DLIO reset) -> fresh alignment variable for that source
+      enabled: true               # needed with the tight alignment walk: without it a DLIO reset (408 m re-origin, etzel 27_01) diverges the estimator
+      maxLinearSpeed: 4.0         # [m/s]
+      maxAngularSpeed: 3.0        # [rad/s]
+      positionMargin: 0.5         # [m]
+      rotationMarginDeg: 11.5     # [deg]
 
     visualization_params:
       publishHeadingUncertaintyMarkers: true
@@ -37,8 +73,12 @@
     noise_params:
       gnssPositionOutlierThreshold: 4.0 # meters
       ## LiDAR
-      lioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      lioPoseUnaryNoiseDensity: [ 0.02, 0.02, 0.02, 0.05, 0.05, 0.05 ] # StdDev, ORDER RPY(rad) - XYZ(meters) (was 0.1 x6)
+      lioVioRobustNorm: "huber"            # robust kernel on the LIO/VIO unary (and VIO between) factors: none|huber|cauchy|tukey|gemanmcclure|dcs
+      lioVioRobustNormConstant: 2.0      # kernel constant (Huber k, DCS phi, ...) in whitened-residual units
+      gnssRobustNorm: "huber"            # robust kernel on the GNSS position unary (legacy: huber 0.25)
+      gnssRobustNormConstant: 2.0
       lioPoseBetweenNoiseDensity: [ 0.02, 0.02, 0.02, 0.002, 0.002, 0.002 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
       ## VIO
       vioPoseBetweenNoiseDensity: [ 100.0, 100.0, 100.0, 0.1, 0.1, 0.1 ] # StdDev, ORDER RPY(rad) - XYZ(meters)
-      vioPoseUnaryNoiseDensity: [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # StdDev, ORDER RPY(rad) - XYZ(meters)
+      vioPoseUnaryNoiseDensity: [ 0.03, 0.03, 0.03, 0.15, 0.15, 0.15 ] # StdDev, ORDER RPY(rad) - XYZ(meters) (was 0.1 x6)

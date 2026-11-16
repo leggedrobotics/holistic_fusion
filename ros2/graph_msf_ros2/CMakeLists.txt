@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
 project(graph_msf_ros2)
 
+# Default to an optimised build. Without a build type CMake adds no -O flag and keeps every
+# Eigen/GTSAM assertion, which makes the estimator an order of magnitude slower. Pass
+# -DCMAKE_BUILD_TYPE=Debug explicitly if you really want an unoptimised build.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (Release, RelWithDebInfo, Debug)" FORCE)
+endif()
+if(NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+  message(WARNING "${PROJECT_NAME}: CMAKE_BUILD_TYPE is '${CMAKE_BUILD_TYPE}', not Release. This build will be slow.")
+endif()
+message(STATUS "${PROJECT_NAME}: CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+
 # Compile as C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

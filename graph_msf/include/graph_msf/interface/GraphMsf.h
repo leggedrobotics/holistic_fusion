@@ -148,6 +148,22 @@ class GraphMsf {
   bool optimizeGraphFlag_ = false;
   bool normalOperationFlag_ = false;
 
+  // Gravity-direction factor window (see GraphConfig::useGravityDirectionFactorFlag_)
+  struct GravityWindow {
+    double t0 = -1.0;
+    int n = 0;
+    Eigen::Vector3d sumW_f = Eigen::Vector3d::Zero();  // sum of R_W_I(i) * f_i with the propagated attitude (only relative use)
+    double maxRate = 0.0;
+    Eigen::Vector3d v0_W = Eigen::Vector3d::Zero();  // optimized velocity at the window start
+    double v0Time = -1.0;
+  } gravityWindow_;
+  struct GravityStats {
+    long added = 0, rejectedRate = 0, rejectedAcc = 0, rejectedLinAcc = 0, rejectedNoVelocity = 0, notAdded = 0;
+    double lastReport = 0.0;
+  } gravityStats_;
+  void accumulateGravityDirection_(const Eigen::Vector3d& acc, const Eigen::Vector3d& gyro, double imuTimeK, bool stateCreatedNow,
+                                   const std::shared_ptr<SafeNavStateWithCovarianceAndBias>& optimizedStatePtr);
+
   // Counter
   long imuCallbackCounter_ = 0;
 
@@ -177,8 +193,9 @@ class GraphMsf {
 
   // Threads
   std::thread optimizeGraphThread_;  /// Thread 5: Update of the graph as soon as
-  std::atomic<bool> optimizeGraphShutdownRequested_{false};  /// Set by the destructor to end Thread 5
                                      /// new lidar measurement has arrived
+  std::atomic<bool> optimizeGraphShutdownRequested_{false};  /// Set by the destructor to end Thread 5
+  std::shared_ptr<void> tbbParallelismLimitPtr_;  /// tbb::global_control from maxOptimizerThreads_ (type-erased: no TBB in this header)
 
   // Mutex
   std::mutex initYawAndPositionMutex_;

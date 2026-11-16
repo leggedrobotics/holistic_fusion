@@ -1,0 +1,7 @@
+# Empty parameter overlay. The launch file appends `extra_params_file` (default: this file) after all other parameter
+# files, so a replay or tuning run can override any parameter without editing the tracked configs:
+#   ros2 launch b2w_estimator_graph_ros2 b2w_estimator_graph.launch.py extra_params_file:=/path/to/overlay.yaml
+/b2w_estimator_node:
+  ros__parameters:
+    launch:
+      paramsOverlay: "none"

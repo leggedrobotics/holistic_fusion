@@ -112,6 +112,17 @@ void GraphMsfRos2::readParams() {
   graphConfigPtr_->use2ndOrderCoriolisFlag_ = tryGetParam<bool>(this, "noise_params.use2ndOrderCoriolis");
   graphConfigPtr_->gyroNoiseDensity_ = tryGetParam<double>(this, "noise_params.gyrNoiseDensity");
   graphConfigPtr_->omegaCoriolis_ = tryGetParam<double>(this, "noise_params.omegaCoriolis");
+  graphConfigPtr_->useGravityDirectionFactorFlag_ = tryGetParam<bool>(this, "gravity_factor.enabled");
+  graphConfigPtr_->gravityFactorWindowSec_ = tryGetParam<double>(this, "gravity_factor.windowSec");
+  graphConfigPtr_->gravityFactorSigma_ = tryGetParam<double>(this, "gravity_factor.sigma");
+  graphConfigPtr_->gravityFactorHuberConstant_ = tryGetParam<double>(this, "gravity_factor.huberConstant");
+  graphConfigPtr_->gravityFactorMaxAccDeviation_ = tryGetParam<double>(this, "gravity_factor.maxAccDeviation");
+  graphConfigPtr_->gravityFactorMaxAngularRate_ = tryGetParam<double>(this, "gravity_factor.maxAngularRate");
+  graphConfigPtr_->gravityFactorMaxLinearAcc_ = tryGetParam<double>(this, "gravity_factor.maxLinearAcc");
+  graphConfigPtr_->realTimeSmootherNewestKeysLast_ = tryGetParam<bool>(this, "graph_params.realTimeSmootherNewestKeysLast");
+  graphConfigPtr_->maxOptimizerThreads_ = tryGetParam<int>(this, "graph_params.maxOptimizerThreads");
+  graphConfigPtr_->coriolisFromLatitudeFlag_ = tryGetParam<bool>(this, "noise_params.coriolisFromLatitude");
+  graphConfigPtr_->coriolisLatitudeDeg_ = tryGetParam<double>(this, "noise_params.coriolisLatitudeDeg");
   graphConfigPtr_->accBiasRandomWalkNoiseDensity_ =
       tryGetParam<double>(this, "noise_params.accBiasRandomWalkNoiseDensity");
   graphConfigPtr_->gyroBiasRandomWalkNoiseDensity_ =

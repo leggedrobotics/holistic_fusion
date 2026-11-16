@@ -8,6 +8,13 @@ Please see the LICENSE file that has been included as part of this package.
 // Implementation
 #include "b2w_estimator_graph_ros2/B2WEstimator.h"
 
+#include <array>
+#include <initializer_list>
+#include <vector>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 // Project
 #include "b2w_estimator_graph_ros2/B2WStaticTransforms.h"
 #include "b2w_estimator_graph_ros2/constants.h"
@@ -37,6 +44,8 @@ void B2WEstimator::readParams() {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryFlag(useVioOdometryFlag_);
 
   useVioOdometryBetweenFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useVioOdometryBetween");
+  lioAvailabilityTimeoutSec_ = graph_msf::tryGetParam<double>(this, "sensor_params.lioAvailabilityTimeoutSec");
+  readWheelOdometryParams_();
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setUseVioOdometryBetweenFlag(useVioOdometryBetweenFlag_);
 
 
@@ -70,12 +79,22 @@ void B2WEstimator::readParams() {
       graph_msf::tryGetParam<std::vector<double>>(this, "alignment_params.vioSe3AlignmentRandomWalk");
   vioSe3AlignmentRandomWalk_ << vioSe3AlignmentRandomWalk[0], vioSe3AlignmentRandomWalk[1], vioSe3AlignmentRandomWalk[2],
       vioSe3AlignmentRandomWalk[3], vioSe3AlignmentRandomWalk[4], vioSe3AlignmentRandomWalk[5];
+  alignmentRandomWalkScaleWithoutGnss_ = graph_msf::tryGetParam<double>(this, "alignment_params.randomWalkScaleWithoutGnss");
+  alignmentRandomWalkGnssAbsenceSec_ = graph_msf::tryGetParam<double>(this, "alignment_params.gnssAbsenceSecondsForScale");
+  alignmentRandomWalkReleaseSeconds_ = graph_msf::tryGetParam<double>(this, "alignment_params.randomWalkReleaseSecondsAfterGnssReturn");
+  alignmentRandomWalkReleaseMaxFactor_ = graph_msf::tryGetParam<double>(this, "alignment_params.randomWalkReleaseMaxFactor");
 
   // Noise Parameters
   /// LiDAR Odometry
   const auto lidarUnaryNoise =
       graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseUnaryNoiseDensity");  // roll,pitch,yaw,x,y,z
   lioPoseUnaryNoise_ << lidarUnaryNoise[0], lidarUnaryNoise[1], lidarUnaryNoise[2], lidarUnaryNoise[3], lidarUnaryNoise[4], lidarUnaryNoise[5];
+  lioVioRobustNormType_ = graph_msf::tryGetParam<std::string>(this, "noise_params.lioVioRobustNorm");
+  lioVioRobustNormConstant_ = graph_msf::tryGetParam<double>(this, "noise_params.lioVioRobustNormConstant");
+  lioVioRobustNorm();  // validates the type string early
+  gnssRobustNormType_ = graph_msf::tryGetParam<std::string>(this, "noise_params.gnssRobustNorm");
+  gnssRobustNormConstant_ = graph_msf::tryGetParam<double>(this, "noise_params.gnssRobustNormConstant");
+  gnssRobustNorm();
 
   const auto lidarBetweenNoise =
       graph_msf::tryGetParam<std::vector<double>>(this, "noise_params.lioPoseBetweenNoiseDensity");  // roll,pitch,yaw,x,y,z
@@ -93,7 +112,27 @@ void B2WEstimator::readParams() {
     vioPoseUnaryNoise_ << vioPoseUnaryNoise[0], vioPoseUnaryNoise[1], vioPoseUnaryNoise[2], vioPoseUnaryNoise[3],
             vioPoseUnaryNoise[4], vioPoseUnaryNoise[5];
 
+  // A zero (or negative) standard deviation becomes a hard constraint in GTSAM (noiseModel::Diagonal::Sigmas -> Constrained).
+  for (const auto& [name, sigmas] : std::initializer_list<std::pair<const char*, Eigen::Matrix<double, 6, 1>>>{
+           {"lioPoseUnaryNoiseDensity", lioPoseUnaryNoise_},
+           {"lioPoseBetweenNoiseDensity", lioBetweenNoise_},
+           {"vioPoseBetweenNoiseDensity", vioPoseBetweenNoise_},
+           {"vioPoseUnaryNoiseDensity", vioPoseUnaryNoise_}}) {
+    if (!(sigmas.array() > 0.0).all() || !sigmas.allFinite()) {
+      throw std::runtime_error(std::string("B2WEstimator: noise_params.") + name + " must be finite and > 0 in every entry.");
+    }
+  }
+
 // GNSS parameters
+  // Source re-origin detection (LIO + VIO), source-only kinematic plausibility
+  for (SourceEpochState* e : {&lioEpoch_, &vioEpoch_}) {
+    e->enabled = graph_msf::tryGetParam<bool>(this, "source_reorigin.enabled");
+    e->vMax = graph_msf::tryGetParam<double>(this, "source_reorigin.maxLinearSpeed");
+    e->wMax = graph_msf::tryGetParam<double>(this, "source_reorigin.maxAngularSpeed");
+    e->posMargin = graph_msf::tryGetParam<double>(this, "source_reorigin.positionMargin");
+    e->rotMargin = graph_msf::tryGetParam<double>(this, "source_reorigin.rotationMarginDeg") * M_PI / 180.0;
+  }
+
 if (useGnssFlag_) {
     // GNSS Handler
     gnssHandlerPtr_ = std::make_shared<graph_msf::GnssHandler>();
@@ -119,6 +158,7 @@ if (useGnssFlag_) {
     lioRealignAbsenceTimeoutSec_ = graph_msf::tryGetParam<double>(this, "lio_realignment.absenceTimeoutSec");
     const int attemptEveryN = graph_msf::tryGetParam<int>(this, "lio_realignment.attemptEveryNGnssMsgs");
     lioRealignAttemptEveryNGnssMsgs_ = attemptEveryN < 1 ? 1 : attemptEveryN;
+    lioRealignNoGnssFallbackSec_ = graph_msf::tryGetParam<double>(this, "lio_realignment.noGnssFallbackSec");
     RCLCPP_INFO(this->get_logger(), "\033[92m- LIO re-alignment after outage: %s (absence > %.1f s)\033[0m",
                 lioRealignEnabled_ ? "enabled" : "disabled", lioRealignAbsenceTimeoutSec_);
     } else if (!gnssHandlerPtr_->getUseYawInitialGuessFromAlignment() && gnssHandlerPtr_->getUseYawInitialGuessFromFile()) {
@@ -151,6 +191,14 @@ if (useGnssFlag_) {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setLioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarOdometryFrame"));
 
+  /// LiDAR between-odometry frame. It was declared but never read, so with useLioBetweenOdometry the start-up TF lookup got an
+  /// empty frame id and the node terminated (tf2::InvalidArgumentException).
+  const std::string lidarBetweenFrameParam = graph_msf::tryGetParam<std::string>(this, "extrinsics.lidarBetweenFrame");
+  if (useLioBetweenOdometryFlag_ && lidarBetweenFrameParam.empty()) {
+    throw std::runtime_error("B2WEstimator: extrinsics.lidarBetweenFrame must be set when sensor_params.useLioBetweenOdometry is true.");
+  }
+  dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())->setLidarBetweenFrame(lidarBetweenFrameParam);
+
   /// VIO Odometry frame
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
       ->setVioOdometryFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.vioOdometryFrame"));
@@ -159,6 +207,70 @@ if (useGnssFlag_) {
   dynamic_cast<B2WStaticTransforms*>(staticTransformsPtr_.get())
   ->setVioOdometryBetweenFrame(graph_msf::tryGetParam<std::string>(this, "extrinsics.vioOdometryBetweenFrame"));
 
+}
+
+void B2WEstimator::readWheelOdometryParams_() {
+  useWheelOdometryFlag_ = graph_msf::tryGetParam<bool>(this, "sensor_params.useWheelOdometry");
+  wheelOdometryRate_ = graph_msf::tryGetParam<double>(this, "sensor_params.wheelOdometryRate");
+  if (!useWheelOdometryFlag_) {
+    return;
+  }
+  auto fail = [](const std::string& what) { throw std::runtime_error("B2WEstimator wheel odometry: " + what); };
+  auto vec3 = [&](const std::string& name) {
+    const auto v = graph_msf::tryGetParam<std::vector<double>>(this, name);
+    if (v.size() != 3) fail(name + " must have 3 entries.");
+    return Eigen::Vector3d(v[0], v[1], v[2]);
+  };
+
+  // hf_b2w_description
+  HfB2wDescription description;
+  wheelOdometryBaseFrame_ = graph_msf::tryGetParam<std::string>(this, "hf_b2w_description.baseFrame");
+  description.wheelRadius = graph_msf::tryGetParam<double>(this, "hf_b2w_description.wheelRadius");
+  description.abductionAxis = vec3("hf_b2w_description.abductionAxis");
+  description.pitchAxis = vec3("hf_b2w_description.pitchAxis");
+  if (wheelOdometryBaseFrame_.empty()) fail("hf_b2w_description.baseFrame is empty (is hf_b2w_description.yaml loaded?).");
+  if (!(description.wheelRadius > 0.0)) fail("hf_b2w_description.wheelRadius must be > 0.");
+  const std::array<const char*, 4> legNames{"LF", "LH", "RF", "RH"};
+  for (std::size_t l = 0; l < 4; ++l) {
+    const std::string prefix = std::string("hf_b2w_description.") + legNames[l];
+    const std::vector<std::string> names = this->get_parameter(prefix + ".jointNames").as_string_array();  // tryGetParam cannot print string arrays
+    const auto origins = graph_msf::tryGetParam<std::vector<double>>(this, prefix + ".origins");
+    if (names.size() != 4) fail(prefix + ".jointNames must list HAA, HFE, KFE, WHEEL.");
+    if (origins.size() != 12) fail(prefix + ".origins must have 12 entries (HAA, HFE, KFE, WHEEL origins).");
+    auto& leg = description.legs[l];
+    leg.name = legNames[l];
+    for (std::size_t j = 0; j < 4; ++j) {
+      leg.jointNames[j] = names[j];
+      leg.origins[j] = Eigen::Vector3d(origins[3 * j], origins[3 * j + 1], origins[3 * j + 2]);
+    }
+  }
+
+  // Slip handling and noise
+  HfB2wWheelOdometryParams params;
+  wheelOdometryRobustNormType_ = graph_msf::tryGetParam<std::string>(this, "wheel_odometry.robustNorm");
+  wheelOdometryRobustNormConstant_ = graph_msf::tryGetParam<double>(this, "wheel_odometry.robustNormConstant");
+  makeRobustNorm_(wheelOdometryRobustNormType_, wheelOdometryRobustNormConstant_, "wheel_odometry.robustNorm");  // validates
+  params.wheelConsistencyGate = graph_msf::tryGetParam<double>(this, "wheel_odometry.wheelConsistencyGate");
+  params.minConsistentWheels = graph_msf::tryGetParam<int>(this, "wheel_odometry.minConsistentWheels");
+  params.maxYawRate = graph_msf::tryGetParam<double>(this, "wheel_odometry.maxYawRate");
+  params.maxDeviationFromState = graph_msf::tryGetParam<double>(this, "wheel_odometry.maxDeviationFromState");
+  params.sigma = vec3("wheel_odometry.sigma");
+  params.sigmaPerSpeed = graph_msf::tryGetParam<double>(this, "wheel_odometry.sigmaPerSpeed");
+  params.sigmaPerLegRate = graph_msf::tryGetParam<double>(this, "wheel_odometry.sigmaPerLegRate");
+  params.standstillWheelRate = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillWheelRate");
+  params.standstillLegRate = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillLegRate");
+  params.standstillAngularRate = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillAngularRate");
+  params.standstillMinDuration = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillMinDuration");
+  params.standstillMaxStateSpeed = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillMaxStateSpeed");
+  params.standstillSigma = graph_msf::tryGetParam<double>(this, "wheel_odometry.standstillSigma");
+  if (!(params.sigma.array() > 0.0).all() || !(params.standstillSigma > 0.0)) fail("wheel_odometry sigmas must be > 0.");
+  if (params.minConsistentWheels < 1 || params.minConsistentWheels > 4) fail("wheel_odometry.minConsistentWheels must be 1..4.");
+  if (!(wheelOdometryRate_ > 0.0)) fail("sensor_params.wheelOdometryRate must be > 0.");
+
+  wheelOdometryPtr_ = std::make_unique<HfB2wWheelOdometry>(description, params);
+  REGULAR_COUT << GREEN_START << " [Wheel odometry] enabled: hf_b2w_description base '" << wheelOdometryBaseFrame_ << "', wheel radius "
+               << description.wheelRadius << " m, rate " << wheelOdometryRate_ << " Hz, sigma " << params.sigma.transpose() << COLOR_END
+               << std::endl;
 }
 
 }  // namespace b2w_se

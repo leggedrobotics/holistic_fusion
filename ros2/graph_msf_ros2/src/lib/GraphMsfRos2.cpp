@@ -9,6 +9,7 @@
 #include <std_srvs/srv/trigger.hpp>
 
 // std
+#include <pthread.h>
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -926,7 +927,8 @@ void GraphMsfRos2::publishState(
 }
 
 // Publish to TF
-void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr) {
+void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                                       std::vector<geometry_msgs::msg::TransformStamped>& tfBatch) {
   GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishTfTransforms");
 
   // Time
@@ -938,10 +940,10 @@ void GraphMsfRos2::publishTfTransforms(const std::shared_ptr<graph_msf::SafeInte
   Eigen::Isometry3d T_B_Ok =
       staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getImuFrame()) *
       integratedNavStatePtr->getT_O_Ik_gravityAligned().inverse();
-  publishTfTreeTransform(staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
+  addTfTreeTransform(tfBatch, staticTransformsPtr_->getBaseLinkFrame(), staticTransformsPtr_->getOdomFrame(), timeK, T_B_Ok);
   // O_W
   Eigen::Isometry3d T_O_W = integratedNavStatePtr->getT_W_O().inverse();
-  publishTfTreeTransform(staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
+  addTfTreeTransform(tfBatch, staticTransformsPtr_->getOdomFrame(), staticTransformsPtr_->getWorldFrame(), timeK, T_O_W);
 
   // Publish Velocity Markers
   publishVelocityMarkers(integratedNavStatePtr);
@@ -1023,7 +1025,7 @@ void GraphMsfRos2::publishOptimizedStateAndBias(
 // Publish TF transforms for optimized state at full rate
 void GraphMsfRos2::publishOptimizedStateTfTransforms(
     const std::shared_ptr<const graph_msf::SafeNavStateWithCovarianceAndBias> optimizedStateWithCovarianceAndBiasPtr,
-    const double timeStamp) {
+    const double timeStamp, std::vector<geometry_msgs::msg::TransformStamped>& tfBatch) {
   GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishOptimizedStateTfTransforms");
 
   // Publish Transforms at imu rate
@@ -1052,7 +1054,7 @@ void GraphMsfRos2::publishOptimizedStateTfTransforms(
         }
 
         // Publish TF Tree only (removed PoseWithCovarianceStamped)
-        publishTfTreeTransform(worldFrameName, mapFrameName + referenceFrameAlignedNameId, timeStamp, T_W_M);
+        addTfTreeTransform(tfBatch, worldFrameName, mapFrameName + referenceFrameAlignedNameId, timeStamp, T_W_M);
       }
       // Case 2: Other transformations
       else {
@@ -1061,18 +1063,19 @@ void GraphMsfRos2::publishOptimizedStateTfTransforms(
         const Eigen::Isometry3d& T_sensor_sensorCorrected = framePairTransformMapIterator.second;
 
         // Publish TF Tree only (removed PoseWithCovarianceStamped)
-        publishTfTreeTransform(sensorFrameName, sensorFrameNameCorrected, timeStamp, T_sensor_sensorCorrected);
+        addTfTreeTransform(tfBatch, sensorFrameName, sensorFrameNameCorrected, timeStamp, T_sensor_sensorCorrected);
       }
     }  // for each frame pair transform
   }    // Publishing of Transforms
 }
 
 // Lower Level Functions
-void GraphMsfRos2::publishTfTreeTransform(const std::string& parentFrameName, const std::string& childFrameName, const double timeStamp,
-                                          const Eigen::Isometry3d& T_frame_childFrame) const {
-  GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::publishTfTreeTransform");
+void GraphMsfRos2::addTfTreeTransform(std::vector<geometry_msgs::msg::TransformStamped>& tfBatch, const std::string& parentFrameName,
+                                      const std::string& childFrameName, const double timeStamp,
+                                      const Eigen::Isometry3d& T_frame_childFrame) const {
+  GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::addTfTreeTransform");
 
-  geometry_msgs::msg::TransformStamped transformStamped;
+  geometry_msgs::msg::TransformStamped& transformStamped = tfBatch.emplace_back();
   transformStamped.header.stamp = rclcpp::Time(timeStamp * 1e9);
   transformStamped.header.frame_id = parentFrameName;
   transformStamped.child_frame_id = childFrameName;
@@ -1084,8 +1087,6 @@ void GraphMsfRos2::publishTfTreeTransform(const std::string& parentFrameName, co
   transformStamped.transform.rotation.y = q.y();
   transformStamped.transform.rotation.z = q.z();
   transformStamped.transform.rotation.w = q.w();
-
-  tfBroadcaster_->sendTransform(transformStamped);
 }
 
 void GraphMsfRos2::publishImuOdoms(const std::shared_ptr<const graph_msf::SafeIntegratedNavState>& preIntegratedNavStatePtr,
@@ -1454,6 +1455,7 @@ void GraphMsfRos2::publishImuPaths() const {
 }
 
 void GraphMsfRos2::nonTimeCriticalThreadFunction() {
+  pthread_setname_np(pthread_self(), "gmsf_pub_slow");  // name for top/htop and per-thread CPU accounting
   // Rate limiting variables
   while (!shutdownRequested_) {
     std::unique_lock<std::mutex> lock(nonTimeCriticalQueueMutex_);
@@ -1484,6 +1486,7 @@ void GraphMsfRos2::nonTimeCriticalThreadFunction() {
 }
 
 void GraphMsfRos2::imuOdomThreadFunction() {
+  pthread_setname_np(pthread_self(), "gmsf_pub_odom");  // name for top/htop and per-thread CPU accounting
   // Process IMU odometry publishing at high rate
   while (!shutdownRequested_) {
     std::unique_lock<std::mutex> lock(imuOdomQueueMutex_);
@@ -1513,6 +1516,9 @@ void GraphMsfRos2::imuOdomThreadFunction() {
 }
 
 void GraphMsfRos2::tfTransformThreadFunction() {
+  pthread_setname_np(pthread_self(), "gmsf_pub_tf");  // name for top/htop and per-thread CPU accounting
+  std::vector<geometry_msgs::msg::TransformStamped> tfBatch;
+  tfBatch.reserve(16);
   // Process TF transforms publishing at high rate
   while (!shutdownRequested_) {
     std::unique_lock<std::mutex> lock(tfTransformQueueMutex_);
@@ -1531,9 +1537,13 @@ void GraphMsfRos2::tfTransformThreadFunction() {
 
       {
         GRAPH_MSF_SCOPED_TIMER("GraphMsfRos2::tfTransformThreadFunction.process");
-        // Publish TF transforms
-        publishTfTransforms(data.integratedNavStatePtr);
-        publishOptimizedStateTfTransforms(data.optimizedStateWithCovarianceAndBiasPtr, data.timeK);
+        // Publish all TF transforms of this IMU tick as one /tf message (before: one message per transform, i.e. 400 Hz x N)
+        tfBatch.clear();
+        publishTfTransforms(data.integratedNavStatePtr, tfBatch);
+        publishOptimizedStateTfTransforms(data.optimizedStateWithCovarianceAndBiasPtr, data.timeK, tfBatch);
+        if (!tfBatch.empty()) {
+          tfBroadcaster_->sendTransform(tfBatch);
+        }
       }
 
       // Re-lock for the next iteration

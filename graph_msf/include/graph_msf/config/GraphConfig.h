@@ -9,6 +9,7 @@ Please see the LICENSE file that has been included as part of this package.
 #define GRAPH_CONFIG_H
 
 #include <Eigen/Eigen>
+#include <string>
 
 namespace graph_msf {
 
@@ -42,6 +43,16 @@ struct GraphConfig {
   bool estimateGravityFromImuFlag_ = true;
   double gravityMagnitude_ = 9.81;
   Eigen::Vector3d W_gravityVector_ = Eigen::Vector3d(0.0, 0.0, -1) * gravityMagnitude_;
+  // Gravity-direction factor (soft S2 constraint, cf. GaRLILEO): over a window, the mean specific force minus the linear acceleration
+  // (from the change of the OPTIMIZED velocity, i.e. from the external sources, never from the IMU-propagated one, which would be
+  // circular) points up in the IMU frame -> gtsam::AttitudeFactor<Pose3> on the state at the window end. Constrains roll/pitch.
+  bool useGravityDirectionFactorFlag_ = false;
+  double gravityFactorWindowSec_ = 1.0;        // [s]
+  double gravityFactorSigma_ = 0.02;           // [rad] per window
+  double gravityFactorHuberConstant_ = 1.5;    // <= 0: no robust kernel
+  double gravityFactorMaxAccDeviation_ = 0.3;  // [m/s^2] | |f - a| - g |
+  double gravityFactorMaxAngularRate_ = 0.5;   // [rad/s] max bias-corrected rate inside the window
+  double gravityFactorMaxLinearAcc_ = 1.0;     // [m/s^2] mean linear acceleration of the window
 
   // Factor Graph
   double realTimeSmootherLag_ = 1.5;
@@ -81,7 +92,10 @@ struct GraphConfig {
   bool use2ndOrderCoriolisFlag_ = true;
   // Rotation
   double gyroNoiseDensity_ = 1e-04;  // [rad/s/√Hz]
-  double omegaCoriolis_ = 0.0;
+  double omegaCoriolis_ = 0.0;  // [rad/s] Earth rate about world z only (legacy); ignored if coriolisFromLatitudeFlag_
+  // Full Earth rate Omega_E*(0, cos(lat), sin(lat)) in a world frame with x = east, y = north, z = up (GNSS/LV03 world)
+  bool coriolisFromLatitudeFlag_ = false;
+  double coriolisLatitudeDeg_ = 0.0;  // [deg]
   // Bias
   double accBiasRandomWalkNoiseDensity_ = 1e-04;   // [m/s^3/√Hz]
   double gyroBiasRandomWalkNoiseDensity_ = 1e-05;  // [rad/s^2/√Hz]
@@ -115,6 +129,11 @@ struct GraphConfig {
 
   // Other
   double maxSearchDeviation_ = 0.01;
+  // GTSAM >= 4.3.2 IncrementalFixedLagSmoother: keep the newest states and the keys of new factors at the Bayes-tree root
+  bool realTimeSmootherNewestKeysLast_ = true;
+  // Threads GTSAM may use for elimination (TBB). 0: TBB default = one per core in the CPU affinity mask; TBB workers spin-wait
+  // after every burst, which costs more CPU than the parallel speed-up saves for this graph size. 1: optimizer thread only.
+  int maxOptimizerThreads_ = 0;
 };
 
 }  // namespace graph_msf

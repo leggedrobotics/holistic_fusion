@@ -6,6 +6,10 @@ Please see the LICENSE file that has been included as part of this package.
  */
 
 // Implementation
+#include <cstdio>
+#include <algorithm>
+#include <cctype>
+#include <stdexcept>
 #include "b2w_estimator_graph_ros2/B2WEstimator.h"
 
 // Project
@@ -28,6 +32,22 @@ Please see the LICENSE file that has been included as part of this package.
 #define B2W_ENABLE_CALLBACK_TIMING 0
 
 namespace b2w_se {
+
+graph_msf::RobustNorm B2WEstimator::gnssRobustNorm() const { return makeRobustNorm_(gnssRobustNormType_, gnssRobustNormConstant_, "noise_params.gnssRobustNorm"); }
+
+graph_msf::RobustNorm B2WEstimator::lioVioRobustNorm() const { return makeRobustNorm_(lioVioRobustNormType_, lioVioRobustNormConstant_, "noise_params.lioVioRobustNorm"); }
+
+graph_msf::RobustNorm B2WEstimator::makeRobustNorm_(const std::string& type, const double c, const char* paramName) {
+  std::string t = type;
+  std::transform(t.begin(), t.end(), t.begin(), [](unsigned char ch) { return std::tolower(ch); });
+  if (t == "none") return graph_msf::RobustNorm::None();
+  if (t == "huber") return graph_msf::RobustNorm::Huber(c);
+  if (t == "cauchy") return graph_msf::RobustNorm::Cauchy(c);
+  if (t == "tukey") return graph_msf::RobustNorm::Tukey(c);
+  if (t == "gemanmcclure" || t == "gm") return graph_msf::RobustNorm::GemanMcClure(c);
+  if (t == "dcs") return graph_msf::RobustNorm::DCS(c);
+  throw std::runtime_error(std::string(paramName) + " must be one of none|huber|cauchy|tukey|gemanmcclure|dcs, got '" + type + "'");
+}
 
 #if B2W_ENABLE_CALLBACK_TIMING
 namespace detail {
@@ -106,6 +126,38 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("sensor_params.useLioBetweenOdometry", false);
   this->declare_parameter("sensor_params.useVioOdometry", false);
   this->declare_parameter("sensor_params.useVioOdometryBetween", false);
+  this->declare_parameter("sensor_params.lioAvailabilityTimeoutSec", 3.0);
+  this->declare_parameter("sensor_params.useWheelOdometry", false);
+  this->declare_parameter("sensor_params.wheelOdometryRate", 20.0);
+
+  // hf_b2w_description (minimal leg kinematics owned by this estimator) and wheel-odometry parameters; values live in
+  // config/b2w_specific/hf_b2w_description.yaml and b2w_graph_params_gnss.yaml
+  this->declare_parameter("hf_b2w_description.baseFrame", std::string(""));
+  this->declare_parameter("hf_b2w_description.wheelRadius", 0.0);
+  this->declare_parameter("hf_b2w_description.abductionAxis", std::vector<double>{});
+  this->declare_parameter("hf_b2w_description.pitchAxis", std::vector<double>{});
+  for (const char* leg : {"LF", "LH", "RF", "RH"}) {
+    this->declare_parameter(std::string("hf_b2w_description.") + leg + ".jointNames", std::vector<std::string>{});
+    this->declare_parameter(std::string("hf_b2w_description.") + leg + ".origins", std::vector<double>{});
+  }
+  {
+    const HfB2wWheelOdometryParams d;
+    this->declare_parameter("wheel_odometry.robustNorm", std::string("huber"));
+    this->declare_parameter("wheel_odometry.robustNormConstant", 2.0);
+    this->declare_parameter("wheel_odometry.wheelConsistencyGate", d.wheelConsistencyGate);
+    this->declare_parameter("wheel_odometry.minConsistentWheels", d.minConsistentWheels);
+    this->declare_parameter("wheel_odometry.maxYawRate", d.maxYawRate);
+    this->declare_parameter("wheel_odometry.maxDeviationFromState", d.maxDeviationFromState);
+    this->declare_parameter("wheel_odometry.sigma", std::vector<double>{d.sigma.x(), d.sigma.y(), d.sigma.z()});
+    this->declare_parameter("wheel_odometry.sigmaPerSpeed", d.sigmaPerSpeed);
+    this->declare_parameter("wheel_odometry.sigmaPerLegRate", d.sigmaPerLegRate);
+    this->declare_parameter("wheel_odometry.standstillWheelRate", d.standstillWheelRate);
+    this->declare_parameter("wheel_odometry.standstillLegRate", d.standstillLegRate);
+    this->declare_parameter("wheel_odometry.standstillAngularRate", d.standstillAngularRate);
+    this->declare_parameter("wheel_odometry.standstillMinDuration", d.standstillMinDuration);
+    this->declare_parameter("wheel_odometry.standstillMaxStateSpeed", d.standstillMaxStateSpeed);
+    this->declare_parameter("wheel_odometry.standstillSigma", d.standstillSigma);
+  }
 
   // GNSS parameters
   this->declare_parameter("gnss_params.initYaw", 90.0);
@@ -114,6 +166,12 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("lio_realignment.enabled", false);
   this->declare_parameter("lio_realignment.absenceTimeoutSec", 10.0);
   this->declare_parameter("lio_realignment.attemptEveryNGnssMsgs", 5);
+  this->declare_parameter("lio_realignment.noGnssFallbackSec", 0.0);
+  this->declare_parameter("source_reorigin.enabled", false);
+  this->declare_parameter("source_reorigin.maxLinearSpeed", 4.0);
+  this->declare_parameter("source_reorigin.maxAngularSpeed", 3.0);
+  this->declare_parameter("source_reorigin.positionMargin", 0.5);
+  this->declare_parameter("source_reorigin.rotationMarginDeg", 11.5);
   this->declare_parameter("gnss_params.useGnssReference", false);
   this->declare_parameter("gnss_params.referenceLatitude", 47.4084860363);
   this->declare_parameter("gnss_params.referenceLongitude", 8.50435818058);
@@ -140,9 +198,17 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("alignment_params.initialSe3AlignmentNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("alignment_params.lioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("alignment_params.vioSe3AlignmentRandomWalk", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("alignment_params.randomWalkScaleWithoutGnss", 1.0);
+  this->declare_parameter("alignment_params.gnssAbsenceSecondsForScale", 5.0);
+  this->declare_parameter("alignment_params.randomWalkReleaseSecondsAfterGnssReturn", 0.0);
+  this->declare_parameter("alignment_params.randomWalkReleaseMaxFactor", 20.0);
 
   // Noise parameters (vectors of double)
   this->declare_parameter("noise_params.lioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  this->declare_parameter("noise_params.lioVioRobustNorm", std::string("dcs"));
+  this->declare_parameter("noise_params.lioVioRobustNormConstant", 1.0);
+  this->declare_parameter("noise_params.gnssRobustNorm", std::string("huber"));
+  this->declare_parameter("noise_params.gnssRobustNormConstant", 0.25);
   this->declare_parameter("noise_params.lioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseBetweenNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   this->declare_parameter("noise_params.vioPoseUnaryNoiseDensity", std::vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
@@ -188,6 +254,11 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   }
 
   GraphMsfRos2::validateHeadingUncertaintyTransformsOrThrow();
+
+  // All extrinsics are looked up once above; nothing reads TF afterwards.
+  if (auto* tfStatic = dynamic_cast<graph_msf::StaticTransformsTf*>(staticTransformsPtr_.get())) {
+    tfStatic->releaseTfListener();
+  }
 
   // Cache frequently used frame names + constant lever arm once (step 9.1)
   cacheFrames_();
@@ -249,6 +320,90 @@ bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_o
   return true;
 }
 
+void B2WEstimator::publishState(const std::shared_ptr<graph_msf::SafeIntegratedNavState>& integratedNavStatePtr,
+                                const std::shared_ptr<graph_msf::SafeNavStateWithCovarianceAndBias>& optimizedStateWithCovarianceAndBiasPtr) {
+  GraphMsfRos2::publishState(integratedNavStatePtr, optimizedStateWithCovarianceAndBiasPtr);
+  if (integratedNavStatePtr && this->areYawAndPositionInited()) {
+    std::lock_guard<std::mutex> lk(stateBufferMutex_);
+    stateBuffer_.push_back({integratedNavStatePtr->getTimeK(), integratedNavStatePtr->getT_W_Ik(), integratedNavStatePtr->getI_v_W_I(),
+                            integratedNavStatePtr->getI_w_W_I()});
+    while (stateBuffer_.size() > 2500) stateBuffer_.pop_front();
+  }
+}
+
+bool B2WEstimator::lookupBufferedState_(const double t, const double maxDt, BufferedState& out) {
+  std::lock_guard<std::mutex> lk(stateBufferMutex_);
+  double bestDt = std::numeric_limits<double>::infinity();
+  for (auto it = stateBuffer_.rbegin(); it != stateBuffer_.rend(); ++it) {
+    const double dt = std::abs(it->t - t);
+    if (dt < bestDt) { bestDt = dt; out = *it; }
+    if (it->t < t - maxDt) break;
+  }
+  return bestDt <= maxDt;
+}
+
+bool B2WEstimator::lookupWorldImuPose_(const double t, const double maxDt, Eigen::Isometry3d& T_W_I) {
+  BufferedState s;
+  if (!lookupBufferedState_(t, maxDt, s)) return false;
+  T_W_I = s.T_W_I;
+  return true;
+}
+
+Eigen::Matrix<double, 6, 1> B2WEstimator::currentAlignmentRandomWalk_(const Eigen::Matrix<double, 6, 1>& randomWalk, const double t) {
+  if (alignmentRandomWalkScaleWithoutGnss_ >= 1.0 || !useGnssFlag_) return randomWalk;
+  const double lastGnss = lastValidGnssHeaderTime_.load(std::memory_order_relaxed);
+  const bool absent = lastGnss > 0.0 && (t - lastGnss) > alignmentRandomWalkGnssAbsenceSec_;
+  if (absent != alignmentRandomWalkScaledActive_.load(std::memory_order_relaxed)) {
+    alignmentRandomWalkScaledActive_.store(absent, std::memory_order_relaxed);
+    if (alignmentRandomWalkReleaseSeconds_ > 0.0) {
+      std::lock_guard<std::mutex> lk(walkReleaseMutex_);
+      if (absent) {
+        walkAbsenceStart_ = lastGnss;
+      } else if (walkAbsenceStart_ > 0.0) {
+        const double period = std::max(graphConfigPtr_->createReferenceAlignmentKeyframeEveryNSeconds_, 1e-3);
+        const double missed = std::max(1.0, (lastGnss - walkAbsenceStart_) / period);
+        walkReleaseFactor_ = std::min(std::sqrt(missed), alignmentRandomWalkReleaseMaxFactor_);
+        walkReleaseUntil_ = lastGnss + alignmentRandomWalkReleaseSeconds_;
+        REGULAR_COUT << YELLOW_START << " GNSS back after " << std::fixed << std::setprecision(1) << (lastGnss - walkAbsenceStart_)
+                     << " s: alignment random walk released x" << std::setprecision(2) << walkReleaseFactor_ << " for "
+                     << alignmentRandomWalkReleaseSeconds_ << " s so the alignments can re-converge." << COLOR_END << "\n";
+      }
+    }
+    REGULAR_COUT << YELLOW_START << (absent ? " GNSS absent for more than " : " GNSS back: alignment random walk restored (was scaled by ")
+                 << (absent ? alignmentRandomWalkGnssAbsenceSec_ : alignmentRandomWalkScaleWithoutGnss_)
+                 << (absent ? " s: alignment random walk scaled by " : ")") << (absent ? std::to_string(alignmentRandomWalkScaleWithoutGnss_) : "")
+                 << COLOR_END << "\n";
+  }
+  if (absent) {
+    return (randomWalk * alignmentRandomWalkScaleWithoutGnss_).eval();
+  }
+  if (alignmentRandomWalkReleaseSeconds_ > 0.0) {
+    std::lock_guard<std::mutex> lk(walkReleaseMutex_);
+    if (t < walkReleaseUntil_) return (randomWalk * walkReleaseFactor_).eval();
+  }
+  return randomWalk;
+}
+
+std::string B2WEstimator::epochFrameName_(SourceEpochState& s, const std::string& baseFrame, const double t, const Eigen::Isometry3d& T_M_S,
+                                          const char* name) {
+  if (s.enabled && s.havePrev && t > s.prevT) {
+    const double dt = t - s.prevT;
+    const Eigen::Isometry3d dT = s.prevPose.inverse() * T_M_S;
+    const double dp = dT.translation().norm();
+    const double dr = std::abs(Eigen::AngleAxisd(dT.rotation()).angle());
+    if (dp > s.vMax * dt + s.posMargin || dr > s.wMax * dt + s.rotMargin) {
+      ++s.epoch;
+      REGULAR_COUT << YELLOW_START << " [" << name << " re-origin] pose step of " << std::fixed << std::setprecision(2) << dp << " m / "
+                   << std::setprecision(1) << (dr * 180.0 / M_PI) << " deg in " << std::setprecision(2) << dt << " s at t = " << std::setprecision(1) << t
+                   << " is not physical: new fixed-frame epoch " << baseFrame << "_e" << s.epoch << " (fresh alignment)." << COLOR_END << "\n";
+    }
+  }
+  s.havePrev = true;
+  s.prevT = t;
+  s.prevPose = T_M_S;
+  return s.epoch == 0 ? baseFrame : baseFrame + "_e" + std::to_string(s.epoch);
+}
+
 std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> B2WEstimator::makeTrajectoryAligner_() const {
   auto aligner = std::make_shared<graph_msf::TrajectoryAlignmentHandler>();
   aligner->setSe3Rate(trajAlignParams_.se3Rate);
@@ -258,6 +413,45 @@ std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> B2WEstimator::makeTraject
   aligner->setNoMovementDistance(trajAlignParams_.noMovementDistance);
   aligner->setNoMovementTime(trajAlignParams_.noMovementTime);
   return aligner;
+}
+
+bool B2WEstimator::lioAvailable_(const double t) const {
+  if (!useLioOdometryFlag_) {
+    return false;
+  }
+  if (lioAvailabilityTimeoutSec_ <= 0.0) {
+    return true;  // legacy: trust the configuration flag
+  }
+  const double lastLio = lastAcceptedLioHeaderTime_.load(std::memory_order_relaxed);
+  if (lastLio > 0.0) {
+    return (t - lastLio) <= lioAvailabilityTimeoutSec_;  // stays false while LIO is degenerate (its callback returns early)
+  }
+  const double firstVio = firstVioHeaderTime_.load(std::memory_order_relaxed);
+  return firstVio <= 0.0 || (t - firstVio) <= lioAvailabilityTimeoutSec_;  // no LIO yet: give it the timeout from the first VIO pose
+}
+
+std::shared_ptr<graph_msf::TrajectoryAlignmentHandler> B2WEstimator::aligner_() {
+  std::lock_guard<std::mutex> lk(realignMutex_);
+  return trajectoryAlignmentHandler_;
+}
+
+void B2WEstimator::switchInitAlignmentSource_(const InitAlignmentSource source, const double t, const std::string& reason) {
+  const InitAlignmentSource previous = initAlignmentSource_.exchange(source);
+  if (previous == source) {
+    return;
+  }
+  if (previous != InitAlignmentSource::None) {
+    // The aligner and the pose buffer hold the other source's map frame.
+    {
+      std::lock_guard<std::mutex> lk(realignMutex_);
+      trajectoryAlignmentHandler_ = makeTrajectoryAligner_();
+    }
+    std::lock_guard<std::mutex> lk(alignmentPoseBufMutex_);
+    alignmentPoseBuf_.clear();
+  }
+  REGULAR_COUT << YELLOW_START << " [World alignment] " << (source == InitAlignmentSource::Vio ? "VIO" : "LIO")
+               << " map is now the source of the world alignment (t = " << std::fixed << std::setprecision(1) << t << "): " << reason
+               << "." << COLOR_END << "\n";
 }
 
 // Runs on the GNSS callback thread while LIO is being re-aligned: feeds the GNSS path and
@@ -305,6 +499,7 @@ void B2WEstimator::initializePublishers() {
   pubMeasMapLioLidarPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_path_map_lidar", best_effort_qos);           // RViz: green
   pubMeasMapVioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_path_map_zed_base_link", best_effort_qos);          // RViz: orange
   pubMeasMapVioBetweenPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measVIO_Between_path_map_zed_base_link", best_effort_qos);  // RViz: dark red
+  pubMeasMapLioPath_ = this->create_publisher<nav_msgs::msg::Path>("/graph_msf/measLiDAR_between_path_world", best_effort_qos);
 
   if (useGnssFlag_) {
     pubGnssPoseWithCov = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/graph_msf/gnss_pose_with_covariance", best_effort_qos);
@@ -395,6 +590,18 @@ void B2WEstimator::initializeSubscribers() {
     REGULAR_COUT << COLOR_END << " Initialized VIO Odometry subscriber with topic: /vio_odometry_topic\n";
   }
 
+  if (useWheelOdometryFlag_) {
+    auto cb_joints = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions so_joints;
+    so_joints.callback_group = cb_joints;
+    // Sensor-data QoS (best effort) matches both reliable and best-effort joint-state publishers
+    subJointStates_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/joint_states_topic", rclcpp::SensorDataQoS().keep_last(10),
+        std::bind(&B2WEstimator::jointStatesCallback_, this, std::placeholders::_1), so_joints);
+    REGULAR_COUT << COLOR_END << " Initialized joint-state subscriber (wheel odometry) with topic: " << subJointStates_->get_topic_name()
+                 << "\n";
+  }
+
   if (useVioOdometryBetweenFlag_) {
     subVioOdometryBetween_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/vio_odometry_between_topic", qos1,
@@ -422,10 +629,18 @@ void B2WEstimator::initializeServices() {
   // Nothing for now
 }
 
+bool B2WEstimator::isPlausibleSourceStep_(const SourceEpochState& s, const Eigen::Isometry3d& T_km1_k, const double dt) {
+  const double stepTranslation = T_km1_k.translation().norm();
+  const double stepRotation = Eigen::AngleAxisd(T_km1_k.rotation()).angle();
+  return stepTranslation <= s.vMax * dt + s.posMargin && stepRotation <= s.wMax * dt + s.rotMargin;
+}
+
 void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::ConstSharedPtr& lidarBetweenOdomPtr) {
   B2W_SCOPED_CB_TIMER("lidarBetweenOdometryCallback_");
 
+  // Degenerate scans add no factor, and the next good scan restarts the delta chain instead of spanning the degenerate stretch.
   if (lioDegenerate_.load(std::memory_order_relaxed)) {
+    lidarBetweenChainValid_ = false;
     return;
   }
 
@@ -433,30 +648,43 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
     return;
   }
 
+  // Timestamp [s] (avoid rclcpp::Time construction)
+  const double lidarBetweenTimeK =
+      lidarBetweenOdomPtr->header.stamp.sec + lidarBetweenOdomPtr->header.stamp.nanosec * 1e-9;
+
+  // Rate gate: between factors at most at lioBetweenRate
+  if (lidarBetweenChainValid_ && lioBetweenOdometryRate_ > 0.0) {
+    const double dt = lidarBetweenTimeK - lidarBetweenTimeKm1_;
+    if (dt > 0.0 && dt < (1.0 / lioBetweenOdometryRate_)) {
+      return;
+    }
+  }
+
   ++lidarBetweenCallbackCounter_;
 
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*lidarBetweenOdomPtr, lio_T_M_Lk.matrix());
 
-  // Timestamp [s] (avoid rclcpp::Time construction)
-  const double lidarBetweenTimeK =
-      lidarBetweenOdomPtr->header.stamp.sec + lidarBetweenOdomPtr->header.stamp.nanosec * 1e-9;
-
-  if (lidarBetweenCallbackCounter_ == 0) {
-    lio_T_M_Lkm1_ = lio_T_M_Lk;
-    lidarBetweenTimeKm1_ = lidarBetweenTimeK;
-  }
-
-  if (useLioOdometryFlag_ && useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-    trajectoryAlignmentHandler_->addSe3Position(lio_T_M_Lk.translation(), lidarBetweenTimeK);
+  // GNSS trajectory alignment: only fed from here when the absolute LIO unary is off (the unary path already feeds it, with the
+  // lever arm; feeding both gave the aligner two inconsistent trajectories).
+  if (!useLioOdometryFlag_ && useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+    addAlignmentPose_(lidarBetweenTimeK, lio_T_M_Lk);
+    const std::string& baseFrame =
+        lidarBetweenOdomPtr->child_frame_id.empty() ? baseLinkFrame_ : lidarBetweenOdomPtr->child_frame_id;
+    const Eigen::Vector3d t_B_G = (baseFrame == baseLinkFrame_)
+                                      ? t_B_G_cached_
+                                      : staticTransformsPtr_->rv_T_frame1_frame2(baseFrame, gnssFrame_).translation();
+    if (const auto aligner = aligner_()) {
+      aligner->addSe3Position(lio_T_M_Lk.translation() + lio_T_M_Lk.rotation() * t_B_G, lidarBetweenTimeK);
+    }
   }
 
   // Frame names (cached)
   const std::string& lioBetweenOdomFrameName = lidarBetweenFrame_;
   const std::string& lioOdomFrameName = lioOdometryFrame_;
 
-  if (lidarBetweenCallbackCounter_ <= 2) {
-    return;
+  if (lidarBetweenCallbackCounter_ <= 2 || !lidarBetweenChainValid_) {
+    // (Re)start of the delta chain: remember this pose, no factor yet.
   } else if (!areYawAndPositionInited()) {
     if (!useGnssFlag_ && !useLioOdometryFlag_) {
       graph_msf::UnaryMeasurementXD<Eigen::Isometry3d, 6> unary6DMeasurement(
@@ -466,18 +694,29 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
       this->initYawAndPosition(unary6DMeasurement);
     }
   } else {
+    const double dt = lidarBetweenTimeK - lidarBetweenTimeKm1_;
     const Eigen::Isometry3d T_Lkm1_Lk = lio_T_M_Lkm1_.inverse() * lio_T_M_Lk;
-    graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
-        "Lidar_between_6D", int(lioBetweenOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::None(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioBetweenNoise_);
-    this->addBinaryPose3Measurement(delta6DMeasurement);
+    if (dt <= 0.0) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "[LIO Between] non-increasing timestamps (dt=%.4f s). Skipping.", dt);
+    } else if (!isPlausibleSourceStep_(lioEpoch_, T_Lkm1_Lk, dt)) {
+      // A step the robot cannot make (e.g. a DLIO re-origin) must not become a between factor.
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                           "[LIO Between] non-physical step of %.2f m in %.3f s (source re-origin?). Skipping this delta.",
+                           T_Lkm1_Lk.translation().norm(), dt);
+    } else {
+      graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
+          "Lidar_between_6D", int(lioBetweenOdometryRate_), lioOdomFrameName, lioOdomFrameName + sensorFrameCorrectedNameId,
+          lioVioRobustNorm(), lidarBetweenTimeKm1_, lidarBetweenTimeK, T_Lkm1_Lk, lioBetweenNoise_);
+      this->addBinaryPose3Measurement(delta6DMeasurement);
+    }
   }
 
   lio_T_M_Lkm1_ = lio_T_M_Lk;
   lidarBetweenTimeKm1_ = lidarBetweenTimeK;
+  lidarBetweenChainValid_ = true;
 
   // Visualization: do work only if needed (step 9.3)
-  if (pubMeasMapLioPath_->get_subscription_count() > 0) {
+  if (pubMeasMapLioPath_ && pubMeasMapLioPath_->get_subscription_count() > 0) {
     addToPathMsg(measLio_mapLidarPathPtr_, worldFrame_, lidarBetweenOdomPtr->header.stamp, lio_T_M_Lk.translation(),
                  static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
     pubMeasMapLioPath_->publish(*measLio_mapLidarPathPtr_);
@@ -619,11 +858,12 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
         REGULAR_COUT << YELLOW_START << " Adding GNSS measurement to trajectory alignment." << "\n";
       }
 
-      trajectoryAlignmentHandler_->addR3Position(W_t_W_Gnss, timeK);
+      const auto aligner = aligner_();
+      aligner->addR3Position(W_t_W_Gnss, timeK);
 
       double yaw_W_M = 0.0;
       Eigen::Isometry3d T_W_M = Eigen::Isometry3d::Identity();
-      if (!trajectoryAlignmentHandler_->alignTrajectories(yaw_W_M, T_W_M)) {
+      if (!aligner->alignTrajectories(yaw_W_M, T_W_M)) {
         if (gnssCallbackCounter_ % 10 == 0) {
           REGULAR_COUT << YELLOW_START
                        << "Trajectory alignment not ready. Waiting for more motion."
@@ -686,6 +926,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
   } else {
 
+    lastValidGnssHeaderTime_.store(timeK, std::memory_order_relaxed);
     if (lioRealignEnabled_ && lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Realigning) {
       realignFromGnss_(W_t_W_Gnss, timeK);
     }
@@ -703,7 +944,7 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
 
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::Huber(0.25),
+        gnssRobustNorm(),
         timestampSec, gnssPositionOutlierThreshold_,
         W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, worldFrame_);
@@ -816,11 +1057,14 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   Eigen::Isometry3d lio_T_M_Lk = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*odomLidarPtr, lio_T_M_Lk.matrix());
 
+  if (!areYawAndPositionInited() && initAlignmentSource_.load() != InitAlignmentSource::Lio) {
+    switchInitAlignmentSource_(InitAlignmentSource::Lio, lidarOdometryTimeK, "LiDAR odometry is arriving");
+  }
   addAlignmentPose_(lidarOdometryTimeK, lio_T_M_Lk);
 
   // Frame Name
   const std::string& lioOdometryFrame = lioOdometryFrame_;
-  const std::string& lioFixedFrame = odomLidarPtr->header.frame_id;
+  const std::string lioFixedFrame = epochFrameName_(lioEpoch_, odomLidarPtr->header.frame_id, lidarOdometryTimeK, lio_T_M_Lk, "LIO");
 
   // The heading-uncertainty disk is defined for the active world-to-fixed-frame alignment, where the fixed
   // frame is the drifting LiDAR odometry/map frame carried in header.frame_id, not the sensor/body child frame.
@@ -839,7 +1083,9 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
     const Eigen::Vector3d p_G_in_M =
         lio_T_M_Lk.translation() + lio_T_M_Lk.rotation() * t_B_G;
 
-    trajectoryAlignmentHandler_->addSe3Position(p_G_in_M, lidarOdometryTimeK);
+    if (const auto aligner = aligner_()) {
+      aligner->addSe3Position(p_G_in_M, lidarOdometryTimeK);
+    }
   }
 
   if (lioOdometryFrame != odomLidarPtr->child_frame_id) {
@@ -863,12 +1109,12 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
       "Lidar_unary_6D", int(lioOdometryRate_),
       lioOdometryFrame, lioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::DCS(1.0),
+      lioVioRobustNorm(),
       // graph_msf::RobustNorm::None(),
       lidarOdometryTimeK, 1.0,
       lio_T_M_Lk, lioPoseUnaryNoise_,
       lioFixedFrame, worldFrame_,
-      initialSe3AlignmentNoise_, lioSe3AlignmentRandomWalk_,
+      initialSe3AlignmentNoise_, currentAlignmentRandomWalk_(lioSe3AlignmentRandomWalk_, lidarOdometryTimeK),
       graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
 
   if (lidarUnaryCallbackCounter_ <= 2) {
@@ -890,6 +1136,7 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
           trajectoryAlignmentHandler_ = makeTrajectoryAligner_();  // drop the old-frame trajectory
           realignInjectPending_ = false;
           realignGnssMsgCounter_ = 0;
+          realignStartHeaderTime_ = lidarOdometryTimeK;
         }
         lioAlignState_.store(LioAlignState::Realigning, std::memory_order_release);
         measLio_mapLidarPathPtr_->poses.clear();
@@ -911,6 +1158,26 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
             inject = true;
             T_W_M = realignT_W_M_;
             realignInjectPending_ = false;
+          }
+        }
+        if (!inject && lioRealignNoGnssFallbackSec_ > 0.0) {
+          // No GNSS to align against: anchor the (possibly re-origined) LIO map to the current world estimate so that
+          // LIO keeps constraining the graph instead of being withheld for the rest of the outage.
+          const double sinceGnss = lidarOdometryTimeK - lastValidGnssHeaderTime_.load(std::memory_order_relaxed);
+          double sinceStart = 0.0;
+          {
+            std::lock_guard<std::mutex> lk(realignMutex_);
+            sinceStart = lidarOdometryTimeK - realignStartHeaderTime_;
+          }
+          Eigen::Isometry3d T_W_I = Eigen::Isometry3d::Identity();
+          if (sinceGnss > lioRealignNoGnssFallbackSec_ && sinceStart > lioRealignNoGnssFallbackSec_ &&
+              lookupWorldImuPose_(lidarOdometryTimeK, 0.1, T_W_I)) {
+            const Eigen::Isometry3d T_I_L = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), lioOdometryFrame);
+            T_W_M = T_W_I * T_I_L * lio_T_M_Lk.inverse();
+            inject = true;
+            REGULAR_COUT << YELLOW_START << " [LIO realign] No GNSS for " << std::fixed << std::setprecision(1) << sinceGnss
+                         << " s: anchoring " << lioFixedFrame << " to the current " << worldFrame_ << " estimate instead (fallback)."
+                         << COLOR_END << "\n";
           }
         }
         if (!inject) {
@@ -981,6 +1248,8 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
     }
   }
   lastVioTimeK = timeK;
+  double expectedFirstVio = 0.0;
+  firstVioHeaderTime_.compare_exchange_strong(expectedFirstVio, timeK);
   ++vioAcceptedCallbackCounter;
   vio_accepted_wall_freq_checker.tick(vioCallbackWallTimeK);
   vio_accepted_stamp_freq_checker.tick(lastVioTimeK);
@@ -1010,7 +1279,7 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
 
   // Frame name (cached)
   const std::string& vioOdometryFrame = vioOdometryFrame_;
-  const std::string& vioFixedFrame = vioOdomPtr->header.frame_id;
+  const std::string vioFixedFrame = epochFrameName_(vioEpoch_, vioOdomPtr->header.frame_id, timeK, vio_T_M_Ck, "VIO");
 
   // Publish a second alignment uncertainty disk for the active VIO odom/map frame.
   setHeadingUncertaintyFixedFrame("vio", vioFixedFrame);
@@ -1025,11 +1294,21 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
                          vioFixedFrame.c_str());
   }
 
-  // When LIO is disabled, use the ZED trajectory as the SE3 input to the
-  // existing GNSS trajectory alignment. Convert the camera pose to the base
-  // frame before buffering it, since the graph is initialized in baseFrame_.
-  if (useGnssFlag_ && !useLioOdometryFlag_ && !useLioBetweenOdometryFlag_ && trajectoryAlignmentHandler_ &&
+  // When LIO is not available (disabled, or enabled but not arriving / degenerate for lioAvailabilityTimeoutSec), the VIO map is
+  // aligned with the world: the ZED trajectory becomes the SE3 input of the GNSS trajectory alignment. Convert the camera pose to the
+  // base frame before buffering it, since the graph is initialized in baseFrame_. Only needed until the world is initialised.
+  const bool lioAvailable = lioAvailable_(timeK);
+  const auto noLioReason = [this]() {
+    if (!useLioOdometryFlag_) return std::string("LiDAR odometry disabled");
+    char reason[96];
+    std::snprintf(reason, sizeof(reason), "LiDAR odometry enabled but not arriving for %g s", lioAvailabilityTimeoutSec_);
+    return std::string(reason);
+  };
+  if (useGnssFlag_ && !lioAvailable && !useLioBetweenOdometryFlag_ && !areYawAndPositionInited() &&
       gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
+    if (initAlignmentSource_.load() != InitAlignmentSource::Vio) {
+      switchInitAlignmentSource_(InitAlignmentSource::Vio, timeK, noLioReason());
+    }
     const Eigen::Isometry3d T_V_I =
         staticTransformsPtr_->rv_T_frame1_frame2(vioOdometryFrame_, staticTransformsPtr_->getImuFrame());
     const Eigen::Isometry3d T_I_B =
@@ -1040,7 +1319,9 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
 
     const Eigen::Vector3d p_G_in_M =
         vio_T_M_B.translation() + vio_T_M_B.rotation() * t_B_G_cached_;
-    trajectoryAlignmentHandler_->addSe3Position(p_G_in_M, timeK);
+    if (const auto aligner = aligner_()) {
+      aligner->addSe3Position(p_G_in_M, timeK);
+    }
   }
 
   graph_msf::UnaryMeasurementXDAbsolute<Eigen::Isometry3d, 6> unary6DMeasurement(
@@ -1048,7 +1329,7 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
       int(vioOdometryRate_),
       vioOdometryFrame,
       vioOdometryFrame + sensorFrameCorrectedNameId,
-      graph_msf::RobustNorm::DCS(1.0),
+      lioVioRobustNorm(),
       // graph_msf::RobustNorm::None(),
       timeK,
       1.0,
@@ -1057,13 +1338,17 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
       vioFixedFrame,
       worldFrame_,
       initialSe3AlignmentNoise_,
-      vioSe3AlignmentRandomWalk_,
+      currentAlignmentRandomWalk_(vioSe3AlignmentRandomWalk_, timeK),
       graph_msf::AbsoluteUnaryAlignmentRecoveryPolicy::RestartFromPrior);
 
   if (vioUnaryCallbackCounter <= 2) {
     // skip first few samples
   } else if (!areYawAndPositionInited()) {
-    if (!useGnssFlag_ && !useLioOdometryFlag_) {
+    if (!useGnssFlag_ && !lioAvailable) {
+      // No GNSS and no LiDAR odometry: the world frame is the VIO map.
+      if (initAlignmentSource_.load() != InitAlignmentSource::Vio) {
+        switchInitAlignmentSource_(InitAlignmentSource::Vio, timeK, noLioReason());
+      }
       REGULAR_COUT << GREEN_START
                    << " VIO odometry callback is setting global yaw, as it was not set so far."
                    << COLOR_END << "\n";
@@ -1113,16 +1398,11 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
                  << COLOR_END << "\n";
   }
 
-  Eigen::Matrix<double, 6, 1> vio_covariance = vioPoseBetweenNoise_;
-
-  if ((vioOdomPtr->pose.covariance.size() == 36) && (vioOdomPtr->pose.covariance.data() != nullptr)) {
-    Eigen::Map<const Eigen::Matrix<double, 6, 6, Eigen::RowMajor>> cov_map(vioOdomPtr->pose.covariance.data());
-    vio_covariance << cov_map(3, 3), cov_map(4, 4), cov_map(5, 5),
-                      cov_map(0, 0), cov_map(1, 1), cov_map(2, 2);
-  } else {
-    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-                         "VIO odometry message does not contain a 6x6 covariance. Using default between covariance.");
-  }
+  // Noise: the configured standard deviations [rad, rad, rad, m, m, m] (noise_params.vioPoseBetweenNoiseDensity). The message
+  // covariance is not used: it is the covariance of the absolute pose in the ZED odom frame, not of the relative motion. It used
+  // to be read as variances into a standard-deviation vector, the configured value was never used (the size check was always
+  // true for the fixed 36-element array), and a zero variance would have become a hard constraint in GTSAM.
+  const Eigen::Matrix<double, 6, 1>& vio_covariance = vioPoseBetweenNoise_;
 
   Eigen::Isometry3d vio_T_M_Ck = Eigen::Isometry3d::Identity();
   graph_msf::odomMsgToEigen(*vioOdomPtr, vio_T_M_Ck.matrix());
@@ -1154,7 +1434,13 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
     return;
   }
 
-  if (vioTimeKm1 > 0.0 && timeK > vioTimeKm1) {
+  if (vioTimeKm1 > 0.0 && timeK > vioTimeKm1 &&
+      !isPlausibleSourceStep_(vioEpoch_, vio_T_M_Ckm1.inverse() * vio_T_M_Ck, timeK - vioTimeKm1)) {
+    // A step the robot cannot make (e.g. a ZED relocalization) must not become a between factor.
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                         "[VIO Between] non-physical step of %.2f m in %.3f s (relocalization?). Skipping this delta.",
+                         (vio_T_M_Ckm1.inverse() * vio_T_M_Ck).translation().norm(), timeK - vioTimeKm1);
+  } else if (vioTimeKm1 > 0.0 && timeK > vioTimeKm1) {
     const Eigen::Isometry3d T_Ckm1_Ck = vio_T_M_Ckm1.inverse() * vio_T_M_Ck;
 
     graph_msf::BinaryMeasurementXD<Eigen::Isometry3d, 6> delta6DMeasurement(
@@ -1162,7 +1448,7 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
         int(vioOdometryBetweenRate_),
         vioOdometryFrame,
         vioOdometryFrame + sensorFrameCorrectedNameId,
-        graph_msf::RobustNorm::DCS(1.0),
+        lioVioRobustNorm(),
         vioTimeKm1,
         timeK,
         T_Ckm1_Ck,
@@ -1190,6 +1476,78 @@ void B2WEstimator::vioOdometryBetweenCallback_(const nav_msgs::msg::Odometry::Co
                  static_cast<int>(graphConfigPtr_->imuBufferLength_ / 2.0));
     pubMeasMapVioBetweenPath_->publish(*measVioBetween_mapCameraPathPtr_);
   }
+}
+
+// Wheel-leg odometry: base velocity from /joint_states + gyro through the hf_b2w_description rolling-contact model, fused as a
+// body-frame velocity of the base. Slip handling: per-wheel voting, skid-turn gate, all-wheel-slip gate vs the current estimate,
+// speed/leg-motion dependent noise and a robust kernel.
+void B2WEstimator::jointStatesCallback_(const sensor_msgs::msg::JointState::ConstSharedPtr& jointStatesPtr) {
+  B2W_SCOPED_CB_TIMER("jointStatesCallback_");
+  if (!wheelOdometryPtr_ || !areYawAndPositionInited()) {
+    return;
+  }
+  const double timeK = jointStatesPtr->header.stamp.sec + jointStatesPtr->header.stamp.nanosec * 1e-9;
+  if (lastWheelOdometryTime_ > 0.0 && timeK - lastWheelOdometryTime_ < 1.0 / wheelOdometryRate_ - 1e-4) {
+    return;  // rate gate (also drops non-increasing stamps)
+  }
+
+  // One-time setup: frames and the joint-name map
+  if (!wheelOdometryFramesCached_) {
+    if (wheelOdometryBaseFrame_ != baseLinkFrame_) {
+      RCLCPP_ERROR(this->get_logger(), "[Wheel odometry] hf_b2w_description.baseFrame '%s' != base link frame '%s'. Disabled.",
+                   wheelOdometryBaseFrame_.c_str(), baseLinkFrame_.c_str());
+      wheelOdometryPtr_.reset();
+      return;
+    }
+    const std::string& imuFrame = staticTransformsPtr_->getImuFrame();
+    wheelOdometryR_B_I_ = staticTransformsPtr_->rv_T_frame1_frame2(baseLinkFrame_, imuFrame).rotation();
+    wheelOdometryI_t_I_B_ = staticTransformsPtr_->rv_T_frame1_frame2(imuFrame, baseLinkFrame_).translation();
+    wheelOdometryFramesCached_ = true;
+  }
+  if (!wheelOdometryPtr_->hasJointMap() && !wheelOdometryPtr_->setJointNames(jointStatesPtr->name)) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                         "[Wheel odometry] /joint_states does not contain all joints of hf_b2w_description. Skipping.");
+    ++wheelOdometryStats_.missing;
+    return;
+  }
+
+  // Body rates and current velocity estimate at the joint-state time (base axes, base origin)
+  BufferedState s;
+  if (!lookupBufferedState_(timeK, 0.05, s)) {
+    ++wheelOdometryStats_.noState;
+    return;
+  }
+  const Eigen::Vector3d B_w_W_B = wheelOdometryR_B_I_ * s.I_w_W_I;
+  const Eigen::Vector3d B_v_W_B_state = wheelOdometryR_B_I_ * (s.I_v_W_I + s.I_w_W_I.cross(wheelOdometryI_t_I_B_));
+
+  const HfB2wWheelOdometryResult r =
+      wheelOdometryPtr_->estimate(jointStatesPtr->position, jointStatesPtr->velocity, B_w_W_B, &B_v_W_B_state, timeK);
+  lastWheelOdometryTime_ = timeK;
+
+  using Status = HfB2wWheelOdometryResult::Status;
+  switch (r.status) {
+    case Status::Ok: r.standstill ? ++wheelOdometryStats_.standstill : ++wheelOdometryStats_.accepted; break;
+    case Status::Turning: ++wheelOdometryStats_.turning; break;
+    case Status::TooFewConsistentWheels: ++wheelOdometryStats_.inconsistent; break;
+    case Status::DeviatesFromState: ++wheelOdometryStats_.deviates; break;
+    case Status::MissingJoints: ++wheelOdometryStats_.missing; break;
+  }
+  if (timeK - wheelOdometryStats_.lastReportTime > 20.0) {
+    const auto& st = wheelOdometryStats_;
+    REGULAR_COUT << GREEN_START << " [Wheel odometry] accepted " << st.accepted << ", standstill " << st.standstill << ", rejected: turning "
+                 << st.turning << ", wheels inconsistent (slip/lift) " << st.inconsistent << ", deviates from state (slip) "
+                 << st.deviates << ", no state " << st.noState << ", missing joints " << st.missing << COLOR_END << "\n";
+    wheelOdometryStats_.lastReportTime = timeK;
+  }
+  if (r.status != Status::Ok) {
+    return;
+  }
+
+  graph_msf::UnaryMeasurementXD<Eigen::Vector3d, 3> B_v_W_B_measurement(
+      "WheelOdometry", static_cast<int>(wheelOdometryRate_), baseLinkFrame_, baseLinkFrame_ + sensorFrameCorrectedNameId,
+      makeRobustNorm_(wheelOdometryRobustNormType_, wheelOdometryRobustNormConstant_, "wheel_odometry.robustNorm"), timeK,
+      /*covarianceViolationThreshold=*/0.0, r.B_v_W_B, r.sigma);
+  this->addUnaryVelocity3LocalMeasurement(B_v_W_B_measurement);
 }
 
 }  // namespace b2w_se

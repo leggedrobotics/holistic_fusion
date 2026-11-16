@@ -25,8 +25,15 @@ StaticTransformsTf::StaticTransformsTf(const rclcpp::Node::SharedPtr& node)
       tf_buffer_(std::make_shared<tf2_ros::Buffer>(node->get_clock())),
       // Minimal robustness improvement: let the TF listener spin internally so transforms can arrive
       // even if the main executor isn't spinning yet.
-      tf_listener_(*tf_buffer_, node, /*spin_thread=*/true) {
+      tf_listener_(std::make_unique<tf2_ros::TransformListener>(*tf_buffer_, node, /*spin_thread=*/true)) {
   RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "StaticTransformsTf - Initializing static transforms...");
+}
+
+void StaticTransformsTf::releaseTfListener() {
+  if (tf_listener_) {
+    tf_listener_.reset();
+    RCLCPP_INFO(rclcpp::get_logger("graph_msf"), "StaticTransformsTf - static transforms stored, TF listener released.");
+  }
 }
 
 bool StaticTransformsTf::findTransformations() {

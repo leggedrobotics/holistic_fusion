@@ -1,0 +1,25 @@
+# hf_b2w_description: the minimal B2W leg kinematics used by Holistic Fusion's wheel odometry.
+# Owned by this estimator and deliberately independent of every URDF / robot_description / description package of the rest of
+# the stack: nothing is published or looked up. Joint origins/axes from the B2W URDF (robot_description recorded 2026-09-10,
+# identical to leggedrobotics/b2w_rsl#63); wheel radius 0.1125 m matches the measured travelled distance (the URDF's 0.105 m was
+# 7 % short over 1.5 km). Joint names as published on /joint_states.
+/b2w_estimator_node:
+  ros__parameters:
+    hf_b2w_description:
+      baseFrame: "base"                   # frame of the origins below; must equal extrinsics.baseLinkFrame
+      wheelRadius: 0.1125                 # [m]
+      abductionAxis: [1.0, 0.0, 0.0]      # HAA
+      pitchAxis: [0.0, 1.0, 0.0]          # HFE, KFE, WHEEL
+      # origins: HAA in base, HFE in hip, KFE in thigh, WHEEL in calf [m] (no rotations)
+      LF:
+        jointNames: ["LF_HAA", "LF_HFE", "LF_KFE", "LF_WHEEL"]
+        origins: [0.3285, 0.072, 0.0,   0.0, 0.11973, 0.0,   0.0, -8.8203e-05, -0.35,   0.0, 0.0, -0.35]
+      LH:
+        jointNames: ["LH_HAA", "LH_HFE", "LH_KFE", "LH_WHEEL"]
+        origins: [-0.3285, 0.072, 0.0,   0.0, 0.11973, 0.0,   0.0, -8.8205e-05, -0.35,   0.0, 0.0, -0.35]
+      RF:
+        jointNames: ["RF_HAA", "RF_HFE", "RF_KFE", "RF_WHEEL"]
+        origins: [0.3285, -0.072, 0.0,   0.0, -0.11973, 0.0,   0.0, 8.8205e-05, -0.35,   0.0, -0.001, -0.35]
+      RH:
+        jointNames: ["RH_HAA", "RH_HFE", "RH_KFE", "RH_WHEEL"]
+        origins: [-0.3285, -0.072, 0.0,   0.0, -0.11973, 0.0,   0.0, 8.8205e-05, -0.35,   0.0, 0.0, -0.35]

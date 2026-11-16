@@ -200,7 +200,7 @@ class OptimizerLMBatch : public OptimizerLM {
     gtsam::Marginals marginals;
     try {
       marginals = gtsam::Marginals(graph, values);
-    } catch (const gtsam::IndeterminantLinearSystemException& e) {
+    } catch (const gtsam::IndeterminateSystemException& e) {
       std::cout << "GraphMSF: OptimizerLMBatch: computing marginals failed with error: " << e.what() << std::endl;
       // Filter out ill-conditioned states
       std::cout << "GraphMSF: OptimizerLMBatch: filtering out ill-conditioned state: " << gtsam::Symbol(e.nearbyVariable()) << std::endl;
