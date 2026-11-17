@@ -61,6 +61,35 @@
       maxAngularSpeed: 3.0        # [rad/s]
       positionMargin: 0.5         # [m]
       rotationMarginDeg: 11.5     # [deg]
+    # ML pseudo-GNSS on the GNSS input (e.g. cross-view localization, gnss_topic_name:=/xv/factor): ~1 Hz, metre-level noise.
+    # On: no gate on the reported sigma (noise_params.gnssPositionOutlierThreshold is ignored; the GNSS robust kernel stays),
+    # world initialisation from a robust yaw-only fit of the fixes against the LIO/VIO path over a long window, accepted once the
+    # yaw standard deviation of the fit (from its actual residuals) is small enough, and a re-aligned LIO map is anchored to the
+    # current world estimate (lio_realignment.noGnssFallbackSec) instead of waiting for a GNSS trajectory alignment, and a looser
+    # LIO/VIO alignment random walk (below). The first fix sets the GNSS origin (no 20-fix averaging).
+    # Init gates (Hoenggerberg bags, 2026-11-17): 30 m / 2 deg -> 10 m / 3 deg initialises 20 m earlier with the start fit
+    # (median 1.21 -> 0.92 m campus, 1.72 -> 1.70 m forest) and ~40 m earlier on cross-view fixes alone. The fit's yaw std
+    # understates the true yaw error ~2x (correlated cross-view errors); 5 deg was no better than 3.
+    pseudo_gnss:
+      enabled: false
+      initWindowSec: 180.0        # [s] fixes kept for the fit
+      initMinPathLength: 10.0     # [m] odometry path length within the window (the fit also needs two fixes 2 x initInlierThreshold apart)
+      initMinFixes: 15            # inlier fixes
+      initInlierThreshold: 6.0    # [m] horizontal distance of a fix from the fitted path
+      initMaxYawStdDeg: 3.0       # [deg]
+      # Replace alignment_params.lio/vioSe3AlignmentRandomWalk while on: the RTK-sized walk is too stiff to keep the drifting
+      # odometry on sparse, noisy fixes (Hoenggerberg cross-view bags: median 1.9 -> 1.2 m campus, 2.1 -> 1.7 m forest).
+      lioSe3AlignmentRandomWalk: [ 0.005, 0.005, 0.005, 0.5, 0.5, 0.5 ] # StdDev per keyframe, ORDER RPY(rad) - XYZ(meters)
+      vioSe3AlignmentRandomWalk: [ 0.005, 0.005, 0.005, 0.5, 0.5, 0.5 ]
+
+    # Operator initial pose from the map page (global_isovist map_preview): std_msgs/String JSON
+    # {"e": LV95 east, "n": LV95 north, "sigma_m", "id", "heading_rad" or "heading_deg"}. With a heading (taken as the robot's
+    # forward direction, counter-clockwise from grid east) the world is initialised at once, without motion; without one the
+    # message is ignored. Only before initialisation; volatile subscription (a latched seed from before a restart is not used).
+    # Before any GNSS fix the origin is placed at the seed and the first fix sets the height.
+    manual_init:
+      enabled: false
+      topic: "/global_isovist/seed_belief"
 
     visualization_params:
       publishHeadingUncertaintyMarkers: true

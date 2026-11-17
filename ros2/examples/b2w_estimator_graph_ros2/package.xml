@@ -30,6 +30,7 @@
     <depend>graph_msf</depend>
     <depend>graph_msf_ros2_msgs</depend>
     <depend>glog</depend>
+    <depend>nlohmann-json-dev</depend>
 
     <!-- Run Dependencies -->
     <exec_depend>b2w_description</exec_depend>

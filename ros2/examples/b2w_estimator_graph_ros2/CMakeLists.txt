@@ -54,6 +54,7 @@ endif()
 find_package(std_srvs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(nlohmann_json REQUIRED)  # manual initialisation message (JSON)
 
 # Display Eigen version and path
 message("Eigen Version: ${EIGEN3_VERSION_STRING}")
@@ -80,11 +81,13 @@ add_library(${PROJECT_NAME}
     src/lib/readParams.cpp
     src/lib/B2WStaticTransforms.cpp
     src/lib/HfB2wWheelOdometry.cpp
+    src/lib/PseudoGnssAlignment.cpp
 )
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
     graph_msf_ros2::graph_msf_ros2
+    nlohmann_json::nlohmann_json
     ${GLOG_LIBRARIES}
     ${gflags_LIBRARIES}
 )

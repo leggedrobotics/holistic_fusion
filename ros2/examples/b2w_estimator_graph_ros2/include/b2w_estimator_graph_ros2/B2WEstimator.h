@@ -36,6 +36,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/string.hpp>
 
 // Workspace
 #include "graph_msf/gnss/GnssHandler.h"
@@ -44,6 +45,7 @@ Please see the LICENSE file that has been included as part of this package.
 #include "graph_msf/trajectory_alignment/TrajectoryAlignmentHandler.h"
 #include "graph_msf_ros2/GraphMsfRos2.h"
 #include "b2w_estimator_graph_ros2/HfB2wWheelOdometry.h"
+#include "b2w_estimator_graph_ros2/PseudoGnssAlignment.h"
 
 // Defined Macros
 #define ROS_QUEUE_SIZE 1
@@ -207,11 +209,19 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   // Alignment pose buffer for GNSS initialization. Poses are always ^M T_B,
   // regardless of whether LIO or VIO supplies the alignment trajectory.
   mutable std::mutex alignmentPoseBufMutex_;
-  std::deque<std::pair<double, Eigen::Isometry3d>> alignmentPoseBuf_;  // (time, ^M T_B)
+  struct AlignmentPose {
+    double time;
+    Eigen::Isometry3d T_M_B;
+    std::uint64_t frameGen;  // changes whenever the map frame M changes (source switch, re-origin epoch)
+  };
+  std::deque<AlignmentPose> alignmentPoseBuf_;
+  std::string alignmentPoseBufFrame_;
+  std::uint64_t alignmentPoseBufFrameGen_ = 0;
   static constexpr double kAlignmentBufKeepSec = 5.0;                   // [s]
   static constexpr double kInitSyncMaxDt = 0.20;                 // [s]
-  void addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B);
-  bool getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr) const;
+  void addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B, const std::string& mapFrame);
+  bool getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out = nullptr,
+                                std::uint64_t* frameGen_out = nullptr) const;
   // --------------------------------------------------------------------------
 
   // GNSS Handler
@@ -316,6 +326,31 @@ class B2WEstimator : public graph_msf::GraphMsfRos2 {
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subJointStates_;
   void jointStatesCallback_(const sensor_msgs::msg::JointState::ConstSharedPtr& jointStatesPtr);
   void readWheelOdometryParams_();
+
+  // ML pseudo-GNSS on the GNSS input (pseudo_gnss.enabled, PseudoGnssAlignment.h) -------------------------------------------
+  // Sparse, metre-level noisy fixes: no reported-sigma gate (the robust kernel stays), world initialisation from a robust
+  // yaw-only fit over a long window instead of the RTK trajectory alignment, and LIO re-alignment anchored to the current
+  // world estimate instead of waiting for a GNSS trajectory alignment. GNSS callback thread only.
+  bool pseudoGnssEnabled_ = false;
+  PseudoGnssAlignmentParams pseudoGnssParams_;
+  std::unique_ptr<PseudoGnssAlignment> pseudoGnssAlignment_;
+  void initFromPseudoGnss_(const Eigen::Vector3d& W_t_W_Gnss, double sigmaXY, double timeK);
+  void readPseudoGnssParams_();
+
+  // Operator initial pose (manual_init.enabled): std_msgs/String JSON {"e", "n" (LV95 [m]), "sigma_m", "id", "heading_rad" |
+  // "heading_deg"} from the map page (global_isovist map_preview, /global_isovist/seed_belief). With a heading (taken as the
+  // robot's forward direction, counter-clockwise from grid east) the world is initialised at once, without motion. Runs in the
+  // GNSS callback group: it shares the GNSS origin state below.
+  bool manualInitEnabled_ = false;
+  std::string manualInitTopic_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subManualInit_;
+  void manualInitCallback_(const std_msgs::msg::String::ConstSharedPtr& msg);
+  // GNSS origin state (GNSS callback group only). The manual initialisation can set the origin before any fix; the seed has no
+  // height, so the first fix then defines the height offset (its world z := the estimated antenna height).
+  bool gnssReferenceSet_ = false;
+  bool gnssHeightPending_ = false;
+  double gnssZOffset_ = 0.0;                                           // [m] added to the world z of every fix
+  double lastGnssWorldZ_ = std::numeric_limits<double>::quiet_NaN();  // [m] world z of the last fix (antenna)
 
   // Flags
   bool useGnssFlag_ = false;

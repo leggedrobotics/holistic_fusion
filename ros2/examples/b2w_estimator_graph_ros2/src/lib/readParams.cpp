@@ -83,6 +83,9 @@ void B2WEstimator::readParams() {
   alignmentRandomWalkGnssAbsenceSec_ = graph_msf::tryGetParam<double>(this, "alignment_params.gnssAbsenceSecondsForScale");
   alignmentRandomWalkReleaseSeconds_ = graph_msf::tryGetParam<double>(this, "alignment_params.randomWalkReleaseSecondsAfterGnssReturn");
   alignmentRandomWalkReleaseMaxFactor_ = graph_msf::tryGetParam<double>(this, "alignment_params.randomWalkReleaseMaxFactor");
+  readPseudoGnssParams_();  // after the alignment parameters: overrides the LIO/VIO alignment random walks when enabled
+  manualInitEnabled_ = graph_msf::tryGetParam<bool>(this, "manual_init.enabled");
+  manualInitTopic_ = graph_msf::tryGetParam<std::string>(this, "manual_init.topic");
 
   // Noise Parameters
   /// LiDAR Odometry
@@ -270,6 +273,35 @@ void B2WEstimator::readWheelOdometryParams_() {
   wheelOdometryPtr_ = std::make_unique<HfB2wWheelOdometry>(description, params);
   REGULAR_COUT << GREEN_START << " [Wheel odometry] enabled: hf_b2w_description base '" << wheelOdometryBaseFrame_ << "', wheel radius "
                << description.wheelRadius << " m, rate " << wheelOdometryRate_ << " Hz, sigma " << params.sigma.transpose() << COLOR_END
+               << std::endl;
+}
+
+void B2WEstimator::readPseudoGnssParams_() {
+  pseudoGnssEnabled_ = graph_msf::tryGetParam<bool>(this, "pseudo_gnss.enabled");
+  if (!pseudoGnssEnabled_) {
+    return;
+  }
+  PseudoGnssAlignmentParams& p = pseudoGnssParams_;
+  p.windowSec = graph_msf::tryGetParam<double>(this, "pseudo_gnss.initWindowSec");
+  p.minPathLength = graph_msf::tryGetParam<double>(this, "pseudo_gnss.initMinPathLength");
+  p.minFixes = graph_msf::tryGetParam<int>(this, "pseudo_gnss.initMinFixes");
+  p.inlierThreshold = graph_msf::tryGetParam<double>(this, "pseudo_gnss.initInlierThreshold");
+  p.maxYawStdDeg = graph_msf::tryGetParam<double>(this, "pseudo_gnss.initMaxYawStdDeg");
+  if (!(p.windowSec > 0.0) || !(p.inlierThreshold > 0.0) || !(p.maxYawStdDeg > 0.0) || p.minFixes < 3) {
+    throw std::runtime_error("B2WEstimator pseudo_gnss: initWindowSec, initInlierThreshold and initMaxYawStdDeg must be > 0, initMinFixes >= 3.");
+  }
+  const auto walk = [this](const std::string& name) {
+    const auto v = graph_msf::tryGetParam<std::vector<double>>(this, name);
+    if (v.size() != 6) throw std::runtime_error("B2WEstimator: " + name + " must have 6 entries.");
+    return Eigen::Matrix<double, 6, 1>(v.data());
+  };
+  lioSe3AlignmentRandomWalk_ = walk("pseudo_gnss.lioSe3AlignmentRandomWalk");
+  vioSe3AlignmentRandomWalk_ = walk("pseudo_gnss.vioSe3AlignmentRandomWalk");
+  pseudoGnssAlignment_ = std::make_unique<PseudoGnssAlignment>(p);
+  REGULAR_COUT << GREEN_START << " [Pseudo-GNSS] enabled: no reported-sigma gate on GNSS fixes; initialisation from a yaw fit over "
+               << p.windowSec << " s, >= " << p.minPathLength << " m path, >= " << p.minFixes << " inlier fixes (inlier < "
+               << p.inlierThreshold << " m), yaw std <= " << p.maxYawStdDeg << " deg; LIO/VIO alignment random walk "
+               << lioSe3AlignmentRandomWalk_.transpose() << " / " << vioSe3AlignmentRandomWalk_.transpose() << "." << COLOR_END
                << std::endl;
 }
 

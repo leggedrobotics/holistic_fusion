@@ -9,7 +9,9 @@ Please see the LICENSE file that has been included as part of this package.
 #include <cstdio>
 #include <algorithm>
 #include <cctype>
+#include <sstream>
 #include <stdexcept>
+#include <nlohmann/json.hpp>
 #include "b2w_estimator_graph_ros2/B2WEstimator.h"
 
 // Project
@@ -167,6 +169,18 @@ void B2WEstimator::setup(const rclcpp::Node::SharedPtr& self) {
   this->declare_parameter("lio_realignment.absenceTimeoutSec", 10.0);
   this->declare_parameter("lio_realignment.attemptEveryNGnssMsgs", 5);
   this->declare_parameter("lio_realignment.noGnssFallbackSec", 0.0);
+  // ML pseudo-GNSS on the GNSS input (B2WEstimator.h, PseudoGnssAlignment.h)
+  this->declare_parameter("pseudo_gnss.enabled", false);
+  this->declare_parameter("pseudo_gnss.initWindowSec", 180.0);
+  this->declare_parameter("pseudo_gnss.initMinPathLength", 10.0);
+  this->declare_parameter("pseudo_gnss.initMinFixes", 15);
+  this->declare_parameter("pseudo_gnss.initInlierThreshold", 6.0);
+  this->declare_parameter("pseudo_gnss.initMaxYawStdDeg", 3.0);
+  this->declare_parameter("pseudo_gnss.lioSe3AlignmentRandomWalk", std::vector<double>{0.005, 0.005, 0.005, 0.5, 0.5, 0.5});
+  this->declare_parameter("pseudo_gnss.vioSe3AlignmentRandomWalk", std::vector<double>{0.005, 0.005, 0.005, 0.5, 0.5, 0.5});
+  // Operator initial pose from a web page (B2WEstimator.h)
+  this->declare_parameter("manual_init.enabled", false);
+  this->declare_parameter("manual_init.topic", std::string("/global_isovist/seed_belief"));
   this->declare_parameter("source_reorigin.enabled", false);
   this->declare_parameter("source_reorigin.maxLinearSpeed", 4.0);
   this->declare_parameter("source_reorigin.maxAngularSpeed", 3.0);
@@ -289,17 +303,22 @@ void B2WEstimator::cacheFrames_() {
   framesCached_ = true;
 }
 
-void B2WEstimator::addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B) {
+void B2WEstimator::addAlignmentPose_(double time, const Eigen::Isometry3d& T_M_B, const std::string& mapFrame) {
   std::lock_guard<std::mutex> lk(alignmentPoseBufMutex_);
-  alignmentPoseBuf_.emplace_back(time, T_M_B);
+  if (mapFrame != alignmentPoseBufFrame_) {
+    alignmentPoseBufFrame_ = mapFrame;
+    ++alignmentPoseBufFrameGen_;
+  }
+  alignmentPoseBuf_.push_back({time, T_M_B, alignmentPoseBufFrameGen_});
 
   const double t_min = time - kAlignmentBufKeepSec;
-  while (!alignmentPoseBuf_.empty() && alignmentPoseBuf_.front().first < t_min) {
+  while (!alignmentPoseBuf_.empty() && alignmentPoseBuf_.front().time < t_min) {
     alignmentPoseBuf_.pop_front();
   }
 }
 
-bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out) const {
+bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_out, double* best_dt_out,
+                                            std::uint64_t* frameGen_out) const {
   std::lock_guard<std::mutex> lk(alignmentPoseBufMutex_);
   if (alignmentPoseBuf_.empty()) {
     if (best_dt_out) *best_dt_out = std::numeric_limits<double>::infinity();
@@ -307,16 +326,17 @@ bool B2WEstimator::getClosestAlignmentPose_(double t, Eigen::Isometry3d& T_M_B_o
   }
 
   auto best_it = alignmentPoseBuf_.begin();
-  double best_dt = std::abs(best_it->first - t);
+  double best_dt = std::abs(best_it->time - t);
 
   for (auto it = alignmentPoseBuf_.begin(); it != alignmentPoseBuf_.end(); ++it) {
-    const double dt = std::abs(it->first - t);
+    const double dt = std::abs(it->time - t);
     if (dt < best_dt) { best_dt = dt; best_it = it; }
   }
 
   if (best_dt_out) *best_dt_out = best_dt;
   if (best_dt > kInitSyncMaxDt) return false;  // too far apart in time
-  T_M_B_out = best_it->second;
+  T_M_B_out = best_it->T_M_B;
+  if (frameGen_out) *frameGen_out = best_it->frameGen;
   return true;
 }
 
@@ -489,6 +509,141 @@ void B2WEstimator::realignFromGnss_(const Eigen::Vector3d& W_t_W_Gnss, const dou
                << ". Handing to the LIO thread for injection." << COLOR_END << "\n";
 }
 
+// GNSS callback thread, pseudo_gnss.enabled, before the world is initialised: pair the fix with the odometry pose at its stamp and
+// initialise yaw and position from the robust fit over the window once it is good enough (PseudoGnssAlignment.h).
+void B2WEstimator::initFromPseudoGnss_(const Eigen::Vector3d& W_t_W_Gnss, const double sigmaXY, const double timeK) {
+  Eigen::Isometry3d T_M_B = Eigen::Isometry3d::Identity();
+  double dt = 0.0;
+  std::uint64_t frameGen = 0;
+  if (!getClosestAlignmentPose_(timeK, T_M_B, &dt, &frameGen)) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                         "[Pseudo-GNSS] No odometry pose within %.2f s of the fix (closest %.2f s): fix not used for the initialisation.",
+                         kInitSyncMaxDt, dt);
+    return;
+  }
+  pseudoGnssAlignment_->add(timeK, T_M_B * t_B_G_cached_, W_t_W_Gnss, sigmaXY, frameGen);
+
+  PseudoGnssAlignment::Result fit;
+  if (!pseudoGnssAlignment_->solve(fit)) {
+    if (gnssCallbackCounter_ % 10 == 0) {
+      REGULAR_COUT << YELLOW_START << " [Pseudo-GNSS] Initialisation waiting: " << fit.numFixes << " fixes, path " << std::fixed
+                   << std::setprecision(1) << fit.pathLength << "/" << pseudoGnssParams_.minPathLength << " m, inliers "
+                   << fit.numInliers << ", yaw std " << fit.yawStdDeg << "/" << pseudoGnssParams_.maxYawStdDeg << " deg."
+                   << COLOR_END << "\n";
+    }
+    return;
+  }
+
+  // World pose of the base at the fix time from the fit over the whole window, not from the single latest fix.
+  const Eigen::Isometry3d T_W_B = fit.T_W_M * T_M_B;
+  const Eigen::Vector3d x_W = T_W_B.rotation().col(0);
+  const double yaw_W_B = std::atan2(x_W.y(), x_W.x());
+  REGULAR_COUT << GREEN_START << " [Pseudo-GNSS] Yaw fit accepted: " << fit.numInliers << "/" << fit.numFixes << " fixes, path "
+               << std::fixed << std::setprecision(1) << fit.pathLength << " m, inlier rms " << std::setprecision(2) << fit.rmsInlier
+               << " m, yaw std " << fit.yawStdDeg << " deg, yaw(W<-B) " << std::setprecision(1) << yaw_W_B * 180.0 / M_PI << " deg."
+               << COLOR_END << "\n";
+  if (this->initYawAndPositionInWorld(yaw_W_B, T_W_B.translation(), baseLinkFrame_, baseLinkFrame_)) {
+    alignmentStatus_.store(true, std::memory_order_relaxed);
+    publishAlignmentStatus_();
+    pseudoGnssAlignment_->reset();
+    REGULAR_COUT << GREEN_START << " GNSS initialization of yaw and position successful." << COLOR_END << "\n";
+  } else {
+    alignmentStatus_.store(false, std::memory_order_relaxed);
+    publishAlignmentStatus_();
+    REGULAR_COUT << RED_START << " GNSS initialization of yaw and position failed." << COLOR_END << "\n";
+  }
+}
+
+namespace {
+// swisstopo approximate formulas, LV95 -> WGS84 [deg] (~1 m; only used for the origin and as a point on the conversion).
+Eigen::Vector2d lv95ToWgs84Approx(const double e, const double n) {
+  const double y = (e - 2600000.0) / 1.0e6, x = (n - 1200000.0) / 1.0e6;
+  const double lon = 2.6779094 + 4.728982 * y + 0.791484 * y * x + 0.1306 * y * x * x - 0.0436 * y * y * y;
+  const double lat = 16.9023892 + 3.238272 * x - 0.270978 * y * y - 0.002528 * x * x - 0.0447 * y * y * x - 0.0140 * x * x * x;
+  return {lat * 100.0 / 36.0, lon * 100.0 / 36.0};
+}
+}  // namespace
+
+void B2WEstimator::manualInitCallback_(const std_msgs::msg::String::ConstSharedPtr& msg) {
+  const nlohmann::json d = nlohmann::json::parse(msg->data, nullptr, /*allow_exceptions=*/false);
+  const auto number = [&d](const char* key, double& out) {
+    const auto it = d.find(key);
+    if (it == d.end() || !it->is_number()) return false;
+    out = it->get<double>();
+    return std::isfinite(out);
+  };
+  double e = 0.0, n = 0.0, sigma = 0.0, heading = 0.0;
+  if (!d.is_object() || !number("e", e) || !number("n", n)) {
+    RCLCPP_WARN(this->get_logger(), "[Manual init] Ignored: not a JSON object with numeric \"e\" and \"n\": %s", msg->data.c_str());
+    return;
+  }
+  const bool hasSigma = number("sigma_m", sigma);
+  bool hasHeading = number("heading_rad", heading);
+  if (!hasHeading && number("heading_deg", heading)) {
+    heading *= M_PI / 180.0;
+    hasHeading = true;
+  }
+  const std::string id = d.contains("id") ? d["id"].dump() : "-";
+  if (e < 2.0e6 || n < 1.0e6) {
+    RCLCPP_WARN(this->get_logger(), "[Manual init] Ignored id %s: (%.1f, %.1f) is not LV95 (LV03 lacks the 2'000'000 / 1'000'000).",
+                id.c_str(), e, n);
+    return;
+  }
+  if (areYawAndPositionInited()) {
+    RCLCPP_WARN(this->get_logger(), "[Manual init] Ignored id %s: already initialised (a running estimate is not re-initialised).",
+                id.c_str());
+    return;
+  }
+  if (!hasHeading) {
+    RCLCPP_WARN(this->get_logger(),
+                "[Manual init] Ignored id %s: no heading. Without one the yaw needs motion: HF initialises from the GNSS input as usual.",
+                id.c_str());
+    return;
+  }
+  if (!framesCached_) {
+    RCLCPP_WARN(this->get_logger(), "[Manual init] Ignored id %s: static transforms not ready yet.", id.c_str());
+    return;
+  }
+
+  // GNSS origin: kept when the fixes already set it, else placed at the seed (a preset gnss reference wins inside initHandler).
+  const Eigen::Vector2d latLon = lv95ToWgs84Approx(e, n);
+  if (!gnssReferenceSet_) {
+    gnssHandlerPtr_->initHandler(Eigen::Vector3d(latLon.x(), latLon.y(), 0.0));
+    gnssReferenceSet_ = true;
+    gnssHeightPending_ = true;
+    auto ref = std::make_shared<sensor_msgs::msg::NavSatFix>();
+    ref->header.stamp = this->get_clock()->now();
+    ref->header.frame_id = worldFrame_;
+    ref->latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    ref->longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    ref->altitude = gnssHandlerPtr_->getGnssReferenceAltitude();  // republished with the height from the first fix
+    pubReferenceNavSatFixCoordinates_->publish(*ref);
+    REGULAR_COUT << GREEN_START << " [Manual init] GNSS origin set before any fix; the first fix sets the height." << COLOR_END << "\n";
+  }
+  // World position = LV03 of the seed minus LV03 of the origin, with the same conversion as the fixes: the handler gives
+  // LV03(p) - origin for any point p, and LV03(seed) - LV03(p) moves it from p to the seed.
+  Eigen::Vector3d W_t_W_B = Eigen::Vector3d::Zero();
+  gnssHandlerPtr_->convertNavSatToPositionLV03(Eigen::Vector3d(latLon.x(), latLon.y(), 0.0), W_t_W_B);
+  const Eigen::Vector3d lv03AtP = graph_msf::Gnss().gnssToLv03Raw(latLon.x(), latLon.y(), 0.0);
+  W_t_W_B.x() += (e - 2.0e6) - lv03AtP.x();
+  W_t_W_B.y() += (n - 1.0e6) - lv03AtP.y();
+  W_t_W_B.z() = std::isfinite(lastGnssWorldZ_) ? lastGnssWorldZ_ - t_B_G_cached_.z() : 0.0;
+  const double yaw = std::atan2(std::sin(heading), std::cos(heading));
+
+  REGULAR_COUT << GREEN_START << " [Manual init] id " << id << ": LV95 (" << std::fixed << std::setprecision(1) << e << ", " << n
+               << ")" << (hasSigma ? ", sigma " + std::to_string(static_cast<int>(std::lround(sigma))) + " m" : std::string())
+               << ", heading " << yaw * 180.0 / M_PI << " deg -> world (" << W_t_W_B.x() << ", " << W_t_W_B.y() << ", "
+               << W_t_W_B.z() << ")." << COLOR_END << "\n";
+  if (this->initYawAndPositionInWorld(yaw, W_t_W_B, baseLinkFrame_, baseLinkFrame_)) {
+    alignmentStatus_.store(true, std::memory_order_relaxed);
+    publishAlignmentStatus_();
+    if (pseudoGnssAlignment_) pseudoGnssAlignment_->reset();
+    REGULAR_COUT << GREEN_START << " [Manual init] Initialisation of yaw and position successful." << COLOR_END << "\n";
+  } else {
+    REGULAR_COUT << RED_START << " [Manual init] Initialisation of yaw and position failed." << COLOR_END << "\n";
+  }
+}
+
 void B2WEstimator::initializePublishers() {
   // Non-time-critical publishers with best-effort and larger queue
   auto best_effort_qos = rclcpp::QoS(100)
@@ -556,6 +711,13 @@ void B2WEstimator::initializeSubscribers() {
         std::bind(&B2WEstimator::gnssNavSatFixCallback_, this, std::placeholders::_1),
         so_gnss);
     REGULAR_COUT << COLOR_END << " Initialized GNSS NavSatFix subscriber with topic: /gnss_topic\n";
+    if (manualInitEnabled_) {
+      // Volatile on purpose: the page latches its last seed, and a restarted HF must not initialise at a stale pose.
+      subManualInit_ = this->create_subscription<std_msgs::msg::String>(
+          manualInitTopic_, qosReliable, std::bind(&B2WEstimator::manualInitCallback_, this, std::placeholders::_1), so_gnss);
+      REGULAR_COUT << GREEN_START << " [Manual init] listening on " << manualInitTopic_
+                   << " (std_msgs/String JSON: e, n in LV95, heading_rad or heading_deg)." << COLOR_END << "\n";
+    }
   }
 
   if (useLioOdometryFlag_) {
@@ -668,7 +830,7 @@ void B2WEstimator::lidarBetweenOdometryCallback_(const nav_msgs::msg::Odometry::
   // GNSS trajectory alignment: only fed from here when the absolute LIO unary is off (the unary path already feeds it, with the
   // lever arm; feeding both gave the aligner two inconsistent trajectories).
   if (!useLioOdometryFlag_ && useGnssFlag_ && gnssHandlerPtr_->getUseYawInitialGuessFromAlignment()) {
-    addAlignmentPose_(lidarBetweenTimeK, lio_T_M_Lk);
+    addAlignmentPose_(lidarBetweenTimeK, lio_T_M_Lk, lidarBetweenOdomPtr->header.frame_id);
     const std::string& baseFrame =
         lidarBetweenOdomPtr->child_frame_id.empty() ? baseLinkFrame_ : lidarBetweenOdomPtr->child_frame_id;
     const Eigen::Vector3d t_B_G = (baseFrame == baseLinkFrame_)
@@ -781,15 +943,20 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
                                std::sqrt(P_lv03(1,1)),
                                std::sqrt(P_lv03(2,2)));
 
-  if (gnssCallbackCounter_ < NUM_GNSS_CALLBACKS_UNTIL_START) {
+  // Pseudo-GNSS: the first fix sets the origin (it is only an offset) and already counts for the initialisation; averaging 20
+  // sparse fixes first would discard ~30 s of them. The counter starts at 0 for the first fix.
+  const int numGnssUntilStart = pseudoGnssEnabled_ ? 0 : NUM_GNSS_CALLBACKS_UNTIL_START;
+  if (gnssReferenceSet_) {
+    // Origin already set (by an earlier fix or by the manual initialisation).
+  } else if (gnssCallbackCounter_ < numGnssUntilStart) {
     accumulatedGnssCoordinates_ += gnssCoord;
     if ((gnssCallbackCounter_ % 10) == 0) {
       REGULAR_COUT << " NOT ENOUGH GNSS MESSAGES ARRIVED!\n";
     }
     return;
-  } else if (gnssCallbackCounter_ == NUM_GNSS_CALLBACKS_UNTIL_START) {
+  } else if (gnssCallbackCounter_ == numGnssUntilStart) {
 
-    Eigen::Vector3d avgGnssCoord = accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START;
+    Eigen::Vector3d avgGnssCoord = pseudoGnssEnabled_ ? gnssCoord : Eigen::Vector3d(accumulatedGnssCoordinates_ / NUM_GNSS_CALLBACKS_UNTIL_START);
     gnssHandlerPtr_->initHandler(avgGnssCoord);
 
     auto referenceGNSSmsg = std::make_shared<sensor_msgs::msg::NavSatFix>();
@@ -826,16 +993,47 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
                  << "\033[0m";
 
     REGULAR_COUT << " GNSS Handler initialized." << COLOR_END << "\n";
+    gnssReferenceSet_ = true;
     alignmentStatus_.store(false, std::memory_order_relaxed);
     publishAlignmentStatus_();
   }
 
   Eigen::Vector3d W_t_W_Gnss = Eigen::Vector3d::Zero();
   gnssHandlerPtr_->convertNavSatToPositionLV03(gnssCoord, W_t_W_Gnss);
+  if (gnssHeightPending_) {
+    // The manual initialisation set the origin without a height: put this first fix at the estimated antenna height. If that
+    // initialisation failed (e.g. IMU attitude not ready), the first fix is at height 0, as when a fix sets the origin, and the
+    // automatic initialisation below proceeds as usual.
+    double zFix = 0.0;
+    if (areYawAndPositionInited()) {
+      Eigen::Isometry3d T_W_I = Eigen::Isometry3d::Identity();
+      if (!lookupWorldImuPose_(timeK, 0.2, T_W_I)) {
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                             "[Manual init] No state estimate at the first GNSS fix yet: fix skipped until the height is set.");
+        return;
+      }
+      const Eigen::Isometry3d T_I_B = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), baseLinkFrame_);
+      zFix = (T_W_I * T_I_B * t_B_G_cached_).z();
+    }
+    gnssZOffset_ = zFix - W_t_W_Gnss.z();
+    gnssHeightPending_ = false;
+    auto ref = std::make_shared<sensor_msgs::msg::NavSatFix>();
+    ref->header = navSatFixPtr->header;
+    ref->latitude = gnssHandlerPtr_->getGnssReferenceLatitude();
+    ref->longitude = gnssHandlerPtr_->getGnssReferenceLongitude();
+    ref->altitude = gnssHandlerPtr_->getGnssReferenceAltitude() - gnssZOffset_;  // world z = altitude - this
+    pubReferenceNavSatFixCoordinates_->publish(*ref);
+    REGULAR_COUT << GREEN_START << " [Manual init] First GNSS fix sets the world height: reference altitude " << std::fixed
+                 << std::setprecision(2) << ref->altitude << " m." << COLOR_END << "\n";
+  }
+  W_t_W_Gnss.z() += gnssZOffset_;
+  lastGnssWorldZ_ = W_t_W_Gnss.z();
 
   std::string fixedFrame = worldFrame_;
 
-  if (!areYawAndPositionInited()) {
+  if (!areYawAndPositionInited() && pseudoGnssEnabled_) {
+    initFromPseudoGnss_(W_t_W_Gnss, std::max(estStdDevXYZ.x(), estStdDevXYZ.y()), timeK);
+  } else if (!areYawAndPositionInited()) {
 
     // Frame names
     const std::string& baseFrame = baseLinkFrame_;
@@ -927,7 +1125,8 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
   } else {
 
     lastValidGnssHeaderTime_.store(timeK, std::memory_order_relaxed);
-    if (lioRealignEnabled_ && lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Realigning) {
+    // Pseudo-GNSS: the LIO thread anchors a re-aligned map to the world estimate instead (see the LIO callback).
+    if (lioRealignEnabled_ && !pseudoGnssEnabled_ && lioAlignState_.load(std::memory_order_acquire) == LioAlignState::Realigning) {
       realignFromGnss_(W_t_W_Gnss, timeK);
     }
 
@@ -942,10 +1141,11 @@ void B2WEstimator::gnssNavSatFixCallback_(const sensor_msgs::msg::NavSatFix::Con
     //     W_t_W_Gnss, estStdDevXYZ,
     //     fixedFrame, worldFrame_);
 
+    // Pseudo-GNSS: no gate on the reported sigma (0 disables it); the robust kernel still bounds the pull of a jumping fix.
     graph_msf::UnaryMeasurementXDAbsolute<Eigen::Vector3d, 3> meas_W_t_W_Gnss(
         "GnssPosition", int(gnssRate_), gnssFrameName, gnssFrameName + sensorFrameCorrectedNameId,
         gnssRobustNorm(),
-        timestampSec, gnssPositionOutlierThreshold_,
+        timestampSec, pseudoGnssEnabled_ ? 0.0 : gnssPositionOutlierThreshold_,
         W_t_W_Gnss, estStdDevXYZ,
         fixedFrame, worldFrame_);
 
@@ -1060,11 +1260,11 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
   if (!areYawAndPositionInited() && initAlignmentSource_.load() != InitAlignmentSource::Lio) {
     switchInitAlignmentSource_(InitAlignmentSource::Lio, lidarOdometryTimeK, "LiDAR odometry is arriving");
   }
-  addAlignmentPose_(lidarOdometryTimeK, lio_T_M_Lk);
 
   // Frame Name
   const std::string& lioOdometryFrame = lioOdometryFrame_;
   const std::string lioFixedFrame = epochFrameName_(lioEpoch_, odomLidarPtr->header.frame_id, lidarOdometryTimeK, lio_T_M_Lk, "LIO");
+  addAlignmentPose_(lidarOdometryTimeK, lio_T_M_Lk, lioFixedFrame);
 
   // The heading-uncertainty disk is defined for the active world-to-fixed-frame alignment, where the fixed
   // frame is the drifting LiDAR odometry/map frame carried in header.frame_id, not the sensor/body child frame.
@@ -1160,9 +1360,10 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
             realignInjectPending_ = false;
           }
         }
-        if (!inject && lioRealignNoGnssFallbackSec_ > 0.0) {
+        if (!inject && (lioRealignNoGnssFallbackSec_ > 0.0 || pseudoGnssEnabled_)) {
           // No GNSS to align against: anchor the (possibly re-origined) LIO map to the current world estimate so that
-          // LIO keeps constraining the graph instead of being withheld for the rest of the outage.
+          // LIO keeps constraining the graph instead of being withheld for the rest of the outage. Pseudo-GNSS never feeds
+          // the GNSS trajectory alignment (realignFromGnss_), so it always anchors, after noGnssFallbackSec if that is > 0.
           const double sinceGnss = lidarOdometryTimeK - lastValidGnssHeaderTime_.load(std::memory_order_relaxed);
           double sinceStart = 0.0;
           {
@@ -1170,14 +1371,20 @@ void B2WEstimator::lidarOdometryCallback_(const nav_msgs::msg::Odometry::ConstSh
             sinceStart = lidarOdometryTimeK - realignStartHeaderTime_;
           }
           Eigen::Isometry3d T_W_I = Eigen::Isometry3d::Identity();
-          if (sinceGnss > lioRealignNoGnssFallbackSec_ && sinceStart > lioRealignNoGnssFallbackSec_ &&
+          // Pseudo-GNSS fixes are too noisy for a fast trajectory alignment: anchor regardless of GNSS.
+          if ((pseudoGnssEnabled_ || sinceGnss > lioRealignNoGnssFallbackSec_) && sinceStart > lioRealignNoGnssFallbackSec_ &&
               lookupWorldImuPose_(lidarOdometryTimeK, 0.1, T_W_I)) {
             const Eigen::Isometry3d T_I_L = staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), lioOdometryFrame);
             T_W_M = T_W_I * T_I_L * lio_T_M_Lk.inverse();
             inject = true;
-            REGULAR_COUT << YELLOW_START << " [LIO realign] No GNSS for " << std::fixed << std::setprecision(1) << sinceGnss
-                         << " s: anchoring " << lioFixedFrame << " to the current " << worldFrame_ << " estimate instead (fallback)."
-                         << COLOR_END << "\n";
+            std::ostringstream why;
+            if (pseudoGnssEnabled_) {
+              why << "Pseudo-GNSS";
+            } else {
+              why << "No GNSS for " << std::fixed << std::setprecision(1) << sinceGnss << " s";
+            }
+            REGULAR_COUT << YELLOW_START << " [LIO realign] " << why.str() << ": anchoring " << lioFixedFrame << " to the current "
+                         << worldFrame_ << " estimate instead (fallback)." << COLOR_END << "\n";
           }
         }
         if (!inject) {
@@ -1315,7 +1522,7 @@ void B2WEstimator::vioOdometryCallback_(const geometry_msgs::msg::PoseWithCovari
         staticTransformsPtr_->rv_T_frame1_frame2(staticTransformsPtr_->getImuFrame(), baseLinkFrame_);
     const Eigen::Isometry3d vio_T_M_B = vio_T_M_Ck * T_V_I * T_I_B;
 
-    addAlignmentPose_(timeK, vio_T_M_B);
+    addAlignmentPose_(timeK, vio_T_M_B, vioFixedFrame);
 
     const Eigen::Vector3d p_G_in_M =
         vio_T_M_B.translation() + vio_T_M_B.rotation() * t_B_G_cached_;
